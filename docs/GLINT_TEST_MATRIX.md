@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Unselected compute binding ranges
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| CPU normal / ASan | 4,969,118 assertions each; 1,000 controller scopes plus 4,000 core oracle operations | Synthetic handles; ranges, aliases, invalid metadata and unique-buffer budget |
+| Native range producer | Uniform/storage bindings, dynamic offsets, texel views and 12-byte indirect input prepared | Actual dispatch/dynamic-offset/texel execution not verified |
+| Chromium-flag syntax | Two translation units; zero diagnostics | Native D3D12 and service observer, no linking |
+| Source composition | Nine ordered packets, 69 paths; extension reverse verified | Existing checkout unchanged; GN not repeated |
+| Public CPU checker | Reconstructed packet chain passed normal and ASan | Not actual Dawn/Wire execution |
+| Full Python baseline | 5107 passed, 1 skipped at `439d8d6` | Before the compute binding extension |
+
+[Source, checker and remaining gates](../native/drafts/webgpu-binding-ranges/README.md).
+Render scopes remain whole-buffer; compatible shader protection is not implemented.
+
 ## Unselected ranged shader provenance
 
 | Gate | Result | Boundary |

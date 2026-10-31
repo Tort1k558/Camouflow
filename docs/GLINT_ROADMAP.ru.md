@@ -1,5 +1,15 @@
 # Glint: план проверки и развития
 
+## Compute binding ranges: prepared, not runtime-verified
+
+[Source and reproducible CPU checker](../native/drafts/webgpu-binding-ranges/README.md):
+explicit binding/dynamic-offset/texel-view/indirect-control spans, aliased bindings
+and unique-buffer budget handling are prepared. Normal/ASan CPU checks passed
+4,969,118 assertions each, two syntax units passed, and nine ordered source packets
+replayed across 69 paths. Full Python baseline: 5107 passed, 1 skipped at `439d8d6`.
+Next: actual native range tests, per-draw/render-bundle ranges and compatible shader
+pixel protection. None of these CPU/source checks resolves the actual export mismatch.
+
 ## Ranged provenance: source foundation, not shader compatibility
 
 [Byte-range source extension](../native/drafts/webgpu-ranged-provenance/README.md)

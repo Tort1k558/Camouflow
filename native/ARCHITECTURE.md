@@ -1,5 +1,18 @@
 # Glint architecture
 
+## Unselected compute binding ranges
+
+The [compute range extension](drafts/webgpu-binding-ranges/README.md) supplies
+explicit buffer spans from native bindings, dynamic offsets, texel views and
+indirect-dispatch control arguments. The controller validates all inputs before
+mutating outputs, supports aliases with independent execution sequences, counts
+unique identities against the buffer budget and ignores empty dependencies.
+Normal/ASan CPU tests passed 4,969,118 assertions each, including 1,000 controller
+scopes; two native/service syntax units and a nine-packet/69-path source replay
+passed. These are not native dispatch tests. Render scopes remain whole-buffer,
+shader-derived data is still refused, and compatible shader protection, real
+Dawn/Wire execution, component linking and runtime admission remain open.
+
 ## Unselected opaque byte-range provenance
 
 The [ranged extension](drafts/webgpu-ranged-provenance/README.md) distinguishes

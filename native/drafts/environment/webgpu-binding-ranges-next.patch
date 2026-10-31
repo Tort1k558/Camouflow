@@ -1,0 +1,280 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -74,6 +74,9 @@
+     GlintBufferIdentity buffer;
+     bool readable = false;
+     bool writable = false;
++    uint64_t offset = 0;
++    uint64_t size = 0;
++    bool rangeKnown = false;
+ };
+ 
+ inline constexpr size_t kGlintShaderBufferUseLimit = 256;
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -42,6 +42,7 @@
+ #include "src/dawn/native/ImmediatesTracker.h"
+ #include "src/dawn/native/Queue.h"
+ #include "src/dawn/native/RenderBundle.h"
++#include "src/dawn/native/TexelBufferView.h"
+ #include "src/dawn/native/d3d12/BindGroupD3D12.h"
+ #include "src/dawn/native/d3d12/BindGroupLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/ComputePipelineD3D12.h"
+@@ -66,7 +67,9 @@
+ 
+ void NotifyGlintShaderScope(DeviceBase* device,
+                             const SyncScopeResourceUsage& scope,
+-                            bool framebufferFetch = false) {
++                            bool framebufferFetch = false,
++                            std::span<const GlintShaderBufferUse> boundUses = {},
++                            bool hasBindingRanges = false) {
+     auto observer = device->GetGlintReadbackObserver();
+     if (!observer) {
+         return;
+@@ -77,7 +80,11 @@
+         observer->OnShaderScope({});
+         return;
+     }
+-    if (scope.buffers.empty()) {
++    if (boundUses.size() > kGlintShaderBufferUseLimit) {
++        observer->OnShaderScope({});
++        return;
++    }
++    if (scope.buffers.empty() && boundUses.empty()) {
+         return;
+     }
+     bool textureInputs =
+@@ -93,6 +100,10 @@
+                 textureInputs = true;
+             }
+         });
++    }
++    if (hasBindingRanges) {
++        observer->OnShaderScope({boundUses, textureInputs, true});
++        return;
+     }
+     std::vector<GlintShaderBufferUse> uses;
+     uses.reserve(scope.buffers.size());
+@@ -103,7 +114,8 @@
+         const bool readable =
+             (usage & (kReadOnlyBufferUsages | kShaderBufferUsages)) != wgpu::BufferUsage::None;
+         if (readable || writable) {
+-            uses.push_back({{ToAPI(buffer), buffer->GetSize()}, readable, writable});
++            uses.push_back({{ToAPI(buffer), buffer->GetSize()}, readable, writable,
++                            0, buffer->GetSize(), true});
+         }
+     }
+     observer->OnShaderScope({uses, textureInputs, true});
+@@ -522,6 +534,109 @@
+   public:
+     BindGroupStateTracker(Device* device, DescriptorHeapState* heapState)
+         : Base(), mDevice(device), mHeapState(heapState) {}
++
++    void NotifyGlintComputeScope(const SyncScopeResourceUsage& scope,
++                                 BufferBase* indirectBuffer = nullptr,
++                                 uint64_t indirectOffset = 0) {
++        auto observer = mDevice->GetGlintReadbackObserver();
++        if (!observer) {
++            return;
++        }
++        std::vector<GlintShaderBufferUse> uses;
++        auto append = [&](BufferBase* buffer, uint64_t offset, uint64_t size,
++                          bool writable) {
++            if (!buffer || offset > buffer->GetSize() || size > buffer->GetSize() - offset ||
++                uses.size() == kGlintShaderBufferUseLimit) {
++                return false;
++            }
++            uses.push_back({{ToAPI(buffer), buffer->GetSize()}, true, writable,
++                            offset, size, true});
++            return true;
++        };
++        const auto mask = mPipeline->GetLayout()->GetBindGroupLayoutsMask();
++        for (BindGroupIndex groupIndex{0u}; groupIndex < kMaxBindGroupsTyped; ++groupIndex) {
++            if (!mask[groupIndex]) {
++                continue;
++            }
++            auto* group = mBindGroups[groupIndex];
++            if (!group) {
++                observer->OnShaderScope({});
++                return;
++            }
++            const auto* layout = group->GetLayout();
++            const auto dynamic = GetDynamicOffsets(groupIndex);
++            if (dynamic.size() != layout->GetDynamicBufferCount()) {
++                observer->OnShaderScope({});
++                return;
++            }
++            for (BindingIndex index : layout->GetBufferIndices()) {
++                const auto& info = layout->GetBindingInfo(index);
++                if (!(info.visibility & wgpu::ShaderStage::Compute)) {
++                    continue;
++                }
++                const auto& bindingInfo = std::get<BufferBindingInfo>(info.bindingLayout);
++                const auto binding = group->GetBindingAsBufferBinding(index);
++                uint64_t offset = binding.offset;
++                if (bindingInfo.hasDynamicOffset) {
++                    if (index >= dynamic.size() || !binding.buffer ||
++                        offset > binding.buffer->GetSize() ||
++                        dynamic[index] > binding.buffer->GetSize() - offset) {
++                        observer->OnShaderScope({});
++                        return;
++                    }
++                    offset += dynamic[index];
++                }
++                bool writable;
++                switch (bindingInfo.type) {
++                    case wgpu::BufferBindingType::Uniform:
++                    case wgpu::BufferBindingType::ReadOnlyStorage:
++                    case kInternalReadOnlyStorageBufferBinding:
++                        writable = false;
++                        break;
++                    case wgpu::BufferBindingType::Storage:
++                    case kInternalStorageBufferBinding:
++                        writable = true;
++                        break;
++                    default:
++                        observer->OnShaderScope({});
++                        return;
++                }
++                if (!append(binding.buffer, offset, binding.size, writable)) {
++                    observer->OnShaderScope({});
++                    return;
++                }
++            }
++            for (BindingIndex index : layout->GetTexelBufferIndices()) {
++                const auto& info = layout->GetBindingInfo(index);
++                if (!(info.visibility & wgpu::ShaderStage::Compute)) {
++                    continue;
++                }
++                const auto& bindingInfo = std::get<TexelBufferBindingInfo>(info.bindingLayout);
++                bool writable;
++                switch (bindingInfo.access) {
++                    case wgpu::TexelBufferAccess::ReadOnly:
++                        writable = false;
++                        break;
++                    case wgpu::TexelBufferAccess::ReadWrite:
++                        writable = true;
++                        break;
++                    default:
++                        observer->OnShaderScope({});
++                        return;
++                }
++                auto* view = group->GetBindingAsTexelBufferView(index);
++                if (!view || !append(view->GetBuffer(), view->GetOffset(), view->GetSize(), writable)) {
++                    observer->OnShaderScope({});
++                    return;
++                }
++            }
++        }
++        if (indirectBuffer && !append(indirectBuffer, indirectOffset, 3 * sizeof(uint32_t), false)) {
++            observer->OnShaderScope({});
++            return;
++        }
++        NotifyGlintShaderScope(mDevice, scope, false, uses, true);
++    }
+ 
+     // A WebGPU pipeline layout can map to multiple D3D12 root signatures (PipelineLayoutHandles)
+     // when pipelines enable different internal immediates. A different root signature invalidates
+@@ -1574,7 +1689,7 @@
+                 immediates.Apply(commandContext);
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
+-                NotifyGlintShaderScope(GetDevice(), scope);
++                bindingTracker->NotifyGlintComputeScope(scope);
+                 break;
+             }
+ 
+@@ -1594,7 +1709,8 @@
+                     signature.Get(), 1,
+                     ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
+-                NotifyGlintShaderScope(GetDevice(), scope);
++                bindingTracker->NotifyGlintComputeScope(
++                    scope, dispatch->indirectBuffer.Get(), dispatch->indirectOffset);
+                 break;
+             }
+ 
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -235,30 +235,35 @@
+     return;
+   }
+   if (!scope.complete ||
+-      uses.size() > dawn::native::kGlintShaderBufferUseLimit ||
+-      uses.size() > limits_.buffers) {
++      uses.size() > dawn::native::kGlintShaderBufferUseLimit) {
+     Fail();
+     return;
+   }
+-  const uint64_t sequence = NextSequence();
+-  if (!sequence) {
+-    return;
+-  }
+   bool derived = scope.hasTextureInputs;
++  size_t unique_buffers = 0;
+   // Inspect all inputs before mutating any output, including read-write
+   // aliases.
+   for (size_t index = 0; index < uses.size(); ++index) {
+     const auto& use = uses[index];
+-    if (!use.buffer.handle ||
+-        use.buffer.size > std::numeric_limits<size_t>::max()) {
++    if (!use.buffer.handle || !use.rangeKnown ||
++        use.buffer.size > std::numeric_limits<size_t>::max() ||
++        use.offset > use.buffer.size || use.size > use.buffer.size - use.offset) {
+       Fail();
+       return;
+     }
++    bool duplicate = false;
+     for (size_t previous = 0; previous < index; ++previous) {
+       if (uses[previous].buffer.handle == use.buffer.handle) {
+-        Fail();
+-        return;
++        if (uses[previous].buffer.size != use.buffer.size) {
++          Fail();
++          return;
++        }
++        duplicate = true;
+       }
++    }
++    if (!duplicate && ++unique_buffers > limits_.buffers) {
++      Fail();
++      return;
+     }
+     const auto found = buffers_.find(use.buffer.handle);
+     if (found == buffers_.end()) {
+@@ -268,15 +273,15 @@
+       Fail();
+       return;
+     }
+-    if (use.readable &&
++    if (use.readable && use.size != 0 &&
+         (found->second.unsafe ||
+-         found->second.provenance.PlanMap(0, use.buffer.size).status !=
++         found->second.provenance.PlanMap(use.offset, use.size).status !=
+              WebGpuMapProvenance::kUnrelated)) {
+       derived = true;
+     }
+   }
+   for (const auto& use : uses) {
+-    if (!use.writable) {
++    if (!use.writable || use.size == 0) {
+       continue;
+     }
+     // Ordinary untracked buffer-only compute does not consume tracking slots.
+@@ -287,10 +292,14 @@
+     if (!output) {
+       return;
+     }
++    const uint64_t sequence = NextSequence();
++    if (!sequence) {
++      return;
++    }
+     const bool valid = derived ? output->provenance.RecordDerivedWrite(
+-                                     sequence, 0, use.buffer.size)
++                                     sequence, use.offset, use.size)
+                                : output->provenance.RecordUncertainWrite(
+-                                     sequence, 0, use.buffer.size);
++                                     sequence, use.offset, use.size);
+     if (!valid) {
+       output->unsafe = true;
+     }
