@@ -1,0 +1,162 @@
+--- a/gpu/command_buffer/common/BUILD.gn
++++ b/gpu/command_buffer/common/BUILD.gn
+@@ -71,6 +71,8 @@
+     "gl2_types.h",
+     "glint/canvas_readback_candidate.cc",
+     "glint/canvas_readback_candidate.h",
++    "glint/webgpu_readback_features.cc",
++    "glint/webgpu_readback_features.h",
+     "glint/webgpu_readback_layout.cc",
+     "glint/webgpu_readback_layout.h",
+     "glint/webgpu_readback_provenance.cc",
+--- /dev/null
++++ b/gpu/command_buffer/common/glint/webgpu_readback_features.cc
+@@ -0,0 +1,8 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "webgpu_readback_features.h"
++
++namespace gpu::webgpu {
++BASE_FEATURE(kGlintWebGPUPolicyTransportCandidate,
++             base::FEATURE_DISABLED_BY_DEFAULT);
++}  // namespace gpu::webgpu
+--- /dev/null
++++ b/gpu/command_buffer/common/glint/webgpu_readback_features.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GPU_COMMAND_BUFFER_COMMON_GLINT_WEBGPU_READBACK_FEATURES_H_
++#define GPU_COMMAND_BUFFER_COMMON_GLINT_WEBGPU_READBACK_FEATURES_H_
++
++#include "base/feature_list.h"
++#include "gpu/command_buffer/common/gpu_command_buffer_common_export.h"
++
++namespace gpu::webgpu {
++// Private transport experiment, not admission of native readback protection.
++GPU_COMMAND_BUFFER_COMMON_EXPORT BASE_DECLARE_FEATURE(
++    kGlintWebGPUPolicyTransportCandidate);
++}  // namespace gpu::webgpu
++#endif
+--- a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
++++ b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+@@ -6,7 +6,9 @@
+ #include "base/feature_list.h"
+ #include "canvas_partition_seed.h"
+ #include "canvas_readback_candidate.h"
++#include "gpu/command_buffer/common/glint/webgpu_readback_features.h"
+ #include "third_party/blink/public/common/features.h"
++#include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
+ 
+ namespace glint::candidate {
+ // Component-safe bridge: the transform implementation belongs to blink_core.
+@@ -16,15 +18,41 @@
+     uint32_t height,
+     const std::array<uint8_t, 32>& partition_seed);
+ 
++enum class CanvasExportSurface { kCanvas, kWebGL, kWebGPU };
++
++inline CanvasExportSurface CanvasExportSurfaceForContext(
++    const blink::CanvasRenderingContext* context) {
++  if (context && context->IsWebGPU()) {
++    return CanvasExportSurface::kWebGPU;
++  }
++  return context && context->IsWebGL() ? CanvasExportSurface::kWebGL
++                                       : CanvasExportSurface::kCanvas;
++}
++
+ inline SurfaceSeedResult CanvasExportPartitionSeed(
+     blink::ExecutionContext* context,
+-    bool webgl_context) {
+-  if (!webgl_context || !base::FeatureList::IsEnabled(
+-                            blink::features::kGlintWebGLReadbackCandidate)) {
+-    return CanvasPartitionSeed(context);
++    CanvasExportSurface surface) {
++  SurfaceSeedKind kind = SurfaceSeedKind::kCanvas;
++  switch (surface) {
++    case CanvasExportSurface::kCanvas:
++      break;
++    case CanvasExportSurface::kWebGL:
++      if (base::FeatureList::IsEnabled(
++              blink::features::kGlintWebGLReadbackCandidate)) {
++        kind = SurfaceSeedKind::kWebGL;
++      }
++      break;
++    case CanvasExportSurface::kWebGPU:
++      if (base::FeatureList::IsEnabled(
++              gpu::webgpu::kGlintWebGPUPolicyTransportCandidate)) {
++        kind = SurfaceSeedKind::kWebGPU;
++      }
++      break;
++    default:
++      return base::unexpected(SurfaceSeedError::kUnsupportedKind);
+   }
+-  auto seed = SurfacePartitionSeed(context, SurfaceSeedKind::kWebGL);
+-  if (seed.has_value() && !seed.value()) {
++  auto seed = SurfacePartitionSeed(context, kind);
++  if (kind != SurfaceSeedKind::kCanvas && seed.has_value() && !seed.value()) {
+     return base::unexpected(SurfaceSeedError::kInvalidPolicy);
+   }
+   return seed;
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+@@ -1465,7 +1465,7 @@
+   if (image_bitmap && export_exception) {
+     const auto seed = glint::candidate::CanvasExportPartitionSeed(
+         GetExecutionContext(),
+-        RenderingContext() && RenderingContext()->IsWebGL());
++        glint::candidate::CanvasExportSurfaceForContext(RenderingContext()));
+     if (!seed.has_value()) {
+       export_exception->ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+@@ -1591,7 +1591,7 @@
+   if (image_bitmap) {
+     const auto seed = glint::candidate::CanvasExportPartitionSeed(
+         GetExecutionContext(),
+-        RenderingContext() && RenderingContext()->IsWebGL());
++        glint::candidate::CanvasExportSurfaceForContext(RenderingContext()));
+     if (!seed.has_value()) {
+       exception_state.ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+--- a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
++++ b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+@@ -592,7 +592,8 @@
+   if (image_bitmap) {
+     auto* execution_context = ExecutionContext::From(script_state);
+     const auto seed = glint::candidate::CanvasExportPartitionSeed(
+-        execution_context, context_ && context_->IsWebGL());
++        execution_context,
++        glint::candidate::CanvasExportSurfaceForContext(context_.Get()));
+     if (!seed.has_value()) {
+       exception_state.ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+--- a/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
++++ b/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
+@@ -5,6 +5,7 @@
+ #include "third_party/blink/renderer/modules/webgpu/gpu_adapter.h"
+ 
+ #include "base/feature_list.h"
++#include "gpu/command_buffer/common/glint/webgpu_readback_features.h"
+ #include "gpu/command_buffer/common/glint_webgpu_device_policy.h"
+ #include "services/metrics/public/cpp/ukm_builders.h"
+ #include "third_party/blink/public/common/features.h"
+@@ -37,10 +38,6 @@
+ 
+ namespace {
+ 
+-// Private transport experiment, not a claim of WebGPU readback protection.
+-BASE_FEATURE(kGlintWebGPUPolicyTransportCandidate,
+-             base::FEATURE_DISABLED_BY_DEFAULT);
+-
+ GPUSupportedFeatures* MakeFeatureNameSet(wgpu::Adapter adapter) {
+   GPUSupportedFeatures* features = MakeGarbageCollected<GPUSupportedFeatures>();
+   DCHECK(features->FeatureNameSet().empty());
+@@ -282,7 +279,8 @@
+   auto promise = resolver->Promise();
+ 
+   std::unique_ptr<gpu::webgpu::GlintWebGPUDevicePolicy> glint_policy;
+-  if (base::FeatureList::IsEnabled(kGlintWebGPUPolicyTransportCandidate)) {
++  if (base::FeatureList::IsEnabled(
++          gpu::webgpu::kGlintWebGPUPolicyTransportCandidate)) {
+     auto seed = glint::candidate::SurfacePartitionSeed(
+         ExecutionContext::From(script_state),
+         glint::candidate::SurfaceSeedKind::kWebGPU);

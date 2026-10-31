@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "d83e7dda73c69a3779544f2c4054ad3cfbe6766e",
+  "counts": {
+    "tests": 5037,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 5036
+  },
+  "duration_seconds": 625.375,
+  "log_sha256": "23ec9e916143c48611811e02c401ddf23c29bce8acd659f4b32d238fa7fd7701",
+  "junit_sha256": "13b32910447b5f1bb3f9ca4501f93d8fafeec9255e14af2508c386abf3563261",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "raw_report_sha256": "09286efd5ab1ae5df15fee98d1ec447ecd1ecdb0ea1d28d385e2b9220d780ede",
+  "scope": "Full canonical Python regression at d83e7dd before shared-core GN and WebGPU export-seed observations"
+}

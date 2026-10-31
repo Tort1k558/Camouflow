@@ -13,7 +13,8 @@ can use the same implementation without depending on Blink. The math is unchange
 | Pinned Chromium syntax | Five translation units; no diagnostics |
 | CPU checks, normal and ASan | Layout 525,936; provenance 1,232,777; snapshots 748; callbacks 201; uncertain writes 191,874 assertions each |
 | Public Python baseline | 5,014 passed, 1 skipped at `9539fc2`, before this packet |
-| GN / Chromium component link / browser execution | Not verified |
+| Static/component GN + GPU-common/Blink header dependencies | Passed, source rollback verified |
+| Chromium component link / browser execution | Not verified |
 
 [Source hashes and scoped measurements](../environment/shared-gpu-readback-core-preparation.json).
 
@@ -32,7 +33,8 @@ unreliable; disjoint or padding-only writes do not erase it. This is a CPU model
   files are supported; unknown edits still fail. Fifteen real-Git cases and the
   actual unchanged 001-076 checkout passed. This proves final-tree identity, not
   the historical order in which a user applied patches.
-- Generate GN and verify actual static/component linkage and dependency checks.
+- GN and header dependency checks passed; verify actual Chromium static/component
+  linkage and browser execution next. This is separate from the isolated DLL test.
 - Connect policy, trusted copy execution, full-surface capture and mapped shadows.
 - Track shader-derived data and charge GPU memory until fence retirement.
 - Resolve the measured Canvas/WebGPU export mismatch and run browser lifecycle,

@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "GN static/component graphs and GPU-common/Blink header dependencies for shared core only; not renderer transport/export-seed follow-up or native linking",
+  "patch": "shared-gpu-readback-core-next.patch",
+  "patch_sha256": "86ebd83b852f55568cfcc77b3db5e4f9fd3b04c89cc2b2f76e921265e3778cb3",
+  "sources": [
+    {
+      "source": "gpu/command_buffer/common/BUILD.gn",
+      "before_sha256": "23c9049eeec9a675d12b898a6255c79d7f19d4a1f68a9315f559dc18c3a4aae8",
+      "after_sha256": "c2c03ac24f766f2387cf27d2173d46b5e3524b19fd1907d45bd8723102eff88b"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/canvas_readback_candidate.cc",
+      "before_sha256": null,
+      "after_sha256": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/canvas_readback_candidate.h",
+      "before_sha256": null,
+      "after_sha256": "e0d18ac35699bc32dd8df469b56ddb3e0bdfcbe7d45269bc3b04adeab7f5f0a4"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_layout.cc",
+      "before_sha256": null,
+      "after_sha256": "9e7fc4b7b4da071339e0946655300f755dc3f445f6337f42df006176660ec8c5"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_layout.h",
+      "before_sha256": null,
+      "after_sha256": "4793cf73301c1bd3c27aca15ad1ad68455859f2ba1a3dff89129f3640de7c495"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc",
+      "before_sha256": null,
+      "after_sha256": "895651b283623cb62b3daf0d0d72993c64c00675ffe597d82f5f486b263f1d6f"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.h",
+      "before_sha256": null,
+      "after_sha256": "2e48c71d04fc5b2a2b70e8e64892086905638602ea7672972c4dd3f61d876eab"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc",
+      "before_sha256": null,
+      "after_sha256": "b1cd5898e70f76547db09fc65acabb938f641169d4bb492a388c6396615e7176"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h",
+      "before_sha256": null,
+      "after_sha256": "c32c0c8330610f3ebc51ffffbab9858f287eccc1d8640bc66dfce5d908d2a417"
+    },
+    {
+      "source": "third_party/blink/renderer/core/BUILD.gn",
+      "before_sha256": "7723517814ab0b9b0efb6c31cfa1b509390f1cd4035986f9559bfdde96e77e53",
+      "after_sha256": "37d65747e26a7ceb5d5d08beee98dec2dfc29649c42cd7109ad177fd5e933edd"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/build.gni",
+      "before_sha256": "1b97d2b5dcc7d7074f63ce8db2b3a3b6054fcd92f67d0c3b6773b9ecde27263d",
+      "after_sha256": "bd123e9a7cd8718b69a85f46fd8286d7a4de2ed37cb3b25fac1ba0f1b4c15025"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc",
+      "before_sha256": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5",
+      "after_sha256": null
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h",
+      "before_sha256": "07de0456fb75723e36b59e58ff649e0b382b48289e908186461f1ef32598d091",
+      "after_sha256": "4e406df66a73f8b0a30dc9e20a6bc5277c78cb4caadf26f395b94e7b48838b9f"
+    }
+  ],
+  "graphs": [
+    {
+      "mode": "static",
+      "targets": 36185,
+      "build_files": 5063,
+      "generate_milliseconds": 128203,
+      "checks": [
+        {
+          "name": "static-gen",
+          "returncode": 0,
+          "log_sha256": "f0923a5d7e50c54c37ec45804ae3a03cf219153b8b6127c3468ab64befb7597c"
+        },
+        {
+          "name": "static-common-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+        },
+        {
+          "name": "static-blink-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+        }
+      ]
+    },
+    {
+      "mode": "component",
+      "targets": 36223,
+      "build_files": 5063,
+      "generate_milliseconds": 22777,
+      "checks": [
+        {
+          "name": "component-gen",
+          "returncode": 0,
+          "log_sha256": "305f89a45f56cb2383163cb3d460f6caa61cddd3d4593fb0cbc08dd54186bc33"
+        },
+        {
+          "name": "component-common-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+        },
+        {
+          "name": "component-blink-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+        }
+      ]
+    }
+  ],
+  "raw_report_sha256": "99acd1c6533ad3486803c6a6da3fafc0620caaa68850161a018d1fa02cfe6f4f",
+  "source_rollback_verified": true,
+  "original_build_outputs_unchanged": true,
+  "original_git_indexes_unchanged": true,
+  "selected_chain_patches_after_rollback": 76,
+  "selected_manifest_sha256": "f5bb6cbae7084df2f539127aa3b2c5f83c737900185aaca5ae3ada16909dc4ea",
+  "restored_checkout_report_sha256": "fd72eaa52100913170acbff4ff45d917f0af8969558db8f81bd66881c3f8c8c8",
+  "selected": false,
+  "native_compilation_started": false,
+  "chromium_component_link_verified": false,
+  "runtime_verified": false,
+  "native_queue_hooks_installed": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

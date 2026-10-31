@@ -122,3 +122,34 @@ def test_public_component_checker_rejects_source_overlap_before_creating_output(
     assert result.returncode == 2
     assert 'canonical existing Windows D:' in result.stderr
     assert not output.exists()
+
+
+def test_actual_shared_core_gn_graphs_preserve_the_old_runtime_and_do_not_claim_linkage():
+    record = json.loads((DIRECTORY / 'shared-gpu-readback-gn-observations.json').read_bytes())
+    prepared = preparation()
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['source_rollback_verified'] and record['original_build_outputs_unchanged']
+    assert record['original_git_indexes_unchanged']
+    assert record['patch_sha256'] == prepared['patch_sha256']
+    assert record['sources'] == prepared['sources']
+    assert record['selected_chain_patches_after_rollback'] == 76
+    checkpoint = ROOT / 'native/drafts/upstream-156/checkpoints/001-076.json'
+    assert hashlib.sha256(checkpoint.read_bytes()).hexdigest() == record['selected_manifest_sha256']
+    assert {row['mode']: row['targets'] for row in record['graphs']} == dict(static=36185, component=36223)
+    for row in record['graphs']:
+        assert row['build_files'] == 5063 and row['generate_milliseconds'] > 0
+        assert {check['name'] for check in row['checks']} == {
+            row['mode'] + suffix for suffix in ('-gen', '-common-check', '-blink-check')}
+        assert all(check['returncode'] == 0 for check in row['checks'])
+    for key in ('selected', 'native_compilation_started', 'chromium_component_link_verified',
+                'runtime_verified', 'native_queue_hooks_installed', 'canvas_gpu_export_mismatch_resolved',
+                'privacy_admitted', 'production_admitted'):
+        assert record[key] is False
+
+
+def test_complete_net_path_tooling_python_baseline_predates_new_native_experiments():
+    record = json.loads((DIRECTORY / 'canonical-python76-net-paths-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['git_head'].startswith('d83e7dd')
+    assert record['counts'] == dict(tests=5037, passed=5036, skipped=1, failures=0, errors=0)
+    assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False

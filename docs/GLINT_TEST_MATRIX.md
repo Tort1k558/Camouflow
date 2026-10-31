@@ -1,11 +1,25 @@
 # Glint browser test matrix
 
+## Unselected WebGPU export seed / composed GN batch
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Export/device seed selection | Four translation units, no diagnostics | Typed context selection; no browser execution |
+| Prerequisite composition | Sequential replay; overlapping GN edits retained | 37 final source paths, unselected |
+| Static/component GN | Both graphs and GPU-common/core/modules/service header checks passed | No compiler build or link |
+| Rollback | Sources, Git indexes and previous outputs verified | Existing runtime remains 001-076 |
+| Full Python baseline | 5036 passed, 1 skipped at `d83e7dd` | Predates these observations |
+
+[Source packet and remaining gates](../native/drafts/webgpu-export-seed/README.md).
+Native interception and measured Canvas/WebGPU pixel consistency are not admitted.
+
 ## Shared Canvas / GPU core, not selected
 
 | Gate | Result | Boundary |
 | --- | --- | --- |
 | Source packet | 13 paths round-tripped; math unchanged | Not applied to active checkout |
-| Chromium syntax | Five units, no diagnostics | No GN generation or component link |
+| Chromium syntax | Five units, no diagnostics | No native link or runtime |
+| Static/component GN | Shared-core graphs and GPU-common/Blink headers passed | Sources rolled back; no compiler build |
 | Isolated CPU / ASan | Five suites each passed | No native queue/map hooks or shader taint |
 | DLL export / import | Five external consumers, normal + ASan, passed | Isolated MSVC-stdlib check, not Chromium GN/libc++ component ABI |
 | Complete-chain source validation | 15 Git cases and actual unchanged 001-076 passed | Final tree, not historical application order |

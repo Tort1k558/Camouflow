@@ -1,12 +1,22 @@
 # Glint architecture
 
+## Unselected WebGPU device/export seed coherence
+
+The [export-seed packet](drafts/webgpu-export-seed/README.md) distinguishes Canvas,
+WebGL and WebGPU and shares the disabled device-policy feature with export code.
+Four translation units passed syntax checks. All three prerequisite/follow-up
+packets were composed through patch replay, including overlapping GN edits; the
+37-path result passed static/component GN and GPU-common, Blink core/modules and
+GPU-service header checks. Sources and prior outputs were restored/unchanged.
+Native linking, copy/map hooks and actual pixel coherence remain unverified.
+
 ## Unselected shared Canvas / GPU implementation
 
 The [shared-core packet](drafts/shared-readback-core/README.md) moves unchanged
 Canvas math into GPU common, removing the Blink implementation and avoiding a
 GPU-to-Blink dependency. Five translation units passed pinned syntax checks;
 five CPU suites passed normally and under ASan. The packet also retains uncertain
-pixel-write provenance conservatively. GN/link, native hooks, shader taint and
+pixel-write provenance conservatively. Chromium linkage, native hooks, shader taint and
 browser protection remain unverified; the selected chain is still 001-076.
 
 The isolated shared-core DLL and five external consumers also passed normally and

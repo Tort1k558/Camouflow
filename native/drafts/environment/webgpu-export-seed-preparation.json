@@ -1,0 +1,103 @@
+{
+  "sources": [
+    {
+      "source": "gpu/command_buffer/common/BUILD.gn",
+      "before_sha256": "cbc06aac0b24ffa4e9350fbcdbe4898bf3ed6e74ebb5fca9e95a984f0d93bd5e",
+      "after_sha256": "e02a468a16af634652dd9a178da9fa7b49f828e50d14f1db0a1d903eb266fa7a"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_features.cc",
+      "before_sha256": null,
+      "after_sha256": "8a4b20cfd0377cbbaaf59e6d3bff003674ea76e2b4b5e2f1c9d0e66f40654181"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_features.h",
+      "before_sha256": null,
+      "after_sha256": "5197d5f9f9e2d8c9513a9fa10bcbf15be467b11e56968face51f16115faafec2"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h",
+      "before_sha256": "5c2a2fef38906fe389849c98b5c8a8939f50273467f1018c9e65396df5c4de53",
+      "after_sha256": "6ba4f689621a60f62363209b4d17d4269ae0229de52dc35fff1d91d7fd37d07d"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+      "before_sha256": "7d485f3549d234bf50c3f55acb70ae8be0b7ef1082067e02da48ccc50b9c398c",
+      "after_sha256": "6b67dfb92852544520898d1ee8e4aafdd5f2eec7c0900b4002f83ea7300ff0ac"
+    },
+    {
+      "source": "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+      "before_sha256": "353c9e081e5077d95425497902ca381bc77c2aaa84f091ed1c1ef668e24cc2f6",
+      "after_sha256": "a95075ae8cbfee459110ef9e8a9fa95c85e18b159e6a2e553462a3f271719720"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
+      "before_sha256": "457fdc25389e2084ac53b71ad5009d6f761d688eb7c2eff52cb0b568a1ba25f0",
+      "after_sha256": "330828f82259939a4f4fa8fbcdcd874f8366914b6f84b9793ea460b517051f1b"
+    }
+  ],
+  "passed": true,
+  "sparse_roundtrip_verified": true,
+  "selected": false,
+  "runtime_verified": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "requires_shared_core_and_renderer_transport": true,
+  "prerequisites": [
+    {
+      "patch": "shared-gpu-readback-core-next.patch",
+      "sha256": "86ebd83b852f55568cfcc77b3db5e4f9fd3b04c89cc2b2f76e921265e3778cb3"
+    },
+    {
+      "patch": "webgpu-renderer-policy-transport-next.patch",
+      "sha256": "4c9ffafa14f333dbaf61b82200b1148f00df7cbd8734f53194e8124b66d086f9"
+    }
+  ],
+  "overlapping_prerequisite_paths_merged": [
+    "gpu/command_buffer/common/BUILD.gn"
+  ],
+  "patch_sha256": "1845ecbfc2135f6e87b1571ea128722cc55852635df1c1cc4a138a24d78a0bf1",
+  "schema": 1,
+  "patch": "webgpu-export-seed-next.patch",
+  "scope": "Coupled WebGPU device/export seed selection source preparation; native readback interception is not installed",
+  "syntax_checks": [
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_features.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "b3f6bbb6806a9d95ecff552d6578c238181ca2dc643049cee02e8d2ebf724eb9",
+  "syntax_diagnostic_bytes": 0,
+  "syntax_verified": true,
+  "gn_verified": false,
+  "feature": "GlintWebGPUPolicyTransportCandidate",
+  "feature_default_enabled": false,
+  "feature_declared_in_gpu_common": true,
+  "global_blink_feature_header_changed": false,
+  "feature_mode_contract": "Disabled retains previous Canvas export behavior; enabled WebGPU exports require the owned WebGPU surface seed",
+  "missing_required_seed_allows_raw_export": false,
+  "combined_source_paths": 37,
+  "combined_patch_sha256": "69bcaf1b7365496b39c73adc87afa5f0fb7973c298120f389d1ad17c2171ff39",
+  "browser_integrated": false,
+  "native_queue_hooks_installed": false,
+  "native_webgpu_readback_protection": false,
+  "chromium_component_link_verified": false,
+  "document_worker_runtime_verified": false,
+  "production_admitted": false
+}

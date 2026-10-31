@@ -1,5 +1,15 @@
 # Glint: план проверки и развития
 
+## WebGPU export seed: composed source batch
+
+[Source and measured scope](../native/drafts/webgpu-export-seed/README.md): device
+policy and WebGPU Canvas exports select the same surface seed under the existing
+disabled experiment. Four syntax checks passed. The complete 37-path composition
+passed static/component GN and header checks; this is not linking or a browser
+result. Next: trusted native copy/map interception, canonical color/alpha,
+shader data flow, fence-retirement budgeting and combined document/worker tests.
+The measured 001-076 export mismatch remains open until those runtime checks.
+
 ## Shared Canvas / GPU core: unselected integration prerequisite
 
 [Packet and measurements](../native/drafts/shared-readback-core/README.md): one
@@ -7,7 +17,7 @@ unchanged math implementation in GPU common, a Blink forwarding header, five
 syntax checks and ten normal/ASan executables passed. No new browser binary.
 Net-path validation now passed 15 Git cases and the actual unchanged 001-076 checkout.
 The public isolated DLL/importer checker also passed normal and ASan runs; this
-is not Chromium GN/libc++ component linkage. Next: GN/link checks, trusted copy/map hooks,
+is not Chromium GN/libc++ component linkage. Next: native linkage, trusted copy/map hooks,
 shader taint and GPU fence-retirement accounting, then combined browser tests.
 The Canvas/WebGPU export mismatch is still open.
 

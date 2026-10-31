@@ -1,0 +1,314 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "GN generation and header dependencies for the composed shared core, renderer transport and WebGPU export seed packets; no native compilation or browser admission",
+  "prerequisites": [
+    {
+      "patch": "shared-gpu-readback-core-next.patch",
+      "sha256": "86ebd83b852f55568cfcc77b3db5e4f9fd3b04c89cc2b2f76e921265e3778cb3"
+    },
+    {
+      "patch": "webgpu-renderer-policy-transport-next.patch",
+      "sha256": "4c9ffafa14f333dbaf61b82200b1148f00df7cbd8734f53194e8124b66d086f9"
+    },
+    {
+      "patch": "webgpu-export-seed-next.patch",
+      "sha256": "1845ecbfc2135f6e87b1571ea128722cc55852635df1c1cc4a138a24d78a0bf1"
+    }
+  ],
+  "composed_source_sha256": [
+    {
+      "source": "gpu/command_buffer/build_webgpu_cmd_buffer.py",
+      "before_sha256": "cdec742ae94844593693a6fdb14f554d8a9fb67cbc334b123339bd7eb65b52b4",
+      "after_sha256": "a01ffbe6812e7a574d1c0bee3a2f4f982fd299173566c86b6cef6f9f4d75411b"
+    },
+    {
+      "source": "gpu/command_buffer/client/BUILD.gn",
+      "before_sha256": "ad2dafc9f539284daf9ab5471dc9b2dcbd050c3b93c8dd28a7f52f6f643396de",
+      "after_sha256": "8c43820fd21767b432130c231a618f14defaeecd31e171639ed4854bc1983747"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_cmd_helper_autogen.h",
+      "before_sha256": "e57a4143f6ee6396c98127e6595c6de4fb5969d39c4fe99826fc3415c5c6ff54",
+      "after_sha256": "27c539f87ef42fed1a9e69b046d74daba3fc483a54c26036ca5177c5eb40a899"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation.cc",
+      "before_sha256": "2206bbde99883e4ae2f4dbc16f912d2ba04a95cf1848fbf909c60750f68106b9",
+      "after_sha256": "c8bb8b51d3bfec928c68d34aac706a2f83d77bd95c813fc51ee172594f816599"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation.h",
+      "before_sha256": "45c0c7b516abdc0b35632160a934ac2b72185e50b9cba6b2cefd798d95347605",
+      "after_sha256": "c5cdcb09defed0b1fc0ac1daa9dfa391db5f0ef8bfb29710b9f937706a253329"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface.h",
+      "before_sha256": "fcfa3678cdf610030282732c50576c4bba4797ca55a976944b6e467c303d6df4",
+      "after_sha256": "b2440efda9629489186867ea5206dfe14daf063ab85d67ef283c725dc1570d9d"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_stub.cc",
+      "before_sha256": "0f90bf993419231cc6b0fa215f173d139d38ee9a06935fbe021cb98d6a71c26e",
+      "after_sha256": "7d67d31343dfb8087d47724271d49cfc0d20acd4cde3fc4c4b7653cbfa32a62c"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_stub.h",
+      "before_sha256": "cf0362edb461873f83842c2210bbf3b2ceb212e0cd2359b7e49ecc9dfa11564b",
+      "after_sha256": "3e056320562cf5aad87f3becf1b544c0c9dd4311ec1f035d9be65169b2b2dcbe"
+    },
+    {
+      "source": "gpu/command_buffer/common/BUILD.gn",
+      "before_sha256": "23c9049eeec9a675d12b898a6255c79d7f19d4a1f68a9315f559dc18c3a4aae8",
+      "after_sha256": "e02a468a16af634652dd9a178da9fa7b49f828e50d14f1db0a1d903eb266fa7a"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/canvas_readback_candidate.cc",
+      "before_sha256": null,
+      "after_sha256": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/canvas_readback_candidate.h",
+      "before_sha256": null,
+      "after_sha256": "e0d18ac35699bc32dd8df469b56ddb3e0bdfcbe7d45269bc3b04adeab7f5f0a4"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_features.cc",
+      "before_sha256": null,
+      "after_sha256": "8a4b20cfd0377cbbaaf59e6d3bff003674ea76e2b4b5e2f1c9d0e66f40654181"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_features.h",
+      "before_sha256": null,
+      "after_sha256": "5197d5f9f9e2d8c9513a9fa10bcbf15be467b11e56968face51f16115faafec2"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_layout.cc",
+      "before_sha256": null,
+      "after_sha256": "9e7fc4b7b4da071339e0946655300f755dc3f445f6337f42df006176660ec8c5"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_layout.h",
+      "before_sha256": null,
+      "after_sha256": "4793cf73301c1bd3c27aca15ad1ad68455859f2ba1a3dff89129f3640de7c495"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc",
+      "before_sha256": null,
+      "after_sha256": "895651b283623cb62b3daf0d0d72993c64c00675ffe597d82f5f486b263f1d6f"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.h",
+      "before_sha256": null,
+      "after_sha256": "2e48c71d04fc5b2a2b70e8e64892086905638602ea7672972c4dd3f61d876eab"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc",
+      "before_sha256": null,
+      "after_sha256": "b1cd5898e70f76547db09fc65acabb938f641169d4bb492a388c6396615e7176"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h",
+      "before_sha256": null,
+      "after_sha256": "c32c0c8330610f3ebc51ffffbab9858f287eccc1d8640bc66dfce5d908d2a417"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint_webgpu_device_policy.cc",
+      "before_sha256": null,
+      "after_sha256": "ce01eedaba1c331abda260173edbe2470e8b692579b1bc93d768569c1096eeca"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint_webgpu_device_policy.h",
+      "before_sha256": null,
+      "after_sha256": "e80e890f6972f3ec8d31735b81e62aab91015824a0fd0472873764047b4ee09a"
+    },
+    {
+      "source": "gpu/command_buffer/common/webgpu_cmd_format_autogen.h",
+      "before_sha256": "4c755796cb635d7317f01b2f2defaf88a7db36be7c191a4d5c95397605b592ab",
+      "after_sha256": "d9b4614393b9d4405a9178888dec100dfbd52b1e1b80e8c825e75b1c02105beb"
+    },
+    {
+      "source": "gpu/command_buffer/common/webgpu_cmd_format_test_autogen.h",
+      "before_sha256": "43328b1cf9b70e231858adc168306977376d989f2fd1a0b3eac3987a838fb972",
+      "after_sha256": "89a20b07ec6644b18c47764174e23e99781ba03c57d46514a10cf34462caddd5"
+    },
+    {
+      "source": "gpu/command_buffer/common/webgpu_cmd_ids_autogen.h",
+      "before_sha256": "ab59487628182803ce7d56ea73f5265bcaeb057e85ad6b711fa6e3695231ebfd",
+      "after_sha256": "1c238a36a8422a03c96a72f2dd3a9ed5c2955034040b876bdb2a89f6672a89ac"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_decoder_impl.cc",
+      "before_sha256": "1d7035dfc3b684fd84c752e4cffd2f926612499940949a9ffc5016561a0ec989",
+      "after_sha256": "530649dd87a646b535703ce9ef4003929e127ab71b312810bf05f7ae39c74872"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_decoder_unittest.cc",
+      "before_sha256": "77812bbcc643c40dd24fec36aa56ee77e4ccd22c0e5575ac4e59c51f96981f86",
+      "after_sha256": "6d82d8a7dffc3b55f81335a4e8971a23015700c9fdd4ca532f1b8a6da7695de7"
+    },
+    {
+      "source": "gpu/command_buffer/webgpu_cmd_buffer_functions.txt",
+      "before_sha256": "cc74e1aee2c267edfdc35af510ec67b32b0380e821ee8d90c18d5326a24bfc1e",
+      "after_sha256": "add4fdbca236725b6b35c6f1be05c62b85518ad741c77b613d70367c6cbb852d"
+    },
+    {
+      "source": "third_party/blink/renderer/core/BUILD.gn",
+      "before_sha256": "7723517814ab0b9b0efb6c31cfa1b509390f1cd4035986f9559bfdde96e77e53",
+      "after_sha256": "37d65747e26a7ceb5d5d08beee98dec2dfc29649c42cd7109ad177fd5e933edd"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/build.gni",
+      "before_sha256": "1b97d2b5dcc7d7074f63ce8db2b3a3b6054fcd92f67d0c3b6773b9ecde27263d",
+      "after_sha256": "bd123e9a7cd8718b69a85f46fd8286d7a4de2ed37cb3b25fac1ba0f1b4c15025"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc",
+      "before_sha256": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5",
+      "after_sha256": null
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h",
+      "before_sha256": "07de0456fb75723e36b59e58ff649e0b382b48289e908186461f1ef32598d091",
+      "after_sha256": "4e406df66a73f8b0a30dc9e20a6bc5277c78cb4caadf26f395b94e7b48838b9f"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h",
+      "before_sha256": "5c2a2fef38906fe389849c98b5c8a8939f50273467f1018c9e65396df5c4de53",
+      "after_sha256": "6ba4f689621a60f62363209b4d17d4269ae0229de52dc35fff1d91d7fd37d07d"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+      "before_sha256": "7d485f3549d234bf50c3f55acb70ae8be0b7ef1082067e02da48ccc50b9c398c",
+      "after_sha256": "6b67dfb92852544520898d1ee8e4aafdd5f2eec7c0900b4002f83ea7300ff0ac"
+    },
+    {
+      "source": "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+      "before_sha256": "353c9e081e5077d95425497902ca381bc77c2aaa84f091ed1c1ef668e24cc2f6",
+      "after_sha256": "a95075ae8cbfee459110ef9e8a9fa95c85e18b159e6a2e553462a3f271719720"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/BUILD.gn",
+      "before_sha256": "51a938bd2bd9a5d46cccf62775c670d8052d3699b77f28cd0a7f63d8862220a7",
+      "after_sha256": "aeb156761b96a689ea42ed34aa98688d7bfdeb7d24fd942472098c07da2b536d"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
+      "before_sha256": "a64e5243c95bd44f9f1d95bb983d2e550d33ff29e5b919b0aed0e699bd8007c7",
+      "after_sha256": "330828f82259939a4f4fa8fbcdcd874f8366914b6f84b9793ea460b517051f1b"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_adapter.h",
+      "before_sha256": "ce1b70c8402ad5069a85e7e2112e2926d4474b7a31fe32b7dbe58e47ef760ab3",
+      "after_sha256": "c76cc3c6ca98f332f397278d8553af13bff278aee397fbe09239ddd31e2470a9"
+    }
+  ],
+  "composed_patch_sha256": "69bcaf1b7365496b39c73adc87afa5f0fb7973c298120f389d1ad17c2171ff39",
+  "graphs": [
+    {
+      "mode": "static",
+      "targets": 36185,
+      "build_files": 5063,
+      "generate_milliseconds": 14063,
+      "checks": [
+        {
+          "name": "static-gen",
+          "returncode": 0,
+          "log_sha256": "d62293fb2de8f72d34a5c3213433056a516e03f7ecd88c68e29bc18b86350a05",
+          "stdout": "Done. Made 36185 targets from 5063 files in 14063ms\n"
+        },
+        {
+          "name": "static-common-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "static-blink-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "static-modules-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "static-service-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        }
+      ]
+    },
+    {
+      "mode": "component",
+      "targets": 36223,
+      "build_files": 5063,
+      "generate_milliseconds": 36572,
+      "checks": [
+        {
+          "name": "component-gen",
+          "returncode": 0,
+          "log_sha256": "84d8cfa9409e1dd5557973b4fe1414ba8f188dbe37eade70051436644ea6071e",
+          "stdout": "Done. Made 36223 targets from 5063 files in 36572ms\n"
+        },
+        {
+          "name": "component-common-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "component-blink-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "component-modules-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "component-service-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        }
+      ]
+    }
+  ],
+  "raw_report_sha256": "90b4a3a9ff360cce2c7020e6c263cc7d1f2c9c5adde11dec05d05d4bffa8f2ca",
+  "source_rollback_verified": true,
+  "original_build_outputs_unchanged": true,
+  "original_git_indexes_unchanged": true,
+  "selected": false,
+  "native_compilation_started": false,
+  "chromium_component_link_verified": false,
+  "native_queue_hooks_installed": false,
+  "runtime_verified": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "additional_checkout_verification": {
+    "passed": true,
+    "patches": 76,
+    "postguards_passed": true,
+    "cached_index_matches_head": true,
+    "traced_index_writes_private_only": true,
+    "report_sha256": "73326ae2f7c994c856e86ad198609b40e8a2144dd874c273cdd34601bdaea3cb",
+    "trace_sha256": "69c6eff6c88359bd3d828f5fc2fa38803ce4044895fc0a6c413d728071a7b1f8",
+    "retained_prior_negative": {
+      "report_sha256": "231f8bae099d2afa8d008f2d967d4dc78dbdffdff500042615da9cfc7865ad48",
+      "source_chain_validation_returned": 76,
+      "postguard_failure": "Chromium live Git index bytes changed during first follow-up inspection",
+      "cause": "Origin not established; not treated as a successful unchanged-index observation"
+    }
+  }
+}
