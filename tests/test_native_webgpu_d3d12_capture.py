@@ -12,22 +12,22 @@ def load_record():
     return json.loads((DIRECTORY / 'webgpu-d3d12-capture-preparation.json').read_bytes())
 
 
-def test_capture_patch_and_public_sources_match_measured_bytes():
+def test_capture_patch_and_public_sources_match_measured_bytes(native_d3d12_sources_before_budget):
     record = load_record()
     assert hashlib.sha256((DIRECTORY / record['patch']).read_bytes()).hexdigest() == record['patch_sha256']
     assert len(record['sources']) == 7
     assert record['exact_patch_roundtrip_verified'] and record['postguards_passed']
     for relative, expected in record['public_source_sha256'].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected
+        assert hashlib.sha256(native_d3d12_sources_before_budget[relative]).hexdigest() == expected
     rows = {row['source']: row for row in record['sources']}
     for filename in ('texture_capture.h', 'texture_capture.cc'):
-        source = ROOT / 'native/drafts/webgpu-d3d12-capture' / filename
-        digest = hashlib.sha256(source.read_bytes()).hexdigest()
+        relative = 'native/drafts/webgpu-d3d12-capture/' + filename
+        digest = hashlib.sha256(native_d3d12_sources_before_budget[relative]).hexdigest()
         assert digest == record['measured_hardware_source_sha256'][filename]
         assert digest == rows['third_party/dawn/src/dawn/native/d3d12/glint/' + filename]['staged_sha256']
 
 
-def test_hardware_checks_are_complete_and_do_not_admit_native_glue():
+def test_hardware_checks_are_complete_and_do_not_admit_native_glue(native_d3d12_sources_before_budget):
     record = load_record()
     assert record['hardware_adapter'] and record['software_adapter_fallback'] is False
     assert len(record['hardware_checks']) == 2
@@ -38,7 +38,8 @@ def test_hardware_checks_are_complete_and_do_not_admit_native_glue():
                                     assertions=22525, browser_integrated=False)
     assert record['public_hardware_checks'] == record['hardware_checks']
     for filename, expected in record['public_hardware_source_sha256'].items():
-        assert hashlib.sha256((ROOT / 'native/drafts/webgpu-d3d12-capture' / filename).read_bytes()).hexdigest() == expected
+        relative = 'native/drafts/webgpu-d3d12-capture/' + filename
+        assert hashlib.sha256(native_d3d12_sources_before_budget[relative]).hexdigest() == expected
     assert len(record['syntax_checks']) == 3
     assert all(row['returncode'] == 0 for row in record['syntax_checks'])
     for key in ('selected', 'browser_integrated', 'native_capture_hook_installed',

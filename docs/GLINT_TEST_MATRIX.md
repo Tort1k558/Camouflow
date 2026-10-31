@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## Unselected aggregate D3D12 capture budgeting
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Hardware normal / ASan | 22,720 assertions each; eight capture cases | Isolated driver, not Dawn queue execution |
+| Aggregate quota | Eight concurrent callers, one admitted; actual allocation size charged | Shared quota core, not global browser resource management |
+| Lifetime | CPU cancellation does not release queued quota; CPU ownership after fence also retains it | Manual retirement owner around actual GPU submission/completion |
+| Native owner | Four syntax checks, nine-file packet roundtrip | Device-owned 64 MiB candidate quota; no native linking/runtime |
+| Full Python baseline | 5042 passed, 1 skipped at `2ee3d99` | Predates aggregate budgeting |
+
+[Source and unresolved native gates](../native/drafts/webgpu-d3d12-capture/README.md).
+Original capture-only evidence remains preserved through a reversible source upgrade.
+
 ## Unselected WebGPU export seed / composed GN batch
 
 | Gate | Result | Boundary |

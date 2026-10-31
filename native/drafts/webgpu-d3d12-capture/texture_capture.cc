@@ -7,12 +7,101 @@
 #include <utility>
 
 namespace glint::candidate::d3d12 {
+bool CaptureMemoryBudget::Reserve(uint64_t bytes) {
+    if (bytes == 0 || bytes > limit_bytes_) {
+        return false;
+    }
+    uint64_t used = used_bytes_.load(std::memory_order_relaxed);
+    do {
+        if (used > limit_bytes_ - bytes) {
+            return false;
+        }
+    } while (!used_bytes_.compare_exchange_weak(used, used + bytes,
+                                               std::memory_order_acq_rel,
+                                               std::memory_order_relaxed));
+    return true;
+}
+
+void CaptureMemoryBudget::Release(uint64_t bytes) {
+    used_bytes_.fetch_sub(bytes, std::memory_order_acq_rel);
+}
+
+// Dawn's ReferenceUntilUnused accepts IUnknown. This object keeps the quota and
+// actual GPU allocation together without adding a dependency on Blink or GPU common.
+class CaptureRetirement final : public IUnknown {
+  public:
+    CaptureRetirement(std::shared_ptr<CaptureMemoryBudget> budget, uint64_t bytes)
+        : budget_(std::move(budget)), bytes_(bytes) {}
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** result) override {
+        if (!result) {
+            return E_POINTER;
+        }
+        *result = nullptr;
+        if (iid != __uuidof(IUnknown)) {
+            return E_NOINTERFACE;
+        }
+        *result = static_cast<IUnknown*>(this);
+        AddRef();
+        return S_OK;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override {
+        return references_.fetch_add(1, std::memory_order_relaxed) + 1;
+    }
+    ULONG STDMETHODCALLTYPE Release() override {
+        const ULONG remaining = references_.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        if (remaining == 0) {
+            delete this;
+        }
+        return remaining;
+    }
+    void SetResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource) {
+        resource_ = std::move(resource);
+    }
+
+  private:
+    ~CaptureRetirement() {
+        resource_.Reset();
+        budget_->Release(bytes_);
+    }
+    std::atomic<ULONG> references_{1};
+    std::shared_ptr<CaptureMemoryBudget> budget_;
+    const uint64_t bytes_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+};
+
 HRESULT TextureCapture::Record(ID3D12Device* device,
                                ID3D12GraphicsCommandList* commands,
                                ID3D12Resource* texture,
                                ID3D12Fence* completion_fence,
                                uint64_t completion_value,
                                uint64_t allocation_budget,
+                               std::unique_ptr<TextureCapture>* result) {
+    return RecordImpl(device, commands, texture, completion_fence, completion_value,
+                      allocation_budget, nullptr, result);
+}
+
+HRESULT TextureCapture::RecordBudgeted(
+    ID3D12Device* device,
+    ID3D12GraphicsCommandList* commands,
+    ID3D12Resource* texture,
+    ID3D12Fence* completion_fence,
+    uint64_t completion_value,
+    const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
+    std::unique_ptr<TextureCapture>* result) {
+    if (!allocation_budget || allocation_budget->limit_bytes() == 0) {
+        return E_INVALIDARG;
+    }
+    return RecordImpl(device, commands, texture, completion_fence, completion_value,
+                      allocation_budget->limit_bytes(), allocation_budget, result);
+}
+
+HRESULT TextureCapture::RecordImpl(ID3D12Device* device,
+                               ID3D12GraphicsCommandList* commands,
+                               ID3D12Resource* texture,
+                               ID3D12Fence* completion_fence,
+                               uint64_t completion_value,
+                               uint64_t allocation_budget,
+                               const std::shared_ptr<CaptureMemoryBudget>& budget,
                                std::unique_ptr<TextureCapture>* result) {
     if (!result || *result) {
         return E_INVALIDARG;
@@ -87,6 +176,18 @@ HRESULT TextureCapture::Record(ID3D12Device* device,
         allocation.SizeInBytes == 0 || allocation.SizeInBytes > allocation_budget) {
         return E_OUTOFMEMORY;
     }
+    Microsoft::WRL::ComPtr<CaptureRetirement> retirement;
+    if (budget) {
+        if (!budget->Reserve(allocation.SizeInBytes)) {
+            return E_OUTOFMEMORY;
+        }
+        auto* hold = new (std::nothrow) CaptureRetirement(budget, allocation.SizeInBytes);
+        if (!hold) {
+            budget->Release(allocation.SizeInBytes);
+            return E_OUTOFMEMORY;
+        }
+        retirement.Attach(hold);
+    }
     std::unique_ptr<TextureCapture> capture(new (std::nothrow) TextureCapture());
     if (!capture) {
         return E_OUTOFMEMORY;
@@ -99,6 +200,10 @@ HRESULT TextureCapture::Record(ID3D12Device* device,
                                          IID_PPV_ARGS(&capture->resource_));
     if (FAILED(hr)) {
         return hr;
+    }
+    if (retirement) {
+        retirement->SetResource(capture->resource_);
+        capture->retirement_ = retirement;
     }
     void* mapped = nullptr;
     D3D12_RANGE read_range{0, static_cast<SIZE_T>(mapped_bytes)};
@@ -139,6 +244,9 @@ TextureCapture::~TextureCapture() {
         D3D12_RANGE written{0, 0};
         resource_->Unmap(0, &written);
     }
+    // Drop the direct resource reference before the final quota-owning handle.
+    resource_.Reset();
+    retirement_.Reset();
 }
 
 HRESULT TextureCapture::ReadCompleted(std::span<const uint8_t>* result) const {

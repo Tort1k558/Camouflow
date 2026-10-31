@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "patch": "webgpu-d3d12-budget-next.patch",
+  "patch_sha256": "b5758a6b31924fe2869a637dd77cd87f4f51aa3692f55f10849f67871cbb8ff1",
+  "sources": [
+    {
+      "source": "third_party/dawn/src/dawn/native/BUILD.gn",
+      "before_sha256": "97285402706cc76ba93e91e788fc7c27e1e58fb1cb86ab7594f4d9bc28e2e7fc",
+      "staged_sha256": "bc22c6d70520d3da8ccb255688a9663d2f9b6d5d9ea27e326c13d0dcb25b5252"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp",
+      "before_sha256": "d109d1fec5ca6f7d14396773571762fc74229f7f9148c4c69e49e86cdd90b672",
+      "staged_sha256": "865e9865a802fb0cfce34994186f32bb4c405834852661027c7d4c4b83b296b2"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.h",
+      "before_sha256": "166777e891ad2bfe96343d58d3a45dde21a29c19610e23b9b5db0f2452451fc0",
+      "staged_sha256": "6e71497339036094c6b56a62dcefdb54fa8f5cd12af929da1375cf42008bd393"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.cpp",
+      "before_sha256": "aa61e79714d33d245480c7aaf11cf3bc6ce286a0fe443f22ac0ffb7747ff96c4",
+      "staged_sha256": "e80d1207a5816f6c4115f62f49209ee52444c900f2482bb3e037dd832e92aec0"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.h",
+      "before_sha256": "1d37efccaf1ffa468c96627d7265e485e07e6fc4193e3ac7bb814a966158ca66",
+      "staged_sha256": "8968182820eede92d31d9d48dd51a5e7650eb5b1d6449583fa11bcd303d07bb4"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc",
+      "before_sha256": null,
+      "staged_sha256": "1005d2432dd2937cb0025857d04b2e9a6a5f3de9ebc26f67427de65211dd2bc9"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h",
+      "before_sha256": null,
+      "staged_sha256": "4a2894b22c65d4749fdc828f7f5aef9e776bf170b960de1950919dfd001e6c9f"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp",
+      "before_sha256": null,
+      "staged_sha256": "bf57d3068459b6b5bde916b846015e7147ca74c16a7cf88d6bcf2e80ad1e4057"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h",
+      "before_sha256": null,
+      "staged_sha256": "a702421e71da949759cb0af328ca2f1f6574c244677159f81ce2e520372894fc"
+    }
+  ],
+  "replacement_for": "webgpu-d3d12-capture-next.patch",
+  "apply_both_native_packets": false,
+  "source_upgrade": {
+    "patch": "webgpu-d3d12-budget-source-upgrade.patch",
+    "patch_sha256": "03c2d74eda0f6e08e4755fbf6120ff0d09b290b83da09cd224f5aef816a10406",
+    "sources": [
+      {
+        "source": "native/drafts/webgpu-d3d12-capture/texture_capture.h",
+        "before_sha256": "ad4d4bdcb0a366bab9af3f9b2b2c9476ba4cc2b2e21388fc3e710282f26a4b5d",
+        "after_sha256": "4a2894b22c65d4749fdc828f7f5aef9e776bf170b960de1950919dfd001e6c9f"
+      },
+      {
+        "source": "native/drafts/webgpu-d3d12-capture/texture_capture.cc",
+        "before_sha256": "183f4c0243eac86b4cf2a5ab41fc099f57152be4a92c1568b96e02e364f1db4c",
+        "after_sha256": "1005d2432dd2937cb0025857d04b2e9a6a5f3de9ebc26f67427de65211dd2bc9"
+      },
+      {
+        "source": "native/drafts/webgpu-d3d12-capture/capture_test.cc",
+        "before_sha256": "62019a1d781784e3c0853e143ad32549f02eb26f0cab59674cebba58b64ff1c5",
+        "after_sha256": "e90aa3db08fc41a5354a99ac235ba5170ed10bc3587df5282c60d28c70f62ca2"
+      }
+    ],
+    "exact_roundtrip_verified": true
+  },
+  "native_patch_roundtrip_verified": true,
+  "public_source_sha256": {
+    "native/drafts/webgpu-d3d12-capture/texture_capture.h": "4a2894b22c65d4749fdc828f7f5aef9e776bf170b960de1950919dfd001e6c9f",
+    "native/drafts/webgpu-d3d12-capture/texture_capture.cc": "1005d2432dd2937cb0025857d04b2e9a6a5f3de9ebc26f67427de65211dd2bc9",
+    "native/drafts/webgpu-d3d12-capture/capture_test.cc": "e90aa3db08fc41a5354a99ac235ba5170ed10bc3587df5282c60d28c70f62ca2",
+    "native/drafts/webgpu-d3d12-capture/check.py": "a8f59a0d1c2e65e48443d06c74bcc0ed4fceaa69b8b24919b9eba1271398be28"
+  },
+  "hardware_checks": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 22720,
+        "budget_cases": 8,
+        "contention_threads_tested": 8,
+        "browser_integrated": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 22720,
+        "budget_cases": 8,
+        "contention_threads_tested": 8,
+        "browser_integrated": false
+      }
+    }
+  ],
+  "hardware_report_sha256": "0990fbab3c34f1d2e86986e2341311ff2f655b79c36b10116d863af68248732d",
+  "syntax_checks": [
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "6068ce09a59f45d9f3fab978592eebb4f47bc4eaf916949e91f922ea438350f6",
+  "dependency": {
+    "repository": "https://dawn.googlesource.com/dawn",
+    "revision": "0a2c7df818e285d6db0f085135139cda04cee8bb"
+  },
+  "scope": "Hardware capture quota/COM-hold checks and native Device source preparation, not execution of Dawn queue retirement",
+  "per_device_quota_bytes": 67108864,
+  "budget_counts_actual_allocation_bytes": true,
+  "native_device_budget_owner_prepared": true,
+  "native_com_retirement_queue_reused": true,
+  "cpu_cancellation_releases_inflight_quota": false,
+  "hardware_contention_threads": 8,
+  "selected": false,
+  "browser_integrated": false,
+  "runtime_verified": false,
+  "native_capture_hook_installed": false,
+  "dawn_submission_runtime_verified": false,
+  "dawn_device_loss_runtime_verified": false,
+  "gpu_process_global_budget_verified": false,
+  "native_webgpu_readback_protection": false,
+  "snapshot_store_integration_verified": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "public_hardware_checks": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 22720,
+        "budget_cases": 8,
+        "contention_threads_tested": 8,
+        "browser_integrated": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 22720,
+        "budget_cases": 8,
+        "contention_threads_tested": 8,
+        "browser_integrated": false
+      }
+    }
+  ],
+  "public_hardware_report_sha256": "0990fbab3c34f1d2e86986e2341311ff2f655b79c36b10116d863af68248732d",
+  "allocation_failure_injection_verified": false
+}

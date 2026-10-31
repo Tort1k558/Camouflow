@@ -1,5 +1,15 @@
 # Glint: план проверки и развития
 
+## D3D12 capture budget: prepared native owner
+
+[Quota source and evidence](../native/drafts/webgpu-d3d12-capture/README.md): actual
+GPU allocation bytes stay charged while a CPU or native retirement owner remains.
+Hardware normal/ASan passed 22,720 assertions each, including eight-way contention.
+The Device-owned 64 MiB quota and existing COM retirement queue are connected in
+the unselected source packet; four translation units passed syntax checks.
+Next: trusted copy/map hookup and actual Dawn submission, retirement and device
+loss, then process/global resource limits. No new runtime or privacy admission.
+
 ## WebGPU export seed: composed source batch
 
 [Source and measured scope](../native/drafts/webgpu-export-seed/README.md): device

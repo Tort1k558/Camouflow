@@ -8,6 +8,32 @@ import pytest
 
 
 @pytest.fixture
+def native_d3d12_sources_before_budget(tmp_path):
+    """Keep the capture-only measurements bound to their exact pre-budget sources."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'webgpu-d3d12-budget-preparation.json').read_bytes())
+    legacy = json.loads((directory / 'webgpu-d3d12-capture-preparation.json').read_bytes())
+    base = tmp_path / 'before-d3d12-budget'
+    for relative, expected in record['public_source_sha256'].items():
+        target = base / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text((root / relative).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == expected
+    upgrade = record['source_upgrade']
+    patch = directory / upgrade['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == upgrade['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    result = {}
+    for relative, expected in legacy['public_source_sha256'].items():
+        data = (base / relative).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == expected
+        result[relative] = data
+    return result
+
+
+@pytest.fixture
 def native_tooling_before_net_paths(tmp_path):
     """Recover the exact pre-net-path source for older measured tooling."""
     root = Path(__file__).resolve().parents[1]

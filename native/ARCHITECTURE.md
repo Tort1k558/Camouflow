@@ -1,5 +1,16 @@
 # Glint architecture
 
+## Unselected device-owned capture quota
+
+The [capture quota follow-up](drafts/webgpu-d3d12-capture/README.md) reserves actual
+D3D12 allocation bytes and couples quota ownership to an `IUnknown` retirement
+handle. Isolated hardware normal/ASan runs passed 22,720 assertions each, including
+eight-way contention, CPU cancellation and lifetime across real GPU completion.
+Four native translation units passed syntax checks. The nine-file Dawn packet
+prepares one 64 MiB quota per D3D12 Device and uses its existing COM retirement
+queue. Actual Dawn retirement, failed submission/device loss and process-global
+budgeting remain unverified. This does not install the copy/map hook.
+
 ## Unselected WebGPU device/export seed coherence
 
 The [export-seed packet](drafts/webgpu-export-seed/README.md) distinguishes Canvas,

@@ -1,0 +1,374 @@
+--- a/native/drafts/webgpu-d3d12-capture/texture_capture.h
++++ b/native/drafts/webgpu-d3d12-capture/texture_capture.h
+@@ -13,6 +13,23 @@
+ #include <span>
+ 
+ namespace glint::candidate::d3d12 {
++class CaptureRetirement;
++
++class CaptureMemoryBudget {
++  public:
++    explicit CaptureMemoryBudget(uint64_t limit_bytes) : limit_bytes_(limit_bytes) {}
++    uint64_t limit_bytes() const { return limit_bytes_; }
++    uint64_t used_bytes() const { return used_bytes_.load(std::memory_order_acquire); }
++
++  private:
++    friend class TextureCapture;
++    friend class CaptureRetirement;
++    bool Reserve(uint64_t bytes);
++    void Release(uint64_t bytes);
++    const uint64_t limit_bytes_;
++    std::atomic<uint64_t> used_bytes_{0};
++};
++
+ class TextureCapture {
+   public:
+     // Caller owns validation, source initialization and COPY_SOURCE transition.
+@@ -25,12 +42,22 @@
+                           uint64_t completion_value,
+                           uint64_t allocation_budget,
+                           std::unique_ptr<TextureCapture>* result);
++    // The caller must enqueue retirement_handle(), not just retirement_resource().
++    // Aggregate allocation bytes stay charged while either CPU or GPU owns the handle.
++    static HRESULT RecordBudgeted(ID3D12Device* device,
++                                  ID3D12GraphicsCommandList* commands,
++                                  ID3D12Resource* texture,
++                                  ID3D12Fence* completion_fence,
++                                  uint64_t completion_value,
++                                  const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
++                                  std::unique_ptr<TextureCapture>* result);
+     ~TextureCapture();
+     TextureCapture(const TextureCapture&) = delete;
+     TextureCapture& operator=(const TextureCapture&) = delete;
+     HRESULT ReadCompleted(std::span<const uint8_t>* result) const;
+     std::shared_ptr<std::atomic<bool>> submission_marker() const { return submitted_; }
+     Microsoft::WRL::ComPtr<ID3D12Resource> retirement_resource() const { return resource_; }
++    Microsoft::WRL::ComPtr<IUnknown> retirement_handle() const { return retirement_; }
+     uint32_t width() const { return width_; }
+     uint32_t height() const { return height_; }
+     uint32_t row_pitch() const { return row_pitch_; }
+@@ -38,10 +65,19 @@
+     DXGI_FORMAT format() const { return format_; }
+ 
+   private:
++    static HRESULT RecordImpl(ID3D12Device* device,
++                              ID3D12GraphicsCommandList* commands,
++                              ID3D12Resource* texture,
++                              ID3D12Fence* completion_fence,
++                              uint64_t completion_value,
++                              uint64_t allocation_limit,
++                              const std::shared_ptr<CaptureMemoryBudget>& budget,
++                              std::unique_ptr<TextureCapture>* result);
+     TextureCapture() = default;
+     Microsoft::WRL::ComPtr<ID3D12Device> device_;
+     Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+     Microsoft::WRL::ComPtr<ID3D12Fence> fence_;
++    Microsoft::WRL::ComPtr<IUnknown> retirement_;
+     std::shared_ptr<std::atomic<bool>> submitted_;
+     std::span<const uint8_t> mapped_;
+     uint64_t completion_value_ = 0;
+--- a/native/drafts/webgpu-d3d12-capture/texture_capture.cc
++++ b/native/drafts/webgpu-d3d12-capture/texture_capture.cc
+@@ -7,12 +7,101 @@
+ #include <utility>
+ 
+ namespace glint::candidate::d3d12 {
++bool CaptureMemoryBudget::Reserve(uint64_t bytes) {
++    if (bytes == 0 || bytes > limit_bytes_) {
++        return false;
++    }
++    uint64_t used = used_bytes_.load(std::memory_order_relaxed);
++    do {
++        if (used > limit_bytes_ - bytes) {
++            return false;
++        }
++    } while (!used_bytes_.compare_exchange_weak(used, used + bytes,
++                                               std::memory_order_acq_rel,
++                                               std::memory_order_relaxed));
++    return true;
++}
++
++void CaptureMemoryBudget::Release(uint64_t bytes) {
++    used_bytes_.fetch_sub(bytes, std::memory_order_acq_rel);
++}
++
++// Dawn's ReferenceUntilUnused accepts IUnknown. This object keeps the quota and
++// actual GPU allocation together without adding a dependency on Blink or GPU common.
++class CaptureRetirement final : public IUnknown {
++  public:
++    CaptureRetirement(std::shared_ptr<CaptureMemoryBudget> budget, uint64_t bytes)
++        : budget_(std::move(budget)), bytes_(bytes) {}
++    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** result) override {
++        if (!result) {
++            return E_POINTER;
++        }
++        *result = nullptr;
++        if (iid != __uuidof(IUnknown)) {
++            return E_NOINTERFACE;
++        }
++        *result = static_cast<IUnknown*>(this);
++        AddRef();
++        return S_OK;
++    }
++    ULONG STDMETHODCALLTYPE AddRef() override {
++        return references_.fetch_add(1, std::memory_order_relaxed) + 1;
++    }
++    ULONG STDMETHODCALLTYPE Release() override {
++        const ULONG remaining = references_.fetch_sub(1, std::memory_order_acq_rel) - 1;
++        if (remaining == 0) {
++            delete this;
++        }
++        return remaining;
++    }
++    void SetResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource) {
++        resource_ = std::move(resource);
++    }
++
++  private:
++    ~CaptureRetirement() {
++        resource_.Reset();
++        budget_->Release(bytes_);
++    }
++    std::atomic<ULONG> references_{1};
++    std::shared_ptr<CaptureMemoryBudget> budget_;
++    const uint64_t bytes_;
++    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
++};
++
+ HRESULT TextureCapture::Record(ID3D12Device* device,
+                                ID3D12GraphicsCommandList* commands,
+                                ID3D12Resource* texture,
+                                ID3D12Fence* completion_fence,
+                                uint64_t completion_value,
+                                uint64_t allocation_budget,
++                               std::unique_ptr<TextureCapture>* result) {
++    return RecordImpl(device, commands, texture, completion_fence, completion_value,
++                      allocation_budget, nullptr, result);
++}
++
++HRESULT TextureCapture::RecordBudgeted(
++    ID3D12Device* device,
++    ID3D12GraphicsCommandList* commands,
++    ID3D12Resource* texture,
++    ID3D12Fence* completion_fence,
++    uint64_t completion_value,
++    const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
++    std::unique_ptr<TextureCapture>* result) {
++    if (!allocation_budget || allocation_budget->limit_bytes() == 0) {
++        return E_INVALIDARG;
++    }
++    return RecordImpl(device, commands, texture, completion_fence, completion_value,
++                      allocation_budget->limit_bytes(), allocation_budget, result);
++}
++
++HRESULT TextureCapture::RecordImpl(ID3D12Device* device,
++                               ID3D12GraphicsCommandList* commands,
++                               ID3D12Resource* texture,
++                               ID3D12Fence* completion_fence,
++                               uint64_t completion_value,
++                               uint64_t allocation_budget,
++                               const std::shared_ptr<CaptureMemoryBudget>& budget,
+                                std::unique_ptr<TextureCapture>* result) {
+     if (!result || *result) {
+         return E_INVALIDARG;
+@@ -87,6 +176,18 @@
+         allocation.SizeInBytes == 0 || allocation.SizeInBytes > allocation_budget) {
+         return E_OUTOFMEMORY;
+     }
++    Microsoft::WRL::ComPtr<CaptureRetirement> retirement;
++    if (budget) {
++        if (!budget->Reserve(allocation.SizeInBytes)) {
++            return E_OUTOFMEMORY;
++        }
++        auto* hold = new (std::nothrow) CaptureRetirement(budget, allocation.SizeInBytes);
++        if (!hold) {
++            budget->Release(allocation.SizeInBytes);
++            return E_OUTOFMEMORY;
++        }
++        retirement.Attach(hold);
++    }
+     std::unique_ptr<TextureCapture> capture(new (std::nothrow) TextureCapture());
+     if (!capture) {
+         return E_OUTOFMEMORY;
+@@ -99,6 +200,10 @@
+                                          IID_PPV_ARGS(&capture->resource_));
+     if (FAILED(hr)) {
+         return hr;
++    }
++    if (retirement) {
++        retirement->SetResource(capture->resource_);
++        capture->retirement_ = retirement;
+     }
+     void* mapped = nullptr;
+     D3D12_RANGE read_range{0, static_cast<SIZE_T>(mapped_bytes)};
+@@ -139,6 +244,9 @@
+         D3D12_RANGE written{0, 0};
+         resource_->Unmap(0, &written);
+     }
++    // Drop the direct resource reference before the final quota-owning handle.
++    resource_.Reset();
++    retirement_.Reset();
+ }
+ 
+ HRESULT TextureCapture::ReadCompleted(std::span<const uint8_t>* result) const {
+--- a/native/drafts/webgpu-d3d12-capture/capture_test.cc
++++ b/native/drafts/webgpu-d3d12-capture/capture_test.cc
+@@ -5,6 +5,8 @@
+ #include <dxgi1_6.h>
+ #include <algorithm>
+ #include <array>
++#include <barrier>
++#include <thread>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <limits>
+@@ -12,8 +14,11 @@
+ 
+ using Microsoft::WRL::ComPtr;
+ using glint::candidate::d3d12::TextureCapture;
++using glint::candidate::d3d12::CaptureMemoryBudget;
+ namespace {
+ size_t assertions = 0;
++size_t budget_cases = 0;
++size_t contention_threads_tested = 0;
+ void Check(bool condition) {
+   ++assertions;
+   if (!condition) {
+@@ -56,6 +61,54 @@
+   barrier.Transition.StateBefore = before;
+   barrier.Transition.StateAfter = after;
+   commands->ResourceBarrier(1, &barrier);
++}
++
++void CheckBudgetConcurrency(ID3D12Device* device, ID3D12Resource* texture,
++                            ID3D12Fence* fence, uint64_t bytes) {
++  constexpr size_t kThreads = 8;
++  auto budget = std::make_shared<CaptureMemoryBudget>(bytes);
++  std::barrier synchronize(static_cast<std::ptrdiff_t>(kThreads + 1));
++  std::array<HRESULT, kThreads> results{};
++  std::array<std::thread, kThreads> workers;
++  for (size_t index = 0; index < kThreads; ++index) {
++    workers[index] = std::thread([&, index] {
++      ComPtr<ID3D12CommandAllocator> allocator;
++      ComPtr<ID3D12GraphicsCommandList> commands;
++      HRESULT result = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
++                                                       IID_PPV_ARGS(&allocator));
++      if (SUCCEEDED(result)) {
++        result = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
++                                           allocator.Get(), nullptr, IID_PPV_ARGS(&commands));
++      }
++      std::unique_ptr<TextureCapture> capture;
++      synchronize.arrive_and_wait();
++      if (SUCCEEDED(result)) {
++        result = TextureCapture::RecordBudgeted(device, commands.Get(), texture,
++                                                 fence, 1, budget, &capture);
++      }
++      results[index] = result;
++      synchronize.arrive_and_wait();
++      synchronize.arrive_and_wait();
++      // These command lists are never submitted; discard commands before resources.
++      commands.Reset();
++      allocator.Reset();
++      capture.reset();
++    });
++  }
++  synchronize.arrive_and_wait();
++  synchronize.arrive_and_wait();
++  size_t acquired = 0;
++  for (HRESULT result : results) {
++    Check(result == S_OK || result == E_OUTOFMEMORY);
++    acquired += result == S_OK;
++  }
++  Check(acquired == 1 && budget->used_bytes() == bytes);
++  synchronize.arrive_and_wait();
++  for (auto& worker : workers) {
++    worker.join();
++  }
++  Check(budget->used_bytes() == 0);
++  contention_threads_tested += kThreads;
+ }
+ 
+ void Run(ID3D12Device* device, DXGI_FORMAT format, uint32_t width, uint32_t height) {
+@@ -148,12 +201,53 @@
+   Ok(TextureCapture::Record(device, commands.Get(), texture.Get(), fence.Get(), 1,
+                             64 * 1024 * 1024, &cancelled));
+   auto retirement = cancelled->retirement_resource();
++  const uint64_t charged_bytes = cancelled->allocation_bytes();
++  Check(charged_bytes > static_cast<uint64_t>(cancelled->row_pitch()) * height);
++  auto budget = std::make_shared<CaptureMemoryBudget>(charged_bytes);
++  auto cpu_budget = std::make_shared<CaptureMemoryBudget>(charged_bytes);
++  auto too_small = std::make_shared<CaptureMemoryBudget>(charged_bytes - 1);
++  std::unique_ptr<TextureCapture> budgeted, cpu_retained;
++  Check(TextureCapture::RecordBudgeted(device, commands.Get(), texture.Get(), fence.Get(),
++      1, nullptr, &budgeted) == E_INVALIDARG);
++  Check(TextureCapture::RecordBudgeted(device, commands.Get(), texture.Get(), fence.Get(),
++      1, std::make_shared<CaptureMemoryBudget>(0), &budgeted) == E_INVALIDARG);
++  Check(TextureCapture::RecordBudgeted(device, commands.Get(), texture.Get(), fence.Get(),
++      1, too_small, &budgeted) == E_OUTOFMEMORY);
++  Check(!budgeted && too_small->used_bytes() == 0);
++  Check(TextureCapture::RecordBudgeted(device, commands.Get(), texture.Get(), fence.Get(),
++      1, budget, nullptr) == E_INVALIDARG);
++  Check(budget->used_bytes() == 0);
++  Ok(TextureCapture::RecordBudgeted(device, commands.Get(), texture.Get(), fence.Get(),
++      1, budget, &budgeted));
++  Check(budget->used_bytes() == charged_bytes && budgeted->retirement_handle() != nullptr);
++  auto queued_budget_hold = budgeted->retirement_handle();
++  ComPtr<IUnknown> alias;
++  Ok(queued_budget_hold.As(&alias));
++  ComPtr<ID3D12Resource> not_a_resource;
++  Check(queued_budget_hold.As(&not_a_resource) == E_NOINTERFACE && !not_a_resource);
++  alias.Reset();
++  budgeted.reset();
++  Check(budget->used_bytes() == charged_bytes);
++  Check(TextureCapture::RecordBudgeted(device, commands.Get(), texture.Get(), fence.Get(),
++      1, budget, &budgeted) == E_OUTOFMEMORY);
++  Check(!budgeted && budget->used_bytes() == charged_bytes);
++  auto* previous = captures[0].get();
++  Check(TextureCapture::RecordBudgeted(device, commands.Get(), texture.Get(), fence.Get(),
++      1, budget, &captures[0]) == E_INVALIDARG);
++  Check(captures[0].get() == previous && budget->used_bytes() == charged_bytes);
++  Ok(TextureCapture::RecordBudgeted(device, commands.Get(), texture.Get(), fence.Get(),
++      1, cpu_budget, &cpu_retained));
++  auto queued_cpu_hold = cpu_retained->retirement_handle();
++  if (format == DXGI_FORMAT_R8G8B8A8_UNORM && width == 7 && height == 3) {
++    CheckBudgetConcurrency(device, texture.Get(), fence.Get(), charged_bytes);
++  }
+   cancelled.reset();
+   Check(retirement != nullptr);
+   Ok(commands->Close());
+   std::array<ID3D12CommandList*, 1> lists{commands.Get()};
+   queue->ExecuteCommandLists(1, lists.data());
+   captures[0]->submission_marker()->store(true, std::memory_order_release);
++  cpu_retained->submission_marker()->store(true, std::memory_order_release);
+   // Fence completion alone must not admit an abandoned/uncommitted snapshot.
+   Ok(queue->Signal(fence.Get(), 1));
+   HANDLE event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+@@ -161,6 +255,17 @@
+   Ok(fence->SetEventOnCompletion(1, event));
+   Check(WaitForSingleObject(event, 30000) == WAIT_OBJECT_0);
+   CloseHandle(event);
++  // Fence completion does not itself release quota while a native retirement owner remains.
++  Check(budget->used_bytes() == charged_bytes);
++  queued_budget_hold.Reset();
++  Check(budget->used_bytes() == 0);
++  queued_cpu_hold.Reset();
++  Check(cpu_budget->used_bytes() == charged_bytes);
++  Ok(cpu_retained->ReadCompleted(&view));
++  Check(view[0] == Pixel(0, 0, 0, 1));
++  cpu_retained.reset();
++  Check(cpu_budget->used_bytes() == 0);
++  ++budget_cases;
+   Check(TextureCapture::Record(device, commands.Get(), texture.Get(), fence.Get(), 1,
+                                 64 * 1024 * 1024, &invalid) == E_INVALIDARG);
+   Check(captures[1]->ReadCompleted(&view) == E_PENDING && view.empty());
+@@ -198,6 +303,8 @@
+     Run(device.Get(), format, 7, 3);
+     Run(device.Get(), format, 65, 5);
+   }
++  Check(budget_cases == 8 && contention_threads_tested == 8);
+   std::printf("{\"passed\":true,\"hardware_adapter\":true,\"cases\":8,\"assertions\":%zu,"
+-              "\"browser_integrated\":false}\n", assertions);
+-}
++              "\"budget_cases\":%zu,\"contention_threads_tested\":%zu,"
++              "\"browser_integrated\":false}\n", assertions, budget_cases, contention_threads_tested);
++}
