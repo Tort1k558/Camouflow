@@ -1,5 +1,12 @@
 # Glint: план проверки и развития
 
+## Tooling для отдельного checkout Dawn
+
+Добавлена поддержка pinned Dawn: официальный Gitiles URL, сверка с Chromium DEPS,
+отдельная проверка checkout/патчей и учёт Dawn в receipts сборки, упаковки и font gates.
+Новые патчи браузера не выбраны. Лимит j4 и ограничения cached/full build сохранены.
+[Порядок сборки](../native/BUILDING.md#pinned-dawn-dependency).
+
 ## D3D12: захват полной текстуры
 
 Аппаратный прототип прошёл восемь случаев и **22 525 проверок** в обычном режиме

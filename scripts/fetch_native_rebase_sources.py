@@ -55,6 +55,7 @@ def source_plan(manifest: dict) -> list[dict]:
         if total > MAX_TOTAL_BYTES:
             raise ValueError("Sparse source byte budget exceeded")
         revision, repository, upstream_name = manifest["target_revision"], "chromium/src", name
+        host = "https://chromium.googlesource.com/"
         if name.startswith("v8/"):
             v8 = dependencies.get("v8")
             if (not isinstance(v8, dict) or not isinstance(v8.get("revision"), str)
@@ -62,7 +63,15 @@ def source_plan(manifest: dict) -> list[dict]:
                     or v8.get("repository") != "https://chromium.googlesource.com/v8/v8.git"):
                 raise ValueError("V8 source URLs require the pinned dependency")
             revision, repository, upstream_name = v8["revision"], "v8/v8", name[3:]
-        expected = ("https://chromium.googlesource.com/" + repository + "/+/" + revision + "/"
+        elif name.startswith("third_party/dawn/"):
+            dawn = dependencies.get("dawn")
+            if (not isinstance(dawn, dict) or not isinstance(dawn.get("revision"), str)
+                    or not re.fullmatch(r"[0-9a-f]{40}", dawn["revision"])
+                    or dawn.get("repository") != "https://dawn.googlesource.com/dawn"):
+                raise ValueError("Dawn source URLs require the pinned dependency")
+            revision, repository, upstream_name = dawn["revision"], "dawn", name[len("third_party/dawn/"):]
+            host = "https://dawn.googlesource.com/"
+        expected = (host + repository + "/+/" + revision + "/"
                     + urllib.parse.quote(upstream_name, safe="/") + "?format=TEXT")
         if row.get("url") != expected:
             raise ValueError("Source URL does not match its immutable official revision and path")

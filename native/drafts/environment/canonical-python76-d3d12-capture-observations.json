@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "55522f25eb9576538e4c09c0ccffce0588f6c26f",
+  "counts": {
+    "tests": 4977,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4976
+  },
+  "duration_seconds": 455.0,
+  "log_sha256": "4a4871e6c366949023d3f8e8aa0aec7f9d0ef8062e80fa9408937d3663ff7da0",
+  "junit_sha256": "a640d14e0d932c1880c756060bda53f8f63875785253b4da48fe3bf28a550f64",
+  "schema": 1,
+  "raw_report_sha256": "9f0345cea809f2264bc568fb0f3b946234efd0d01c60e6fe664807f4034a91de",
+  "scope": "Full Python regression at 55522f2 before Dawn dependency tooling; not native/browser/privacy admission",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

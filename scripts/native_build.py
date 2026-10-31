@@ -526,6 +526,13 @@ def load_candidate(name: str) -> dict:
             or not isinstance(dependency.get("revision"), str)
             or not re.fullmatch(r"[0-9a-f]{40}", dependency.get("revision", ""))):
         raise ValueError("Candidate must pin the V8 repository and revision")
+    dawn = dependencies.get("dawn")
+    if "dawn" in dependencies and (not isinstance(dawn, dict)
+            or dawn.get("repository") != "https://dawn.googlesource.com/dawn"
+            or not isinstance(dawn.get("revision"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", dawn["revision"])):
+        raise ValueError("Candidate must pin the Dawn repository and revision")
+    allowed_repositories = {".", "v8"} | ({"third_party/dawn"} if dawn is not None else set())
     patches = manifest.get("patches", [])
     if not isinstance(patches, list) or not patches:
         raise ValueError("Candidate patch chain is empty")
@@ -534,7 +541,7 @@ def load_candidate(name: str) -> dict:
             raise ValueError("Candidate patch entries must be objects")
         name = row.get("file", "")
         if (not isinstance(name, str) or not re.fullmatch(rf"{number:04d}-[a-z0-9-]+\.patch", name)
-                or row.get("directory", ".") not in {".", "v8"}):
+                or row.get("directory", ".") not in allowed_repositories):
             raise ValueError("Candidate patch sequence or repository is invalid")
         path = directory / "patches" / name
         if path != path.resolve() or hashlib.sha256(path.read_bytes()).hexdigest() != row.get("sha256"):
@@ -543,6 +550,24 @@ def load_candidate(name: str) -> dict:
             "chromium_revision": manifest["target_revision"], "chromium_version": manifest["target_version"]}
     return {"name": "upstream-156", "directory": directory, "manifest": manifest,
             "manifest_sha256": hashlib.sha256(raw).hexdigest(), "lock": lock}
+
+
+def expected_candidate_patches(manifest: dict) -> list[dict]:
+    """Expected receipt rows, not proof of applied or compiled source changes."""
+    directories = (".", "v8") + (("third_party/dawn",) if "dawn" in manifest.get("dependencies", {}) else ())
+    records = []
+    for directory in directories:
+        for row in manifest["patches"]:
+            if row.get("directory", ".") != directory:
+                continue
+            record = {"name": row["file"], "sha256": row["sha256"]}
+            if directory != ".":
+                key = "dawn" if directory == "third_party/dawn" else "v8"
+                record.update(repository=directory, revision=manifest["dependencies"][key]["revision"])
+            records.append(record)
+    if len(records) != len(manifest["patches"]):
+        raise ValueError("Candidate receipt contains an unsupported patch repository")
+    return records
 
 
 def candidate_workspace(workspace: Path, candidate: dict | None, *, claim: bool = False) -> None:
@@ -576,14 +601,22 @@ def candidate_source_patches(source: Path, env: dict[str, str], candidate: dict)
     v8 = source / "v8"
     if v8 != v8.resolve() or run(["git", "rev-parse", "HEAD"], v8, env, capture=True) != dependency["revision"]:
         raise ValueError("Candidate V8 checkout revision differs")
+    dawn = manifest["dependencies"].get("dawn")
+    if dawn is not None:
+        repository = source / "third_party/dawn"
+        if (repository != repository.resolve()
+                or run(["git", "rev-parse", "HEAD"], repository, env, capture=True) != dawn["revision"]):
+            raise ValueError("Candidate Dawn checkout revision differs")
     patches = []
-    for directory in (".", "v8"):
+    directories = (".", "v8") + (("third_party/dawn",) if dawn is not None else ())
+    for directory in directories:
         names = tuple(row["file"] for row in manifest["patches"] if row.get("directory", ".") == directory)
         measured = _source_patches(source / directory, env, names, index_dir=source.parent,
                                    patch_directory=candidate["directory"] / "patches")
         if [item["name"] for item in measured] != list(names):
             raise ValueError("The complete candidate patch chain must already be applied")
-        patches.extend({**item, **({"repository": "v8", "revision": dependency["revision"]} if directory == "v8" else {})}
+        revision = dawn["revision"] if directory == "third_party/dawn" else dependency["revision"]
+        patches.extend({**item, **({"repository": directory, "revision": revision} if directory != "." else {})}
                        for item in measured)
     return patches
 
@@ -593,9 +626,11 @@ def apply_candidate_patches(source: Path, env: dict[str, str], candidate: dict) 
         raise ValueError("Candidate source must be a canonical checkout")
     manifest = candidate["manifest"]
     groups = []
-    for directory in (".", "v8"):
+    directories = (".", "v8") + (("third_party/dawn",) if "dawn" in manifest["dependencies"] else ())
+    for directory in directories:
         repository = source / directory
-        revision = manifest["target_revision"] if directory == "." else manifest["dependencies"]["v8"]["revision"]
+        key = "dawn" if directory == "third_party/dawn" else "v8"
+        revision = manifest["target_revision"] if directory == "." else manifest["dependencies"][key]["revision"]
         if (repository != repository.resolve()
                 or run(["git", "rev-parse", "HEAD"], repository, env, capture=True) != revision):
             raise ValueError("Candidate patch checkout revision differs")
@@ -612,6 +647,8 @@ def apply_candidate_patches(source: Path, env: dict[str, str], candidate: dict) 
     applied = []
     try:
         for number, (repository, names) in enumerate(groups):
+            if not names:
+                continue
             index_env = {**env, "GIT_INDEX_FILE": str(evidence / f"index-{number}")}
             run(["git", "read-tree", "HEAD"], repository, index_env)
             for name in names:

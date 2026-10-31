@@ -124,12 +124,24 @@ def verify(source: Path, output: Path, *, formatter: Path | None = None,
             raise ValueError("Draft patch checksum differs: " + row["file"])
         if b"\r" in content or content.startswith(b"\xef\xbb\xbf"):
             raise ValueError("Draft patches require UTF-8 without BOM and LF line endings")
-        if not isinstance(row.get("directory", "."), str) or row.get("directory", ".") not in {".", "v8"}:
+        if not isinstance(row.get("directory", "."), str) or row.get("directory", ".") not in {".", "v8", "third_party/dawn"}:
             raise ValueError("Unsupported draft repository directory")
         patches.append(path)
     dependencies = manifest.get("dependencies", {})
     if not isinstance(dependencies, dict):
         raise ValueError("Invalid draft dependency map")
+    dawn = dependencies.get("dawn")
+    if "dawn" in dependencies:
+        if (not isinstance(dawn, dict) or not isinstance(dawn.get("revision"), str)
+                or not re.fullmatch(r"[0-9a-f]{40}", dawn["revision"])
+                or dawn.get("repository") != "https://dawn.googlesource.com/dawn"):
+            raise ValueError("Invalid pinned Dawn dependency")
+        deps_text = inputs.get("DEPS", b"").decode("utf-8-sig")
+        dawn_revisions = re.findall(r"'dawn_revision':\s*'([0-9a-f]{40})'", deps_text)
+        if dawn_revisions != [dawn["revision"]]:
+            raise ValueError("Draft Dawn revision does not match Chromium DEPS")
+    if any(row.get("directory") == "third_party/dawn" for row in manifest["patches"]) and dawn is None:
+        raise ValueError("Dawn drafts require a pinned Chromium DEPS dependency")
     v8 = dependencies.get("v8")
     if v8 is not None:
         if not isinstance(v8, dict) or not isinstance(v8.get("revision"), str) or not re.fullmatch(r"[0-9a-f]{40}", v8["revision"]):

@@ -8,19 +8,35 @@ Windows package passed all eight runtime gates (160 checks), including the
 separate installed copy. The first font-regression `NetworkError` remains
 unexplained; successful repeats are not evidence that its cause was fixed.
 Experimental **Chromium 156** has a separate manifest, patch chain, workspace
-and SDK requirement. Windows **001–075 is built and independently preserved**:
-269 assets, **494/494 native cases in 23 groups**, postguards passed. Cached j4
-browser build: 1 step / 2m40s; native build: 2 steps / 7m16s. These are measured
-incremental timings, not estimates for a clean build. Objects were not cleaned,
-sync/hooks were not repeated, and older 073/148 runtimes remain intact.
+and SDK requirement. Windows **001–076 is built and independently preserved**:
+269 assets, **506/506 native cases in 24 groups**, postguards passed. Its measured
+cached j4 browser build took **14m09s**, native test binaries **11m21s**. These are
+incremental timings, not estimates for a clean build. Older runtimes remain intact.
 
-Scoped first-script and protected BFCache checks passed, but cross-session
-screenshots still fail (screen-state reset with clip, wrong PNG/DPR without clip).
+The 076 capture controls, PNG/DPR and actual six-document BFCache passed, including
+cross-session clip/no-clip checks. The older 075 negative evidence is retained.
 Do not run a user browser from the writable build output; use the independent
 preserved runtime. No full-policy/privacy/release admission or default-engine switch.
-[Exact results](drafts/environment/screen75-runtime-observations.json),
+[Exact results](drafts/environment/screen76-runtime-observations.json),
 [candidate commands](drafts/upstream-156/README.md),
 [test matrix](../docs/GLINT_TEST_MATRIX.md).
+
+## Pinned Dawn dependency
+
+Build tooling supports an optional `dependencies.dawn` pin using the official
+`https://dawn.googlesource.com/dawn` repository and an exact 40-character revision.
+Sparse replay checks that revision against Chromium's `dawn_revision` in `DEPS`;
+Dawn source URLs must match its own immutable Gitiles path, not Chromium's.
+
+Dawn patch rows use `directory: "third_party/dawn"`. Application validates that
+checkout independently, rejects foreign edits and includes its revision/hash in
+the complete build receipt. Packaging and font-rendering verification require
+those same receipt rows. Existing Chromium/V8 manifests remain supported.
+
+This tooling change **does not select any new browser patch or produce a binary**.
+The WebGPU transport/capture drafts remain unselected. Dependency/GN edits and
+new source files are not eligible for the narrow cached mode below; its restrictions
+and the normal 180 GiB reserve have not been relaxed.
 
 ## Bounded cached Chromium 156 rebuild
 

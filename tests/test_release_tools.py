@@ -3901,7 +3901,8 @@ def test_upstream_source_invariants_reject_abi_and_resource_drift(tmp_path, fail
             "gpu_commands": {"preserved": 1, "appended": 577}, "grit_structure_preserved": True}
 
 
-@pytest.mark.parametrize("failure", [None, "patch", "revision", "jobs", "space", "settings", "v8", "sequence"])
+@pytest.mark.parametrize("failure", [None, "patch", "revision", "jobs", "space", "settings", "v8", "sequence",
+                                     "dawn", "dawn-null", "dawn-repository", "dawn-revision", "dawn-unpinned"])
 def test_native_candidate_selection_pins_inputs_without_mutating_default_lock(tmp_path, monkeypatch, failure):
     import copy
     import hashlib
@@ -3932,9 +3933,20 @@ def test_native_candidate_selection_pins_inputs_without_mutating_default_lock(tm
         manifest["dependencies"]["v8"]["revision"] = "HEAD"
     elif failure == "sequence":
         manifest["patches"][0]["file"] = "../0001-owned.patch"
+    elif failure and failure.startswith("dawn"):
+        manifest["patches"][0]["directory"] = "third_party/dawn"
+        manifest["dependencies"]["dawn"] = {"repository": "https://dawn.googlesource.com/dawn", "revision": "d" * 40}
+        if failure == "dawn-null":
+            manifest["dependencies"]["dawn"] = None
+        elif failure == "dawn-repository":
+            manifest["dependencies"]["dawn"]["repository"] = "https://untrusted.invalid/dawn"
+        elif failure == "dawn-revision":
+            manifest["dependencies"]["dawn"]["revision"] = "HEAD"
+        elif failure == "dawn-unpinned":
+            del manifest["dependencies"]["dawn"]
     (directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     monkeypatch.setattr(build, "ROOT", tmp_path)
-    if failure:
+    if failure not in (None, "dawn"):
         with pytest.raises(ValueError):
             build.load_candidate("upstream-156")
     else:
@@ -3948,7 +3960,8 @@ def test_native_candidate_selection_pins_inputs_without_mutating_default_lock(tm
 
 
 @pytest.mark.parametrize("failure", [None, "prepare", "apply", "dirty", "concurrent-edit"])
-def test_native_candidate_batch_application_prepares_both_repositories_and_preserves_edits(tmp_path, monkeypatch, failure):
+@pytest.mark.parametrize("with_dawn", [False, True])
+def test_native_candidate_batch_application_prepares_both_repositories_and_preserves_edits(tmp_path, monkeypatch, failure, with_dawn):
     import hashlib
     import json
     import os
@@ -3959,18 +3972,21 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
     source.mkdir()
     candidate_directory = tmp_path / "draft"
     (candidate_directory / "patches").mkdir(parents=True)
-    environment = dict(os.environ)
+    environment = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+                   "GIT_TERMINAL_PROMPT": "0"}
     revisions = []
     rows = []
     original = bytes(range(256))
-    for number, directory in enumerate((".", "v8"), 1):
+    directories = (".", "v8") + (("third_party/dawn",) if with_dawn else ())
+    repositories = [source / directory for directory in directories]
+    for number, directory in enumerate(directories, 1):
         repository = source / directory
-        repository.mkdir(exist_ok=True)
+        repository.mkdir(parents=True, exist_ok=True)
         def git(*args):
             return subprocess.check_output(["git", *args], cwd=repository, env=environment)
         git("init", "--quiet")
         git("config", "core.autocrlf", "false")
-        (repository / ".gitignore").write_text("v8/\n", encoding="utf-8")
+        (repository / ".gitignore").write_text("v8/\nthird_party/\n", encoding="utf-8")
         (repository / "value.bin").write_bytes(original)
         git("add", ".")
         git("-c", "user.name=Glint fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "owned baseline")
@@ -3979,20 +3995,23 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
         content = git("diff", "--binary", "HEAD")
         content += b"diff --git a/added.txt b/added.txt\nnew file mode 100644\n--- /dev/null\n+++ b/added.txt\n@@ -0,0 +1 @@\n+owned new file\n"
         (repository / "value.bin").write_bytes(original)
-        if failure == "prepare" and directory == "v8":
+        if failure == "prepare" and directory == directories[-1]:
             content = b"invalid patch\n"
         name = f"{number:04d}-owned.patch"
         (candidate_directory / "patches" / name).write_bytes(content)
         rows.append({"file": name, "directory": directory, "sha256": hashlib.sha256(content).hexdigest()})
     candidate = {"name": "upstream-156", "directory": candidate_directory, "manifest_sha256": "a" * 64,
                  "manifest": {"target_revision": revisions[0], "dependencies": {"v8": {"revision": revisions[1]}}, "patches": rows}}
+    if with_dawn:
+        candidate["manifest"]["dependencies"]["dawn"] = {
+            "repository": "https://dawn.googlesource.com/dawn", "revision": revisions[2]}
     monkeypatch.setattr(build, "load_candidate", lambda name: candidate)
     if failure == "dirty":
         (source / "user-file").write_bytes(b"preserve")
     run = build.run
     def wrapped(command, cwd, env, **kwargs):
         actual_apply = command[:2] == ["git", "apply"] and "--check" not in command and "--reverse" not in command
-        if actual_apply and cwd == source / "v8" and failure in {"apply", "concurrent-edit"}:
+        if actual_apply and cwd == repositories[-1] and failure in {"apply", "concurrent-edit"}:
             if failure == "concurrent-edit":
                 (source / "user-file").write_bytes(b"preserve concurrent edit")
             raise subprocess.CalledProcessError(1, command)
@@ -4004,10 +4023,13 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
         if failure == "concurrent-edit":
             assert (source / "user-file").read_bytes() == b"preserve concurrent edit"
             assert (source / "value.bin").read_bytes() == original[::-1]
+            for repository in repositories[1:]:
+                assert (repository / "value.bin").read_bytes() == original
+                assert not (repository / "added.txt").exists()
             report = json.loads(next(tmp_path.glob("glint-candidate-patches-*/report.json")).read_bytes())
             assert report["rollback_errors"] and report["passed"] is False
         else:
-            for repository in (source, source / "v8"):
+            for repository in repositories:
                 assert (repository / "value.bin").read_bytes() == original
                 assert not (repository / "added.txt").exists()
             if failure == "dirty":
@@ -4015,16 +4037,24 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
             else:
                 report = json.loads(next(tmp_path.glob("glint-candidate-patches-*/report.json")).read_bytes())
                 assert report["passed"] is False
-                assert report["rolled_back"] == (["."] if failure == "apply" else [])
+                assert report["rolled_back"] == (list(reversed(directories[:-1])) if failure == "apply" else [])
     else:
         patches = build.apply_candidate_patches(source, environment, candidate)
-        assert len(patches) == 2
-        for repository in (source, source / "v8"):
+        assert len(patches) == len(directories)
+        if with_dawn:
+            assert patches[-1]["repository"] == "third_party/dawn" and patches[-1]["revision"] == revisions[2]
+        for repository in repositories:
             assert (repository / "value.bin").read_bytes() == original[::-1]
             assert (repository / "added.txt").read_bytes() == b"owned new file\n"
         assert build.apply_candidate_patches(source, environment, candidate) == patches
-        for repository in (source, source / "v8"):
+        for repository in repositories:
             assert subprocess.check_output(["git", "diff", "--cached", "--name-only"], cwd=repository) == b""
+        if with_dawn:
+            foreign = repositories[-1] / "foreign.txt"
+            foreign.write_bytes(b"preserve foreign Dawn edit")
+            with pytest.raises(ValueError, match="Unrecognized"):
+                build.candidate_source_patches(source, environment, candidate)
+            assert foreign.read_bytes() == b"preserve foreign Dawn edit"
 
 
 def test_native_workspace_lock_rejects_concurrent_operations_and_releases_after_error(tmp_path):

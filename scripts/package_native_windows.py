@@ -19,7 +19,7 @@ from app.core.native.distribution import (  # noqa: E402
     MAX_ARCHIVE_BYTES, MAX_FILES, MAX_UNPACKED_BYTES, checked_archive_name,
     host_architecture, sha256_file,
 )
-from scripts.native_build import LOCK, load_candidate  # noqa: E402
+from scripts.native_build import LOCK, expected_candidate_patches, load_candidate  # noqa: E402
 from scripts.verify_native_runtime import measure_runtime_core  # noqa: E402
 
 RELEASE_VOLUME = "D:"
@@ -60,13 +60,7 @@ def validate_build_receipt(receipt: dict, lock: dict, *, candidate: dict | None 
             raise ValueError("Native build receipt differs from the pinned build: " + key)
     if candidate is not None:
         manifest = candidate["manifest"]
-        expected_patches = []
-        for repository in (".", "v8"):
-            for row in manifest["patches"]:
-                if row.get("directory", ".") == repository:
-                    expected_patches.append({"name": row["file"], "sha256": row["sha256"],
-                        **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
-                           if repository == "v8" else {})})
+        expected_patches = expected_candidate_patches(manifest)
         if (receipt.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
                 or receipt.get("patches") != expected_patches):
             raise ValueError("Native candidate receipt must bind the complete manifest and patch chain")

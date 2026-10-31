@@ -1,5 +1,15 @@
 # Glint browser test matrix
 
+## Dawn dependency tooling
+
+Pinned Dawn source fetch/replay, independent checkout identity and complete
+build/package/rendering receipt rows are supported. Tests cover three local Git
+repositories, rollback, concurrent/foreign edits, URL/revision rejection and
+combined V8/Dawn replay. The selected browser chain remains **001–076**; no new
+binary is implied. See [build constraints](../native/BUILDING.md#pinned-dawn-dependency).
+The preceding capture-source baseline at `55522f2` passed **4976 Python tests,
+1 skipped**, with guards: [evidence](../native/drafts/environment/canonical-python76-d3d12-capture-observations.json).
+
 ## Unselected D3D12 capture producer
 
 | Gate | Result | Boundary |

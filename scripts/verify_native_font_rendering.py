@@ -264,11 +264,7 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
             raise ValueError("Candidate rendering verification requires explicit --candidate selection")
     else:
         manifest = candidate["manifest"]
-        expected_patches = [
-            {"name": row["file"], "sha256": row["sha256"],
-             **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
-                if directory == "v8" else {})}
-            for directory in (".", "v8") for row in manifest["patches"] if row.get("directory", ".") == directory]
+        expected_patches = native_build.expected_candidate_patches(manifest)
         if (record.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
                 or record.get("chromium_revision") != candidate["lock"]["chromium_revision"]
                 or record.get("depot_tools_revision") != candidate["lock"]["depot_tools_revision"]
