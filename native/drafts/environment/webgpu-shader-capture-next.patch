@@ -1,0 +1,1296 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -84,6 +84,28 @@
+     std::span<const GlintShaderBufferUse> buffers;
+     bool hasTextureInputs = false;
+     bool complete = false;
++};
++
++class DAWN_NATIVE_EXPORT GlintByteReadbackSnapshot {
++  public:
++    virtual ~GlintByteReadbackSnapshot() = default;
++    virtual GlintReadbackStatus Read(std::span<const uint8_t>* bytes) const = 0;
++    virtual uint64_t GetByteSize() const = 0;
++};
++struct GlintShaderByteRequest {
++    GlintBufferIdentity buffer;
++    uint64_t offset = 0;
++    uint64_t size = 0;
++    uint64_t requestId = 0;
++};
++struct GlintShaderBytePlan {
++    uint64_t ticket = 0;
++    std::vector<GlintShaderByteRequest> requests;
++    bool failed = false;
++};
++struct GlintShaderByteResult {
++    uint64_t requestId = 0;
++    std::unique_ptr<GlintByteReadbackSnapshot> snapshot;
+ };
+ 
+ enum class GlintReadbackMapStatus { Denied, Unrelated, Protected };
+@@ -127,6 +149,13 @@
+     virtual bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) = 0;
+     // Validated binding ranges, not proof of exact shader writes.
+     virtual void OnShaderScope(const GlintShaderScope& scope) = 0;
++    // Trusted native calls only. Empty plan means use the existing opaque scope path.
++    // An outstanding plan must be committed or invalidated with OnExecutionError.
++    // Projection readiness is backend-owned, never supplied by renderer commands.
++    virtual GlintShaderBytePlan BeginShaderByteScope(const GlintShaderScope& scope,
++                                                     bool sampledInputsProjected) = 0;
++    virtual bool CommitShaderByteScope(uint64_t ticket,
++                                       std::vector<GlintShaderByteResult> results) = 0;
+     virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
+                                                    uint64_t offset,
+                                                    uint64_t size) = 0;
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -44,6 +44,12 @@
+   void OnExecutionError() override;
+   bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) override;
+   void OnShaderScope(const dawn::native::GlintShaderScope& scope) override;
++  dawn::native::GlintShaderBytePlan BeginShaderByteScope(
++      const dawn::native::GlintShaderScope& scope,
++      bool sampled_inputs_projected) override;
++  bool CommitShaderByteScope(
++      uint64_t ticket,
++      std::vector<dawn::native::GlintShaderByteResult> results) override;
+   dawn::native::GlintReadbackMapStatus ClassifyReadMap(
+       dawn::native::GlintBufferIdentity buffer,
+       uint64_t offset,
+@@ -66,8 +72,20 @@
+     glint::candidate::WebGpuSnapshotToken token;
+     glint::candidate::WebGpuReadbackLayout layout;
+     std::unique_ptr<dawn::native::GlintReadbackSnapshot> native;
++    std::unique_ptr<dawn::native::GlintByteReadbackSnapshot> byte_native;
+     bool complete = false;
+   };
++  struct ScopedOutput {
++    dawn::native::GlintShaderByteRequest request;
++    glint::candidate::WebGpuSnapshotToken token;
++  };
++  bool ValidateShaderScope(const dawn::native::GlintShaderScope& scope);
++  bool ByteEligible(const BufferState& buffer,
++                    uint64_t offset,
++                    uint64_t size) const;
++  uint64_t scope_id_ = 0;
++  uint64_t active_scope_ = 0;
++  std::vector<ScopedOutput> scoped_outputs_;
+   BufferState* GetBuffer(dawn::native::GlintBufferIdentity buffer);
+   uint64_t NextSequence();
+   void Fail();
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -70,12 +70,15 @@
+     snapshots_.Release(capture.token);
+   }
+   capture.native.reset();
++  capture.byte_native.reset();
+   capture.token = {};
+   capture.layout = {};
+   capture.complete = false;
+ }
+ void GlintWebGPUReadbackObserver::Fail() {
+   failed_ = true;
++  active_scope_ = 0;
++  scoped_outputs_.clear();
+   buffers_.clear();
+   for (auto& capture : pending_) {
+     Drop(capture);
+@@ -141,6 +144,10 @@
+     const dawn::native::GlintTextureToBufferCopy& copy,
+     std::unique_ptr<dawn::native::GlintReadbackSnapshot> native) {
+   std::lock_guard lock(mutex_);
++  if (active_scope_) {
++    Fail();
++    return;
++  }
+   auto* buffer = GetBuffer(copy.destination);
+   const uint64_t sequence = NextSequence();
+   if (!buffer || !sequence) {
+@@ -189,6 +196,10 @@
+     uint64_t destination_offset,
+     uint64_t size) {
+   std::lock_guard lock(mutex_);
++  if (active_scope_) {
++    Fail();
++    return;
++  }
+   auto* from = GetBuffer(source);
+   auto* to = GetBuffer(destination);
+   const uint64_t sequence = NextSequence();
+@@ -208,6 +219,10 @@
+     uint64_t size,
+     dawn::native::GlintBufferWriteKind kind) {
+   std::lock_guard lock(mutex_);
++  if (active_scope_) {
++    Fail();
++    return;
++  }
+   auto* target = GetBuffer(buffer);
+   const uint64_t sequence = NextSequence();
+   if (!target || !sequence) {
+@@ -238,53 +253,237 @@
+   std::lock_guard lock(mutex_);
+   Fail();
+ }
+-void GlintWebGPUReadbackObserver::OnShaderScope(
++bool GlintWebGPUReadbackObserver::ValidateShaderScope(
+     const dawn::native::GlintShaderScope& scope) {
++  if (failed_ || !scope.complete ||
++      scope.buffers.size() > dawn::native::kGlintShaderBufferUseLimit) {
++    Fail();
++    return false;
++  }
+   const auto uses = scope.buffers;
+-  std::lock_guard lock(mutex_);
+-  if (failed_) {
+-    return;
+-  }
+-  if (!scope.complete ||
+-      uses.size() > dawn::native::kGlintShaderBufferUseLimit) {
+-    Fail();
+-    return;
+-  }
+-  bool derived = scope.hasTextureInputs;
+   size_t unique_buffers = 0;
+-  // Inspect all inputs before mutating any output, including read-write
+-  // aliases.
+   for (size_t index = 0; index < uses.size(); ++index) {
+     const auto& use = uses[index];
+     if (!use.buffer.handle || !use.rangeKnown ||
+         use.buffer.size > std::numeric_limits<size_t>::max() ||
+-        use.offset > use.buffer.size || use.size > use.buffer.size - use.offset) {
+-      Fail();
+-      return;
++        use.offset > use.buffer.size ||
++        use.size > use.buffer.size - use.offset) {
++      Fail();
++      return false;
+     }
+     bool duplicate = false;
+-    for (size_t previous = 0; previous < index; ++previous) {
+-      if (uses[previous].buffer.handle == use.buffer.handle) {
+-        if (uses[previous].buffer.size != use.buffer.size) {
++    for (size_t prior = 0; prior < index; ++prior) {
++      if (uses[prior].buffer.handle == use.buffer.handle) {
++        if (uses[prior].buffer.size != use.buffer.size) {
+           Fail();
+-          return;
++          return false;
+         }
+         duplicate = true;
+       }
+     }
+     if (!duplicate && ++unique_buffers > limits_.buffers) {
+       Fail();
+-      return;
++      return false;
+     }
+     const auto found = buffers_.find(use.buffer.handle);
+-    if (found == buffers_.end()) {
+-      continue;
+-    }
+-    if (found->second.size != use.buffer.size) {
+-      Fail();
+-      return;
+-    }
+-    if (use.readable && use.size != 0 &&
++    if (found != buffers_.end() && found->second.size != use.buffer.size) {
++      Fail();
++      return false;
++    }
++  }
++  return true;
++}
++
++bool GlintWebGPUReadbackObserver::ByteEligible(const BufferState& buffer,
++                                               uint64_t offset,
++                                               uint64_t size) const {
++  if (buffer.unsafe) {
++    return false;
++  }
++  const auto plan = buffer.provenance.PlanMap(offset, size);
++  if (plan.status == WebGpuMapProvenance::kUnrelated) {
++    return true;
++  }
++  if (plan.status != WebGpuMapProvenance::kReadback) {
++    return false;
++  }
++  for (size_t index = 0; index < plan.count; ++index) {
++    const auto& region = plan.regions[index];
++    if (region.kind != WebGpuReadbackRegionKind::kCapturedBytes ||
++        region.snapshot.device_epoch != epoch_ ||
++        region.snapshot.policy_generation != policy_->generation()) {
++      return false;
++    }
++  }
++  return true;
++}
++
++dawn::native::GlintShaderBytePlan
++GlintWebGPUReadbackObserver::BeginShaderByteScope(
++    const dawn::native::GlintShaderScope& scope,
++    bool sampled_inputs_projected) {
++  std::lock_guard lock(mutex_);
++  if (failed_) {
++    return {0, {}, true};
++  }
++  if (active_scope_ || !ValidateShaderScope(scope)) {
++    Fail();
++    return {0, {}, true};
++  }
++  if (scope.hasTextureInputs && !sampled_inputs_projected) {
++    return {};
++  }
++  bool derived = scope.hasTextureInputs;
++  std::vector<dawn::native::GlintShaderByteRequest> requests;
++  for (const auto& use : scope.buffers) {
++    const auto found = buffers_.find(use.buffer.handle);
++    if (found != buffers_.end() && use.size != 0 &&
++        (use.readable || use.writable)) {
++      if (!ByteEligible(found->second, use.offset, use.size)) {
++        return {};
++      }
++      derived |=
++          found->second.provenance.PlanMap(use.offset, use.size).status ==
++          WebGpuMapProvenance::kReadback;
++    }
++    if (use.writable && use.size) {
++      requests.push_back({use.buffer, use.offset, use.size, 0});
++    }
++  }
++  if (!derived || requests.empty()) {
++    return {};
++  }
++  std::sort(requests.begin(), requests.end(), [](const auto& a, const auto& b) {
++    if (a.buffer.handle != b.buffer.handle) {
++      return std::less<WGPUBuffer>{}(a.buffer.handle, b.buffer.handle);
++    }
++    return a.offset < b.offset;
++  });
++  std::vector<dawn::native::GlintShaderByteRequest> merged;
++  for (const auto& request : requests) {
++    if (!merged.empty()) {
++      auto& last = merged.back();
++      if (last.buffer.handle == request.buffer.handle &&
++          request.offset <= last.offset + last.size) {
++        last.size =
++            std::max(last.offset + last.size, request.offset + request.size) -
++            last.offset;
++        continue;
++      }
++    }
++    merged.push_back(request);
++  }
++  if (merged.size() > pending_.size()) {
++    return {};
++  }
++  const auto free_slots = static_cast<size_t>(std::count_if(
++      pending_.begin(), pending_.end(), [](const PendingCapture& value) {
++        return value.token.snapshot_id == 0;
++      }));
++  if (merged.size() > free_slots) {
++    return {};
++  }
++  size_t bytes = 0;
++  for (const auto& request : merged) {
++    if (request.size > limits_.snapshots - bytes) {
++      return {};
++    }
++    bytes += static_cast<size_t>(request.size);
++  }
++  if (bytes > limits_.snapshots - snapshots_.reserved_bytes()) {
++    return {};
++  }
++  if (scope_id_ == std::numeric_limits<uint64_t>::max() ||
++      merged.size() > std::numeric_limits<uint64_t>::max() - snapshot_id_) {
++    Fail();
++    return {0, {}, true};
++  }
++  dawn::native::GlintShaderBytePlan result;
++  active_scope_ = ++scope_id_;
++  result.ticket = active_scope_;
++  for (auto& request : merged) {
++    if (!GetBuffer(request.buffer)) {
++      Fail();
++      return {0, {}, true};
++    }
++    const auto sequence = NextSequence();
++    if (!sequence) {
++      Fail();
++      return {0, {}, true};
++    }
++    const WebGpuSnapshotToken token{epoch_, ++snapshot_id_, sequence,
++                                    policy_->generation()};
++    if (!snapshots_.BeginByteCapture(token,
++                                     static_cast<size_t>(request.size))) {
++      Fail();
++      return {0, {}, true};
++    }
++    request.requestId = scoped_outputs_.size() + 1;
++    scoped_outputs_.push_back({request, token});
++    result.requests.push_back(request);
++  }
++  return result;
++}
++
++bool GlintWebGPUReadbackObserver::CommitShaderByteScope(
++    uint64_t ticket,
++    std::vector<dawn::native::GlintShaderByteResult> results) {
++  std::lock_guard lock(mutex_);
++  if (failed_) {
++    return false;
++  }
++  if (!ticket || ticket != active_scope_ ||
++      results.size() != scoped_outputs_.size()) {
++    Fail();
++    return false;
++  }
++  for (size_t index = 0; index < results.size(); ++index) {
++    if (results[index].requestId != scoped_outputs_[index].request.requestId ||
++        !results[index].snapshot ||
++        results[index].snapshot->GetByteSize() !=
++            scoped_outputs_[index].request.size) {
++      Fail();
++      return false;
++    }
++  }
++  for (size_t index = 0; index < results.size(); ++index) {
++    const auto& output = scoped_outputs_[index];
++    auto* buffer = GetBuffer(output.request.buffer);
++    auto slot = std::find_if(pending_.begin(), pending_.end(),
++                             [](const PendingCapture& value) {
++                               return value.token.snapshot_id == 0;
++                             });
++    if (!buffer || slot == pending_.end() ||
++        !buffer->provenance.RecordCapturedByteCopy(
++            output.token.source_version, output.request.offset,
++            output.request.size, output.token)) {
++      Fail();
++      return false;
++    }
++    slot->token = output.token;
++    slot->byte_native = std::move(results[index].snapshot);
++  }
++  active_scope_ = 0;
++  scoped_outputs_.clear();
++  Collect();
++  return true;
++}
++
++void GlintWebGPUReadbackObserver::OnShaderScope(
++    const dawn::native::GlintShaderScope& scope) {
++  const auto uses = scope.buffers;
++  std::lock_guard lock(mutex_);
++  if (failed_) {
++    return;
++  }
++  if (active_scope_ || !ValidateShaderScope(scope)) {
++    Fail();
++    return;
++  }
++  bool derived = scope.hasTextureInputs;
++  for (const auto& use : uses) {
++    const auto found = buffers_.find(use.buffer.handle);
++    if (found != buffers_.end() && use.readable && use.size != 0 &&
+         (found->second.unsafe ||
+          found->second.provenance.PlanMap(use.offset, use.size).status !=
+              WebGpuMapProvenance::kUnrelated)) {
+@@ -322,6 +521,10 @@
+ 
+ void GlintWebGPUReadbackObserver::OnBufferDestroyed(WGPUBuffer buffer) {
+   std::lock_guard lock(mutex_);
++  if (active_scope_) {
++    Fail();
++    return;
++  }
+   buffers_.erase(buffer);
+   Collect();
+ }
+@@ -329,7 +532,7 @@
+     BufferState* buffer,
+     uint64_t offset,
+     uint64_t size) const {
+-  if (failed_ || !buffer || buffer->unsafe) {
++  if (failed_ || active_scope_ || !buffer || buffer->unsafe) {
+     return GlintReadbackMapStatus::Denied;
+   }
+   switch (buffer->provenance.PlanMap(offset, size).status) {
+@@ -363,6 +566,18 @@
+       continue;
+     }
+     std::span<const uint8_t> original;
++    if (found->byte_native) {
++      const auto status = found->byte_native->Read(&original);
++      if (status != GlintReadbackStatus::Ready) {
++        return status;
++      }
++      if (!snapshots_.CompleteByteCapture(found->token, original)) {
++        return GlintReadbackStatus::Failed;
++      }
++      found->complete = true;
++      found->byte_native.reset();
++      continue;
++    }
+     if (!found->native) {
+       return GlintReadbackStatus::Failed;
+     }
+--- a/gpu/command_buffer/common/glint/webgpu_readback_provenance.h
++++ b/gpu/command_buffer/common/glint/webgpu_readback_provenance.h
+@@ -27,7 +27,7 @@
+   uint32_t full_height = 0;
+ };
+ 
+-enum class WebGpuReadbackRegionKind { kPixels, kShaderDerived };
++enum class WebGpuReadbackRegionKind { kPixels, kShaderDerived, kCapturedBytes };
+ 
+ struct WebGpuReadbackRegion {
+   uint64_t buffer_offset = 0;
+@@ -85,6 +85,10 @@
+   // Shader-dependent bytes are opaque: they cannot use a pixel snapshot.
+   // Trusted complete literal writes/copies may replace this precise interval.
+   bool RecordDerivedWrite(uint64_t sequence, uint64_t offset, uint64_t size);
++  // A trusted controller must separately prove shader-input/output eligibility.
++  // This only records an exact execution-bound byte snapshot, not a privacy proof.
++  bool RecordCapturedByteCopy(uint64_t sequence, uint64_t offset, uint64_t size,
++                              const WebGpuSnapshotToken& snapshot);
+   WebGpuReadbackPlan PlanMap(uint64_t offset, uint64_t size) const;
+   void Destroy();
+ 
+--- a/gpu/command_buffer/common/glint/webgpu_readback_provenance.cc
++++ b/gpu/command_buffer/common/glint/webgpu_readback_provenance.cc
+@@ -13,14 +13,16 @@
+   auto result = region;
+   result.buffer_offset = begin;
+   result.size = end - begin;
+-  if (region.kind == WebGpuReadbackRegionKind::kPixels) {
++  if (region.kind == WebGpuReadbackRegionKind::kPixels ||
++      region.kind == WebGpuReadbackRegionKind::kCapturedBytes) {
+     result.snapshot_offset += begin - region.buffer_offset;
+   }
+   return result;
+ }
+ 
+ bool ContainsTrackedData(const WebGpuReadbackRegion& region) {
+-  if (region.kind == WebGpuReadbackRegionKind::kShaderDerived) {
++  if (region.kind == WebGpuReadbackRegionKind::kShaderDerived ||
++      region.kind == WebGpuReadbackRegionKind::kCapturedBytes) {
+     return region.size != 0;
+   }
+   const auto end = WebGpuReadbackEnd(region.snapshot_layout,
+@@ -76,7 +78,8 @@
+ 
+ bool WebGpuReadbackProvenance::Append(const WebGpuReadbackRegion& region) {
+   if (region.kind != WebGpuReadbackRegionKind::kPixels &&
+-      region.kind != WebGpuReadbackRegionKind::kShaderDerived) {
++      region.kind != WebGpuReadbackRegionKind::kShaderDerived &&
++      region.kind != WebGpuReadbackRegionKind::kCapturedBytes) {
+     return Poison();
+   }
+   if (!ContainsTrackedData(region)) {
+@@ -294,6 +297,24 @@
+   return Append(region);
+ }
+ 
++bool WebGpuReadbackProvenance::RecordCapturedByteCopy(
++    uint64_t sequence, uint64_t offset, uint64_t size,
++    const WebGpuSnapshotToken& snapshot) {
++  if (!Advance(sequence)) return false;
++  if (!Fits(offset, size) || size == 0 || snapshot.device_epoch != device_epoch_ ||
++      snapshot.snapshot_id == 0 || snapshot.source_version != sequence ||
++      snapshot.policy_generation == 0) {
++    return Poison();
++  }
++  if (!Erase(offset, size)) return false;
++  WebGpuReadbackRegion region;
++  region.buffer_offset = offset;
++  region.size = size;
++  region.snapshot = snapshot;
++  region.kind = WebGpuReadbackRegionKind::kCapturedBytes;
++  return Append(region);
++}
++
+ WebGpuReadbackPlan WebGpuReadbackProvenance::PlanMap(uint64_t offset,
+                                                      uint64_t size) const {
+   WebGpuReadbackPlan plan;
+--- a/gpu/command_buffer/common/glint/webgpu_readback_snapshot.h
++++ b/gpu/command_buffer/common/glint/webgpu_readback_snapshot.h
+@@ -54,6 +54,12 @@
+       std::span<const uint8_t> mapped) const;
+   bool Release(const WebGpuSnapshotToken& token);
+   void Destroy();
++  // Trusted execution-bound capture only. The controller must prove that the
++  // captured shader output is eligible before it creates corresponding provenance.
++  // These methods preserve bytes; they do not transform raw fingerprint data.
++  bool BeginByteCapture(const WebGpuSnapshotToken& token, size_t bytes);
++  bool CompleteByteCapture(const WebGpuSnapshotToken& token,
++                           std::span<const uint8_t> captured);
+   size_t retained_bytes() const { return retained_bytes_; }
+   size_t reserved_bytes() const { return reserved_bytes_; }
+   size_t pending_count() const;
+@@ -63,6 +69,7 @@
+     enum class State { kFree, kPending, kReady };
+     State state = State::kFree;
+     WebGpuSnapshotToken token;
++    bool byte_capture = false;
+     WebGpuReadbackLayout capture_layout;
+     uint32_t width = 0;
+     uint32_t height = 0;
+--- a/gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc
++++ b/gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc
+@@ -58,6 +58,50 @@
+   return true;
+ }
+ 
++bool WebGpuReadbackSnapshots::BeginByteCapture(
++    const WebGpuSnapshotToken& token, size_t bytes) {
++  if (destroyed_ || token.device_epoch != device_epoch_ ||
++      token.policy_generation != policy_generation_ || token.source_version == 0 ||
++      token.snapshot_id <= last_snapshot_id_ || bytes == 0 ||
++      bytes > snapshot_limit_bytes_ - reserved_bytes_) {
++    return false;
++  }
++  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(), [](const Snapshot& value) {
++    return value.state == Snapshot::State::kFree;
++  });
++  if (slot == snapshots_.end()) return false;
++  slot->state = Snapshot::State::kPending;
++  slot->byte_capture = true;
++  slot->token = token;
++  slot->size = bytes;
++  reserved_bytes_ += bytes;
++  last_snapshot_id_ = token.snapshot_id;
++  return true;
++}
++
++bool WebGpuReadbackSnapshots::CompleteByteCapture(
++    const WebGpuSnapshotToken& token, std::span<const uint8_t> captured) {
++  if (destroyed_ || token.snapshot_id == 0) return false;
++  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(), [&](const Snapshot& value) {
++    return value.state == Snapshot::State::kPending && value.byte_capture && value.token == token;
++  });
++  if (slot == snapshots_.end()) return false;
++  if (captured.size() != slot->size) {
++    Release(token);
++    return false;
++  }
++  auto original = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[slot->size]);
++  if (!original) {
++    Release(token);
++    return false;
++  }
++  std::copy(captured.begin(), captured.end(), original.get());
++  slot->original = std::move(original);
++  slot->state = Snapshot::State::kReady;
++  retained_bytes_ += slot->size;
++  return true;
++}
++
+ bool WebGpuReadbackSnapshots::CompleteCapture(
+     const WebGpuSnapshotToken& token,
+     const WebGpuReadbackLayout& full_surface,
+@@ -69,7 +113,7 @@
+   }
+   auto slot = std::find_if(
+       snapshots_.begin(), snapshots_.end(), [&token](const Snapshot& value) {
+-        return value.state == Snapshot::State::kPending && value.token == token;
++        return value.state == Snapshot::State::kPending && !value.byte_capture && value.token == token;
+       });
+   if (slot == snapshots_.end()) {
+     return false;
+@@ -164,13 +208,35 @@
+   const std::span<uint8_t> output(shadow.bytes.get(), mapped.size());
+   const std::span<uint8_t> markers(written.get(), marker_bytes);
+   std::copy(mapped.begin(), mapped.end(), shadow.bytes.get());
+-  bool observed_pixel = false;
++  bool observed_data = false;
+   for (size_t index = 0; index < plan.count; ++index) {
+     const auto& region = plan.regions[index];
+-    if (region.kind != WebGpuReadbackRegionKind::kPixels) {
++    const auto* snapshot = Find(region.snapshot);
++    if (region.kind == WebGpuReadbackRegionKind::kCapturedBytes) {
++      if (!snapshot || !snapshot->byte_capture || !snapshot->original || region.size == 0 ||
++          region.buffer_offset < mapping_offset ||
++          region.buffer_offset - mapping_offset > mapped.size() ||
++          region.size > mapped.size() - (region.buffer_offset - mapping_offset) ||
++          region.snapshot_offset > snapshot->size ||
++          region.size > snapshot->size - region.snapshot_offset) {
++        return std::nullopt;
++      }
++      const std::span<const uint8_t> captured(snapshot->original.get(), snapshot->size);
++      for (uint64_t byte = 0; byte < region.size; ++byte) {
++        const size_t local = static_cast<size_t>(region.buffer_offset - mapping_offset + byte);
++        const size_t source = static_cast<size_t>(region.snapshot_offset + byte);
++        const uint8_t bit = static_cast<uint8_t>(1u << (local % 8));
++        if ((markers[local / 8] & bit) != 0 || mapped[local] != captured[source]) {
++          return std::nullopt;
++        }
++        markers[local / 8] |= bit;
++        observed_data = true;
++      }
++      continue;
++    }
++    if (region.kind != WebGpuReadbackRegionKind::kPixels || !snapshot || snapshot->byte_capture) {
+       return std::nullopt;
+     }
+-    const auto* snapshot = Find(region.snapshot);
+     const auto source_end = WebGpuReadbackEnd(
+         region.snapshot_layout, std::numeric_limits<size_t>::max());
+     if (!snapshot || !source_end || region.size == 0 ||
+@@ -226,12 +292,12 @@
+           return std::nullopt;
+         }
+         markers[local / 8] |= bit;
+-        observed_pixel = true;
++        observed_data = true;
+         output[local] = protected_pixels[canonical];
+       }
+     }
+   }
+-  if (!observed_pixel) {
++  if (!observed_data) {
+     return std::nullopt;
+   }
+   return shadow;
+@@ -240,9 +306,10 @@
+ bool WebGpuReadbackSnapshots::Release(const WebGpuSnapshotToken& token) {
+   for (auto& snapshot : snapshots_) {
+     if (snapshot.state != Snapshot::State::kFree && snapshot.token == token) {
+-      reserved_bytes_ -= snapshot.size * 2;
++      const size_t charge = snapshot.size * (snapshot.byte_capture ? 1 : 2);
++      reserved_bytes_ -= charge;
+       if (snapshot.state == Snapshot::State::kReady) {
+-        retained_bytes_ -= snapshot.size * 2;
++        retained_bytes_ -= charge;
+       }
+       snapshot = Snapshot{};
+       return true;
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -29,6 +29,7 @@
+ 
+ #include <algorithm>
+ #include <map>
++#include <optional>
+ #include <utility>
+ #include <vector>
+ 
+@@ -485,14 +486,18 @@
+     BindGroupStateTracker(Device* device, DescriptorHeapState* heapState)
+         : Base(), mDevice(device), mHeapState(heapState) {}
+ 
+-    void NotifyGlintBindingScope(wgpu::ShaderStage stages,
+-                                 std::span<const GlintShaderBufferUse> extraUses = {},
+-                                 bool framebufferFetch = false) {
+-        auto observer = mDevice->GetGlintReadbackObserver();
+-        if (!observer) {
+-            return;
+-        }
++    struct GlintBoundScope {
+         std::vector<GlintShaderBufferUse> uses;
++        std::vector<Ref<BufferBase>> owners;
++        bool textureInputs;
++    };
++
++    std::optional<GlintBoundScope> BuildGlintBindingScope(
++        wgpu::ShaderStage stages,
++        std::span<const GlintShaderBufferUse> extraUses = {},
++        bool framebufferFetch = false) {
++        std::vector<GlintShaderBufferUse> uses;
++        std::vector<Ref<BufferBase>> owners;
+         auto append = [&](BufferBase* buffer, uint64_t offset, uint64_t size,
+                           bool writable) {
+             if (!buffer || offset > buffer->GetSize() || size > buffer->GetSize() - offset ||
+@@ -501,6 +506,7 @@
+             }
+             uses.push_back({{ToAPI(buffer), buffer->GetSize()}, true, writable,
+                             offset, size, true});
++            owners.push_back(buffer);
+             return true;
+         };
+         bool textureInputs = framebufferFetch || mPipeline->GetLayout()->UsesResourceTable();
+@@ -511,8 +517,7 @@
+             }
+             auto* group = mBindGroups[groupIndex];
+             if (!group) {
+-                observer->OnShaderScope({});
+-                return;
++                return std::nullopt;
+             }
+             const auto* layout = group->GetLayout();
+             for (BindingIndex index : layout->GetSampledTextureIndices()) {
+@@ -534,8 +539,7 @@
+                     case wgpu::StorageTextureAccess::WriteOnly:
+                         break;
+                     default:
+-                        observer->OnShaderScope({});
+-                        return;
++                        return std::nullopt;
+                 }
+             }
+             // External textures expand to sampled planes and a metadata buffer.
+@@ -547,8 +551,7 @@
+             }
+             const auto dynamic = GetDynamicOffsets(groupIndex);
+             if (dynamic.size() != layout->GetDynamicBufferCount()) {
+-                observer->OnShaderScope({});
+-                return;
++                return std::nullopt;
+             }
+             for (BindingIndex index : layout->GetBufferIndices()) {
+                 const auto& info = layout->GetBindingInfo(index);
+@@ -562,8 +565,7 @@
+                     if (index >= dynamic.size() || !binding.buffer ||
+                         offset > binding.buffer->GetSize() ||
+                         dynamic[index] > binding.buffer->GetSize() - offset) {
+-                        observer->OnShaderScope({});
+-                        return;
++                        return std::nullopt;
+                     }
+                     offset += dynamic[index];
+                 }
+@@ -579,12 +581,10 @@
+                         writable = true;
+                         break;
+                     default:
+-                        observer->OnShaderScope({});
+-                        return;
++                        return std::nullopt;
+                 }
+                 if (!append(binding.buffer, offset, binding.size, writable)) {
+-                    observer->OnShaderScope({});
+-                    return;
++                    return std::nullopt;
+                 }
+             }
+             for (BindingIndex index : layout->GetTexelBufferIndices()) {
+@@ -602,29 +602,42 @@
+                         writable = true;
+                         break;
+                     default:
+-                        observer->OnShaderScope({});
+-                        return;
++                        return std::nullopt;
+                 }
+                 auto* view = group->GetBindingAsTexelBufferView(index);
+                 if (!view || !append(view->GetBuffer(), view->GetOffset(), view->GetSize(), writable)) {
+-                    observer->OnShaderScope({});
+-                    return;
++                    return std::nullopt;
+                 }
+             }
+         }
+         for (const auto& use : extraUses) {
+             if (!use.rangeKnown || !use.buffer.handle || use.offset > use.buffer.size ||
+                 use.size > use.buffer.size - use.offset || uses.size() == kGlintShaderBufferUseLimit) {
+-                observer->OnShaderScope({});
+-                return;
++                return std::nullopt;
+             }
+             uses.push_back(use);
+         }
+-        observer->OnShaderScope({uses, textureInputs, true});
++        return GlintBoundScope{std::move(uses), std::move(owners), textureInputs};
++    }
++
++    void NotifyGlintBindingScope(wgpu::ShaderStage stages,
++                                 std::span<const GlintShaderBufferUse> extraUses = {},
++                                 bool framebufferFetch = false) {
++        auto observer = mDevice->GetGlintReadbackObserver();
++        if (!observer) {
++            return;
++        }
++        auto scope = BuildGlintBindingScope(stages, extraUses, framebufferFetch);
++        if (!scope) {
++            observer->OnShaderScope({});
++            return;
++        }
++        observer->OnShaderScope({scope->uses, scope->textureInputs, true});
+     }
+ 
+     MaybeError PrepareGlintComputeProjection(CommandRecordingContext* context) {
+         static_assert(std::is_same_v<PipelineType, ComputePipeline>);
++        mGlintComputeProjectedReady = false;
+         ResetGlintViewOverrides();
+         if (!mDevice->GetGlintReadbackObserver()) return {};
+         DAWN_INTERNAL_ERROR_IF(!mPipeline || mPipeline->GetLayout()->UsesResourceTable(),
+@@ -648,6 +661,7 @@
+             }
+         }
+         if (recorded) RestoreAfterGlintProjection(context->GetCommandList());
++        mGlintComputeProjectedReady = true;
+         return {};
+     }
+ 
+@@ -691,16 +705,70 @@
+         return {};
+     }
+ 
+-    void NotifyGlintComputeScope(BufferBase* indirectBuffer = nullptr,
+-                                uint64_t indirectOffset = 0) {
++    MaybeError CaptureGlintComputeScope(CommandRecordingContext* context,
++                                        BufferBase* indirectBuffer = nullptr,
++                                        uint64_t indirectOffset = 0) {
++        static_assert(std::is_same_v<PipelineType, ComputePipeline>);
++        auto observer = mDevice->GetGlintReadbackObserver();
++        if (!observer) {
++            return {};
++        }
++        std::optional<GlintBoundScope> bound;
+         if (indirectBuffer) {
+-            const std::array uses{GlintShaderBufferUse{
+-                {ToAPI(indirectBuffer), indirectBuffer->GetSize()}, true, false,
+-                indirectOffset, 3 * sizeof(uint32_t), true}};
+-            NotifyGlintBindingScope(wgpu::ShaderStage::Compute, uses);
++            const std::array uses{
++                GlintShaderBufferUse{{ToAPI(indirectBuffer), indirectBuffer->GetSize()},
++                                     true,
++                                     false,
++                                     indirectOffset,
++                                     3 * sizeof(uint32_t),
++                                     true}};
++            bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute, uses);
+         } else {
+-            NotifyGlintBindingScope(wgpu::ShaderStage::Compute);
+-        }
++            bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute);
++        }
++        DAWN_INTERNAL_ERROR_IF(!bound, "Invalid Glint compute capture binding scope.");
++        const GlintShaderScope scope{bound->uses, bound->textureInputs, true};
++        const auto plan = observer->BeginShaderByteScope(scope, mGlintComputeProjectedReady);
++        DAWN_INTERNAL_ERROR_IF(plan.failed, "Glint shader capture controller failed.");
++        if (!plan.ticket) {
++            observer->OnShaderScope(scope);
++            return {};
++        }
++        std::vector<GlintShaderByteResult> results;
++        for (const auto& request : plan.requests) {
++            const auto owner = std::find_if(bound->owners.begin(), bound->owners.end(),
++                                            [&](const Ref<BufferBase>& buffer) {
++                                                return ToAPI(buffer.Get()) == request.buffer.handle;
++                                            });
++            DAWN_INTERNAL_ERROR_IF(owner == bound->owners.end() || !request.size ||
++                                       request.buffer.size != (*owner)->GetSize() ||
++                                       request.offset > request.buffer.size ||
++                                       request.size > request.buffer.size - request.offset,
++                                   "Glint capture request has no matching native buffer owner.");
++            // Verify the requested interval is entirely covered by the actual writable bindings.
++            const uint64_t end = request.offset + request.size;
++            uint64_t covered = request.offset;
++            while (covered < end) {
++                uint64_t next = covered;
++                for (const auto& use : bound->uses) {
++                    if (use.writable && use.buffer.handle == request.buffer.handle &&
++                        use.offset <= covered && use.offset + use.size > next) {
++                        next = std::min(end, use.offset + use.size);
++                    }
++                }
++                DAWN_INTERNAL_ERROR_IF(next == covered,
++                                       "Glint byte capture exceeds writable bindings.");
++                covered = next;
++            }
++            std::unique_ptr<GlintByteReadbackSnapshot> snapshot;
++            DAWN_TRY_ASSIGN(snapshot,
++                            RecordGlintNativeByteSnapshot(mDevice, context, ToBackend(owner->Get()),
++                                                          request.offset, request.size));
++            results.push_back({request.requestId, std::move(snapshot)});
++        }
++        DAWN_INTERNAL_ERROR_IF(!observer->CommitShaderByteScope(plan.ticket, std::move(results)),
++                               "Glint shader byte capture transaction was rejected.");
++        return {};
+     }
+ 
+     // A WebGPU pipeline layout can map to multiple D3D12 root signatures (PipelineLayoutHandles)
+@@ -1123,6 +1191,7 @@
+ 
+     PerBindGroup<D3D12_GPU_DESCRIPTOR_HANDLE> mBoundRootSamplerTables = {};
+     bool mGlintStateInvalidated = false;
++    bool mGlintComputeProjectedReady = false;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+     PerBindGroup<Ref<BindGroup>> mGlintGroupSources;
+@@ -1741,6 +1810,12 @@
+ 
+                 RecordResolveQuerySetCmd(commandList, device, querySet, cmd->firstQuery,
+                                          cmd->queryCount, destination, cmd->destinationOffset);
++                if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
++                    observer->OnBufferWrite(
++                        {ToAPI(cmd->destination.Get()), destination->GetSize()},
++                        cmd->destinationOffset, ToQueryStorageSize(cmd->queryCount),
++                        GlintBufferWriteKind::Uncertain);
++                }
+ 
+                 break;
+             }
+@@ -1871,7 +1946,7 @@
+                 immediates.Apply(commandContext);
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
+-                bindingTracker->NotifyGlintComputeScope();
++                DAWN_TRY(bindingTracker->CaptureGlintComputeScope(commandContext));
+                 break;
+             }
+ 
+@@ -1892,8 +1967,8 @@
+                     signature.Get(), 1,
+                     ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
+-                bindingTracker->NotifyGlintComputeScope(
+-                    dispatch->indirectBuffer.Get(), dispatch->indirectOffset);
++                DAWN_TRY(bindingTracker->CaptureGlintComputeScope(
++                    commandContext, dispatch->indirectBuffer.Get(), dispatch->indirectOffset));
+                 break;
+             }
+ 
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
+@@ -10,6 +10,7 @@
+ namespace dawn::native::d3d12 {
+ class Device;
+ class Texture;
++class Buffer;
+ class CommandRecordingContext;
+ // Native validated recording under the device lock. Device quota is retained
+ // through the existing COM retirement queue; caller still registers provenance.
+@@ -21,5 +22,12 @@
+     Device* device,
+     CommandRecordingContext* context,
+     Texture* texture);
++// Private execution-bound byte snapshot. Does not itself authorize map admission.
++ResultOrError<std::unique_ptr<GlintByteReadbackSnapshot>> RecordGlintNativeByteSnapshot(
++    Device* device,
++    CommandRecordingContext* context,
++    Buffer* source,
++    uint64_t offset,
++    uint64_t size);
+ }  // namespace dawn::native::d3d12
+ #endif
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
+@@ -3,6 +3,7 @@
+ #include "src/dawn/native/d3d12/GlintTextureReadbackD3D12.h"
+ 
+ #include "src/dawn/native/d3d/D3DError.h"
++#include "src/dawn/native/d3d12/BufferD3D12.h"
+ #include "src/dawn/native/d3d12/CommandRecordingContext.h"
+ #include "src/dawn/native/d3d12/DeviceD3D12.h"
+ #include "src/dawn/native/d3d12/QueueD3D12.h"
+@@ -32,6 +33,25 @@
+ 
+   private:
+     std::unique_ptr<glint::candidate::d3d12::TextureCapture> mCapture;
++};
++class NativeGlintByteReadbackSnapshot final : public GlintByteReadbackSnapshot {
++  public:
++    NativeGlintByteReadbackSnapshot(
++        std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture,
++        uint64_t size)
++        : mCapture(std::move(capture)), mSize(size) {}
++    GlintReadbackStatus Read(std::span<const uint8_t>* bytes) const override {
++        const HRESULT result = mCapture->ReadCompleted(bytes);
++        if (result == E_PENDING) {
++            return GlintReadbackStatus::Pending;
++        }
++        return SUCCEEDED(result) ? GlintReadbackStatus::Ready : GlintReadbackStatus::Failed;
++    }
++    uint64_t GetByteSize() const override { return mSize; }
++
++  private:
++    std::unique_ptr<glint::candidate::d3d12::TextureCapture> mCapture;
++    uint64_t mSize;
+ };
+ }  // namespace
+ 
+@@ -75,4 +95,31 @@
+     return std::unique_ptr<GlintReadbackSnapshot>(
+         new NativeGlintReadbackSnapshot(std::move(capture)));
+ }
++ResultOrError<std::unique_ptr<GlintByteReadbackSnapshot>> RecordGlintNativeByteSnapshot(
++    Device* device,
++    CommandRecordingContext* context,
++    Buffer* source,
++    uint64_t offset,
++    uint64_t size) {
++    DAWN_INTERNAL_ERROR_IF(!device || !context || !source || source->GetDevice() != device ||
++                               !source->HasAccess() || !source->GetD3D12Resource() || size == 0 ||
++                               offset > source->GetSize() || size > source->GetSize() - offset,
++                           "Invalid Glint byte-capture source owner or range.");
++    DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
++    DAWN_TRY(source->EnsureDataInitialized(context));
++    // Internal GPU copying does not expose a WebGPU CopySrc command or require that API usage.
++    source->TrackUsageAndTransitionNow(context, wgpu::BufferUsage::CopySrc);
++    auto* queue = ToBackend(device->GetQueue());
++    std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture;
++    DAWN_TRY(CheckHRESULT(
++        glint::candidate::d3d12::TextureCapture::RecordBufferBudgeted(
++            device->GetD3D12Device(), context->GetCommandList(), source->GetD3D12Resource(), offset,
++            size, true, queue->GetSharedFence()->GetD3DFence(),
++            uint64_t{queue->GetPendingCommandSerial()}, device->GetGlintReadbackBudget(), &capture),
++        "Glint execution-bound byte capture"));
++    device->ReferenceUntilUnused(capture->retirement_handle());
++    context->AddGlintReadbackSubmission(capture->submission_marker());
++    return std::unique_ptr<GlintByteReadbackSnapshot>(
++        new NativeGlintByteReadbackSnapshot(std::move(capture), size));
++}
+ }  // namespace dawn::native::d3d12
+--- a/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h
+@@ -53,6 +53,19 @@
+                                   uint64_t completion_value,
+                                   const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
+                                   std::unique_ptr<TextureCapture>* result);
++    // Exact private byte snapshot, not a pixel surface. Caller validates logical
++    // ownership, initialized contents and COPY_SOURCE state on an open DIRECT list.
++    // ReadCompleted returns the original byte range; it does not transform it.
++    static HRESULT RecordBufferBudgeted(ID3D12Device* device,
++                                       ID3D12GraphicsCommandList* commands,
++                                       ID3D12Resource* source,
++                                       uint64_t offset,
++                                       uint64_t size,
++                                       bool source_initialized,
++                                       ID3D12Fence* completion_fence,
++                                       uint64_t completion_value,
++                                       const std::shared_ptr<CaptureMemoryBudget>& budget,
++                                       std::unique_ptr<TextureCapture>* result);
+     ~TextureCapture();
+     TextureCapture(const TextureCapture&) = delete;
+     TextureCapture& operator=(const TextureCapture&) = delete;
+@@ -75,6 +88,14 @@
+                               uint64_t allocation_limit,
+                               const std::shared_ptr<CaptureMemoryBudget>& budget,
+                               std::unique_ptr<TextureCapture>* result);
++    static HRESULT AllocateReadback(ID3D12Device* device,
++                                    ID3D12Resource* source_resource,
++                                    ID3D12Fence* completion_fence,
++                                    uint64_t completion_value,
++                                    uint64_t mapped_bytes,
++                                    uint64_t allocation_budget,
++                                    const std::shared_ptr<CaptureMemoryBudget>& budget,
++                                    std::unique_ptr<TextureCapture>* result);
+     TextureCapture() = default;
+     Microsoft::WRL::ComPtr<ID3D12Device> device_;
+     Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+--- a/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc
+@@ -54,19 +54,23 @@
+         }
+         return remaining;
+     }
+-    void SetResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource) {
++    void SetResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource,
++                     Microsoft::WRL::ComPtr<ID3D12Resource> source) {
+         resource_ = std::move(resource);
++        source_ = std::move(source);
+     }
+ 
+   private:
+     ~CaptureRetirement() {
+         resource_.Reset();
++        source_.Reset();
+         budget_->Release(bytes_);
+     }
+     std::atomic<ULONG> references_{1};
+     std::shared_ptr<CaptureMemoryBudget> budget_;
+     const uint64_t bytes_;
+     Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
++    Microsoft::WRL::ComPtr<ID3D12Resource> source_;
+ };
+ 
+ HRESULT TextureCapture::Record(ID3D12Device* device,
+@@ -163,65 +167,10 @@
+         mapped_bytes > std::numeric_limits<size_t>::max() || mapped_bytes > allocation_budget) {
+         return E_OUTOFMEMORY;
+     }
+-    D3D12_RESOURCE_DESC destination{};
+-    destination.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+-    destination.Width = mapped_bytes;
+-    destination.Height = 1;
+-    destination.DepthOrArraySize = 1;
+-    destination.MipLevels = 1;
+-    destination.SampleDesc.Count = 1;
+-    destination.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+-    const auto allocation = device->GetResourceAllocationInfo(0, 1, &destination);
+-    if (allocation.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
+-        allocation.SizeInBytes == 0 || allocation.SizeInBytes > allocation_budget) {
+-        return E_OUTOFMEMORY;
+-    }
+-    Microsoft::WRL::ComPtr<CaptureRetirement> retirement;
+-    if (budget) {
+-        if (!budget->Reserve(allocation.SizeInBytes)) {
+-            return E_OUTOFMEMORY;
+-        }
+-        auto* hold = new (std::nothrow) CaptureRetirement(budget, allocation.SizeInBytes);
+-        if (!hold) {
+-            budget->Release(allocation.SizeInBytes);
+-            return E_OUTOFMEMORY;
+-        }
+-        retirement.Attach(hold);
+-    }
+-    std::unique_ptr<TextureCapture> capture(new (std::nothrow) TextureCapture());
+-    if (!capture) {
+-        return E_OUTOFMEMORY;
+-    }
+-    D3D12_HEAP_PROPERTIES heap{};
+-    heap.Type = D3D12_HEAP_TYPE_READBACK;
+-    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
+-    hr = device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &destination,
+-                                         D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+-                                         IID_PPV_ARGS(&capture->resource_));
+-    if (FAILED(hr)) {
+-        return hr;
+-    }
+-    if (retirement) {
+-        retirement->SetResource(capture->resource_);
+-        capture->retirement_ = retirement;
+-    }
+-    void* mapped = nullptr;
+-    D3D12_RANGE read_range{0, static_cast<SIZE_T>(mapped_bytes)};
+-    hr = capture->resource_->Map(0, &read_range, &mapped);
+-    if (FAILED(hr)) {
+-        return hr;
+-    }
+-    if (!mapped) {
+-        capture->resource_->Unmap(0, nullptr);
+-        return E_FAIL;
+-    }
+-    capture->mapped_ = std::span<const uint8_t>(static_cast<const uint8_t*>(mapped),
+-                                                static_cast<size_t>(mapped_bytes));
+-    capture->submitted_ = std::make_shared<std::atomic<bool>>(false);
+-    capture->device_ = device;
+-    capture->fence_ = completion_fence;
+-    capture->completion_value_ = completion_value;
+-    capture->allocation_bytes_ = allocation.SizeInBytes;
++    std::unique_ptr<TextureCapture> capture;
++    hr = AllocateReadback(device, texture, completion_fence, completion_value,
++                          mapped_bytes, allocation_budget, budget, &capture);
++    if (FAILED(hr)) return hr;
+     capture->width_ = static_cast<uint32_t>(source.Width);
+     capture->height_ = source.Height;
+     capture->row_pitch_ = footprint.Footprint.RowPitch;
+@@ -239,6 +188,125 @@
+     return S_OK;
+ }
+ 
++HRESULT TextureCapture::AllocateReadback(
++    ID3D12Device* device,
++    ID3D12Resource* source_resource,
++    ID3D12Fence* completion_fence,
++    uint64_t completion_value,
++    uint64_t mapped_bytes,
++    uint64_t allocation_budget,
++    const std::shared_ptr<CaptureMemoryBudget>& budget,
++    std::unique_ptr<TextureCapture>* result) {
++    D3D12_RESOURCE_DESC destination{};
++    destination.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
++    destination.Width = mapped_bytes;
++    destination.Height = 1;
++    destination.DepthOrArraySize = 1;
++    destination.MipLevels = 1;
++    destination.SampleDesc.Count = 1;
++    destination.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
++    const auto allocation = device->GetResourceAllocationInfo(0, 1, &destination);
++    if (allocation.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
++        allocation.SizeInBytes == 0 || allocation.SizeInBytes > allocation_budget) {
++        return E_OUTOFMEMORY;
++    }
++    Microsoft::WRL::ComPtr<CaptureRetirement> retirement;
++    if (budget) {
++        if (!budget->Reserve(allocation.SizeInBytes)) {
++            return E_OUTOFMEMORY;
++        }
++        auto* hold = new (std::nothrow) CaptureRetirement(budget, allocation.SizeInBytes);
++        if (!hold) {
++            budget->Release(allocation.SizeInBytes);
++            return E_OUTOFMEMORY;
++        }
++        retirement.Attach(hold);
++    }
++    std::unique_ptr<TextureCapture> capture(new (std::nothrow) TextureCapture());
++    if (!capture) {
++        return E_OUTOFMEMORY;
++    }
++    D3D12_HEAP_PROPERTIES heap{};
++    heap.Type = D3D12_HEAP_TYPE_READBACK;
++    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
++    HRESULT hr = device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &destination,
++                                         D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
++                                         IID_PPV_ARGS(&capture->resource_));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (retirement) {
++        retirement->SetResource(capture->resource_, source_resource);
++        capture->retirement_ = retirement;
++    }
++    void* mapped = nullptr;
++    D3D12_RANGE read_range{0, static_cast<SIZE_T>(mapped_bytes)};
++    hr = capture->resource_->Map(0, &read_range, &mapped);
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (!mapped) {
++        capture->resource_->Unmap(0, nullptr);
++        return E_FAIL;
++    }
++    capture->mapped_ = std::span<const uint8_t>(static_cast<const uint8_t*>(mapped),
++                                                static_cast<size_t>(mapped_bytes));
++    capture->submitted_ = std::make_shared<std::atomic<bool>>(false);
++    capture->device_ = device;
++    capture->fence_ = completion_fence;
++    capture->completion_value_ = completion_value;
++    capture->allocation_bytes_ = allocation.SizeInBytes;
++    *result = std::move(capture);
++    return S_OK;
++}
++
++HRESULT TextureCapture::RecordBufferBudgeted(
++    ID3D12Device* device,
++    ID3D12GraphicsCommandList* commands,
++    ID3D12Resource* source,
++    uint64_t offset,
++    uint64_t size,
++    bool source_initialized,
++    ID3D12Fence* completion_fence,
++    uint64_t completion_value,
++    const std::shared_ptr<CaptureMemoryBudget>& budget,
++    std::unique_ptr<TextureCapture>* result) {
++    if (!result || *result || !device || !commands || !source || !completion_fence ||
++        !budget || budget->limit_bytes() == 0 || !source_initialized || size == 0 ||
++        completion_value == 0 || completion_value == std::numeric_limits<uint64_t>::max() ||
++        commands->GetType() != D3D12_COMMAND_LIST_TYPE_DIRECT) {
++        return E_INVALIDARG;
++    }
++    const auto desc = source->GetDesc();
++    if (desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER || desc.Format != DXGI_FORMAT_UNKNOWN ||
++        offset > desc.Width || size > desc.Width - offset) {
++        return E_INVALIDARG;
++    }
++    if (size > 64 * 1024 * 1024 || size > std::numeric_limits<size_t>::max()) {
++        return E_OUTOFMEMORY;
++    }
++    const auto prior = completion_fence->GetCompletedValue();
++    if (prior == std::numeric_limits<uint64_t>::max()) return DXGI_ERROR_DEVICE_REMOVED;
++    if (prior >= completion_value) return E_INVALIDARG;
++    Microsoft::WRL::ComPtr<ID3D12Device> source_device, commands_device, fence_device;
++    HRESULT hr = source->GetDevice(IID_PPV_ARGS(&source_device));
++    if (FAILED(hr)) return hr;
++    hr = commands->GetDevice(IID_PPV_ARGS(&commands_device));
++    if (FAILED(hr)) return hr;
++    hr = completion_fence->GetDevice(IID_PPV_ARGS(&fence_device));
++    if (FAILED(hr)) return hr;
++    if (source_device.Get() != device || commands_device.Get() != device || fence_device.Get() != device) {
++        return E_INVALIDARG;
++    }
++    std::unique_ptr<TextureCapture> capture;
++    hr = AllocateReadback(device, source, completion_fence, completion_value, size,
++                          budget->limit_bytes(), budget, &capture);
++    if (FAILED(hr)) return hr;
++    commands->CopyBufferRegion(capture->resource_.Get(), 0, source, offset, size);
++    *result = std::move(capture);
++    return S_OK;
++}
++
+ TextureCapture::~TextureCapture() {
+     if (resource_ && !mapped_.empty()) {
+         D3D12_RANGE written{0, 0};

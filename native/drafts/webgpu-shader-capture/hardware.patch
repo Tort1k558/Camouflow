@@ -1,0 +1,114 @@
+--- a/shadow_test.cc
++++ b/shadow_test.cc
+@@ -29,6 +29,7 @@
+ }
+ #define Ok(x) OkImpl((x), __LINE__)
+ #include "descriptor_fixture.h"
++#include "bridge_extracts.h"
+ ComPtr<ID3D12Resource> Buffer(ID3D12Device* device, size_t bytes, D3D12_HEAP_TYPE type,
+                              D3D12_RESOURCE_STATES state, bool uav = false) {
+     D3D12_RESOURCE_DESC desc{};
+@@ -307,6 +308,61 @@
+     cmd->SetComputeRoot32BitConstants(2, 16, params.data(), 0);
+     cmd->Dispatch((width + 3) / 4, (height + 3) / 4, 1);
+     Transition(cmd.Get(), output.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
++    auto policy = std::make_shared<const gpu::webgpu::GlintWebGPUDevicePolicy>(
++        std::move(*gpu::webgpu::GlintWebGPUDevicePolicy::Create(1,key)));
++    auto observer = std::make_shared<gpu::webgpu::GlintWebGPUReadbackObserver>(
++        policy,17,gpu::webgpu::GlintReadbackLimits{});
++    auto wire_filter = gpu::webgpu::ExtractedFilter(observer);
++    const dawn::native::GlintBufferIdentity identity{reinterpret_cast<WGPUBuffer>(0x51),pixel_bytes};
++    const std::array uses{dawn::native::GlintShaderBufferUse{
++        identity,true,true,4,pixel_bytes-8,true}};
++    const auto capture_plan = observer->BeginShaderByteScope({uses,true,true},true);
++    CHECK(capture_plan.ticket && !capture_plan.failed && capture_plan.requests.size()==1);
++    CHECK(capture_plan.requests[0].offset==4 && capture_plan.requests[0].size==pixel_bytes-8);
++    auto byte_budget = std::make_shared<CaptureMemoryBudget>(65536);
++    auto cancelled_budget = std::make_shared<CaptureMemoryBudget>(65536);
++    std::unique_ptr<TextureCapture> byte_snapshot, byte_cancelled;
++    auto capture_bytes = [&](uint64_t offset, uint64_t length, bool initialized, uint64_t serial,
++                             const std::shared_ptr<CaptureMemoryBudget>& quota,
++                             std::unique_ptr<TextureCapture>* target) {
++        return TextureCapture::RecordBufferBudgeted(device, cmd.Get(), output.Get(), offset, length,
++            initialized, fence.Get(), serial, quota, target);
++    };
++    CHECK(capture_bytes(0, 0, true, 1, byte_budget, &byte_snapshot) == E_INVALIDARG);
++    CHECK(capture_bytes(UINT64_MAX, 4, true, 1, byte_budget, &byte_snapshot) == E_INVALIDARG);
++    CHECK(capture_bytes(0, pixel_bytes + 1, true, 1, byte_budget, &byte_snapshot) == E_INVALIDARG);
++    CHECK(capture_bytes(0, 4, false, 1, byte_budget, &byte_snapshot) == E_INVALIDARG);
++    CHECK(capture_bytes(0, 4, true, 0, byte_budget, &byte_snapshot) == E_INVALIDARG);
++    CHECK(capture_bytes(0, 4, true, UINT64_MAX, byte_budget, &byte_snapshot) == E_INVALIDARG);
++    CHECK(TextureCapture::RecordBufferBudgeted(device, cmd.Get(), original.Get(), 0, 4, true,
++        fence.Get(), 1, byte_budget, &byte_snapshot) == E_INVALIDARG);
++    CHECK(byte_budget->used_bytes() == 0 && !byte_snapshot);
++    Ok(capture_bytes(4, pixel_bytes - 8, true, 1, byte_budget, &byte_snapshot));
++    CHECK(byte_budget->used_bytes() == byte_snapshot->allocation_bytes());
++    CHECK(byte_snapshot->format() == DXGI_FORMAT_UNKNOWN && byte_snapshot->width() == 0 &&
++          byte_snapshot->height() == 0 && byte_snapshot->row_pitch() == 0);
++    CHECK(capture_bytes(0, 4, true, 1, byte_budget, &byte_snapshot) == E_INVALIDARG);
++    std::unique_ptr<TextureCapture> denied_bytes;
++    CHECK(capture_bytes(0, 4, true, 1, byte_budget, &denied_bytes) == E_OUTOFMEMORY && !denied_bytes);
++    // The same aggregate quota is already occupied by the earlier texture projection.
++    CHECK(capture_bytes(0, 4, true, 1, exactly_one, &denied_bytes) == E_OUTOFMEMORY && !denied_bytes);
++    std::span<const uint8_t> byte_view(packed);
++    CHECK(byte_snapshot->ReadCompleted(&byte_view) == E_PENDING && byte_view.empty());
++    auto byte_marker = byte_snapshot->submission_marker();
++    byte_marker->store(true, std::memory_order_release);
++    CHECK(byte_snapshot->ReadCompleted(&byte_view) == E_PENDING && byte_view.empty());
++    byte_marker->store(false, std::memory_order_release);
++    CHECK(byte_snapshot->ReadCompleted(nullptr) == E_INVALIDARG);
++    std::vector<dawn::native::GlintShaderByteResult> captures;
++    captures.push_back({capture_plan.requests[0].requestId,
++        dawn::native::d3d12::WrapActualCapture(std::move(byte_snapshot),pixel_bytes-8)});
++    CHECK(observer->CommitShaderByteScope(capture_plan.ticket,std::move(captures)));
++    CHECK(wire_filter->Classify(identity.handle,pixel_bytes,0,pixel_bytes) ==
++        dawn::wire::BufferReadbackDisposition::Protected);
++    Ok(capture_bytes(0, pixel_bytes, true, 1, cancelled_budget, &byte_cancelled));
++    auto cancelled_hold = byte_cancelled->retirement_handle();
++    byte_cancelled.reset();
++    CHECK(cancelled_budget->used_bytes() == 65536);
+     cmd->CopyBufferRegion(readback.Get(), 0, output.Get(), 0, pixel_bytes);
+     // Exercise the new heap too; the old table stays valid after allocator rollover.
+     auto second_readback = Buffer(device, pixel_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+@@ -396,6 +452,33 @@
+     const HRESULT armed = fence->SetEventOnCompletion(1, event);
+     const DWORD waited = SUCCEEDED(armed) ? WaitForSingleObject(event, 30000) : WAIT_FAILED;
+     CloseHandle(event); Ok(armed); CHECK(waited == WAIT_OBJECT_0); Ok(device->GetDeviceRemovedReason());
++    // Real mapped GPU bytes enter the actual controller and extracted Wire filter.
++    const D3D12_RANGE bridge_range{0,pixel_bytes};
++    void* bridge_mapped=nullptr;
++    Ok(readback->Map(0,&bridge_range,&bridge_mapped));
++    const std::span<const std::byte> bridge_input(static_cast<const std::byte*>(bridge_mapped),pixel_bytes);
++    CHECK(wire_filter->Prepare(identity.handle,pixel_bytes,0,bridge_input).disposition ==
++        dawn::wire::BufferReadbackDisposition::Denied);
++    byte_marker->store(true,std::memory_order_release);
++    auto filtered = wire_filter->Prepare(identity.handle,pixel_bytes,0,bridge_input);
++    CHECK(filtered.disposition == dawn::wire::BufferReadbackDisposition::Protected && filtered.size==pixel_bytes);
++    for(size_t i=0;i<pixel_bytes;++i) CHECK(filtered.bytes[i]==expected[i]);
++    readback->Unmap(0,&no_read);
++    Ok(raw_readback->Map(0,&bridge_range,&bridge_mapped));
++    const auto* raw_bytes=static_cast<const uint8_t*>(bridge_mapped);
++    CHECK(!std::equal(raw_bytes+4,raw_bytes+pixel_bytes-4,expected.begin()+4));
++    const std::span<const std::byte> changed_input(static_cast<const std::byte*>(bridge_mapped),pixel_bytes);
++    CHECK(wire_filter->Prepare(identity.handle,pixel_bytes,0,changed_input).disposition ==
++        dawn::wire::BufferReadbackDisposition::Denied);
++    CHECK(wire_filter->Classify(identity.handle,pixel_bytes,0,pixel_bytes) ==
++        dawn::wire::BufferReadbackDisposition::Denied);
++    for(size_t i=0;i<pixel_bytes;++i) CHECK(filtered.bytes[i]==expected[i]);
++    raw_readback->Unmap(0,&no_read);
++    observer->OnBufferDestroyed(identity.handle);
++    CHECK(byte_budget->used_bytes() == 0);
++    CHECK(cancelled_budget->used_bytes() == 65536);
++    cancelled_hold.Reset(); CHECK(cancelled_budget->used_bytes() == 0);
++    CHECK(capture_bytes(0, 4, true, 1, byte_budget, &byte_snapshot) == E_INVALIDARG && !byte_snapshot);
+     if (projected) CHECK(projected->CompletionStatus() == E_PENDING);
+     marker->store(true, std::memory_order_release);
+     if (projected) CHECK(projected->CompletionStatus() == S_OK);
+@@ -446,5 +529,5 @@
+     }
+     std::printf("{\"passed\":true,\"hardware_adapter\":true,\"cases\":%zu,\"assertions\":%zu,"
+                 "\"shared_quota_cases\":%zu,\"typed_texture_consumer_verified\":true,"
+-                "\"original_unchanged\":true,\"browser_integrated\":false,\"native_dawn_types_mocked\":true,\"source_extracted_descriptor_method\":true,\"raster_cases\":%zu,\"native_render_pass_cases\":%zu}\n", cases, assertions, quota_cases, raster_cases, native_pass_cases);
+-}
++                "\"original_unchanged\":true,\"browser_integrated\":false,\"native_dawn_types_mocked\":true,\"source_extracted_descriptor_method\":true,\"raster_cases\":%zu,\"native_render_pass_cases\":%zu,\"exact_buffer_snapshot_verified\":true,\"gpu_controller_filter_prepare_verified\":true,\"actual_wire_server_roundtrip_executed\":false,\"actual_native_device_queue_executed\":false}\n", cases, assertions, quota_cases, raster_cases, native_pass_cases);
++}

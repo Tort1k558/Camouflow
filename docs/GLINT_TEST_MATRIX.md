@@ -1,5 +1,24 @@
 # Glint browser test matrix
 
+## Integrated shader capture: standalone proofs, not browser admission
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Source batch | 13 packets, 77 composed paths; 12-path delta reverses exactly | Active checkout and selected binary unchanged |
+| Native syntax | Ten target-flag units passed | Not actual Dawn capture/queue execution or linking |
+| Query write invalidation | `ResolveQuerySet` notifies uncertain writes in prepared source | Full write-path audit and native runtime remain open |
+| GPU → controller → extracted filter `Prepare` | 8 cases, 47,613 assertions each normal/ASan; later unreported overwrite rejected | Synthetic Dawn handles; no real Wire factory/server/serialization |
+| Controller | 10,154 assertions and 2,000 cycles each normal/ASan | CPU eligibility/transactions, not native device lifecycle |
+| Captured-byte core | 4,886 assertions and 1,000 cases each normal/ASan | Exact captured values and domains; not a standalone privacy authorization |
+| Compatibility | 4,969,123 legacy CPU and 22,720 hardware texture assertions each normal/ASan | Existing isolated fixtures |
+| Input guards | Seven modified packet/fixture/template/extraction inputs rejected before compilation | Not hostile-repository certification |
+| Python baseline | 5151 passed, 1 skipped at `383803b` | Before shader-capture batch |
+
+[Five public reproducible commands and remaining gates](../native/drafts/webgpu-shader-capture/README.md).
+Eligible compute output capture is source-prepared, not enabled. Raster-output capture,
+GPU buffer-input projection, full native/Wire runtime and browser consistency remain
+unfinished. No privacy, production or CAPTCHA admission follows from these results.
+
 ## Raster routing preparation and extracted-method hardware fixture
 
 | Gate | Result | Boundary |

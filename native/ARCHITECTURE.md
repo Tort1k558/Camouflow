@@ -1,5 +1,22 @@
 # Glint architecture
 
+## Integrated compute shader-capture source batch
+
+The [shader-capture batch](drafts/webgpu-shader-capture/README.md) adds direct/indirect
+compute capture hooks, private GPU-buffer snapshots, captured-byte provenance,
+two-phase controller transactions and completion through the existing map-shadow
+API. Native owners and writable binding coverage are checked; backend projection
+readiness is not renderer input. Controller failures propagate as recording errors.
+Query-resolve writes invalidate captured provenance as uncertain writes; complete
+write-path coverage remains an audit/runtime gate.
+Thirteen packets replay/reverse over 77 paths; ten native syntax units passed.
+Five public standalone suites passed normal/ASan. The hardware suite takes real
+GPU bytes through the owned snapshot adapter, real CPU controller and extracted
+Wire-filter `Prepare`, including rejection of an unreported later GPU overwrite.
+This is not actual Dawn device/queue or Wire server execution. Raster-output
+capture, buffer-input projection, linking and browser consistency remain open;
+the selected binary is unchanged and the batch remains disabled/unselected.
+
 ## Raster routing source preparation and standalone hardware check
 
 The [raster packet](drafts/webgpu-raster-routing/README.md) prepares sampled shadows

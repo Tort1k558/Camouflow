@@ -1,5 +1,24 @@
 # Glint: план проверки и развития
 
+## Integrated shader capture: source and standalone dataflow verified
+
+[One shader-capture source batch](../native/drafts/webgpu-shader-capture/README.md)
+combines private GPU-buffer snapshots, captured-byte verification, bounded
+prepare/commit transactions and direct/indirect compute hooks. Maps do not treat
+captured shader bytes as unrelated; they compare them with the immutable snapshot.
+Raw/opaque/unprojected inputs remain ineligible and failures deny access.
+
+All five public suites passed normal/ASan: hardware dataflow (47,613 assertions,
+8 cases), controller (10,154 / 2,000 cycles), byte core (4,886 / 1,000 cases),
+legacy CPU (4,969,123) and texture compatibility (22,720 / 8 cases). Ten native
+syntax units passed; seven changed-input probes refused before compilation.
+Python baseline: 5151 passed, 1 skipped at `383803b`, before this batch.
+
+Next gates: actual Dawn capture/queue/owner execution and Wire server serialization,
+raster-output capture, buffer-input projection, GN/component checks and the complete
+browser consistency run. The thirteen-packet batch is unselected; the selected
+001–076 browser's negative consistency result is not superseded by this preparation.
+
 ## Raster source routing and reproducible hardware fixture
 
 [Raster routing preparation](../native/drafts/webgpu-raster-routing/README.md)

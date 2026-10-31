@@ -157,3 +157,7 @@ native/drafts/webgpu-raster-routing/*.py text eol=lf
 native/drafts/webgpu-raster-routing/*.h text eol=lf
 native/drafts/webgpu-raster-routing/*.hlsl text eol=lf
 native/drafts/webgpu-raster-routing/*.patch text eol=lf
+native/drafts/webgpu-shader-capture/*.py text eol=lf
+native/drafts/webgpu-shader-capture/*.cc text eol=lf
+native/drafts/webgpu-shader-capture/*.h text eol=lf
+native/drafts/webgpu-shader-capture/*.patch text eol=lf
