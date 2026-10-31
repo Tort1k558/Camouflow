@@ -503,7 +503,7 @@
   ],
   "cpu_report_sha256": "7dd3a90d089a8d40afa9aa4e169488a5b424837f7bc1ca5ca47b183c97e367fc",
   "test_sha256": "fe9647699acaf8152228be4a5c0688d55617a5fdeb4487ad22facae375f626ae",
-  "checker_sha256": "20b29b7ae9d8f1ccaf0db119c7fb3ea3ae8fa41c923796b3a42728070308e407",
+  "checker_sha256": "4ef8f3ea23b3dd52c3acdef630ff7524a70abc6b0e2fe180573d9e5c977b4780",
   "stride_test_sha256": "d8444b8ff2283cadb742876f0f82077fbe81ce0bff2ee7017d020e58b7f33ebe",
   "stride_cpu_runs": [
     {
@@ -580,5 +580,5 @@
     "privacy_admitted": false,
     "production_admitted": false
   },
-  "public_checker_report_sha256": "8fa9543426f60ba6877f946eefd1d05c43b7ab23894bedd90e2857c5c75af5bf"
+  "public_checker_report_sha256": "c250e8636a860feaa7fb77a764e948fa6df2f0622a440a5f9a660fb3d34f446c"
 }

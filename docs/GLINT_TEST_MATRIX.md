@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## Source-extracted queue control-flow unit check
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Normal / ASan | 26 scenarios, 372 assertions each | Exact submit bodies/macro, mocked backend, real CPU controller |
+| Failure stages | First/second record, execution, serial, recycle, reopen; original error and stop order retained | Not native D3D12 fault injection |
+| Other paths | Pending write flush, no pending work and absent observer | No real command lists, backtrace, device loss or recovery |
+| Validation | Six changed-source/hash/metadata cases rejected before compilation | Private copied inputs; native source unchanged |
+| Public CLI | Optional `--suite queue-controlflow`; existing default controller suite retained | Both remain CPU-only |
+| Full Python baseline | 5118 passed, 1 skipped at `34045dc` | Before this additional unit suite |
+
+[Source, command and explicit limitations](../native/drafts/webgpu-render-ranges/README.md).
+
 ## Unselected per-draw ranges and execution-error barrier
 
 | Gate | Result | Boundary |

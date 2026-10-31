@@ -1,5 +1,14 @@
 # Glint: план проверки и развития
 
+## Queue failure control flow: CPU unit verified, backend mocked
+
+[Public optional check](../native/drafts/webgpu-render-ranges/README.md) passed
+26 source-extracted queue scenarios and 372 assertions per normal/ASan mode,
+with the real CPU controller and mocked backend. Six altered-source/metadata
+inputs were rejected before compilation. This does not satisfy real D3D12
+failure injection, recovery or GPU shader-protection gates. Default controller
+checks remain available. Full Python baseline: 5118 passed, 1 skipped at `34045dc`.
+
 ## Per-draw ranges and queue-error invalidation: prepared
 
 [Source, CPU checker and required native tests](../native/drafts/webgpu-render-ranges/README.md):

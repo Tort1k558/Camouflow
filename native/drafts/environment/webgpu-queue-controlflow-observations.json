@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Exact extracted native queue function bodies and cleanup macro, mocked backend and real CPU controller; NOT D3D12 failure injection",
+  "parent_patch_sha256": "083f24ab2b7858d6dbb1e370d87e4485fa7092413fa6d5f7b4125c6dec795b88",
+  "test_sha256": "ae223f4381023f3c9dd5b3850fc0b0739edc4f00ad0288a5416ff35b0ea4d380",
+  "native_queue_source_sha256": "2330200ccb8ea934bf738e186203be7e4d7218c13f4674d327eebf8a377cb874",
+  "error_header_sha256": "142f3c96651ee8ec8acdd4cec5db8a9d19248cbf786096638e1a03eff4034eed",
+  "extracted_functions_sha256": [
+    "7a6b53845db2857b8a5fafd27ee812786abbc72007fb6594b8e0c24a36aafdbe",
+    "cc72acdff2acfda66486f38f8019404e89eb7ea4d2ee28270c754ad911514f5a",
+    "52c723b7ff3de06bacd0bc4f69837c94e063107a74d53f4b50ffcfa8bf321799"
+  ],
+  "macro_sha256": "567ac86b6dba06c7cc2592aae103e7106cdeac8a4aa4118b1ca318f1d186703a",
+  "cpu_runs": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 372,
+        "scenarios": 26,
+        "source_extracted_queue_control_flow_only": true,
+        "backend_mocked": true,
+        "native_gpu_queue_executed": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 372,
+        "scenarios": 26,
+        "source_extracted_queue_control_flow_only": true,
+        "backend_mocked": true,
+        "native_gpu_queue_executed": false
+      }
+    }
+  ],
+  "cpu_report_sha256": "1c127bd2bda44dfeaa3345e0d01b8169933ce0d78edbfe4133e78eefd889b808",
+  "backend_mocked": true,
+  "actual_native_submission_failure_injected": false,
+  "native_gpu_queue_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "checker_sha256": "4ef8f3ea23b3dd52c3acdef630ff7524a70abc6b0e2fe180573d9e5c977b4780",
+  "validator_negative_cases": [
+    {
+      "name": "test-hash",
+      "passed": true,
+      "returncode": 2,
+      "expected_error": "Measured CPU test differs",
+      "generated_binary": false
+    },
+    {
+      "name": "function",
+      "passed": true,
+      "returncode": 2,
+      "expected_error": "Extracted queue function differs",
+      "generated_binary": false
+    },
+    {
+      "name": "macro",
+      "passed": true,
+      "returncode": 2,
+      "expected_error": "Extracted cleanup macro differs",
+      "generated_binary": false
+    },
+    {
+      "name": "native-source",
+      "passed": true,
+      "returncode": 2,
+      "expected_error": "Measured queue/macro source differs",
+      "generated_binary": false
+    },
+    {
+      "name": "function-count",
+      "passed": true,
+      "returncode": 2,
+      "expected_error": "Expected exactly three extracted queue functions",
+      "generated_binary": false
+    },
+    {
+      "name": "parent",
+      "passed": true,
+      "returncode": 2,
+      "expected_error": "Measured queue/macro source differs",
+      "generated_binary": false
+    }
+  ],
+  "validator_negative_report_sha256": "fbc7ea7e7b60efd8faa2778f4df228425dcf22739cf364d1ce695b5f8a8adc03",
+  "full_python_baseline": {
+    "passed": true,
+    "postguards_passed": true,
+    "git_head": "34045dcfeb1274f91ce48b5c1c23586f4e91e225",
+    "counts": {
+      "tests": 5119,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5118
+    },
+    "duration_seconds": 561.953,
+    "native_runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "full_python_baseline_report_sha256": "e641d98e8acaea156362408f48a119d2ac4590908963dca52c4ea9a3f1febd2e",
+  "public_checker_observation": {
+    "passed": true,
+    "postguards_passed": true,
+    "suite": "queue-controlflow",
+    "backend_mocked": true,
+    "native_handles_synthetic": true,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "assertions": 372,
+          "scenarios": 26,
+          "source_extracted_queue_control_flow_only": true,
+          "backend_mocked": true,
+          "native_gpu_queue_executed": false
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "assertions": 372,
+          "scenarios": 26,
+          "source_extracted_queue_control_flow_only": true,
+          "backend_mocked": true,
+          "native_gpu_queue_executed": false
+        }
+      }
+    ],
+    "native_gpu_queue_executed": false,
+    "runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "controller_checker_observation": {
+    "passed": true,
+    "postguards_passed": true,
+    "suite": "controller",
+    "backend_mocked": false,
+    "native_handles_synthetic": true,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "assertions": 4969123,
+          "oracle_operations": 4000,
+          "controller_scopes": 1000,
+          "shader_transformation_implemented": false
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "assertions": 4969123,
+          "oracle_operations": 4000,
+          "controller_scopes": 1000,
+          "shader_transformation_implemented": false
+        }
+      }
+    ],
+    "native_gpu_queue_executed": false,
+    "runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "public_checker_report_sha256": "4620aef0306377964bbe2ef0d2950f39799afacc8cd42966975518f0abb2f9c9",
+  "controller_checker_report_sha256": "c250e8636a860feaa7fb77a764e948fa6df2f0622a440a5f9a660fb3d34f446c"
+}

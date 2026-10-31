@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--chromium-root', type=Path, required=True)
 parser.add_argument('--sdk-root', type=Path, required=True)
 parser.add_argument('--work-dir', type=Path, required=True)
+parser.add_argument('--suite', choices=('controller', 'queue-controlflow'), default='controller')
 args = parser.parse_args()
 ROOT, SDK, OUT = args.chromium_root, args.sdk_root, args.work_dir
 if (sys.platform != 'win32' or any(not p.is_absolute() or p != p.resolve()
@@ -64,9 +65,46 @@ for row in record['composed_sources']:
         valid = target.is_file() and digest(target) == row['after_sha256']
     if not valid:
         parser.error('Composed source differs: ' + row['source'])
+additional_inputs = []
 test = Path(__file__).with_name('render_ranges_test.cc')
-if digest(test) != record['test_sha256']:
-    parser.error('Measured bridge test differs')
+expected_test = record['test_sha256']
+if args.suite == 'queue-controlflow':
+    observation_path = ENV / 'webgpu-queue-controlflow-observations.json'
+    observation = json.loads(observation_path.read_bytes())
+    test = Path(__file__).with_name('queue_controlflow_test.cc')
+    expected_test = observation['test_sha256']
+    native_queue = SOURCE / 'third_party/dawn/src/dawn/native/d3d12/QueueD3D12.cpp'
+    error_header = ROOT / 'third_party/dawn/src/dawn/native/Error.h'
+    additional_inputs = [observation_path, error_header]
+    if (observation['parent_patch_sha256'] != record['patch_sha256']
+            or digest(native_queue) != observation['native_queue_source_sha256']
+            or digest(error_header) != observation['error_header_sha256']):
+        parser.error('Measured queue/macro source differs')
+    native_text = native_queue.read_text(encoding='utf-8-sig')
+    test_text = test.read_text(encoding='utf-8-sig')
+    signatures = ('void NotifyGlintExecutionError(', 'MaybeError Queue::SubmitImpl(',
+                  'MaybeError Queue::SubmitPendingCommandsImpl(')
+    if len(observation['extracted_functions_sha256']) != len(signatures):
+        parser.error('Expected exactly three extracted queue functions')
+    for signature, expected in zip(signatures, observation['extracted_functions_sha256'], strict=True):
+        start = native_text.index(signature)
+        opening = native_text.index('{', start)
+        depth, end = 1, opening + 1
+        while depth:
+            depth += (native_text[end] == '{') - (native_text[end] == '}')
+            end += 1
+        fragment = native_text[start:end]
+        if (hashlib.sha256(fragment.encode('utf-8')).hexdigest() != expected
+                or test_text.count(fragment) != 1):
+            parser.error('Extracted queue function differs')
+    macro_text = error_header.read_text(encoding='utf-8-sig')
+    start = macro_text.index('#define DAWN_TRY_WITH_CLEANUP(')
+    macro = macro_text[start:macro_text.index('\n\n', start)]
+    if (hashlib.sha256(macro.encode('utf-8')).hexdigest() != observation['macro_sha256']
+            or test_text.count(macro) != 1):
+        parser.error('Extracted cleanup macro differs')
+if digest(test) != expected_test:
+    parser.error('Measured CPU test differs')
 shutil.copyfile(test, SOURCE / test.name)
 
 TOOLS = ROOT / 'third_party/llvm-build/Release+Asserts'
@@ -81,11 +119,12 @@ sources = [SOURCE / 'gpu/command_buffer/common/glint' / (name + '.cc') for name 
 sources += [SOURCE / relative for relative in (
     'gpu/command_buffer/common/glint_webgpu_device_policy.cc',
     'gpu/command_buffer/service/glint_webgpu_readback_observer.cc',
-    'render_ranges_test.cc')]
-bound = {str(p): digest(p) for p in (*packets, record_path, Path(__file__), COMPILER, ASAN, *LIBS,
+    test.name)]
+bound = {str(p): digest(p) for p in (*packets, record_path, Path(__file__), COMPILER, ASAN, *LIBS, *additional_inputs,
     *(p for p in SOURCE.rglob('*') if p.is_file()))}
 report = {'passed': False, 'postguards_passed': False, 'runs': [], 'source_sha256': bound,
-          'scope': __doc__, 'native_handles_synthetic': True,
+          'scope': __doc__, 'suite': args.suite, 'native_handles_synthetic': True,
+          'backend_mocked': args.suite == 'queue-controlflow', 'native_gpu_queue_executed': False,
           'wire_roundtrip_tests_executed': False, 'runtime_verified': False,
           'privacy_admitted': False, 'production_admitted': False}
 environment = {**os.environ, 'TEMP': str(OUT / 'temp'), 'TMP': str(OUT / 'temp')}
@@ -123,9 +162,16 @@ try:
         if result.returncode:
             raise RuntimeError('CPU range check failed: ' + str(directory))
         row['result'] = json.loads(result.stdout)
-        if (not row['result']['passed'] or row['result']['controller_scopes'] != 1000
-                or row['result']['shader_transformation_implemented'] is not False):
-            raise RuntimeError('Missing explicit CPU/controller-only scope')
+        if args.suite == 'controller':
+            valid = (row['result']['passed'] and row['result']['controller_scopes'] == 1000
+                     and row['result']['shader_transformation_implemented'] is False)
+        else:
+            valid = (row['result']['passed'] and row['result']['scenarios'] == 26
+                     and row['result']['source_extracted_queue_control_flow_only'] is True
+                     and row['result']['backend_mocked'] is True
+                     and row['result']['native_gpu_queue_executed'] is False)
+        if not valid:
+            raise RuntimeError('Missing explicit CPU-only suite scope')
         print(sanitizer, result.stdout.strip(), flush=True)
     report['passed'] = True
 except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:

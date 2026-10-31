@@ -1,5 +1,29 @@
 # Per-draw and render-bundle ranges — unselected source extension
 
+## Queue control-flow unit check
+
+`check.py --suite queue-controlflow` runs the exact extracted queue submit bodies
+and cleanup macro against a mocked backend and the real CPU readback controller.
+Normal/ASan passed 26 scenarios and 372 assertions each: success, first/second
+recording failure, execution/serial/recycle/reopen failure, pending write flushes,
+no pending work, and observer-disabled behavior. Error codes and early-return order
+are checked, including denial after a speculative overwrite followed by failure.
+
+The checker binds the extracted code to the reconstructed native source and pinned
+error header. Six altered-input cases were rejected before compilation, including
+changed function/macro bodies even when the fixture hash was updated.
+This is **not native D3D12 failure injection**. Backtraces, real command lists,
+device loss and recovery remain unverified. The default `controller` suite is
+unchanged. [Scoped observations](../environment/webgpu-queue-controlflow-observations.json).
+
+```powershell
+.venv\Scripts\python.exe native\drafts\webgpu-render-ranges\check.py `
+  --suite queue-controlflow `
+  --chromium-root D:\Glint156Candidate\chromium\src `
+  --sdk-root D:\Glint156Candidate\toolchain\local-msvc-sdk-28000-v1 `
+  --work-dir D:\GlintManagerQA\queue-controlflow-fresh
+```
+
 This five-file native/service delta follows `webgpu-binding-ranges-next.patch`. It is not
 part of the selected 001–076 browser and does not implement compatible shader
 pixel protection.

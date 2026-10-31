@@ -1,5 +1,16 @@
 # Glint architecture
 
+## Queue control-flow unit evidence, not native failure injection
+
+The [optional queue-controlflow suite](drafts/webgpu-render-ranges/README.md)
+binds the exact submit bodies and cleanup macro to their native sources, then
+exercises all failure stages with a mocked backend and the actual CPU controller.
+Normal/ASan passed 26 scenarios and 372 assertions each. Pending write flushes,
+no-work and absent-observer cases are covered; changed function/macro/hash inputs
+are rejected before compilation. This verifies the extracted control flow, not
+real D3D12 execution, error backtraces, device loss or recovery. Native fault
+injection and compatible shader protection remain required.
+
 ## Unselected per-draw ranges and execution-error barrier
 
 The [render range extension](drafts/webgpu-render-ranges/README.md) replaces
