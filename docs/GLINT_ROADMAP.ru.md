@@ -2494,3 +2494,23 @@ GPU capabilities в fixture подменены. [Код и воспроизве�
 Далее — native consumer с проверкой logical owner каждого lease, реальные
 buffer shadows/bindings/aliases и writable copyback. Native queue/Wire, DXC и
 browser consistency ещё не проверены; выбранный runtime 001–076 не менялся.
+
+## Нативные buffer binding overrides — пакет 22
+
+Добавлены transient CBV/SRV/UAV overrides и вычисление private root CBV адреса
+с сохранением binding offset + dynamic offset. Обычная и private ветки используют
+общий descriptor writer; обычный путь сохраняет Buffer::GetVA(). Старый sampled-texture
+overload сохранён. Перед выделением таблицы проверяются owner/private allocation,
+размеры, heap/flags, alignment и предел CBV; отсутствующий override не даёт raw fallback.
+
+22 пакета / 84 файла replay/reverse; 14 native syntax units прошли. На настоящем
+D3D12 adapter normal/ASan: по 20 случаев / 21 728 проверок, 244 отказа override,
+2 dynamic root uniform случая. Shader читает shadow, кешированная таблица остаётся
+на original, UAV меняет только shadow. [Код и команда](../native/drafts/webgpu-buffer-bindings/README.md).
+
+Dawn objects/allocator в fixture подменены; данные shadow заполнены CPU — это
+проверка binding semantics, не fingerprint transformation. С новым shared runner
+повторно прошли GPU scatter, budgeted shadow и immutable plane fixtures.
+Далее — input-plan producer, установка overrides в реальном binding tracker и
+writable copyback. Native queue/Wire/DXC, indirect ancestry и browser consistency
+ещё не проверены; выбранный runtime не менялся.

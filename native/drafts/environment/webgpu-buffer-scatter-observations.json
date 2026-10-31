@@ -2,7 +2,7 @@
   "schema": 1,
   "passed": true,
   "scope": "Run GPU projection -> tagged-byte scatter -> shader consumer; no native binding/browser admission.",
-  "checker_sha256": "8badc2eb5e7925f5aeab3f5a884907ed9dcb9ce8dd9cb3d1dbaef1156f105f6c",
+  "checker_sha256": "05d1b1f3554e853e3b17497f42aa4e3d59b99f8ec06240f2eec9d39f42094912",
   "sources_sha256": {
     "buffer_scatter.h": "90360b11757c4039e8b9e950a1e613fc8a66c7fdc4b1706106619cb0a80dd789",
     "buffer_scatter_parameters.h": "a45a28eb6016bea4aa7318569f6e16264acf1a6bfe50591698f3eac8888446b7",

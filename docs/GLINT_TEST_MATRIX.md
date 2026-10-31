@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## Native buffer descriptors/root addresses — standalone hardware methods
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Replay / reverse | 22 packets, 84 paths | Unselected external staging |
+| Native target-flag syntax | 14 units passed | No component link |
+| Hardware normal / ASan | 20 cases, 21,728 assertions each | Extracted native methods; real D3D12, mocked Dawn objects |
+| CBV/SRV/UAV and dynamic offsets | Private shader data differs from cached original; writes affect only shadow | CPU-initialized values, not fingerprint transformation |
+| Rejections | 244 override refusals per mode; two dynamic root uniform cases verified | Native frontend/allocator not executed |
+| Changed inputs | 10 refusals before hardware compilation; 9 before any compilation | Generated-method case first executes CPU source gate |
+| Shared-runner regressions | Prior scatter, budgeted shadow and immutable-plane normal/ASan fixtures passed again | Their original standalone boundaries remain |
+
+[Implementation and reproduction](../native/drafts/webgpu-buffer-bindings/README.md).
+Native input-plan producer/binding tracker/writeback, actual queue/Wire/DXC and
+combined browser consistency remain unfinished or unverified. Runtime unchanged.
+
 ## GPU input metadata plan/commit — CPU controller, not native binding execution
 
 | Gate | Measured result | Boundary |

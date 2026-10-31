@@ -1,0 +1,301 @@
+--- a/third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.h
+@@ -47,6 +47,12 @@
+     ComPtr<ID3D12Resource> resource;
+ };
+ 
++struct GlintBufferViewOverride {
++    BindingIndex binding;
++    ComPtr<IUnknown> retirement;
++    ComPtr<ID3D12Resource> resource;
++};
++
+ class Device;
+ class SamplerHeapCacheEntry;
+ class ShaderVisibleDescriptorAllocator;
+@@ -69,6 +75,14 @@
+         ShaderVisibleDescriptorAllocator* allocator,
+         std::span<const GlintTextureViewOverride> overrides,
+         GPUDescriptorHeapAllocation* allocation);
++    ResultOrError<bool> PopulateGlintViews(
++        ShaderVisibleDescriptorAllocator* allocator,
++        std::span<const GlintTextureViewOverride> textures,
++        std::span<const GlintBufferViewOverride> buffers,
++        GPUDescriptorHeapAllocation* allocation);
++    ResultOrError<D3D12_GPU_VIRTUAL_ADDRESS> ResolveGlintRootBufferAddress(
++        BindingIndex binding, uint32_t dynamicOffset,
++        std::span<const GlintBufferViewOverride> buffers);
+     bool PopulateSamplers(ShaderVisibleDescriptorAllocator* samplerAllocator);
+ 
+     D3D12_GPU_DESCRIPTOR_HANDLE GetBaseViewDescriptor() const;
+@@ -82,6 +96,7 @@
+   private:
+     ~BindGroup() override;
+ 
++    MaybeError ValidateGlintBufferOverrides(std::span<const GlintBufferViewOverride> buffers);
+     MaybeError InitializeImpl() override;
+     void DestroyImpl(DestroyReason reason) override;
+     void DeleteThis() override;
+--- a/third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.cpp
+@@ -28,6 +28,7 @@
+ #include "src/dawn/native/d3d12/BindGroupD3D12.h"
+ 
+ #include <algorithm>
++#include <limits>
+ #include <utility>
+ #include <vector>
+ 
+@@ -44,6 +45,48 @@
+ #include "src/dawn/native/d3d12/TextureD3D12.h"
+ 
+ namespace dawn::native::d3d12 {
++namespace {
++void WriteBufferDescriptor(ID3D12Device* device, ID3D12Resource* resource, D3D12_GPU_VIRTUAL_ADDRESS baseAddress,
++                           const BufferBinding& binding, wgpu::BufferBindingType type,
++                           bool dynamic, D3D12_CPU_DESCRIPTOR_HANDLE slot) {
++    const uint64_t elements = (dynamic ? binding.buffer->GetSize() - binding.offset : binding.size) / 4;
++    switch (type) {
++        case wgpu::BufferBindingType::Uniform: {
++            D3D12_CONSTANT_BUFFER_VIEW_DESC desc{};
++            desc.BufferLocation = baseAddress + binding.offset;
++            desc.SizeInBytes = static_cast<UINT>(Align(binding.size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
++            device->CreateConstantBufferView(&desc, slot);
++            break;
++        }
++        case wgpu::BufferBindingType::Storage:
++        case kInternalStorageBufferBinding: {
++            D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
++            desc.Format = DXGI_FORMAT_R32_TYPELESS;
++            desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
++            desc.Buffer.FirstElement = binding.offset / 4;
++            desc.Buffer.NumElements = static_cast<UINT>(elements);
++            desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
++            device->CreateUnorderedAccessView(resource, nullptr, &desc, slot);
++            break;
++        }
++        case wgpu::BufferBindingType::ReadOnlyStorage:
++        case kInternalReadOnlyStorageBufferBinding: {
++            D3D12_SHADER_RESOURCE_VIEW_DESC desc{};
++            desc.Format = DXGI_FORMAT_R32_TYPELESS;
++            desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
++            desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
++            desc.Buffer.FirstElement = binding.offset / 4;
++            desc.Buffer.NumElements = static_cast<UINT>(elements);
++            desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
++            device->CreateShaderResourceView(resource, &desc, slot);
++            break;
++        }
++        case wgpu::BufferBindingType::BindingNotUsed:
++        case wgpu::BufferBindingType::Undefined:
++            DAWN_UNREACHABLE();
++    }
++}
++}  // namespace
+ 
+ // static
+ ResultOrError<Ref<BindGroup>> BindGroup::Create(
+@@ -104,81 +147,8 @@
+                     return;
+                 }
+ 
+-                auto storageBufferNumElements = [](const BufferBinding& binding,
+-                                                   bool isDynamic) -> uint64_t {
+-                    if (isDynamic) {
+-                        // For dynamic storage buffers, we bind the buffer from binding.offset to
+-                        // the end of the buffer. The dynamic offset is stored as a root constant
+-                        // and applied in the shaders. The binding.size is also stored as a root
+-                        // constant, and OOB access behaviour is managed via robustness.
+-                        return (ToBackend(binding.buffer)->GetSize() - binding.offset) / 4;
+-                    } else {
+-                        return binding.size / 4;
+-                    }
+-                };
+-
+-                switch (layout.type) {
+-                    case wgpu::BufferBindingType::Uniform: {
+-                        D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
+-                        desc.SizeInBytes = static_cast<UINT>(
+-                            Align(binding.size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+-                        desc.BufferLocation = ToBackend(binding.buffer)->GetVA() + binding.offset;
+-
+-                        d3d12Device->CreateConstantBufferView(
+-                            &desc, mCPUViewAllocation.OffsetFrom(
+-                                       viewSizeIncrement, descriptorHeapOffsets[bindingIndex]));
+-                        break;
+-                    }
+-                    case wgpu::BufferBindingType::Storage:
+-                    case kInternalStorageBufferBinding: {
+-                        // Since Tint outputs HLSL shaders with RWByteAddressBuffer,
+-                        // we must use D3D12_BUFFER_UAV_FLAG_RAW when making the
+-                        // UNORDERED_ACCESS_VIEW_DESC. Using D3D12_BUFFER_UAV_FLAG_RAW requires
+-                        // that we use DXGI_FORMAT_R32_TYPELESS as the format of the view.
+-                        // DXGI_FORMAT_R32_TYPELESS requires that the element size be 4
+-                        // byte aligned. Since binding.size and binding.offset are in bytes,
+-                        // we need to divide by 4 to obtain the element size.
+-                        D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
+-                        desc.Buffer.NumElements =
+-                            static_cast<UINT>(storageBufferNumElements(binding, isDynamic));
+-                        desc.Format = DXGI_FORMAT_R32_TYPELESS;
+-                        desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+-                        desc.Buffer.FirstElement = binding.offset / 4;
+-                        desc.Buffer.StructureByteStride = 0;
+-                        desc.Buffer.CounterOffsetInBytes = 0;
+-                        desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+-
+-                        d3d12Device->CreateUnorderedAccessView(
+-                            resource, nullptr, &desc,
+-                            mCPUViewAllocation.OffsetFrom(viewSizeIncrement,
+-                                                          descriptorHeapOffsets[bindingIndex]));
+-                        break;
+-                    }
+-                    case wgpu::BufferBindingType::ReadOnlyStorage:
+-                    case kInternalReadOnlyStorageBufferBinding: {
+-                        // Like StorageBuffer, Tint outputs HLSL shaders for readonly
+-                        // storage buffer with ByteAddressBuffer. So we must use
+-                        // D3D12_BUFFER_SRV_FLAG_RAW when making the SRV descriptor. And it has
+-                        // similar requirement for format, element size, etc.
+-                        D3D12_SHADER_RESOURCE_VIEW_DESC desc;
+-                        desc.Format = DXGI_FORMAT_R32_TYPELESS;
+-                        desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+-                        desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+-                        desc.Buffer.FirstElement = binding.offset / 4;
+-                        desc.Buffer.NumElements =
+-                            static_cast<UINT>(storageBufferNumElements(binding, isDynamic));
+-                        desc.Buffer.StructureByteStride = 0;
+-                        desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+-                        d3d12Device->CreateShaderResourceView(
+-                            resource, &desc,
+-                            mCPUViewAllocation.OffsetFrom(viewSizeIncrement,
+-                                                          descriptorHeapOffsets[bindingIndex]));
+-                        break;
+-                    }
+-                    case wgpu::BufferBindingType::BindingNotUsed:
+-                    case wgpu::BufferBindingType::Undefined:
+-                        DAWN_UNREACHABLE();
+-                }
++                WriteBufferDescriptor(d3d12Device, resource, ToBackend(binding.buffer)->GetVA(), binding, layout.type, isDynamic,
++                    mCPUViewAllocation.OffsetFrom(viewSizeIncrement, descriptorHeapOffsets[bindingIndex]));
+             },
+             [&](const TextureBindingInfo&) {
+                 auto* view = ToBackend(GetBindingAsTextureView(bindingIndex));
+@@ -310,12 +280,94 @@
+     ShaderVisibleDescriptorAllocator* allocator,
+     std::span<const GlintTextureViewOverride> overrides,
+     GPUDescriptorHeapAllocation* allocation) {
++    return PopulateGlintViews(allocator, overrides, {}, allocation);
++}
++
++MaybeError BindGroup::ValidateGlintBufferOverrides(std::span<const GlintBufferViewOverride> buffers) {
++    auto* device = ToBackend(GetDevice());
++    const auto* layout = ToBackend(GetLayout());
++    std::vector<BindingIndex> seen;
++    for (const auto& replacement : buffers) {
++        DAWN_INTERNAL_ERROR_IF(replacement.binding >= layout->GetBindingCount() ||
++            !replacement.resource || !replacement.retirement ||
++            std::find(seen.begin(), seen.end(), replacement.binding) != seen.end(),
++            "Invalid or duplicate Glint buffer override.");
++        const auto& info = layout->GetBindingInfo(replacement.binding);
++        const auto* bufferInfo = std::get_if<BufferBindingInfo>(&info.bindingLayout);
++        DAWN_INTERNAL_ERROR_IF(!bufferInfo || info.visibility == wgpu::ShaderStage::None,
++            "Glint buffer override requires a visible buffer binding.");
++        const auto type = bufferInfo->type;
++        const bool uniform = type == wgpu::BufferBindingType::Uniform;
++        const bool writable = type == wgpu::BufferBindingType::Storage || type == kInternalStorageBufferBinding;
++        const bool readonly = type == wgpu::BufferBindingType::ReadOnlyStorage || type == kInternalReadOnlyStorageBufferBinding;
++        DAWN_INTERNAL_ERROR_IF(!uniform && !writable && !readonly, "Unsupported Glint buffer binding type.");
++        const auto binding = GetBindingAsBufferBinding(replacement.binding);
++        auto* source = ToBackend(binding.buffer);
++        DAWN_INTERNAL_ERROR_IF(!source || source->GetDevice() != device ||
++            !source->HasAccess() || !source->HasPrivateGlintReadbackBacking() || !binding.size ||
++            binding.offset > source->GetSize() || binding.size > source->GetSize() - binding.offset,
++            "Glint buffer override requires a private live logical owner and valid range.");
++        const auto original = source->GetD3D12Resource()->GetDesc();
++        const auto projected = replacement.resource->GetDesc();
++        ComPtr<ID3D12Device> owner;
++        DAWN_TRY(CheckHRESULT(replacement.resource->GetDevice(IID_PPV_ARGS(&owner)), "Glint buffer physical owner"));
++        D3D12_HEAP_PROPERTIES heap{};
++        D3D12_HEAP_FLAGS flags{};
++        DAWN_TRY(CheckHRESULT(replacement.resource->GetHeapProperties(&heap, &flags), "Glint buffer private heap"));
++        DAWN_INTERNAL_ERROR_IF(owner.Get() != device->GetD3D12Device() ||
++            replacement.resource.Get() == source->GetD3D12Resource() ||
++            source->GetVA() != source->GetD3D12Resource()->GetGPUVirtualAddress() ||
++            heap.Type != D3D12_HEAP_TYPE_DEFAULT ||
++            (flags & (D3D12_HEAP_FLAG_SHARED | D3D12_HEAP_FLAG_SHARED_CROSS_ADAPTER)) ||
++            projected.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER || projected.Format != DXGI_FORMAT_UNKNOWN ||
++            projected.Width != original.Width || source->GetSize() > projected.Width || projected.Height != 1 || projected.DepthOrArraySize != 1 ||
++            projected.MipLevels != 1 || projected.SampleDesc.Count != 1 || projected.SampleDesc.Quality != 0 ||
++            projected.Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR ||
++            (writable && !(projected.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) ||
++            (readonly && (projected.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)),
++            "Glint buffer shadow is incompatible with its source allocation.");
++        const bool root = uniform && replacement.binding < layout->GetDynamicBufferCount();
++        DAWN_INTERNAL_ERROR_IF(!root && layout->GetDescriptorHeapOffsets()[replacement.binding] >= layout->GetCbvUavSrvDescriptorCount(),
++            "Glint buffer descriptor offset is invalid.");
++        DAWN_INTERNAL_ERROR_IF(binding.offset % (uniform ? 256 : 4) != 0 ||
++            (!uniform && binding.size % 4 != 0) ||
++            (uniform && (binding.size > uint64_t{D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT} * 16 || binding.size > std::numeric_limits<uint64_t>::max() - 255 || binding.offset > projected.Width ||
++                Align(binding.size, uint64_t{256}) > projected.Width - binding.offset)),
++            "Glint buffer view range is incompatible with its shadow.");
++        seen.push_back(replacement.binding);
++    }
++    return {};
++}
++
++ResultOrError<D3D12_GPU_VIRTUAL_ADDRESS> BindGroup::ResolveGlintRootBufferAddress(
++    BindingIndex index, uint32_t dynamicOffset, std::span<const GlintBufferViewOverride> buffers) {
++    DAWN_TRY(ValidateGlintBufferOverrides(buffers));
++    const auto* layout = GetLayout();
++    DAWN_INTERNAL_ERROR_IF(index >= layout->GetDynamicBufferCount() ||
++        !std::holds_alternative<BufferBindingInfo>(layout->GetBindingInfo(index).bindingLayout) ||
++        std::get<BufferBindingInfo>(layout->GetBindingInfo(index).bindingLayout).type != wgpu::BufferBindingType::Uniform,
++        "Glint root override requires a dynamic uniform binding.");
++    const auto binding = GetBindingAsBufferBinding(index);
++    const auto found = std::find_if(buffers.begin(), buffers.end(), [&](const auto& value) { return value.binding == index; });
++    DAWN_INTERNAL_ERROR_IF(found == buffers.end() || dynamicOffset % 256 != 0 ||
++        dynamicOffset > binding.buffer->GetSize() - binding.offset ||
++        binding.size > binding.buffer->GetSize() - binding.offset - dynamicOffset,
++        "Missing or out-of-range Glint dynamic uniform override.");
++    return found->resource->GetGPUVirtualAddress() + binding.offset + dynamicOffset;
++}
++
++ResultOrError<bool> BindGroup::PopulateGlintViews(
++    ShaderVisibleDescriptorAllocator* allocator,
++    std::span<const GlintTextureViewOverride> overrides,
++    std::span<const GlintBufferViewOverride> buffers,
++    GPUDescriptorHeapAllocation* allocation) {
+     auto* device = ToBackend(GetDevice());
+     const auto* layout = ToBackend(GetLayout());
+     const auto count = layout->GetCbvUavSrvDescriptorCount();
+     DAWN_INTERNAL_ERROR_IF(!allocator || allocator->GetDevice() != device || !allocation ||
+-                           overrides.empty() || count == 0,
++                           (overrides.empty() && buffers.empty()) || (!overrides.empty() && count == 0),
+                            "Invalid Glint dispatch-local descriptor allocation.");
++    DAWN_TRY(ValidateGlintBufferOverrides(buffers));
+     const auto offsets = layout->GetDescriptorHeapOffsets();
+     std::vector<BindingIndex> seen;
+     for (const auto& replacement : overrides) {
+@@ -350,6 +402,7 @@
+                                "Glint projection descriptor is incompatible with its source view.");
+         seen.push_back(replacement.binding);
+     }
++    if (count == 0) return true;
+     D3D12_CPU_DESCRIPTOR_HANDLE base;
+     if (!allocator->AllocateGPUDescriptors(count, device->GetQueue()->GetPendingCommandSerial(),
+                                             &base, allocation)) {
+@@ -363,6 +416,15 @@
+             base.ptr + uint64_t{offsets[replacement.binding]} * layout->GetViewSizeIncrement()};
+         device->GetD3D12Device()->CreateShaderResourceView(replacement.resource.Get(), &srv, slot);
+     }
++    for (const auto& replacement : buffers) {
++        const auto type = std::get<BufferBindingInfo>(layout->GetBindingInfo(replacement.binding).bindingLayout).type;
++        const bool dynamic = replacement.binding < layout->GetDynamicBufferCount();
++        if (dynamic && type == wgpu::BufferBindingType::Uniform) continue;
++        D3D12_CPU_DESCRIPTOR_HANDLE slot{
++            base.ptr + uint64_t{offsets[replacement.binding]} * layout->GetViewSizeIncrement()};
++        WriteBufferDescriptor(device->GetD3D12Device(), replacement.resource.Get(), replacement.resource->GetGPUVirtualAddress(),
++            GetBindingAsBufferBinding(replacement.binding), type, dynamic, slot);
++    }
+     return true;
+ }
+ 

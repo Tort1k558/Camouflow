@@ -19,7 +19,8 @@ def digest(path):
 
 def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json',
          expected_result=None, extension_required=False, fixture_base=None,
-         additional_native_sources=(), shader_paths=None):
+         additional_native_sources=(), shader_paths=None, source_gate_path=None,
+         source_record_path=None, fixture_preparer=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('chromium-root', 'sdk-root', 'work-dir'):
         parser.add_argument('--' + name, type=Path, required=True)
@@ -35,8 +36,8 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
         parser.error('At least 1 GiB free on D: is required')
     record_path = ENV / record_name
     record = json.loads(record_path.read_bytes())
-    source_gate = MODULE.parent / 'webgpu-execution-inputs/check.py'
-    source_record = ENV / 'webgpu-execution-inputs-preparation.json'
+    source_gate = source_gate_path if source_gate_path is not None else MODULE.parent / 'webgpu-execution-inputs/check.py'
+    source_record = source_record_path if source_record_path is not None else ENV / 'webgpu-execution-inputs-preparation.json'
     edge_shader = MODULE.parent / 'webgpu-edge-compute/edge_compute.hlsl'
     expected = [(module / name, value) for name, value in record['sources_sha256'].items()]
     expected += [(module / 'check.py', record['checker_sha256']),
@@ -121,11 +122,20 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
             fixture_dir.mkdir()
             fixture = fixture_dir / 'compute_test.cc'
             shutil.copyfile(fixture_base, fixture)
-            subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
-                            str(module / record['fixture_patch'])], cwd=fixture_dir, capture_output=True, check=True)
+            if record.get('fixture_patch'):
+                subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
+                                str(module / record['fixture_patch'])], cwd=fixture_dir, capture_output=True, check=True)
             if digest(fixture) != record['composed_fixture_sha256']:
                 raise ValueError('Native shadow hardware fixture differs')
             guards[fixture] = digest(fixture)
+            if fixture_preparer is not None:
+                generated = fixture_preparer(native, fixture_dir)
+                if set(generated) != set(record['generated_sources_sha256']):
+                    raise ValueError('Generated native hardware fixture set differs')
+                for name, path in generated.items():
+                    if path.parent != fixture_dir or digest(path) != record['generated_sources_sha256'][name]:
+                        raise ValueError('Generated native hardware fixture differs')
+                    guards[path] = digest(path)
             abi = native / 'third_party/dawn/src/dawn/native/d3d12/glint/buffer_scatter_parameters.h'
             if digest(abi) != digest(MODULE / 'buffer_scatter_parameters.h'):
                 raise ValueError('Native and shared scatter parameter ABI differ')
@@ -143,7 +153,7 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
         flags += ['/imsvc' + str(sdk / 'VC/Tools/MSVC/14.51.36231/include')]
         flags += ['/imsvc' + str(sdk / 'Windows Kits/10/Include/10.0.28000.0' / kind)
                   for kind in ('ucrt', 'shared', 'um', 'winrt')]
-        flags += ['/I' + str(p) for p in (module, MODULE,
+        flags += ['/I' + str(p) for p in (fixture.parent, module, MODULE,
                   native / 'third_party/dawn/src/dawn/native/d3d12/glint',
                   native, chromium, chromium / 'third_party/boringssl/src/include')]
         link = ['-fuse-ld=lld', '/link', *('/LIBPATH:' + str(p) for p in (

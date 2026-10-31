@@ -184,3 +184,7 @@ native/drafts/webgpu-snapshot-lease/*.py text eol=lf
 native/drafts/webgpu-snapshot-lease/*.cc text eol=lf
 native/drafts/webgpu-input-plan/*.py text eol=lf
 native/drafts/webgpu-input-plan/*.cc text eol=lf
+native/drafts/webgpu-buffer-bindings/*.py text eol=lf
+native/drafts/webgpu-buffer-bindings/*.cc text eol=lf
+native/drafts/webgpu-buffer-bindings/*.h text eol=lf
+native/drafts/webgpu-buffer-bindings/*.hlsl text eol=lf

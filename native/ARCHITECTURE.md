@@ -1224,3 +1224,25 @@ passed. Actual CPU controller/policy/provenance passed 256 iterations / 12,802
 assertions per normal/ASan, plus 2,000 prior controller cycles / 10,154 assertions.
 GPU payloads were mocked, not executed in Dawn. Queue/Wire/DXC, actual routing and
 combined browser consistency remain unverified; selected runtime unchanged.
+
+## Transient buffer binding descriptors (unselected)
+
+The [buffer-binding extension](drafts/webgpu-buffer-bindings/README.md) adds native
+dispatch-local CBV/raw-SRV/raw-UAV buffer overrides and checked dynamic uniform
+root addresses. A shared writer serves ordinary initialization and overrides;
+the original path explicitly retains Buffer::GetVA(), while shadows use their
+own resource address. The sampled-texture overload remains compatible. Validation
+checks logical owner/private allocation, resource capacity/flags, offsets and CBV
+limits before allocating a transient table; no missing-root raw fallback exists.
+
+Twenty-two packets replay/reverse across 84 paths; fourteen native syntax units
+passed. Extracted native methods ran on actual D3D12 hardware in 20 cases / 21,728
+assertions per normal/ASan, including 244 override refusals and two dynamic root
+uniform cases. Shader consumers distinguish shadow versus original cached tables;
+writes affect only shadows. Dawn objects/allocator were mocked, and input values
+were CPU-initialized: this proves descriptor semantics, not fingerprint projection.
+
+The actual input-plan shadow producer, binding-tracker installation and writable
+copyback are not connected. Native queue/Wire/DXC, indirect ancestry and browser
+consistency remain unverified. Existing GPU scatter/shadow/plane fixtures were
+rerun with the updated shared runner; none of these checks selects a new runtime.
