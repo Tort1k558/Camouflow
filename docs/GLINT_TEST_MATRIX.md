@@ -1,5 +1,16 @@
 # Glint browser test matrix
 
+## Unselected private WebGPU transport
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Packet codec | 152 assertions, normal and ASan | Isolated codec only |
+| Chromium syntax | Four translation units passed | Not linking or GPU-process execution |
+| Patch reversibility | 24 staged files matched, reverse restored originals | Not selected or applied to runtime |
+| Previous full Python baseline | 4967 passed, 1 skipped at `1255aa7` | Predates this transport draft |
+
+[Transport source and remaining integration work](../native/drafts/webgpu-private-policy/README.md).
+
 ## Measured Windows 001–076
 
 | Gate | Measured result | Boundary |

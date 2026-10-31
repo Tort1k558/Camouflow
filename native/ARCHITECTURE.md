@@ -1,5 +1,15 @@
 # Glint architecture
 
+## Unselected private WebGPU transport
+
+The [private policy transport draft](drafts/webgpu-private-policy/README.md) adds
+an owned/cleansed packet, an internal command carrying no seed bytes, a dedicated
+client allocation and an immutable per-device GPU receiver. Four translation units
+passed syntax checks; codec checks passed 152 assertions normally and under ASan.
+This is not browser integration, pixel protection or resolution of the measured
+Canvas/WebGPU mismatch. The preceding full Python baseline passed **4967 tests,
+1 skipped** at `1255aa7`, before this transport draft.
+
 ## Measured Windows 001–076 screenshot transactions
 
 All **506 native cases / 24 groups** passed, including twelve real-session

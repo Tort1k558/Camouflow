@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "1255aa71a9b00386f84c5c81716454be495dfd53",
+  "counts": {
+    "tests": 4968,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4967
+  },
+  "duration_seconds": 453.484,
+  "log_sha256": "fb643790de05fd6d014f0aaa20a4d9f8fbc6ea6d614e681bbbe4e5bff3cfff06",
+  "junit_sha256": "e0655efd725f1b817eff52d9ae80e56ca9cae7ecf0ed40d04100004c10fb5e65",
+  "schema": 1,
+  "raw_report_sha256": "d01e0b0438ab09ba643418109666574bb26237b3a542c213aa402491c37ee690",
+  "scope": "Full Python regression at 1255aa7 before private transport draft; not native/browser/privacy admission",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "scope": "Unselected private renderer/GPU transport source preparation",
+  "selected": false,
+  "browser_integrated": false,
+  "runtime_verified": false,
+  "native_queue_hooks_installed": false,
+  "native_webgpu_readback_protection": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "webgpu-private-policy-transport-next.patch",
+  "patch_sha256": "b8e928c628cfc9a5db76e22d848a877a436d6768a56c4209b57df4f18fa710d2",
+  "exact_patch_roundtrip_verified": true,
+  "source_sha256": {
+    "gpu/command_buffer/client/webgpu_cmd_helper_autogen.h": "e57a4143f6ee6396c98127e6595c6de4fb5969d39c4fe99826fc3415c5c6ff54",
+    "gpu/command_buffer/client/webgpu_implementation_autogen.h": "b2834b67befa9e4f2ba06023d76faf0f012edc76df73c3b8ff91840d056c237d",
+    "gpu/command_buffer/client/webgpu_implementation_impl_autogen.h": "ebb27537f498bbf6c6433dba87e00aa2731b6225f77b7d7c2bc33f8ac9c7a28b",
+    "gpu/command_buffer/client/webgpu_implementation_unittest_autogen.h": "ae31c29ac80878eaa3bea3dd80c969cdce26934c18662c1d2d76c550b06a0c36",
+    "gpu/command_buffer/client/webgpu_interface_autogen.h": "1fc6e8988754b778dc357073c0374bd4868f62585c1574dac5fb93ac1f8719c7",
+    "gpu/command_buffer/client/webgpu_interface_stub_autogen.h": "0edec5ace60dcafba86cc78aa174fb47cb3ae745ae59900ab983ba41d064271c",
+    "gpu/command_buffer/client/webgpu_interface_stub_impl_autogen.h": "9fbc9ca90ab3ac6d75d1210315f2dfc54292f6c4e04dcac0aafe17b24764553a",
+    "gpu/command_buffer/common/webgpu_cmd_format_autogen.h": "4c755796cb635d7317f01b2f2defaf88a7db36be7c191a4d5c95397605b592ab",
+    "gpu/command_buffer/common/webgpu_cmd_format_test_autogen.h": "43328b1cf9b70e231858adc168306977376d989f2fd1a0b3eac3987a838fb972",
+    "gpu/command_buffer/common/webgpu_cmd_ids_autogen.h": "ab59487628182803ce7d56ea73f5265bcaeb057e85ad6b711fa6e3695231ebfd",
+    "gpu/command_buffer/service/webgpu_cmd_validation_autogen.h": "be838f8e940f7691c2f726315f4be7c6f9d77ef63c2b005ad7346ca67728daa7",
+    "gpu/command_buffer/service/webgpu_cmd_validation_implementation_autogen.h": "2364949fa772b041b5a30bb0826d672da53d1308e884e7d7abb69ee309f321b0",
+    "gpu/command_buffer/common/BUILD.gn": "23c9049eeec9a675d12b898a6255c79d7f19d4a1f68a9315f559dc18c3a4aae8",
+    "gpu/command_buffer/service/webgpu_decoder_impl.cc": "1d7035dfc3b684fd84c752e4cffd2f926612499940949a9ffc5016561a0ec989",
+    "gpu/command_buffer/webgpu_cmd_buffer_functions.txt": "cc74e1aee2c267edfdc35af510ec67b32b0380e821ee8d90c18d5326a24bfc1e",
+    "gpu/command_buffer/build_webgpu_cmd_buffer.py": "cdec742ae94844593693a6fdb14f554d8a9fb67cbc334b123339bd7eb65b52b4",
+    "gpu/command_buffer/client/webgpu_interface.h": "fcfa3678cdf610030282732c50576c4bba4797ca55a976944b6e467c303d6df4",
+    "gpu/command_buffer/client/webgpu_implementation.h": "45c0c7b516abdc0b35632160a934ac2b72185e50b9cba6b2cefd798d95347605",
+    "gpu/command_buffer/client/webgpu_interface_stub.h": "cf0362edb461873f83842c2210bbf3b2ceb212e0cd2359b7e49ecc9dfa11564b",
+    "gpu/command_buffer/client/webgpu_interface_stub.cc": "0f90bf993419231cc6b0fa215f173d139d38ee9a06935fbe021cb98d6a71c26e",
+    "gpu/command_buffer/client/webgpu_implementation.cc": "2206bbde99883e4ae2f4dbc16f912d2ba04a95cf1848fbf909c60750f68106b9",
+    "gpu/command_buffer/client/BUILD.gn": "ad2dafc9f539284daf9ab5471dc9b2dcbd050c3b93c8dd28a7f52f6f643396de"
+  },
+  "staged_sha256": {
+    "gpu/command_buffer/build_webgpu_cmd_buffer.py": "a01ffbe6812e7a574d1c0bee3a2f4f982fd299173566c86b6cef6f9f4d75411b",
+    "gpu/command_buffer/client/BUILD.gn": "8c43820fd21767b432130c231a618f14defaeecd31e171639ed4854bc1983747",
+    "gpu/command_buffer/client/webgpu_cmd_helper_autogen.h": "27c539f87ef42fed1a9e69b046d74daba3fc483a54c26036ca5177c5eb40a899",
+    "gpu/command_buffer/client/webgpu_implementation.cc": "c8bb8b51d3bfec928c68d34aac706a2f83d77bd95c813fc51ee172594f816599",
+    "gpu/command_buffer/client/webgpu_implementation.h": "c5cdcb09defed0b1fc0ac1daa9dfa391db5f0ef8bfb29710b9f937706a253329",
+    "gpu/command_buffer/client/webgpu_implementation_autogen.h": "b2834b67befa9e4f2ba06023d76faf0f012edc76df73c3b8ff91840d056c237d",
+    "gpu/command_buffer/client/webgpu_implementation_impl_autogen.h": "ebb27537f498bbf6c6433dba87e00aa2731b6225f77b7d7c2bc33f8ac9c7a28b",
+    "gpu/command_buffer/client/webgpu_implementation_unittest_autogen.h": "ae31c29ac80878eaa3bea3dd80c969cdce26934c18662c1d2d76c550b06a0c36",
+    "gpu/command_buffer/client/webgpu_interface.h": "b2440efda9629489186867ea5206dfe14daf063ab85d67ef283c725dc1570d9d",
+    "gpu/command_buffer/client/webgpu_interface_autogen.h": "1fc6e8988754b778dc357073c0374bd4868f62585c1574dac5fb93ac1f8719c7",
+    "gpu/command_buffer/client/webgpu_interface_stub.cc": "7d67d31343dfb8087d47724271d49cfc0d20acd4cde3fc4c4b7653cbfa32a62c",
+    "gpu/command_buffer/client/webgpu_interface_stub.h": "3e056320562cf5aad87f3becf1b544c0c9dd4311ec1f035d9be65169b2b2dcbe",
+    "gpu/command_buffer/client/webgpu_interface_stub_autogen.h": "0edec5ace60dcafba86cc78aa174fb47cb3ae745ae59900ab983ba41d064271c",
+    "gpu/command_buffer/client/webgpu_interface_stub_impl_autogen.h": "9fbc9ca90ab3ac6d75d1210315f2dfc54292f6c4e04dcac0aafe17b24764553a",
+    "gpu/command_buffer/common/BUILD.gn": "0ca2684cc50342d58313dd732e56a53acd2240feaa00f4505924fa86f09a8cee",
+    "gpu/command_buffer/common/glint_webgpu_device_policy.cc": "ce01eedaba1c331abda260173edbe2470e8b692579b1bc93d768569c1096eeca",
+    "gpu/command_buffer/common/glint_webgpu_device_policy.h": "e80e890f6972f3ec8d31735b81e62aab91015824a0fd0472873764047b4ee09a",
+    "gpu/command_buffer/common/webgpu_cmd_format_autogen.h": "d9b4614393b9d4405a9178888dec100dfbd52b1e1b80e8c825e75b1c02105beb",
+    "gpu/command_buffer/common/webgpu_cmd_format_test_autogen.h": "89a20b07ec6644b18c47764174e23e99781ba03c57d46514a10cf34462caddd5",
+    "gpu/command_buffer/common/webgpu_cmd_ids_autogen.h": "1c238a36a8422a03c96a72f2dd3a9ed5c2955034040b876bdb2a89f6672a89ac",
+    "gpu/command_buffer/service/webgpu_cmd_validation_autogen.h": "be838f8e940f7691c2f726315f4be7c6f9d77ef63c2b005ad7346ca67728daa7",
+    "gpu/command_buffer/service/webgpu_cmd_validation_implementation_autogen.h": "2364949fa772b041b5a30bb0826d672da53d1308e884e7d7abb69ee309f321b0",
+    "gpu/command_buffer/service/webgpu_decoder_impl.cc": "530649dd87a646b535703ce9ef4003929e127ab71b312810bf05f7ae39c74872",
+    "gpu/command_buffer/webgpu_cmd_buffer_functions.txt": "add4fdbca236725b6b35c6f1be05c62b85518ad741c77b613d70367c6cbb852d"
+  },
+  "command_id": 263,
+  "existing_command_ids_preserved": [
+    256,
+    257,
+    258,
+    259,
+    260,
+    261,
+    262
+  ],
+  "baseline_generated_files_exact": 12,
+  "command_size_bytes": 24,
+  "policy_packet_bytes": 64,
+  "seed_in_command_arguments": false,
+  "codec_checks": [
+    {
+      "mode": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 152,
+        "transport_installed": false
+      }
+    },
+    {
+      "mode": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 152,
+        "transport_installed": false
+      }
+    }
+  ],
+  "codec_report_sha256": "89fff145859041e5f7d37c37b694df26f9aa691365bc46da13e1d223326c30c6",
+  "syntax_checks": [
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_stub.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint_webgpu_device_policy.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_decoder_impl.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "593589357020d2511a85cd9b29dd8d50d4811db29d54ba5e54e5dfbc0f38253b",
+  "syntax_scope": "Four translation units with existing Chromium flags; stub borrows client flags; not linking",
+  "measured_codec_source_sha256": {
+    "glint_webgpu_device_policy.h": "e80e890f6972f3ec8d31735b81e62aab91015824a0fd0472873764047b4ee09a",
+    "glint_webgpu_device_policy.cc": "ce01eedaba1c331abda260173edbe2470e8b692579b1bc93d768569c1096eeca",
+    "policy_test.cc": "e6d3db4c7dd2b07da0e9bb32054946b05c38aab9b9500421150df382f8c221f2",
+    "check.py": "fa724559070b72181d85104f975c60e3aec4d624f873a1f8275cddd8f689e7e3"
+  },
+  "public_source_sha256": {
+    "native/drafts/webgpu-private-policy/check.py": "2826a9b19a1be84cdaa8510898319cb6784c59851c61e92b12535111b4877809",
+    "native/drafts/webgpu-private-policy/glint_webgpu_device_policy.cc": "ce01eedaba1c331abda260173edbe2470e8b692579b1bc93d768569c1096eeca",
+    "native/drafts/webgpu-private-policy/glint_webgpu_device_policy.h": "e80e890f6972f3ec8d31735b81e62aab91015824a0fd0472873764047b4ee09a",
+    "native/drafts/webgpu-private-policy/policy_test.cc": "e6d3db4c7dd2b07da0e9bb32054946b05c38aab9b9500421150df382f8c221f2"
+  },
+  "postguards_passed": true,
+  "public_codec_checks": [
+    {
+      "mode": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 152,
+        "transport_installed": false
+      }
+    },
+    {
+      "mode": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 152,
+        "transport_installed": false
+      }
+    }
+  ],
+  "public_codec_report_sha256": "75a6266014d89ed48c3d867a58f12a748d52f3186417a452b88498018cf0942b",
+  "public_codec_source_sha256": {
+    "glint_webgpu_device_policy.h": "e80e890f6972f3ec8d31735b81e62aab91015824a0fd0472873764047b4ee09a",
+    "glint_webgpu_device_policy.cc": "ce01eedaba1c331abda260173edbe2470e8b692579b1bc93d768569c1096eeca",
+    "policy_test.cc": "e6d3db4c7dd2b07da0e9bb32054946b05c38aab9b9500421150df382f8c221f2",
+    "check.py": "2826a9b19a1be84cdaa8510898319cb6784c59851c61e92b12535111b4877809"
+  }
+}

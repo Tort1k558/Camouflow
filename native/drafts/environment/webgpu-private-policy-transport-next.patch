@@ -1,0 +1,611 @@
+--- a/gpu/command_buffer/build_webgpu_cmd_buffer.py
++++ b/gpu/command_buffer/build_webgpu_cmd_buffer.py
+@@ -97,6 +97,11 @@
+   'DestroyServer': {
+     'impl_func': False,
+     'internal': True,
++  },
++  'SetGlintDevicePolicy': {
++    'impl_func': False,
++    'internal': True,
++    'client_test': False,
+   },
+   'SetWebGPUExecutionContextToken': {
+     'impl_func': False,
+--- a/gpu/command_buffer/client/BUILD.gn
++++ b/gpu/command_buffer/client/BUILD.gn
+@@ -303,6 +303,7 @@
+     ":gles2_implementation",
+     ":webgpu_interface",
+     "//gpu/command_buffer/common:webgpu",
++    "//third_party/boringssl",
+   ]
+   public_deps = [ "//third_party/dawn/include/dawn:headers" ]
+   sources = [
+--- a/gpu/command_buffer/client/webgpu_cmd_helper_autogen.h
++++ b/gpu/command_buffer/client/webgpu_cmd_helper_autogen.h
+@@ -99,4 +99,17 @@
+   }
+ }
+ 
++void SetGlintDevicePolicy(GLuint device_id,
++                          GLuint device_generation,
++                          uint32_t policy_shm_id,
++                          uint32_t policy_shm_offset,
++                          uint32_t policy_size) {
++  webgpu::cmds::SetGlintDevicePolicy* c =
++      GetCmdSpace<webgpu::cmds::SetGlintDevicePolicy>();
++  if (c) {
++    c->Init(device_id, device_generation, policy_shm_id, policy_shm_offset,
++            policy_size);
++  }
++}
++
+ #endif  // GPU_COMMAND_BUFFER_CLIENT_WEBGPU_CMD_HELPER_AUTOGEN_H_
+--- a/gpu/command_buffer/client/webgpu_implementation.cc
++++ b/gpu/command_buffer/client/webgpu_implementation.cc
+@@ -19,6 +19,8 @@
+ #include "gpu/command_buffer/client/dawn_client_serializer.h"
+ #include "gpu/command_buffer/client/gpu_control.h"
+ #include "gpu/command_buffer/client/shared_memory_limits.h"
++#include "gpu/command_buffer/common/glint_webgpu_device_policy.h"
++#include "third_party/boringssl/src/include/openssl/mem.h"
+ #include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
+ 
+ #define GPU_CLIENT_SINGLE_THREAD_CHECK()
+@@ -93,6 +95,11 @@
+   wgpuDawnWireClientInstanceProcessEvents(wgpu_instance_);
+ }
+ 
++dawn::wire::Handle DawnWireServices::GetDeviceWireHandle(WGPUDevice device) {
++  base::AutoLockMaybe lock(OptionalToPtr(lock_));
++  return wire_client_.GetWireHandle(device);
++}
++
+ dawn::wire::ReservedBuffer DawnWireServices::ReserveBuffer(
+     WGPUDevice device,
+     const WGPUBufferDescriptor* desc) {
+@@ -439,6 +446,54 @@
+ WGPUDevice WebGPUImplementation::DeprecatedEnsureDefaultDeviceSync() {
+   NOTIMPLEMENTED();
+   return nullptr;
++}
++
++bool WebGPUImplementation::ConfigureGlintDevicePolicy(
++    WGPUDevice device,
++    const GlintWebGPUDevicePolicy& policy) {
++#if BUILDFLAG(USE_DAWN)
++  if (!device || !dawn_wire_ || helper_->IsContextLost()) {
++    return false;
++  }
++  auto packet = policy.Encode();
++  if (!packet) {
++    return false;
++  }
++  const auto handle = dawn_wire_->GetDeviceWireHandle(device);
++  if (handle.id == 0) {
++    return false;
++  }
++  // Creation/free commands must reach the server before resolving wire IDs.
++  dawn_wire_->Commit();
++  auto* command_buffer = helper_->command_buffer();
++  int32_t id = -1;
++  auto memory = command_buffer->CreateTransferBuffer(
++      kGlintWebGPUPolicyPacketBytes, &id, 0,
++      TransferBufferAllocationOption::kReturnNullOnOOM);
++  if (!memory || id <= 0) {
++    return false;
++  }
++  auto bytes = memory->as_byte_span();
++  if (bytes.size() < kGlintWebGPUPolicyPacketBytes) {
++    OPENSSL_cleanse(bytes.data(), bytes.size());
++    command_buffer->DestroyTransferBuffer(id);
++    return false;
++  }
++  // Dedicated allocation: never leave a secret in the pooled transfer buffer.
++  std::copy(packet->bytes().begin(), packet->bytes().end(), bytes.begin());
++  helper_->SetGlintDevicePolicy(handle.id, handle.generation, id, 0,
++                                kGlintWebGPUPolicyPacketBytes);
++  const int32_t token = helper_->InsertToken();
++  helper_->OrderingBarrier();
++  helper_->WaitForToken(token);
++  const bool consumed =
++      helper_->HasTokenPassed(token) && !helper_->IsContextLost();
++  OPENSSL_cleanse(bytes.data(), bytes.size());
++  command_buffer->DestroyTransferBuffer(id);
++  return consumed;
++#else
++  return false;
++#endif
+ }
+ 
+ void WebGPUImplementation::AssociateMailbox(
+--- a/gpu/command_buffer/client/webgpu_implementation.h
++++ b/gpu/command_buffer/client/webgpu_implementation.h
+@@ -52,6 +52,7 @@
+   void HandleCommands(uint64_t trace_id,
+                       base::span<const volatile uint8_t> commands);
+   void ProcessEvents();
++  dawn::wire::Handle GetDeviceWireHandle(WGPUDevice device);
+   dawn::wire::ReservedBuffer ReserveBuffer(WGPUDevice device,
+                                            const WGPUBufferDescriptor* desc);
+   dawn::wire::ReservedTexture ReserveTexture(WGPUDevice device,
+@@ -95,6 +96,10 @@
+ // it means we can easily edit the non-auto generated parts right here in
+ // this file instead of having to edit some template or the code generator.
+ #include "gpu/command_buffer/client/webgpu_implementation_autogen.h"
++
++  [[nodiscard]] bool ConfigureGlintDevicePolicy(
++      WGPUDevice device,
++      const GlintWebGPUDevicePolicy& policy) override;
+ 
+   void AssociateMailbox(GLuint device_id,
+                         GLuint device_generation,
+--- a/gpu/command_buffer/client/webgpu_interface.h
++++ b/gpu/command_buffer/client/webgpu_interface.h
+@@ -21,6 +21,8 @@
+ struct Mailbox;
+ 
+ namespace webgpu {
++
++class GlintWebGPUDevicePolicy;
+ 
+ struct ReservedBuffer {
+   WGPUBuffer buffer;
+@@ -61,6 +63,11 @@
+ 
+   // Flush all commands.
+   virtual void FlushCommands() = 0;
++
++  // Returns true only after the GPU decoder has consumed the policy.
++  [[nodiscard]] virtual bool ConfigureGlintDevicePolicy(
++      WGPUDevice device,
++      const GlintWebGPUDevicePolicy& policy) = 0;
+ 
+   // Ensure the awaiting flush flag is set on the device client. Returns false
+   // if a flush has already been indicated, or a flush is not needed (there may
+--- a/gpu/command_buffer/client/webgpu_interface_stub.cc
++++ b/gpu/command_buffer/client/webgpu_interface_stub.cc
+@@ -34,6 +34,12 @@
+                                                    GLsizei count) {}
+ void WebGPUInterfaceStub::WaitSyncTokenCHROMIUM(const GLbyte* sync_token) {}
+ void WebGPUInterfaceStub::ShallowFlushCHROMIUM() {}
++
++bool WebGPUInterfaceStub::ConfigureGlintDevicePolicy(
++    WGPUDevice,
++    const GlintWebGPUDevicePolicy&) {
++  return false;
++}
+ 
+ // WebGPUInterface implementation
+ scoped_refptr<APIChannel> WebGPUInterfaceStub::GetAPIChannel() const {
+--- a/gpu/command_buffer/client/webgpu_interface_stub.h
++++ b/gpu/command_buffer/client/webgpu_interface_stub.h
+@@ -15,6 +15,10 @@
+  public:
+   WebGPUInterfaceStub();
+   ~WebGPUInterfaceStub() override;
++
++  [[nodiscard]] bool ConfigureGlintDevicePolicy(
++      WGPUDevice device,
++      const GlintWebGPUDevicePolicy& policy) override;
+ 
+   // InterfaceBase implementation.
+   void GenSyncTokenCHROMIUM(GLbyte* sync_token) override;
+--- a/gpu/command_buffer/common/BUILD.gn
++++ b/gpu/command_buffer/common/BUILD.gn
+@@ -186,6 +186,8 @@
+ 
+   sources = [
+     "dawn_memory_transfer_handle.h",
++    "glint_webgpu_device_policy.cc",
++    "glint_webgpu_device_policy.h",
+     "webgpu_cmd_enums.h",
+     "webgpu_cmd_format.cc",
+     "webgpu_cmd_format.h",
+@@ -199,6 +201,7 @@
+   deps = [
+     ":gles2_utils",
+     "//base",
++    "//third_party/boringssl",
+   ]
+ 
+   public_deps = [
+--- /dev/null
++++ b/gpu/command_buffer/common/glint_webgpu_device_policy.cc
+@@ -0,0 +1,116 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "glint_webgpu_device_policy.h"
++
++#include <algorithm>
++#include <utility>
++
++#include "third_party/boringssl/src/include/openssl/mem.h"
++
++namespace gpu::webgpu {
++namespace {
++constexpr std::array<uint8_t, 8> kHeader = {'G', 'L', 'G', 'P', 1, 0, 0, 0};
++
++bool HasSeed(std::span<const uint8_t, 32> seed) {
++  return std::any_of(seed.begin(), seed.end(),
++                     [](uint8_t byte) { return byte != 0; });
++}
++}  // namespace
++
++GlintWebGPUPolicyPacket::GlintWebGPUPolicyPacket(
++    GlintWebGPUPolicyPacket&& other) noexcept
++    : bytes_(other.bytes_) {
++  OPENSSL_cleanse(other.bytes_.data(), other.bytes_.size());
++}
++
++GlintWebGPUPolicyPacket& GlintWebGPUPolicyPacket::operator=(
++    GlintWebGPUPolicyPacket&& other) noexcept {
++  if (this != &other) {
++    OPENSSL_cleanse(bytes_.data(), bytes_.size());
++    bytes_ = other.bytes_;
++    OPENSSL_cleanse(other.bytes_.data(), other.bytes_.size());
++  }
++  return *this;
++}
++
++GlintWebGPUPolicyPacket::~GlintWebGPUPolicyPacket() {
++  OPENSSL_cleanse(bytes_.data(), bytes_.size());
++}
++
++GlintWebGPUDevicePolicy::GlintWebGPUDevicePolicy(
++    uint64_t generation,
++    std::span<const uint8_t, 32> seed)
++    : generation_(generation) {
++  std::copy(seed.begin(), seed.end(), seed_.begin());
++}
++
++GlintWebGPUDevicePolicy::GlintWebGPUDevicePolicy(
++    GlintWebGPUDevicePolicy&& other) noexcept
++    : generation_(std::exchange(other.generation_, 0)), seed_(other.seed_) {
++  OPENSSL_cleanse(other.seed_.data(), other.seed_.size());
++}
++
++GlintWebGPUDevicePolicy& GlintWebGPUDevicePolicy::operator=(
++    GlintWebGPUDevicePolicy&& other) noexcept {
++  if (this != &other) {
++    OPENSSL_cleanse(seed_.data(), seed_.size());
++    generation_ = std::exchange(other.generation_, 0);
++    seed_ = other.seed_;
++    OPENSSL_cleanse(other.seed_.data(), other.seed_.size());
++  }
++  return *this;
++}
++
++GlintWebGPUDevicePolicy::~GlintWebGPUDevicePolicy() {
++  OPENSSL_cleanse(seed_.data(), seed_.size());
++}
++
++std::optional<GlintWebGPUDevicePolicy> GlintWebGPUDevicePolicy::Create(
++    uint64_t generation,
++    std::span<const uint8_t, 32> seed) {
++  if (generation == 0 || !HasSeed(seed)) {
++    return std::nullopt;
++  }
++  return GlintWebGPUDevicePolicy(generation, seed);
++}
++
++std::optional<GlintWebGPUDevicePolicy> GlintWebGPUDevicePolicy::Decode(
++    std::span<const uint8_t> packet) {
++  if (packet.size() != kGlintWebGPUPolicyPacketBytes) {
++    return std::nullopt;
++  }
++  // Snapshot untrusted shared memory before validation; cleanse on every exit.
++  GlintWebGPUPolicyPacket owned;
++  std::copy(packet.begin(), packet.end(), owned.bytes_.begin());
++  packet = owned.bytes();
++  if (!std::equal(kHeader.begin(), kHeader.end(), packet.begin()) ||
++      std::any_of(packet.begin() + 48, packet.end(),
++                  [](uint8_t byte) { return byte != 0; })) {
++    return std::nullopt;
++  }
++  uint64_t generation = 0;
++  for (size_t byte = 0; byte < 8; ++byte) {
++    generation |= static_cast<uint64_t>(packet[8 + byte]) << (byte * 8);
++  }
++  return Create(generation, packet.subspan<16, 32>());
++}
++
++std::optional<GlintWebGPUPolicyPacket> GlintWebGPUDevicePolicy::Encode() const {
++  if (generation_ == 0 || !HasSeed(seed_)) {
++    return std::nullopt;
++  }
++  GlintWebGPUPolicyPacket packet;
++  std::copy(kHeader.begin(), kHeader.end(), packet.bytes_.begin());
++  for (size_t byte = 0; byte < 8; ++byte) {
++    packet.bytes_[8 + byte] = static_cast<uint8_t>(generation_ >> (byte * 8));
++  }
++  std::copy(seed_.begin(), seed_.end(), packet.bytes_.begin() + 16);
++  return packet;
++}
++
++bool GlintWebGPUDevicePolicy::Matches(
++    const GlintWebGPUDevicePolicy& other) const {
++  return generation_ != 0 && generation_ == other.generation_ &&
++         CRYPTO_memcmp(seed_.data(), other.seed_.data(), seed_.size()) == 0;
++}
++}  // namespace gpu::webgpu
+--- /dev/null
++++ b/gpu/command_buffer/common/glint_webgpu_device_policy.h
+@@ -0,0 +1,57 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GPU_COMMAND_BUFFER_COMMON_GLINT_WEBGPU_DEVICE_POLICY_H_
++#define GPU_COMMAND_BUFFER_COMMON_GLINT_WEBGPU_DEVICE_POLICY_H_
++
++#include <array>
++#include <cstddef>
++#include <cstdint>
++#include <optional>
++#include <span>
++
++namespace gpu::webgpu {
++constexpr size_t kGlintWebGPUPolicyPacketBytes = 64;
++
++class GlintWebGPUPolicyPacket {
++ public:
++  GlintWebGPUPolicyPacket(GlintWebGPUPolicyPacket&& other) noexcept;
++  GlintWebGPUPolicyPacket& operator=(GlintWebGPUPolicyPacket&& other) noexcept;
++  ~GlintWebGPUPolicyPacket();
++  GlintWebGPUPolicyPacket(const GlintWebGPUPolicyPacket&) = delete;
++  GlintWebGPUPolicyPacket& operator=(const GlintWebGPUPolicyPacket&) = delete;
++  std::span<const uint8_t, kGlintWebGPUPolicyPacketBytes> bytes() const {
++    return bytes_;
++  }
++
++ private:
++  friend class GlintWebGPUDevicePolicy;
++  GlintWebGPUPolicyPacket() = default;
++  std::array<uint8_t, kGlintWebGPUPolicyPacketBytes> bytes_{};
++};
++
++// Private native transport only. Deliberately has no stream/trace formatter.
++class GlintWebGPUDevicePolicy {
++ public:
++  static std::optional<GlintWebGPUDevicePolicy> Create(
++      uint64_t generation,
++      std::span<const uint8_t, 32> seed);
++  static std::optional<GlintWebGPUDevicePolicy> Decode(
++      std::span<const uint8_t> packet);
++  GlintWebGPUDevicePolicy(GlintWebGPUDevicePolicy&& other) noexcept;
++  GlintWebGPUDevicePolicy& operator=(GlintWebGPUDevicePolicy&& other) noexcept;
++  ~GlintWebGPUDevicePolicy();
++  GlintWebGPUDevicePolicy(const GlintWebGPUDevicePolicy&) = delete;
++  GlintWebGPUDevicePolicy& operator=(const GlintWebGPUDevicePolicy&) = delete;
++  std::optional<GlintWebGPUPolicyPacket> Encode() const;
++  bool Matches(const GlintWebGPUDevicePolicy& other) const;
++  uint64_t generation() const { return generation_; }
++  std::span<const uint8_t, 32> seed() const { return seed_; }
++
++ private:
++  GlintWebGPUDevicePolicy(uint64_t generation,
++                          std::span<const uint8_t, 32> seed);
++  uint64_t generation_ = 0;
++  std::array<uint8_t, 32> seed_{};
++};
++}  // namespace gpu::webgpu
++#endif
+--- a/gpu/command_buffer/common/webgpu_cmd_format_autogen.h
++++ b/gpu/command_buffer/common/webgpu_cmd_format_autogen.h
+@@ -433,4 +433,64 @@
+ static_assert(offsetof(SetWebGPUExecutionContextToken, low_low) == 20,
+               "offset of SetWebGPUExecutionContextToken low_low should be 20");
+ 
++struct SetGlintDevicePolicy {
++  typedef SetGlintDevicePolicy ValueType;
++  static const CommandId kCmdId = kSetGlintDevicePolicy;
++  static const cmd::ArgFlags kArgFlags = cmd::kFixed;
++  static const uint8_t cmd_flags = CMD_FLAG_SET_TRACE_LEVEL(3);
++
++  static uint32_t ComputeSize() {
++    return static_cast<uint32_t>(sizeof(ValueType));  // NOLINT
++  }
++
++  void SetHeader() { header.SetCmd<ValueType>(); }
++
++  void Init(GLuint _device_id,
++            GLuint _device_generation,
++            uint32_t _policy_shm_id,
++            uint32_t _policy_shm_offset,
++            uint32_t _policy_size) {
++    SetHeader();
++    device_id = _device_id;
++    device_generation = _device_generation;
++    policy_shm_id = _policy_shm_id;
++    policy_shm_offset = _policy_shm_offset;
++    policy_size = _policy_size;
++  }
++
++  void* Set(void* cmd,
++            GLuint _device_id,
++            GLuint _device_generation,
++            uint32_t _policy_shm_id,
++            uint32_t _policy_shm_offset,
++            uint32_t _policy_size) {
++    static_cast<ValueType*>(cmd)->Init(_device_id, _device_generation,
++                                       _policy_shm_id, _policy_shm_offset,
++                                       _policy_size);
++    return NextCmdAddress<ValueType>(cmd);
++  }
++
++  gpu::CommandHeader header;
++  uint32_t device_id;
++  uint32_t device_generation;
++  uint32_t policy_shm_id;
++  uint32_t policy_shm_offset;
++  uint32_t policy_size;
++};
++
++static_assert(sizeof(SetGlintDevicePolicy) == 24,
++              "size of SetGlintDevicePolicy should be 24");
++static_assert(offsetof(SetGlintDevicePolicy, header) == 0,
++              "offset of SetGlintDevicePolicy header should be 0");
++static_assert(offsetof(SetGlintDevicePolicy, device_id) == 4,
++              "offset of SetGlintDevicePolicy device_id should be 4");
++static_assert(offsetof(SetGlintDevicePolicy, device_generation) == 8,
++              "offset of SetGlintDevicePolicy device_generation should be 8");
++static_assert(offsetof(SetGlintDevicePolicy, policy_shm_id) == 12,
++              "offset of SetGlintDevicePolicy policy_shm_id should be 12");
++static_assert(offsetof(SetGlintDevicePolicy, policy_shm_offset) == 16,
++              "offset of SetGlintDevicePolicy policy_shm_offset should be 16");
++static_assert(offsetof(SetGlintDevicePolicy, policy_size) == 20,
++              "offset of SetGlintDevicePolicy policy_size should be 20");
++
+ #endif  // GPU_COMMAND_BUFFER_COMMON_WEBGPU_CMD_FORMAT_AUTOGEN_H_
+--- a/gpu/command_buffer/common/webgpu_cmd_format_test_autogen.h
++++ b/gpu/command_buffer/common/webgpu_cmd_format_test_autogen.h
+@@ -157,4 +157,21 @@
+   CheckBytesWrittenMatchesExpectedSize(next_cmd, sizeof(cmd));
+ }
+ 
++TEST_F(WebGPUFormatTest, SetGlintDevicePolicy) {
++  cmds::SetGlintDevicePolicy& cmd = *GetBufferAs<cmds::SetGlintDevicePolicy>();
++  void* next_cmd =
++      cmd.Set(&cmd, static_cast<GLuint>(11), static_cast<GLuint>(12),
++              static_cast<uint32_t>(13), static_cast<uint32_t>(14),
++              static_cast<uint32_t>(15));
++  EXPECT_EQ(static_cast<uint32_t>(cmds::SetGlintDevicePolicy::kCmdId),
++            cmd.header.command);
++  EXPECT_EQ(sizeof(cmd), cmd.header.size * 4u);
++  EXPECT_EQ(static_cast<GLuint>(11), cmd.device_id);
++  EXPECT_EQ(static_cast<GLuint>(12), cmd.device_generation);
++  EXPECT_EQ(static_cast<uint32_t>(13), cmd.policy_shm_id);
++  EXPECT_EQ(static_cast<uint32_t>(14), cmd.policy_shm_offset);
++  EXPECT_EQ(static_cast<uint32_t>(15), cmd.policy_size);
++  CheckBytesWrittenMatchesExpectedSize(next_cmd, sizeof(cmd));
++}
++
+ #endif  // GPU_COMMAND_BUFFER_COMMON_WEBGPU_CMD_FORMAT_TEST_AUTOGEN_H_
+--- a/gpu/command_buffer/common/webgpu_cmd_ids_autogen.h
++++ b/gpu/command_buffer/common/webgpu_cmd_ids_autogen.h
+@@ -18,7 +18,8 @@
+   OP(DissociateMailbox)                  /* 259 */ \
+   OP(DissociateMailboxForBuffer)         /* 260 */ \
+   OP(DissociateMailboxForPresent)        /* 261 */ \
+-  OP(SetWebGPUExecutionContextToken)     /* 262 */
++  OP(SetWebGPUExecutionContextToken)     /* 262 */ \
++  OP(SetGlintDevicePolicy)               /* 263 */
+ 
+ enum CommandId {
+   kOneBeforeStartPoint =
+--- a/gpu/command_buffer/service/webgpu_decoder_impl.cc
++++ b/gpu/command_buffer/service/webgpu_decoder_impl.cc
+@@ -29,6 +29,7 @@
+ #include "base/trace_event/trace_event.h"
+ #include "base/unguessable_token.h"
+ #include "build/build_config.h"
++#include "gpu/command_buffer/common/glint_webgpu_device_policy.h"
+ #include "gpu/command_buffer/common/mailbox.h"
+ #include "gpu/command_buffer/common/shared_image_usage.h"
+ #include "gpu/command_buffer/common/webgpu_cmd_format.h"
+@@ -72,6 +73,7 @@
+ #if BUILDFLAG(IS_WIN)
+ #include <dawn/native/D3D11Backend.h>
+ #include <dawn/native/D3D12Backend.h>
++
+ #include "ui/gl/gl_angle_util_win.h"
+ #endif
+ 
+@@ -865,8 +867,9 @@
+     }
+ 
+     void WaitForSemaphores(std::vector<GrBackendSemaphore> semaphores) {
+-      if (semaphores.empty())
++      if (semaphores.empty()) {
+         return;
++      }
+ 
+       bool wait_result = shared_context_state_->gr_context()->wait(
+           semaphores.size(), semaphores.data(),
+@@ -875,8 +878,9 @@
+     }
+ 
+     void SignalSemaphores(std::vector<GrBackendSemaphore> semaphores) {
+-      if (semaphores.empty())
++      if (semaphores.empty()) {
+         return;
++      }
+ 
+       GrFlushInfo flush_info = {
+           .fNumSemaphores = semaphores.size(),
+@@ -1004,6 +1008,7 @@
+   struct DeviceMetadata {
+     wgpu::AdapterType adapterType;
+     wgpu::BackendType backendType;
++    std::shared_ptr<const GlintWebGPUDevicePolicy> glint_policy = nullptr;
+   };
+   struct DeviceHash {
+     size_t operator()(const wgpu::Device& device) const {
+@@ -1053,8 +1058,9 @@
+     const DawnCacheOptions& dawn_cache_options,
+     IsolationKeyProvider* isolation_key_provider) {
+   // Construct a Dawn caching interface if the Dawn configurations enables it.
+-  // If a handle was set, pass the relevant handle and CacheBlob callback so that
+-  // writing to disk is enabled. Otherwise pass an incognito in-memory version.
++  // If a handle was set, pass the relevant handle and CacheBlob callback so
++  // that writing to disk is enabled. Otherwise pass an incognito in-memory
++  // version.
+   std::unique_ptr<webgpu::DawnCachingInterface> dawn_caching_interface =
+       nullptr;
+   if (auto* caching_interface_factory =
+@@ -1955,6 +1961,47 @@
+   return result;
+ }
+ 
++error::Error WebGPUDecoderImpl::HandleSetGlintDevicePolicy(
++    uint32_t /*immediate_data_size*/,
++    const volatile void* cmd_data) {
++  const auto& command =
++      *static_cast<const volatile webgpu::cmds::SetGlintDevicePolicy*>(
++          cmd_data);
++  const uint32_t size = command.policy_size;
++  if (size != kGlintWebGPUPolicyPacketBytes) {
++    return error::kInvalidArguments;
++  }
++  auto memory = GetSharedMemoryAsSpan(command.policy_shm_id,
++                                      command.policy_shm_offset, size);
++  if (!memory) {
++    return error::kOutOfBounds;
++  }
++  // Decode once into owned memory. Shared memory is untrusted and transient.
++  auto policy = GlintWebGPUDevicePolicy::Decode(
++      std::span<const uint8_t>(memory->data(), memory->size()));
++  if (!policy) {
++    return error::kInvalidArguments;
++  }
++  wgpu::Device device =
++      wire_server_->GetDevice(command.device_id, command.device_generation);
++  if (!device) {
++    return error::kInvalidArguments;
++  }
++  auto metadata = known_device_metadata_.find(device);
++  if (metadata == known_device_metadata_.end()) {
++    return error::kInvalidArguments;
++  }
++  // Device identity is immutable; exact retries are allowed, replacement is
++  // not.
++  auto& current = metadata->second.glint_policy;
++  if (current) {
++    return current->Matches(*policy) ? error::kNoError
++                                     : error::kInvalidArguments;
++  }
++  current = std::make_shared<const GlintWebGPUDevicePolicy>(std::move(*policy));
++  return error::kNoError;
++}
++
+ error::Error WebGPUDecoderImpl::HandleDawnCommands(
+     uint32_t immediate_data_size,
+     const volatile void* cmd_data) {
+--- a/gpu/command_buffer/webgpu_cmd_buffer_functions.txt
++++ b/gpu/command_buffer/webgpu_cmd_buffer_functions.txt
+@@ -16,3 +16,5 @@
+ // The WebGPUExecutionContextTokens are represented by two 64 bit uints, but the
+ // generator only supports 32 bit members so we break the token into 4 parts.
+ GL_APICALL void GL_APIENTRY wgSetWebGPUExecutionContextToken (uint32_t type, uint32_t high_high, uint32_t high_low, uint32_t low_high, uint32_t low_low);
++
++GL_APICALL void GL_APIENTRY wgSetGlintDevicePolicy (GLuint device_id, GLuint device_generation, uint32_t policy_shm_id, uint32_t policy_shm_offset, uint32_t policy_size);
