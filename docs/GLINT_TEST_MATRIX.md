@@ -1,5 +1,23 @@
 # Glint browser test matrix
 
+## Raster routing preparation and extracted-method hardware fixture
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Public source replay | Twelve packets, 77 composed paths; new raster delta reverses exactly | Selected checkout unchanged |
+| Native syntax | Seven target-flag units passed | Not linking or actual Dawn execution |
+| Hardware normal/ASan | Eight cases, 36,269 assertions each | Extracted descriptor method; adapted Dawn types and allocator |
+| Table isolation | Protected and original tables match separate references; all cases change protected pixels | Not real Dawn state transitions |
+| Heap replacement | Old/new GPU tables remain valid across exhaustion/retry | Not native Dawn ring allocator |
+| Raster | Eight draws: four valid `BeginRenderPass`, four explicit OM bindings | Not native render/bundle recorder execution |
+| Lifetime/preflight | Four cases retain quota through overrides after CPU/queue owner deletion; invalid descriptors rejected before allocation | Device loss remains unverified |
+| Changed-input guard | Five modified packet/fixture/method inputs rejected before compilation | Not hostile-repository security certification |
+| Python baseline | 5143 passed, 1 skipped at `155c3db` | Before raster packet |
+
+[Public command and remaining native/browser gates](../native/drafts/webgpu-raster-routing/README.md).
+Opaque shader-derived maps remain denied; this does not resolve the selected browser's
+negative Canvas/GPU consistency result or grant privacy/production admission.
+
 ## Unselected native compute projection packet
 
 | Gate | Result | Boundary |

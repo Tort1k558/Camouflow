@@ -1,0 +1,299 @@
+--- a/shadow_test.cc
++++ b/shadow_test.cc
+@@ -17,7 +17,7 @@
+ using glint::candidate::d3d12::ProjectedTexture;
+ using glint::candidate::d3d12::CaptureMemoryBudget;
+ using glint::candidate::d3d12::TextureCapture;
+-size_t assertions = 0, cases = 0, quota_cases = 0;
++size_t assertions = 0, cases = 0, quota_cases = 0, raster_cases = 0, native_pass_cases = 0;
+ void Check(bool valid, int line) {
+     ++assertions;
+     if (!valid) { std::fprintf(stderr, "shadow assertion %d\n", line); std::exit(1); }
+@@ -28,6 +28,7 @@
+     CHECK(SUCCEEDED(value));
+ }
+ #define Ok(x) OkImpl((x), __LINE__)
++#include "descriptor_fixture.h"
+ ComPtr<ID3D12Resource> Buffer(ID3D12Device* device, size_t bytes, D3D12_HEAP_TYPE type,
+                              D3D12_RESOURCE_STATES state, bool uav = false) {
+     D3D12_RESOURCE_DESC desc{};
+@@ -53,13 +54,13 @@
+     barrier.Transition.StateBefore = before; barrier.Transition.StateAfter = after;
+     cmd->ResourceBarrier(1, &barrier);
+ }
+-ComPtr<ID3DBlob> Compile(const char* file, const char* entry) {
++ComPtr<ID3DBlob> Compile(const char* file, const char* entry, const char* profile = "cs_5_0") {
+     std::ifstream stream(file, std::ios::binary);
+     CHECK(stream.good());
+     const std::string source{std::istreambuf_iterator<char>(stream), {}};
+     ComPtr<ID3DBlob> code, errors;
+     const HRESULT status = D3DCompile(source.data(), source.size(), "glint-shadow", nullptr, nullptr,
+-        entry, "cs_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
++        entry, profile, D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+         0, &code, &errors);
+     if (errors) std::fwrite(errors->GetBufferPointer(), 1, errors->GetBufferSize(), stderr);
+     Ok(status);
+@@ -68,7 +69,7 @@
+ struct Fixture {
+     ComPtr<ID3D12Device> device;
+     ComPtr<ID3D12RootSignature> root;
+-    ComPtr<ID3D12PipelineState> projection, consumer;
++    ComPtr<ID3D12PipelineState> projection, consumer, raster;
+     Fixture(const char* edge_file, const char* consumer_file) {
+         const auto edge = Compile(edge_file, "edge_main");
+         const auto sample = Compile(consumer_file, "main");
+@@ -103,6 +104,28 @@
+         Ok(device->CreateComputePipelineState(&pipeline, IID_PPV_ARGS(&projection)));
+         pipeline.CS = {sample->GetBufferPointer(), sample->GetBufferSize()};
+         Ok(device->CreateComputePipelineState(&pipeline, IID_PPV_ARGS(&consumer)));
++        D3D12_FEATURE_DATA_D3D12_OPTIONS18 options{};
++        Ok(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS18, &options, sizeof(options)));
++        CHECK(options.RenderPassesValid);
++        const auto vertex = Compile("raster_consumer.hlsl", "vertex_main", "vs_5_0");
++        const auto pixel = Compile("raster_consumer.hlsl", "pixel_main", "ps_5_0");
++        D3D12_GRAPHICS_PIPELINE_STATE_DESC graphics{};
++        graphics.pRootSignature = root.Get();
++        graphics.VS = {vertex->GetBufferPointer(), vertex->GetBufferSize()};
++        graphics.PS = {pixel->GetBufferPointer(), pixel->GetBufferSize()};
++        graphics.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
++        graphics.SampleMask = UINT_MAX;
++        graphics.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
++        graphics.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
++        graphics.RasterizerState.DepthClipEnable = TRUE;
++        graphics.DepthStencilState.DepthEnable = FALSE;
++        graphics.DepthStencilState.StencilEnable = FALSE;
++        graphics.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
++        graphics.NumRenderTargets = 1;
++        graphics.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
++        graphics.SampleDesc.Count = 1;
++        Ok(device->CreateGraphicsPipelineState(&graphics, IID_PPV_ARGS(&raster)));
++
+     }
+ };
+ 
+@@ -145,6 +168,7 @@
+     std::array<uint8_t, 32> key{}; key.fill(37);
+     auto expected = packed;
+     CHECK(glint::candidate::TransformEdgeCoherentCanvas(expected, width, height, key));
++    CHECK(expected != packed);
+     auto upload = Buffer(device, bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
+     auto original_probe = Buffer(device, bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COPY_DEST);
+     auto original_readback = Buffer(device, bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+@@ -204,39 +228,167 @@
+     extra.reset();
+     CHECK(exactly_one->used_bytes() == charged);
+     ++quota_cases;
+-    ComPtr<ID3D12DescriptorHeap> descriptors;
++    ComPtr<ID3D12DescriptorHeap> cpu_descriptors;
+     D3D12_DESCRIPTOR_HEAP_DESC descriptors_desc{};
+     descriptors_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+-    descriptors_desc.NumDescriptors = 2; descriptors_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+-    Ok(device->CreateDescriptorHeap(&descriptors_desc, IID_PPV_ARGS(&descriptors)));
+-    auto cpu = descriptors->GetCPUDescriptorHandleForHeapStart();
++    descriptors_desc.NumDescriptors = 2;
++    Ok(device->CreateDescriptorHeap(&descriptors_desc, IID_PPV_ARGS(&cpu_descriptors)));
++    auto cpu = cpu_descriptors->GetCPUDescriptorHandleForHeapStart();
+     const UINT increment = device->GetDescriptorHandleIncrementSize(descriptors_desc.Type);
+     D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+     srv.Format = view_format; srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+     srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+     srv.Texture2D.MipLevels = 1;
+-    device->CreateShaderResourceView(shadow, &srv, cpu);
++    // The immutable source table refers to the original, NOT the protected texture.
++    device->CreateShaderResourceView(original.Get(), &srv, cpu);
+     cpu.ptr += increment;
+     D3D12_UNORDERED_ACCESS_VIEW_DESC uav{};
+     uav.Format = DXGI_FORMAT_R32_TYPELESS; uav.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+     uav.Buffer.NumElements = static_cast<UINT>(pixel_bytes / 4); uav.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+     device->CreateUnorderedAccessView(output.Get(), nullptr, &uav, cpu);
++    descriptor_fixture::Device logical{device, {}};
++    descriptor_fixture::Device foreign_logical{device, {}};
++    descriptor_fixture::Layout layout(increment);
++    descriptor_fixture::TextureView source_view{&logical, {original.Get()}, srv};
++    descriptor_fixture::BindGroup group{&logical, &layout, &source_view,
++                                       {cpu_descriptors->GetCPUDescriptorHandleForHeapStart()}};
++    descriptor_fixture::ShaderVisibleDescriptorAllocator views(&logical);
++    std::array overrides{descriptor_fixture::GlintTextureViewOverride{0, queued_hold, shadow}};
++    descriptor_fixture::GPUDescriptorHeapAllocation cloned, retry;
++    auto populate = [&] { return group.PopulateGlintViews(&views, overrides, &cloned); };
++    auto rejected = [&] {
++        const auto before = views.allocations;
++        CHECK(populate().error);
++        CHECK(views.allocations == before);
++    };
++    const auto before_invalid = views.allocations;
++    CHECK(group.PopulateGlintViews(nullptr, overrides, &cloned).error);
++    CHECK(group.PopulateGlintViews(&views, overrides, nullptr).error);
++    CHECK(group.PopulateGlintViews(&views, {}, &cloned).error);
++    CHECK(views.allocations == before_invalid);
++    views.owner = &foreign_logical; rejected(); views.owner = &logical;
++    group.view = nullptr; rejected(); group.view = &source_view;
++    layout.count = 0; rejected(); layout.count = 2;
++    auto resource_hold = overrides[0].resource;
++    overrides[0].resource.Reset(); rejected(); overrides[0].resource = resource_hold;
++    resource_hold.Reset();
++    source_view.srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
++    rejected(); source_view.srv = srv;
++    overrides[0].binding = 2; rejected(); overrides[0].binding = 0;
++    source_view.owner = &foreign_logical; rejected(); source_view.owner = &logical;
++    source_view.texture.resource = nullptr; rejected(); source_view.texture.resource = original.Get();
++    layout.bindings[0].visibility = descriptor_fixture::wgpu::ShaderStage::None; rejected();
++    layout.bindings[0].visibility = descriptor_fixture::wgpu::ShaderStage::Compute;
++    layout.bindings[0].bindingLayout = descriptor_fixture::BufferBindingInfo{}; rejected();
++    layout.bindings[0].bindingLayout = descriptor_fixture::TextureBindingInfo{};
++    layout.offsets[0] = 2; rejected(); layout.offsets[0] = 0;
++    source_view.srv.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; rejected(); source_view.srv = srv;
++    source_view.srv.Texture2D.MostDetailedMip = 1; rejected(); source_view.srv = srv;
++    source_view.srv.Texture2D.MipLevels = 2; rejected(); source_view.srv = srv;
++    auto hold = overrides[0].retirement;
++    overrides[0].retirement.Reset(); rejected(); overrides[0].retirement = hold; hold.Reset();
++    std::array duplicates{overrides[0], overrides[0]};
++    const auto before_duplicates = views.allocations;
++    CHECK(group.PopulateGlintViews(&views, duplicates, &cloned).error);
++    CHECK(views.allocations == before_duplicates);
++    duplicates = {};
++    const auto populated = populate(); CHECK(!populated.error && populated.value);
++    const auto full = group.PopulateGlintViews(&views, overrides, &retry);
++    CHECK(!full.error && !full.value && retry.base.ptr == 0);
++    views.Switch();
++    const auto repopulated = group.PopulateGlintViews(&views, overrides, &retry);
++    CHECK(!repopulated.error && repopulated.value);
++    CHECK(cloned.base.ptr != retry.base.ptr && views.heaps.size() == 2);
+     cmd->SetPipelineState(fixture.consumer.Get()); cmd->SetComputeRootSignature(fixture.root.Get());
+-    ID3D12DescriptorHeap* heaps[] = {descriptors.Get()}; cmd->SetDescriptorHeaps(1, heaps);
+-    auto gpu = descriptors->GetGPUDescriptorHandleForHeapStart();
++    ID3D12DescriptorHeap* heaps[] = {views.heaps[0].Get()}; cmd->SetDescriptorHeaps(1, heaps);
++    auto gpu = cloned.base;
+     cmd->SetComputeRootDescriptorTable(0, gpu); gpu.ptr += increment; cmd->SetComputeRootDescriptorTable(1, gpu);
+     std::array<uint32_t, 16> params{}; params[8] = width; params[9] = height;
+     cmd->SetComputeRoot32BitConstants(2, 16, params.data(), 0);
+     cmd->Dispatch((width + 3) / 4, (height + 3) / 4, 1);
+     Transition(cmd.Get(), output.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+     cmd->CopyBufferRegion(readback.Get(), 0, output.Get(), 0, pixel_bytes);
++    // Exercise the new heap too; the old table stays valid after allocator rollover.
++    auto second_readback = Buffer(device, pixel_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
++    Transition(cmd.Get(), output.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
++    heaps[0] = views.heaps[1].Get(); cmd->SetDescriptorHeaps(1, heaps);
++    gpu = retry.base;
++    cmd->SetComputeRootDescriptorTable(0, gpu); gpu.ptr += increment; cmd->SetComputeRootDescriptorTable(1, gpu);
++    cmd->Dispatch((width + 3) / 4, (height + 3) / 4, 1);
++    Transition(cmd.Get(), output.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
++    cmd->CopyBufferRegion(second_readback.Get(), 0, output.Get(), 0, pixel_bytes);
++    // Read the original CPU descriptor table through a fresh GPU table to prove it was not mutated.
++    auto raw_readback = Buffer(device, pixel_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
++    views.Switch();
++    auto raw_cpu = views.heaps.back()->GetCPUDescriptorHandleForHeapStart();
++    device->CopyDescriptorsSimple(2, raw_cpu, cpu_descriptors->GetCPUDescriptorHandleForHeapStart(),
++                                  D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
++    Transition(cmd.Get(), original.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
++    Transition(cmd.Get(), output.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
++    heaps[0] = views.heaps.back().Get(); cmd->SetDescriptorHeaps(1, heaps);
++    gpu = views.heaps.back()->GetGPUDescriptorHandleForHeapStart();
++    cmd->SetComputeRootDescriptorTable(0, gpu); gpu.ptr += increment; cmd->SetComputeRootDescriptorTable(1, gpu);
++    cmd->Dispatch((width + 3) / 4, (height + 3) / 4, 1);
++    Transition(cmd.Get(), output.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
++    cmd->CopyBufferRegion(raw_readback.Get(), 0, output.Get(), 0, pixel_bytes);
++    Transition(cmd.Get(), original.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_SOURCE);
++    // All projection dispatches happened before entering the render pass.
++    auto rt_desc = copy_desc;
++    rt_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
++    rt_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
++    ComPtr<ID3D12Resource> render_target;
++    Ok(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &rt_desc,
++        D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(&render_target)));
++    D3D12_DESCRIPTOR_HEAP_DESC rtv_desc{};
++    rtv_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV; rtv_desc.NumDescriptors = 1;
++    ComPtr<ID3D12DescriptorHeap> rtv_heap;
++    Ok(device->CreateDescriptorHeap(&rtv_desc, IID_PPV_ARGS(&rtv_heap)));
++    const auto rtv = rtv_heap->GetCPUDescriptorHandleForHeapStart();
++    device->CreateRenderTargetView(render_target.Get(), nullptr, rtv);
++    ComPtr<ID3D12GraphicsCommandList4> command4;
++    if (cancel_cpu_owner) {
++        Ok(cmd.As(&command4));
++        D3D12_RENDER_PASS_RENDER_TARGET_DESC target{};
++        target.cpuDescriptor = rtv;
++        target.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
++        target.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
++        command4->BeginRenderPass(1, &target, nullptr, D3D12_RENDER_PASS_FLAG_NONE);
++        ++native_pass_cases;
++    } else {
++        cmd->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
++    }
++    cmd->SetPipelineState(fixture.raster.Get());
++    cmd->SetGraphicsRootSignature(fixture.root.Get());
++    heaps[0] = views.heaps[1].Get(); cmd->SetDescriptorHeaps(1, heaps);
++    cmd->SetGraphicsRootDescriptorTable(0, retry.base);
++    D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f};
++    D3D12_RECT scissor{0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
++    cmd->RSSetViewports(1, &viewport); cmd->RSSetScissorRects(1, &scissor);
++    cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
++    cmd->DrawInstanced(3, 1, 0, 0);
++    if (cancel_cpu_owner) command4->EndRenderPass();
++    Transition(cmd.Get(), render_target.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
++    D3D12_PLACED_SUBRESOURCE_FOOTPRINT rt_footprint{};
++    device->GetCopyableFootprints(&rt_desc, 0, 1, 0, &rt_footprint, nullptr, nullptr, nullptr);
++    const size_t rt_bytes = static_cast<size_t>(rt_footprint.Footprint.RowPitch) * height;
++    auto raster_readback = Buffer(device, rt_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
++    D3D12_TEXTURE_COPY_LOCATION raster_from{}, raster_to{};
++    raster_from.pResource = render_target.Get(); raster_from.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
++    raster_to.pResource = raster_readback.Get(); raster_to.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
++    raster_to.PlacedFootprint = rt_footprint;
++    cmd->CopyTextureRegion(&raster_to, 0, 0, 0, &raster_from, nullptr);
+     cmd->CopyBufferRegion(original_probe.Get(), 0, upload.Get(), 0, bytes);
+     from.pResource = original.Get(); from.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+     to.pResource = original_probe.Get(); to.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT; to.PlacedFootprint = footprint;
+     cmd->CopyTextureRegion(&to, 0, 0, 0, &from, nullptr);
+     Transition(cmd.Get(), original_probe.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COPY_SOURCE);
+     cmd->CopyBufferRegion(original_readback.Get(), 0, original_probe.Get(), 0, bytes);
+-    if (cancel_cpu_owner) projected.reset();
++    if (cancel_cpu_owner) {
++        projected.reset();
++        queued_hold.Reset();
++        // The override now exclusively retains the projected texture and its quota owner.
++        CHECK(budget->used_bytes() == charged);
++    }
+     CHECK(budget->used_bytes() == charged);
+     Ok(cmd->Close()); ID3D12CommandList* lists[] = {cmd.Get()}; queue->ExecuteCommandLists(1, lists);
+     Ok(queue->Signal(fence.Get(), 1));
+@@ -248,6 +400,7 @@
+     marker->store(true, std::memory_order_release);
+     if (projected) CHECK(projected->CompletionStatus() == S_OK);
+     CHECK(budget->used_bytes() == charged);
++    overrides = {};
+     queued_hold.Reset();
+     CHECK(budget->used_bytes() == (cancel_cpu_owner ? 0 : charged));
+     projected.reset(); CHECK(budget->used_bytes() == 0);
+@@ -263,6 +416,25 @@
+     result = static_cast<const uint8_t*>(mapped);
+     for (size_t i = 0; i < bytes; ++i) CHECK(result[i] == upload_bytes[i]);
+     original_readback->Unmap(0, &no_read);
++    Ok(second_readback->Map(0, &pixel_range, &mapped));
++    result = static_cast<const uint8_t*>(mapped);
++    for (size_t i = 0; i < pixel_bytes; ++i) CHECK(result[i] == expected[i]);
++    second_readback->Unmap(0, &no_read);
++    Ok(raw_readback->Map(0, &pixel_range, &mapped));
++    result = static_cast<const uint8_t*>(mapped);
++    for (size_t i = 0; i < pixel_bytes; ++i) CHECK(result[i] == packed[i]);
++    raw_readback->Unmap(0, &no_read);
++    const D3D12_RANGE rt_range{0, rt_bytes};
++    Ok(raster_readback->Map(0, &rt_range, &mapped));
++    result = static_cast<const uint8_t*>(mapped);
++    for (uint32_t y = 0; y < height; ++y) {
++        for (uint32_t x = 0; x < width * 4; ++x)
++            CHECK(result[y * rt_footprint.Footprint.RowPitch + x] == expected[y * width * 4 + x]);
++    }
++    raster_readback->Unmap(0, &no_read);
++    ++raster_cases;
++
++
+     ++cases;
+ }
+ int main(int argc, char** argv) {
+@@ -274,5 +446,5 @@
+     }
+     std::printf("{\"passed\":true,\"hardware_adapter\":true,\"cases\":%zu,\"assertions\":%zu,"
+                 "\"shared_quota_cases\":%zu,\"typed_texture_consumer_verified\":true,"
+-                "\"original_unchanged\":true,\"browser_integrated\":false}\n", cases, assertions, quota_cases);
+-}
++                "\"original_unchanged\":true,\"browser_integrated\":false,\"native_dawn_types_mocked\":true,\"source_extracted_descriptor_method\":true,\"raster_cases\":%zu,\"native_render_pass_cases\":%zu}\n", cases, assertions, quota_cases, raster_cases, native_pass_cases);
++}

@@ -1,0 +1,192 @@
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -28,6 +28,7 @@
+ #include "src/dawn/native/d3d12/CommandBufferD3D12.h"
+ 
+ #include <algorithm>
++#include <map>
+ #include <utility>
+ #include <vector>
+ 
+@@ -624,14 +625,7 @@
+ 
+     MaybeError PrepareGlintComputeProjection(CommandRecordingContext* context) {
+         static_assert(std::is_same_v<PipelineType, ComputePipeline>);
+-        for (BindGroupIndex index{0u}; index < kMaxBindGroupsTyped; ++index) {
+-            if (!mGlintViews[index].empty()) {
+-                mDirtyBindGroups.set(index);
+-                mDirtyBindGroupsObjectChangedOrIsDynamic.set(index);
+-            }
+-            mGlintViews[index].clear();
+-            mGlintViewAllocations[index] = {};
+-        }
++        ResetGlintViewOverrides();
+         if (!mDevice->GetGlintReadbackObserver()) return {};
+         DAWN_INTERNAL_ERROR_IF(!mPipeline || mPipeline->GetLayout()->UsesResourceTable(),
+                                "Glint compute projection does not yet support resource tables.");
+@@ -639,19 +633,8 @@
+         bool recorded = false;
+         for (BindGroupIndex groupIndex : mask) {
+             auto* group = mBindGroups[groupIndex];
+-            DAWN_INTERNAL_ERROR_IF(!group || group->GetDevice() != mDevice,
+-                                   "Invalid Glint compute bind-group owner.");
++            DAWN_TRY(ValidateGlintInputGroup(group, wgpu::ShaderStage::Compute));
+             const auto* layout = group->GetLayout();
+-            for (const auto& external : group->GetBoundExternalTextures()) {
+-                DAWN_INTERNAL_ERROR_IF(external, "Glint external-texture projection is unsupported.");
+-            }
+-            for (BindingIndex index : layout->GetStorageTextureIndices()) {
+-                const auto& info = layout->GetBindingInfo(index);
+-                if (!(info.visibility & wgpu::ShaderStage::Compute)) continue;
+-                const auto access = std::get<StorageTextureBindingInfo>(info.bindingLayout).access;
+-                DAWN_INTERNAL_ERROR_IF(access != wgpu::StorageTextureAccess::WriteOnly,
+-                                       "Glint readable storage-texture projection is unsupported.");
+-            }
+             for (BindingIndex index : layout->GetSampledTextureIndices()) {
+                 if (!(layout->GetBindingInfo(index).visibility & wgpu::ShaderStage::Compute)) continue;
+                 GlintTextureProjector* projector;
+@@ -668,6 +651,46 @@
+         return {};
+     }
+ 
++    MaybeError PrepareGlintRenderProjection(CommandRecordingContext* context,
++                                               const RenderPassResourceUsage& scope) {
++        static_assert(std::is_same_v<PipelineType, RenderPipeline>);
++        ResetGlintViewOverrides();
++        mGlintRenderTextures.clear();
++        if (!mDevice->GetGlintReadbackObserver()) return {};
++        DAWN_INTERNAL_ERROR_IF(scope.resourceTable || scope.usesFramebufferFetch ||
++                               !scope.externalTextures.empty() ||
++                               scope.textures.size() != scope.textureSyncInfos.size(),
++                               "Unsupported Glint render-pass input scope.");
++        for (size_t index = 0; index < scope.textures.size(); ++index) {
++            auto* texture = scope.textures[index];
++            DAWN_INTERNAL_ERROR_IF(!texture || texture->GetDevice() != mDevice,
++                                   "Invalid Glint render-pass texture owner.");
++            wgpu::TextureUsage usage = wgpu::TextureUsage::None;
++            DAWN_TRY(scope.textureSyncInfos[index].Iterate(
++                [&](const SubresourceRange&, const TextureSyncInfo& info) -> MaybeError {
++                    usage |= info.usage;
++                    return {};
++                }));
++            DAWN_INTERNAL_ERROR_IF(usage & (kReadOnlyStorageTexture | wgpu::TextureUsage::StorageBinding),
++                                   "Glint readable render storage-texture projection is unsupported.");
++            if (!(usage & wgpu::TextureUsage::TextureBinding)) continue;
++            // A pass-wide sampled source must never be written during that pass, including bundles.
++            DAWN_INTERNAL_ERROR_IF(usage & ~kReadOnlyTextureUsages,
++                                   "Glint sampled render source has an in-pass write dependency.");
++            Ref<TextureViewBase> view;
++            DAWN_TRY_ASSIGN(view, texture->CreateView());
++            GlintTextureProjector* projector;
++            DAWN_TRY_ASSIGN(projector, mDevice->GetGlintTextureProjector());
++            std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected;
++            DAWN_TRY_ASSIGN(projected, projector->Record(context, ToBackend(view.Get())));
++            DAWN_INTERNAL_ERROR_IF(mGlintRenderTextures.contains(texture),
++                                   "Duplicate Glint render-pass sampled texture.");
++            mGlintRenderTextures.emplace(texture, std::move(projected));
++        }
++        if (!mGlintRenderTextures.empty()) RestoreAfterGlintProjection(context->GetCommandList());
++        return {};
++    }
++
+     void NotifyGlintComputeScope(BufferBase* indirectBuffer = nullptr,
+                                 uint64_t indirectOffset = 0) {
+         if (indirectBuffer) {
+@@ -692,6 +715,9 @@
+ 
+     MaybeError Apply(CommandRecordingContext* commandContext, ImmediateTrackerType* immediates) {
+         ID3D12GraphicsCommandList* commandList = commandContext->GetCommandList();
++        if constexpr (kIsRenderPipeline) {
++            DAWN_TRY(PrepareGlintRenderBindings());
++        }
+         if (mGlintStateInvalidated) {
+             mLastAppliedPipeline = nullptr;
+             immediates->InvalidateAfterGlintProjection();
+@@ -821,6 +847,69 @@
+     ResourceTable* GetResourceTable() { return mResourceTable; }
+ 
+   private:
++    void ResetGlintViewOverrides() {
++        for (BindGroupIndex index{0u}; index < kMaxBindGroupsTyped; ++index) {
++            if (!mGlintViews[index].empty()) {
++                mDirtyBindGroups.set(index);
++                mDirtyBindGroupsObjectChangedOrIsDynamic.set(index);
++            }
++            mGlintViews[index].clear();
++            mGlintViewAllocations[index] = {};
++        }
++        mGlintGroupSources = {};
++    }
++
++    MaybeError ValidateGlintInputGroup(BindGroupBase* group, wgpu::ShaderStage stages) {
++        DAWN_INTERNAL_ERROR_IF(!group || group->GetDevice() != mDevice,
++                           "Invalid Glint bind-group owner.");
++        const auto* layout = group->GetLayout();
++        for (const auto& external : group->GetBoundExternalTextures()) {
++            DAWN_INTERNAL_ERROR_IF(external, "Glint external-texture projection is unsupported.");
++        }
++        for (BindingIndex index : layout->GetStorageTextureIndices()) {
++            const auto& info = layout->GetBindingInfo(index);
++            if (!(info.visibility & stages)) continue;
++            const auto access = std::get<StorageTextureBindingInfo>(info.bindingLayout).access;
++            DAWN_INTERNAL_ERROR_IF(access != wgpu::StorageTextureAccess::WriteOnly,
++                           "Glint readable storage-texture projection is unsupported.");
++        }
++        return {};
++    }
++
++    MaybeError PrepareGlintRenderBindings() {
++        if (!mDevice->GetGlintReadbackObserver()) return {};
++        DAWN_INTERNAL_ERROR_IF(!mPipeline || mPipeline->GetLayout()->UsesResourceTable(),
++                               "Unsupported Glint render pipeline input scope.");
++        constexpr auto stages = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
++        for (BindGroupIndex groupIndex : mPipeline->GetLayout()->GetBindGroupLayoutsMask()) {
++            auto* group = mBindGroups[groupIndex];
++            DAWN_TRY(ValidateGlintInputGroup(group, stages));
++            if (mGlintGroupSources[groupIndex].Get() == group) continue;
++            mGlintViews[groupIndex].clear();
++            mGlintViewAllocations[groupIndex] = {};
++            const auto* layout = group->GetLayout();
++            for (BindingIndex index : layout->GetSampledTextureIndices()) {
++                if (!(layout->GetBindingInfo(index).visibility & stages)) continue;
++                auto* view = ToBackend(group->GetBindingAsTextureView(index));
++                DAWN_INTERNAL_ERROR_IF(!view || view->GetDevice() != mDevice ||
++                    view->GetDimension() != wgpu::TextureViewDimension::e2D ||
++                    view->GetBaseMipLevel() != 0 || view->GetLevelCount() != 1 ||
++                    view->GetBaseArrayLayer() != 0 || view->GetLayerCount() != 1 ||
++                    !view->IsSwizzleIdentity(), "Unsupported Glint render sampled view.");
++                auto found = mGlintRenderTextures.find(view->GetTexture());
++                DAWN_INTERNAL_ERROR_IF(found == mGlintRenderTextures.end(),
++                                       "Glint sampled texture was absent from the validated pass scope.");
++                auto* projected = found->second.get();
++                mGlintViews[groupIndex].push_back(
++                    {index, projected->retirement_handle(), projected->texture()});
++            }
++            mGlintGroupSources[groupIndex] = ToBackend(group);
++            mDirtyBindGroups.set(groupIndex);
++            mDirtyBindGroupsObjectChangedOrIsDynamic.set(groupIndex);
++        }
++        return {};
++    }
++
+     ResultOrError<bool> PopulateGlintViews(BindGroupIndex index,
+                                            ShaderVisibleDescriptorAllocator* allocator) {
+         auto* group = ToBackend(mBindGroups[index]);
+@@ -1036,6 +1125,8 @@
+     bool mGlintStateInvalidated = false;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
++    PerBindGroup<Ref<BindGroup>> mGlintGroupSources;
++    std::map<TextureBase*, std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>> mGlintRenderTextures;
+ };
+ 
+ // Owns both BindGroupStateTrackers for compute and render, ensuring that when one of them sets
+@@ -1284,6 +1375,8 @@
+ 
+                 DAWN_TRY(EnsureResolveTargetInitialized(commandContext, beginRenderPassCmd));
+ 
++                DAWN_TRY(descriptorHeapState.GetGraphicsBindingTracker()->PrepareGlintRenderProjection(
++                    commandContext, GetResourceUsages().renderPasses[nextRenderPassNumber]));
+                 bool passHasUAV;
+                 DAWN_TRY(TransitionAndClearForSyncScope(
+                     commandContext, GetResourceUsages().renderPasses[nextRenderPassNumber],

@@ -1,5 +1,18 @@
 # Glint architecture
 
+## Raster routing source preparation and standalone hardware check
+
+The [raster packet](drafts/webgpu-raster-routing/README.md) prepares sampled shadows
+before render-pass entry, rejects aggregate in-pass write dependencies and reuses
+the existing draw/bundle encoder with per-group descriptor caching. Seven native
+syntax units passed. A public checker replays twelve packets and extracts the exact
+descriptor method: real D3D12 normal/ASan runs passed eight cases with both compute
+and raster consumers, old/new GPU heaps and unmodified original tables. Four cases
+use valid `BeginRenderPass`, four use explicit OM binding. Dawn types/allocator and
+state restoration are adapted/manual, not actual native Dawn execution. Native
+state/allocator/bundle gates, protected-output provenance, linking and browser
+consistency remain open; the packet is unselected and shader-output maps stay denied.
+
 ## Native compute projection preparation
 
 The [unselected compute packet](drafts/webgpu-compute-projection/README.md) connects

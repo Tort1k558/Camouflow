@@ -1,5 +1,21 @@
 # Glint: план проверки и развития
 
+## Raster source routing and reproducible hardware fixture
+
+[Raster routing preparation](../native/drafts/webgpu-raster-routing/README.md)
+projects validated pass-wide sampled inputs before render-pass entry and reuses
+the draw/bundle encoder with cached per-group overrides. Seven native syntax units
+passed. The public twelve-packet replay/fixture passed normal/ASan on hardware:
+8 cases, 36,269 assertions each, including 4 valid native render-pass API cases,
+heap replacement, preserved original tables and quota retention after CPU deletion.
+Five changed-input checks refused before compilation.
+
+The fixture extracts our exact descriptor method but adapts Dawn types/allocator
+and restores GPU state manually. Actual native state/allocator/bundle execution,
+protected shader-output provenance, full formats, linking and browser consistency
+remain unfinished. The packet is unselected. Full Python baseline: 5143 passed,
+1 skipped at `155c3db`; this does not admit native routing or privacy.
+
 ## Native compute routing: source packet prepared, not browser-admitted
 
 [Eleven-packet compute projection preparation](../native/drafts/webgpu-compute-projection/README.md)
