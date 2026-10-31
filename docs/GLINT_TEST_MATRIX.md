@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-10-31: actual standalone native command iterator and pool
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Native normal/ASan | 182 cursor-position cases / 1,064,016 checks each | Six actual upstream translation units; standalone MSVC STL |
+| Ref/object lifetime | 9,284 tracked destructions per mode | Real Dawn Ref counts; explicit command/data destruction |
+| Pool execution | Return/reuse, tick expiry and trim passed | Official Dawn standalone no-op raw_ptr, not Chromium MiraclePtr |
+| Invalid preview ownership | Move/destruction hit the native restore guard in both modes | Not a generic crash accepted as success |
+| Changed inputs | 8 refusals before all compilation | 90 upstream source/header/config files bound |
+
+Inline and bundle-like command streams use actual Dawn storage and checkpointing;
+the full render-bundle decoder is not executed. Chromium allocator instrumentation,
+GPU state/descriptors/read/copyback, native queue/Wire and browser consistency remain
+open. No runtime selection, privacy admission or production release is claimed.
+
 ## 2026-10-31: render/bundle buffer projection source batch (unselected)
 
 | Gate | Result | Boundary |

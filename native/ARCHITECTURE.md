@@ -1,5 +1,21 @@
 # Glint architecture
 
+## Actual standalone Dawn command storage/pool execution
+
+The [native iterator check](drafts/webgpu-command-iterator/README.md) compiles six
+actual upstream translation units with the checkpoint header from the 29-packet
+render batch. Normal and ASan passed 182 cursor-position cases / 1,064,016 checks
+each, with 9,284 tracked object destructions per run. Actual command/data addresses,
+Dawn Ref counts, early returns, nesting, empty/end/reset behavior, merged blocks,
+bundle-like streams, recycled-block reuse, tick expiry and trim are exercised.
+Moving or destroying command storage during a preview triggers the actual native
+restore guard in both modes; eight changed-input controls refuse before compilation.
+
+This uses MSVC STL and Dawn's official standalone no-op raw_ptr, not Chromium's
+allocator/MiraclePtr configuration. It closes a standalone storage/pool gate only:
+the complete render decoder, GPU descriptor/state/queue/Wire paths and browser
+consistency remain unverified. It does not change runtime selection or admission.
+
 ## Render/bundle buffer projection source batch
 
 The [29-packet render batch](drafts/webgpu-render-buffer-routing/README.md) prepares

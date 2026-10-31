@@ -201,3 +201,5 @@ native/drafts/webgpu-texel-alias-guard/*.py text eol=lf
 native/drafts/webgpu-texel-alias-guard/*.cc text eol=lf
 native/drafts/webgpu-render-buffer-routing/*.py text eol=lf
 native/drafts/webgpu-render-buffer-routing/*.cc text eol=lf
+native/drafts/webgpu-command-iterator/*.py text eol=lf
+native/drafts/webgpu-command-iterator/*.cc text eol=lf

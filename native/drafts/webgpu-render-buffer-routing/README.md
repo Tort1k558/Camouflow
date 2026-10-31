@@ -29,8 +29,11 @@ direct render draws and render bundles:
   --work-dir D:\GlintManagerQA\fresh-render-buffer-routing-check
 ```
 
-Actual Dawn command storage/pool ownership, complete preview/execute state,
-descriptor heap rollover, direct/bundle GPU reads and writable copyback, queue
+Actual standalone Dawn command storage/pooling is now checked by the
+[native iterator suite](../webgpu-command-iterator/README.md), using the official
+standalone no-op raw_ptr rather than Chromium MiraclePtr. Chromium allocator
+instrumentation, complete preview/execute state, descriptor heap rollover,
+direct/bundle GPU reads and writable copyback, queue
 failure/cancellation/device loss and Wire still need execution tests. Existing
 standalone compute fixtures do not prove this render path. Browser consistency,
 runtime selection and privacy/production admission remain closed or unverified.

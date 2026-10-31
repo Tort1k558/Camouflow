@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## Native iterator/pool: actual standalone execution, not only a model
+
+The [real Dawn storage check](../native/drafts/webgpu-command-iterator/README.md)
+passed normal/ASan with 182 cursor-position cases, 1,064,016 checks and 9,284
+tracked object destructions each. It exercises actual command allocation,
+reference counts, nested/early-return previews, merged blocks, bundle-like streams,
+pool return/reuse/expiry/trim and native refusal of storage move/destruction.
+The checker reuses the 29-packet source gate and binds 90 upstream files.
+
+Remaining: Chromium allocator/MiraclePtr configuration, complete render decoder
+state, direct/bundle GPU reads and copyback, descriptor heaps, native queue/Wire,
+failure/cancellation/device loss, component link and browser consistency. The new
+proof is standalone MSVC STL with the official Dawn no-op raw_ptr; it is not a
+browser build or permission to enable the unselected source batch.
+
 ## Direct render/bundle buffers: connected in source, execution pending
 
 The [render buffer batch](../native/drafts/webgpu-render-buffer-routing/README.md)
