@@ -2415,3 +2415,21 @@ private shadow сохраняет полный размер исходного a
 подключение binding/alias/dynamic-offset/writeback и ancestry для validated controls.
 После этого — actual Dawn/Wire, DXC и browser consistency. В выбранном браузере
 001–076 новый helper не включён; прежняя ошибка Canvas/GPU consistency не закрыта.
+
+## Неизменяемые projected GPU pixels — пакет 18
+
+Нативный projector сохраняет отдельный tight pixel buffer после GPU-преобразования,
+без footprint padding. После перезаписи исходной текстуры snapshot и зависимый
+buffer shadow сохраняют прежние пиксели. Владение и квота живут до последнего consumer.
+
+Формат хранения указан явно: RGBA8/BGRA8. Нельзя автоматически переносить флаг
+BGRA из mapping для RGBA-plane: при одинаковом layout источника/получателя swap равен нулю.
+
+18 пакетов / 84 файла replay/reverse; 14 native syntax units прошли. Standalone
+normal/ASan: по 20 аппаратных случаев и 154 849 проверок. Проверены RGBA/BGRA,
+typeless storage, padded/aligned rows, изменение original и зависимое владение.
+[Исходники и команда воспроизведения](../native/drafts/webgpu-canonical-plane/README.md).
+
+Далее — native registry с device/policy/epoch/generation/copy identity и реальные
+bindings/aliases/writeback. Это не внедрение в браузер: Dawn/Wire, DXC и browser
+consistency остаются открыты; выбранные 001–076 не менялись.

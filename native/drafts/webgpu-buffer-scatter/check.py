@@ -18,7 +18,8 @@ def digest(path):
 
 
 def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json',
-         expected_result=None, extension_required=False):
+         expected_result=None, extension_required=False, fixture_base=None,
+         additional_native_sources=(), shader_paths=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('chromium-root', 'sdk-root', 'work-dir'):
         parser.add_argument('--' + name, type=Path, required=True)
@@ -45,11 +46,17 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
     if module != MODULE:
         expected.append((Path(__file__), record['shared_checker_sha256']))
     expected += [(MODULE / name, value) for name, value in record.get('dependency_sources_sha256', {}).items()]
+    expected += [(MODULE.parent / name, value) for name, value in record.get('dependency_files_sha256', {}).items()]
+    fixture_base = fixture_base if fixture_base is not None else MODULE / 'compute_test.cc'
+    shader_paths = shader_paths if shader_paths is not None else (edge_shader, MODULE / 'buffer_scatter.hlsl')
+    if any(path not in dict(expected) for path in (fixture_base, *shader_paths)):
+        parser.error('Hardware fixture/shader is not bound to measured dependencies')
     extension = record.get('source_extension')
     if extension_required and not extension:
         parser.error('Missing required native shadow source extension')
     if extension:
         expected.append((ENV / extension['patch'], extension['patch_sha256']))
+        expected += [(ENV / row['patch'], row['sha256']) for row in extension.get('prerequisites', [])]
     for path, value in expected:
         if digest(path) != value:
             parser.error('Measured buffer-scatter source/dependency differs')
@@ -91,7 +98,7 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
         report['source_gate'] = {key: gate_report[key] for key in ('passed', 'measurement_complete', 'postguards_passed', 'runs')}
         guards.update({Path(p): value for p, value in gate_report['input_sha256'].items()})
         native = gate_dir / 'sources'
-        fixture = MODULE / 'compute_test.cc'
+        fixture = fixture_base
         if extension:
             for row in extension['sources']:
                 relative = Path(row['source'])
@@ -101,8 +108,10 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
                 actual = digest(path) if path.is_file() else None
                 if actual != row['before_sha256'] or (actual is None and path.exists()):
                     raise ValueError('Native shadow source preimage differs')
-            subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
-                            str(ENV / extension['patch'])], cwd=native, capture_output=True, check=True)
+            packets = [*(row['patch'] for row in extension.get('prerequisites', [])), extension['patch']]
+            for packet in packets:
+                subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
+                                str(ENV / packet)], cwd=native, capture_output=True, check=True)
             for row in extension['sources']:
                 path = native / row['source']
                 if not path.is_file() or digest(path) != row['after_sha256']:
@@ -111,7 +120,7 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
             fixture_dir = out / 'fixture'
             fixture_dir.mkdir()
             fixture = fixture_dir / 'compute_test.cc'
-            shutil.copyfile(MODULE / 'compute_test.cc', fixture)
+            shutil.copyfile(fixture_base, fixture)
             subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
                             str(module / record['fixture_patch'])], cwd=fixture_dir, capture_output=True, check=True)
             if digest(fixture) != record['composed_fixture_sha256']:
@@ -127,7 +136,8 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
         sources.append(fixture)
         if extension:
             sources += [native / 'third_party/dawn/src/dawn/native/d3d12/glint' / name
-                        for name in ('projected_buffer.cc', 'texture_capture.cc')]
+                        for name in ('projected_buffer.cc', 'texture_capture.cc', *additional_native_sources)]
+        guards.update({path: digest(path) for path in sources})
         flags = [str(compiler), '/nologo', '/std:c++20', '/W4', '/WX', '/EHsc', '/MT',
                  '/Od', '/Z7', '/DNOMINMAX', '/DWIN32_LEAN_AND_MEAN', '/winsysroot:' + str(sdk)]
         flags += ['/imsvc' + str(sdk / 'VC/Tools/MSVC/14.51.36231/include')]
@@ -156,7 +166,7 @@ def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json'
                 raise RuntimeError('Buffer-scatter hardware fixture compilation failed')
             run_environment = dict(environment, PATH=str(asan.parent) + os.pathsep + environment.get('PATH', ''),
                                    ASAN_OPTIONS='halt_on_error=1:abort_on_error=1:exitcode=99')
-            result = subprocess.run([str(directory / 'check.exe'), str(edge_shader), str(MODULE / 'buffer_scatter.hlsl')],
+            result = subprocess.run([str(directory / 'check.exe'), *(str(path) for path in shader_paths)],
                 cwd=directory, env=run_environment, capture_output=True, text=True, timeout=180, check=False)
             (directory / 'test.log').write_text(result.stdout + result.stderr, encoding='utf-8')
             row['test_returncode'] = result.returncode

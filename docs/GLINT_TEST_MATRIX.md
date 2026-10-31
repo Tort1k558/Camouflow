@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Immutable projected pixel snapshot — standalone native helpers
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Replay / reverse | 18 packets, 84 paths | Unselected staging; runtime 001–076 unchanged |
+| Native target-flag syntax | 14 translation units | No component link |
+| Hardware normal / ASan | 20 cases, 154,849 assertions each | Actual helpers on standalone D3D12 / FXC |
+| Snapshot consistency | Typed texture, native-format plane and dependent buffer agree after original overwrite | RGBA/BGRA and typeless; padded/aligned rows |
+| Ownership | Dependent buffer retains upstream snapshot quota after CPU release | Not actual Dawn queue/device-loss execution |
+| Altered inputs | 12 refusals before compilation | Not runtime authorization/security proof |
+
+[Sources, storage-layout contract and reproduction](../native/drafts/webgpu-canonical-plane/README.md).
+Native registry, policy/epoch validation, binding/writeback, Dawn/Wire, DXC and
+browser consistency remain unverified.
+
 ## Budgeted GPU shadow helper — standalone, not browser admission
 
 | Gate | Measured result | Boundary |

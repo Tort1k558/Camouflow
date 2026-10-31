@@ -1152,3 +1152,18 @@ normal/ASan fixtures: 58 cases, 178,960 assertions, 812 helper/quota rejections 
 quota through final release. This does not establish immutable-plane authorization,
 native registry/binding/queue/Wire integration, DXC or browser consistency.
 Selected patches, runtime and privacy/production admission remain unchanged.
+
+## Immutable native-format projected pixel plane (unselected)
+
+The [pixel-plane extension](drafts/webgpu-canonical-plane/README.md) retains a
+tightly packed private GPU snapshot within `ProjectedTexture` retirement/quota
+ownership. It copies initialized rows from the GPU projection, never footprint
+padding or a later read of the mutable source. `canonical_pixel_format()` exposes
+native RGBA8/BGRA8 layout; equal source/destination layouts require no scatter swap.
+
+Eighteen packets replay/reverse across 84 paths; fourteen native syntax units
+passed. Actual standalone helpers passed 20 hardware cases / 154,849 assertions
+per normal/ASan run: typed texture, packed plane and dependent buffer agree after
+the original texture is overwritten, and dependent retirement retains upstream
+quota. This is not an installed native snapshot registry, policy/epoch admission,
+Dawn/Wire binding routing, DXC or browser consistency evidence.

@@ -552,7 +552,7 @@
     ]
   },
   "checker_sha256": "0b6782c29da1ad23737ba9e5b29b702c2cf54ce27753cad79124574e83c31f96",
-  "shared_checker_sha256": "5a849d3f5cb495e36f40cbe2d10694afe2cbcb9014e11e749454e4d5e7fe6b7b",
+  "shared_checker_sha256": "8badc2eb5e7925f5aeab3f5a884907ed9dcb9ce8dd9cb3d1dbaef1156f105f6c",
   "sources_sha256": {
     "hardware-fixture.patch": "a28127ad578db503ec714bb148da0a29d1cdd2d1d18c79980604dc71e21a3e12"
   },

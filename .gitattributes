@@ -176,3 +176,5 @@ native/drafts/webgpu-buffer-scatter/*.h text eol=lf
 native/drafts/webgpu-buffer-scatter/*.hlsl text eol=lf
 native/drafts/webgpu-buffer-shadow/*.py text eol=lf
 native/drafts/webgpu-buffer-shadow/*.patch text eol=lf
+native/drafts/webgpu-canonical-plane/*.py text eol=lf
+native/drafts/webgpu-canonical-plane/*.patch text eol=lf
