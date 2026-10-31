@@ -1,5 +1,17 @@
 # Glint architecture
 
+## Unselected readback provenance controller
+
+The [controller delta](drafts/webgpu-readback-controller/README.md) connects native
+snapshot tickets, bounded CPU storage and copy/write provenance to detached map
+shadows. Native events carry buffer sizes so callbacks never reenter Dawn.
+Normal/ASan synthetic-ticket tests passed 113 assertions and 400 concurrent maps
+each; four target-flag syntax checks passed. The combined 56-path tree passed
+static/component GN generation and seven target header checks each, with exact
+source/index/output rollback. Registration, ordinary/shared-memory
+serialization, shader flow, component linking and browser execution remain
+open. The selected 001-076 runtime and its measured GPU/export mismatch are unchanged.
+
 ## Unselected trusted native copy / write notifications
 
 The [observer packet](drafts/webgpu-native-copy-hook/README.md) prepares a one-time

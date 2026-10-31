@@ -1,0 +1,546 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -65,8 +65,20 @@
+     virtual GlintReadbackFormat GetFormat() const = 0;
+ };
+ 
++struct GlintBufferIdentity {
++    WGPUBuffer handle = nullptr;
++    uint64_t size = 0;
++};
++
++enum class GlintReadbackMapStatus { Denied, Unrelated, Protected };
++struct GlintReadbackMap {
++    GlintReadbackMapStatus status = GlintReadbackMapStatus::Denied;
++    std::unique_ptr<uint8_t[]> bytes;
++    size_t size = 0;
++};
++
+ struct GlintTextureToBufferCopy {
+-    WGPUBuffer destination = nullptr;
++    GlintBufferIdentity destination;
+     uint64_t destinationOffset = 0;
+     uint64_t destinationRowPitch = 0;
+     uint32_t width = 0;
+@@ -83,16 +95,22 @@
+     // buffer references. A null snapshot means uncertain data, never raw-read permission.
+     virtual void OnTextureToBufferCopy(const GlintTextureToBufferCopy& copy,
+                                        std::unique_ptr<GlintReadbackSnapshot> snapshot) = 0;
+-    virtual void OnBufferToBufferCopy(WGPUBuffer source,
++    virtual void OnBufferToBufferCopy(GlintBufferIdentity source,
+                                       uint64_t sourceOffset,
+-                                      WGPUBuffer destination,
++                                      GlintBufferIdentity destination,
+                                       uint64_t destinationOffset,
+                                       uint64_t size) = 0;
+-    virtual void OnBufferWrite(WGPUBuffer buffer,
++    virtual void OnBufferWrite(GlintBufferIdentity buffer,
+                                uint64_t offset,
+                                uint64_t size,
+                                GlintBufferWriteKind kind) = 0;
+     virtual void OnBufferDestroyed(WGPUBuffer buffer) = 0;
++    virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
++                                                   uint64_t offset,
++                                                   uint64_t size) = 0;
++    virtual GlintReadbackMap PrepareReadMap(GlintBufferIdentity buffer,
++                                            uint64_t offset,
++                                            std::span<const uint8_t> original) = 0;
+ };
+ 
+ // Trusted embedder API, installed once before exposing a device to script.
+--- a/third_party/dawn/src/dawn/native/Buffer.cpp
++++ b/third_party/dawn/src/dawn/native/Buffer.cpp
+@@ -962,7 +962,7 @@
+     auto notifyUncertainWrite = [&] {
+         if (!forDestroy && mMapSize != 0) {
+             if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-                observer->OnBufferWrite(ToAPI(this), mMapOffset, mMapSize,
++                observer->OnBufferWrite({ToAPI(this), GetSize()}, mMapOffset, mMapSize,
+                                         GlintBufferWriteKind::Uncertain);
+             }
+         }
+--- a/third_party/dawn/src/dawn/native/Queue.cpp
++++ b/third_party/dawn/src/dawn/native/Queue.cpp
+@@ -336,7 +336,7 @@
+     DAWN_TRY(WriteBufferImpl(buffer, bufferOffset, data));
+     if (!data.empty()) {
+         if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-            observer->OnBufferWrite(ToAPI(buffer), bufferOffset, data.size(),
++            observer->OnBufferWrite({ToAPI(buffer), buffer->GetSize()}, bufferOffset, data.size(),
+                                     GlintBufferWriteKind::KnownBytes);
+         }
+     }
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -1080,9 +1080,10 @@
+                         srcBuffer->GetD3D12Resource(), copy->sourceOffset, copy->size);
+                 }
+                 if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-                    observer->OnBufferToBufferCopy(ToAPI(copy->source.Get()), copy->sourceOffset,
+-                                                   ToAPI(copy->destination.Get()),
+-                                                   copy->destinationOffset, copy->size);
++                    observer->OnBufferToBufferCopy(
++                        {ToAPI(copy->source.Get()), copy->source->GetSize()}, copy->sourceOffset,
++                        {ToAPI(copy->destination.Get()), copy->destination->GetSize()},
++                        copy->destinationOffset, copy->size);
+                 }
+                 break;
+             }
+@@ -1153,7 +1154,8 @@
+                 std::unique_ptr<GlintReadbackSnapshot> snapshot;
+                 GlintTextureToBufferCopy notification;
+                 if (observer) {
+-                    notification.destination = ToAPI(copy->destination.buffer.Get());
++                    notification.destination = {ToAPI(copy->destination.buffer.Get()),
++                                                copy->destination.buffer->GetSize()};
+                     notification.destinationOffset = copy->destination.offset;
+                     notification.destinationRowPitch =
+                         uint64_t{blockInfo.ToBytes(copy->destination.blocksPerRow)};
+@@ -1357,7 +1359,8 @@
+                 }
+ 
+                 if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-                    observer->OnBufferWrite(ToAPI(cmd->buffer.Get()), cmd->offset, cmd->size,
++                    observer->OnBufferWrite({ToAPI(cmd->buffer.Get()), cmd->buffer->GetSize()},
++                                            cmd->offset, cmd->size,
+                                             GlintBufferWriteKind::KnownBytes);
+                 }
+                 break;
+@@ -1474,8 +1477,8 @@
+                         return {};
+                     }));
+                 if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-                    observer->OnBufferWrite(ToAPI(write->buffer.Get()), offset, data.size(),
+-                                            GlintBufferWriteKind::KnownBytes);
++                    observer->OnBufferWrite({ToAPI(write->buffer.Get()), write->buffer->GetSize()},
++                                            offset, data.size(), GlintBufferWriteKind::KnownBytes);
+                 }
+                 break;
+             }
+--- a/gpu/command_buffer/service/BUILD.gn
++++ b/gpu/command_buffer/service/BUILD.gn
+@@ -351,6 +351,8 @@
+       "shared_image/dawn_image_backing.h",
+       "shared_image/dawn_image_backing_factory.cc",
+       "shared_image/dawn_image_backing_factory.h",
++      "glint_webgpu_readback_observer.cc",
++      "glint_webgpu_readback_observer.h",
+       "webgpu_decoder_impl.cc",
+       "webgpu_decoder_impl.h",
+     ]
+--- /dev/null
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -0,0 +1,92 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GPU_COMMAND_BUFFER_SERVICE_GLINT_WEBGPU_READBACK_OBSERVER_H_
++#define GPU_COMMAND_BUFFER_SERVICE_GLINT_WEBGPU_READBACK_OBSERVER_H_
++
++#include <array>
++#include <map>
++#include <memory>
++#include <mutex>
++
++#include "dawn/native/DawnNative.h"
++#include "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h"
++#include "gpu/command_buffer/common/glint_webgpu_device_policy.h"
++
++namespace gpu::webgpu {
++struct GlintReadbackLimits {
++  size_t buffers = 256;
++  size_t snapshots = 64 * 1024 * 1024;
++  size_t shadow = 64 * 1024 * 1024;
++};
++
++class GlintWebGPUReadbackObserver final
++    : public dawn::native::GlintReadbackObserver {
++ public:
++  GlintWebGPUReadbackObserver(
++      std::shared_ptr<const GlintWebGPUDevicePolicy> policy,
++      uint64_t device_epoch,
++      GlintReadbackLimits limits);
++  ~GlintWebGPUReadbackObserver() override;
++  bool IsHealthy() const;
++  void OnTextureToBufferCopy(
++      const dawn::native::GlintTextureToBufferCopy& copy,
++      std::unique_ptr<dawn::native::GlintReadbackSnapshot> snapshot) override;
++  void OnBufferToBufferCopy(dawn::native::GlintBufferIdentity source,
++                            uint64_t source_offset,
++                            dawn::native::GlintBufferIdentity destination,
++                            uint64_t destination_offset,
++                            uint64_t size) override;
++  void OnBufferWrite(dawn::native::GlintBufferIdentity buffer,
++                     uint64_t offset,
++                     uint64_t size,
++                     dawn::native::GlintBufferWriteKind kind) override;
++  void OnBufferDestroyed(WGPUBuffer buffer) override;
++  dawn::native::GlintReadbackMapStatus ClassifyReadMap(
++      dawn::native::GlintBufferIdentity buffer,
++      uint64_t offset,
++      uint64_t size) override;
++  dawn::native::GlintReadbackMap PrepareReadMap(
++      dawn::native::GlintBufferIdentity buffer,
++      uint64_t offset,
++      std::span<const uint8_t> original) override;
++
++ private:
++  struct BufferState {
++    BufferState(size_t size, uint64_t epoch);
++    size_t size;
++    bool unsafe = false;
++    glint::candidate::WebGpuReadbackProvenance provenance;
++  };
++  struct PendingCapture {
++    PendingCapture();
++    ~PendingCapture();
++    glint::candidate::WebGpuSnapshotToken token;
++    glint::candidate::WebGpuReadbackLayout layout;
++    std::unique_ptr<dawn::native::GlintReadbackSnapshot> native;
++    bool complete = false;
++  };
++  BufferState* GetBuffer(dawn::native::GlintBufferIdentity buffer);
++  uint64_t NextSequence();
++  void Fail();
++  void Drop(PendingCapture& capture);
++  void Collect();
++  dawn::native::GlintReadbackStatus Complete(
++      const glint::candidate::WebGpuReadbackPlan& plan);
++  dawn::native::GlintReadbackMapStatus Classify(BufferState* buffer,
++                                                uint64_t offset,
++                                                uint64_t size) const;
++
++  std::shared_ptr<const GlintWebGPUDevicePolicy> policy_;
++  uint64_t epoch_;
++  GlintReadbackLimits limits_;
++  bool failed_ = false;
++  uint64_t sequence_ = 0;
++  uint64_t snapshot_id_ = 0;
++  glint::candidate::WebGpuReadbackSnapshots snapshots_;
++  std::map<WGPUBuffer, BufferState> buffers_;
++  std::array<PendingCapture, glint::candidate::kWebGpuReadbackRegionLimit>
++      pending_;
++  mutable std::mutex mutex_;
++};
++}  // namespace gpu::webgpu
++#endif
+--- /dev/null
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -0,0 +1,318 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "glint_webgpu_readback_observer.h"
++
++#include <openssl/mem.h>
++
++#include <algorithm>
++#include <limits>
++
++namespace gpu::webgpu {
++namespace {
++using namespace glint::candidate;
++using dawn::native::GlintReadbackMapStatus;
++
++class ScopedSeed {
++ public:
++  explicit ScopedSeed(std::span<const uint8_t, 32> source);
++  ~ScopedSeed();
++  const std::array<uint8_t, 32>& bytes() const { return bytes_; }
++
++ private:
++  std::array<uint8_t, 32> bytes_;
++};
++ScopedSeed::ScopedSeed(std::span<const uint8_t, 32> source) {
++  std::copy(source.begin(), source.end(), bytes_.begin());
++}
++ScopedSeed::~ScopedSeed() {
++  OPENSSL_cleanse(bytes_.data(), bytes_.size());
++}
++
++std::optional<WebGpuPixelFormat> PixelFormat(
++    dawn::native::GlintReadbackFormat format) {
++  switch (format) {
++    case dawn::native::GlintReadbackFormat::Rgba8Unorm:
++      return WebGpuPixelFormat::kRgba8Unorm;
++    case dawn::native::GlintReadbackFormat::Bgra8Unorm:
++      return WebGpuPixelFormat::kBgra8Unorm;
++    default:
++      return std::nullopt;
++  }
++}
++}  // namespace
++
++GlintWebGPUReadbackObserver::BufferState::BufferState(size_t bytes,
++                                                      uint64_t epoch)
++    : size(bytes), provenance(bytes, epoch) {}
++GlintWebGPUReadbackObserver::PendingCapture::PendingCapture() = default;
++GlintWebGPUReadbackObserver::PendingCapture::~PendingCapture() = default;
++GlintWebGPUReadbackObserver::GlintWebGPUReadbackObserver(
++    std::shared_ptr<const GlintWebGPUDevicePolicy> policy,
++    uint64_t epoch,
++    GlintReadbackLimits limits)
++    : policy_(std::move(policy)),
++      epoch_(epoch),
++      limits_(limits),
++      snapshots_(epoch,
++                 policy_ ? policy_->generation() : 0,
++                 limits.snapshots,
++                 limits.shadow) {
++  failed_ = !policy_ || policy_->generation() == 0 || epoch == 0 ||
++            limits.buffers == 0 || limits.snapshots == 0 || limits.shadow == 0;
++}
++GlintWebGPUReadbackObserver::~GlintWebGPUReadbackObserver() = default;
++bool GlintWebGPUReadbackObserver::IsHealthy() const {
++  std::lock_guard lock(mutex_);
++  return !failed_;
++}
++void GlintWebGPUReadbackObserver::Drop(PendingCapture& capture) {
++  if (capture.token.snapshot_id != 0) {
++    snapshots_.Release(capture.token);
++  }
++  capture.native.reset();
++  capture.token = {};
++  capture.layout = {};
++  capture.complete = false;
++}
++void GlintWebGPUReadbackObserver::Fail() {
++  failed_ = true;
++  buffers_.clear();
++  for (auto& capture : pending_) {
++    Drop(capture);
++  }
++  snapshots_.Destroy();
++}
++uint64_t GlintWebGPUReadbackObserver::NextSequence() {
++  if (failed_ || sequence_ == std::numeric_limits<uint64_t>::max()) {
++    Fail();
++    return 0;
++  }
++  return ++sequence_;
++}
++GlintWebGPUReadbackObserver::BufferState*
++GlintWebGPUReadbackObserver::GetBuffer(
++    dawn::native::GlintBufferIdentity buffer) {
++  if (failed_) {
++    return nullptr;
++  }
++  if (!buffer.handle || buffer.size > std::numeric_limits<size_t>::max()) {
++    Fail();
++    return nullptr;
++  }
++  auto found = buffers_.find(buffer.handle);
++  if (found != buffers_.end()) {
++    if (found->second.size != buffer.size) {
++      Fail();
++      return nullptr;
++    }
++    return &found->second;
++  }
++  if (buffers_.size() >= limits_.buffers) {
++    Fail();
++    return nullptr;
++  }
++  return &buffers_
++              .try_emplace(buffer.handle, static_cast<size_t>(buffer.size),
++                           epoch_)
++              .first->second;
++}
++void GlintWebGPUReadbackObserver::Collect() {
++  std::array<bool, kWebGpuReadbackRegionLimit> referenced{};
++  for (const auto& [handle, buffer] : buffers_) {
++    if (buffer.unsafe) {
++      continue;
++    }
++    const auto plan = buffer.provenance.PlanMap(0, buffer.size);
++    for (size_t index = 0; index < plan.count; ++index) {
++      for (size_t slot = 0; slot < pending_.size(); ++slot) {
++        if (pending_[slot].token == plan.regions[index].snapshot) {
++          referenced[slot] = true;
++        }
++      }
++    }
++  }
++  for (size_t slot = 0; slot < pending_.size(); ++slot) {
++    if (!referenced[slot] && pending_[slot].token.snapshot_id != 0) {
++      Drop(pending_[slot]);
++    }
++  }
++}
++void GlintWebGPUReadbackObserver::OnTextureToBufferCopy(
++    const dawn::native::GlintTextureToBufferCopy& copy,
++    std::unique_ptr<dawn::native::GlintReadbackSnapshot> native) {
++  std::lock_guard lock(mutex_);
++  auto* buffer = GetBuffer(copy.destination);
++  const uint64_t sequence = NextSequence();
++  if (!buffer || !sequence) {
++    return;
++  }
++  const auto format = PixelFormat(copy.format);
++  auto free = std::find_if(
++      pending_.begin(), pending_.end(),
++      [](const PendingCapture& value) { return value.token.snapshot_id == 0; });
++  if (buffer->unsafe || !native || !format ||
++      native->GetFormat() != copy.format ||
++      copy.destinationRowPitch > std::numeric_limits<uint32_t>::max() ||
++      snapshot_id_ == std::numeric_limits<uint64_t>::max() ||
++      free == pending_.end()) {
++    buffer->unsafe = true;
++    Collect();
++    return;
++  }
++  const WebGpuReadbackLayout full{0, native->GetRowPitch(), native->GetWidth(),
++                                  native->GetHeight(), *format};
++  const WebGpuReadbackLayout region{
++      copy.destinationOffset, static_cast<uint32_t>(copy.destinationRowPitch),
++      copy.width, copy.height, *format};
++  const WebGpuSourceRect rectangle{copy.sourceX, copy.sourceY, full.width,
++                                   full.height};
++  const WebGpuSnapshotToken token{epoch_, ++snapshot_id_, sequence,
++                                  policy_->generation()};
++  if (!snapshots_.BeginCapture(token, full)) {
++    buffer->unsafe = true;
++    Collect();
++    return;
++  }
++  free->token = token;
++  free->layout = full;
++  free->native = std::move(native);
++  if (!buffer->provenance.RecordTextureCopy(sequence, region, token,
++                                            rectangle)) {
++    buffer->unsafe = true;
++  }
++  Collect();
++}
++void GlintWebGPUReadbackObserver::OnBufferToBufferCopy(
++    dawn::native::GlintBufferIdentity source,
++    uint64_t source_offset,
++    dawn::native::GlintBufferIdentity destination,
++    uint64_t destination_offset,
++    uint64_t size) {
++  std::lock_guard lock(mutex_);
++  auto* from = GetBuffer(source);
++  auto* to = GetBuffer(destination);
++  const uint64_t sequence = NextSequence();
++  if (!from || !to || !sequence) {
++    return;
++  }
++  if (from->unsafe || to->unsafe ||
++      !to->provenance.RecordBufferCopy(sequence, destination_offset,
++                                       from->provenance, source_offset, size)) {
++    to->unsafe = true;
++  }
++  Collect();
++}
++void GlintWebGPUReadbackObserver::OnBufferWrite(
++    dawn::native::GlintBufferIdentity buffer,
++    uint64_t offset,
++    uint64_t size,
++    dawn::native::GlintBufferWriteKind kind) {
++  std::lock_guard lock(mutex_);
++  auto* target = GetBuffer(buffer);
++  const uint64_t sequence = NextSequence();
++  if (!target || !sequence) {
++    return;
++  }
++  bool valid = false;
++  switch (kind) {
++    case dawn::native::GlintBufferWriteKind::KnownBytes:
++      valid = target->provenance.InvalidateWrite(sequence, offset, size);
++      break;
++    case dawn::native::GlintBufferWriteKind::Uncertain:
++      valid = target->provenance.RecordUncertainWrite(sequence, offset, size);
++      break;
++  }
++  if (!valid) {
++    target->unsafe = true;
++  }
++  Collect();
++}
++void GlintWebGPUReadbackObserver::OnBufferDestroyed(WGPUBuffer buffer) {
++  std::lock_guard lock(mutex_);
++  buffers_.erase(buffer);
++  Collect();
++}
++GlintReadbackMapStatus GlintWebGPUReadbackObserver::Classify(
++    BufferState* buffer,
++    uint64_t offset,
++    uint64_t size) const {
++  if (failed_ || !buffer || buffer->unsafe) {
++    return GlintReadbackMapStatus::Denied;
++  }
++  switch (buffer->provenance.PlanMap(offset, size).status) {
++    case WebGpuMapProvenance::kUnrelated:
++      return GlintReadbackMapStatus::Unrelated;
++    case WebGpuMapProvenance::kReadback:
++      return GlintReadbackMapStatus::Protected;
++    default:
++      return GlintReadbackMapStatus::Denied;
++  }
++}
++GlintReadbackMapStatus GlintWebGPUReadbackObserver::ClassifyReadMap(
++    dawn::native::GlintBufferIdentity buffer,
++    uint64_t offset,
++    uint64_t size) {
++  std::lock_guard lock(mutex_);
++  return Classify(GetBuffer(buffer), offset, size);
++}
++dawn::native::GlintReadbackStatus GlintWebGPUReadbackObserver::Complete(
++    const WebGpuReadbackPlan& plan) {
++  using dawn::native::GlintReadbackStatus;
++  for (size_t index = 0; index < plan.count; ++index) {
++    auto found = std::find_if(
++        pending_.begin(), pending_.end(), [&](const PendingCapture& value) {
++          return value.token == plan.regions[index].snapshot;
++        });
++    if (found == pending_.end()) {
++      return GlintReadbackStatus::Failed;
++    }
++    if (found->complete) {
++      continue;
++    }
++    std::span<const uint8_t> original;
++    if (!found->native) {
++      return GlintReadbackStatus::Failed;
++    }
++    const auto status = found->native->Read(&original);
++    if (status != GlintReadbackStatus::Ready) {
++      return status;
++    }
++    const ScopedSeed seed(policy_->seed());
++    if (!snapshots_.CompleteCapture(found->token, found->layout, 0, original,
++                                    seed.bytes())) {
++      return GlintReadbackStatus::Failed;
++    }
++    found->complete = true;
++    found->native.reset();
++  }
++  return GlintReadbackStatus::Ready;
++}
++dawn::native::GlintReadbackMap GlintWebGPUReadbackObserver::PrepareReadMap(
++    dawn::native::GlintBufferIdentity identity,
++    uint64_t offset,
++    std::span<const uint8_t> original) {
++  std::lock_guard lock(mutex_);
++  auto* buffer = GetBuffer(identity);
++  const auto status = Classify(buffer, offset, original.size());
++  if (status != GlintReadbackMapStatus::Protected) {
++    return {status, nullptr, 0};
++  }
++  const auto plan = buffer->provenance.PlanMap(offset, original.size());
++  const auto completion = Complete(plan);
++  if (completion != dawn::native::GlintReadbackStatus::Ready) {
++    if (completion == dawn::native::GlintReadbackStatus::Failed) {
++      buffer->unsafe = true;
++      Collect();
++    }
++    return {};
++  }
++  auto shadow = snapshots_.BuildProtectedShadow(plan, offset, original);
++  if (!shadow) {
++    buffer->unsafe = true;
++    Collect();
++    return {};
++  }
++  return {GlintReadbackMapStatus::Protected, std::move(shadow->bytes),
++          shadow->size};
++}
++}  // namespace gpu::webgpu

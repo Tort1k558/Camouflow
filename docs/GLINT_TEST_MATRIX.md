@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Unselected policy-owned readback controller
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| CPU normal / ASan | 113 assertions and 400 concurrent maps each | Synthetic native tickets, no Dawn devices |
+| Provenance / lifetime | Repeat/partial/copy reads, source destruction, known/uncertain writes, pending/failure and quota checks | No real native callback execution |
+| Native/service syntax | Four translation units, no diagnostics | No link/browser admission |
+| Combined GN | 56 paths, static/component generation and seven target header checks each | Sources/indexes/old outputs restored; no component linking |
+| Source identity | Seven-path delta with exact forward/reverse replay | Requires native-copy, shared-core and renderer-policy packets |
+| Serialization / registration | Not installed | Ordinary/direct shared-memory maps and shader flow remain open |
+
+[Source and runnable isolated check](../native/drafts/webgpu-readback-controller/README.md).
+The selected runtime and its measured Canvas/WebGPU export mismatch are unchanged.
+
 ## Unselected native observer / trusted copy notifications
 
 | Gate | Result | Boundary |

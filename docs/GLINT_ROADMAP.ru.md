@@ -1,5 +1,18 @@
 # Glint: план проверки и развития
 
+## Readback controller: bounded CPU consumer prepared
+
+[Controller source and limits](../native/drafts/webgpu-readback-controller/README.md):
+native copy tickets now have a staged policy-owned consumer with provenance,
+pending/completed snapshot handling and detached protected CPU shadows.
+Normal/ASan each passed 113 assertions and 400 concurrent maps; four syntax checks
+passed. Failed snapshots remain denied, pending snapshots can retry, and callback
+buffer sizes require no Dawn reentry. The combined 56-path source tree passed
+static/component GN generation and seven target header checks each; original
+sources, indexes and outputs were restored. Next: linking, service
+registration, ordinary/shared-memory serialization and shader-derived data.
+This is not selected, browser-executed or privacy-admitted; runtime remains 001-076.
+
 ## Trusted native copy hook: source packet ready for consumer integration
 
 [Native observer source and boundaries](../native/drafts/webgpu-native-copy-hook/README.md):
