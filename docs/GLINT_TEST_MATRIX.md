@@ -1,5 +1,17 @@
 # Glint browser test matrix
 
+## Unselected D3D12 capture producer
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Hardware capture | Eight actual GPU cases; 22,525 assertions normal and ASan | Original pixels only, not protection |
+| Layout / stability | RGBA/BGRA typed/typeless, two sizes and successive snapshots | Single layer/mip/sample |
+| Submission / lifetime | Marker + fence gates; allocation retained on CPU cancellation | Standalone hardware driver, not Dawn lifecycle runtime |
+| Dawn glue | Three translation units passed syntax checks; seven-file patch round-tripped | Not selected, linked or installed at copy hooks |
+| Renderer Python baseline | 4973 passed, 1 skipped at `1300fa2` | Predates this capture draft |
+
+[Capture source and remaining gates](../native/drafts/webgpu-d3d12-capture/README.md).
+
 ## Unselected private WebGPU transport
 
 | Gate | Result | Boundary |

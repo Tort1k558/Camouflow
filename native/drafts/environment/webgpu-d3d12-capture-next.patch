@@ -1,0 +1,374 @@
+--- a/third_party/dawn/src/dawn/native/BUILD.gn
++++ b/third_party/dawn/src/dawn/native/BUILD.gn
+@@ -619,6 +619,10 @@
+       "d3d12/D3D12Info.h",
+       "d3d12/DeviceD3D12.cpp",
+       "d3d12/DeviceD3D12.h",
++      "d3d12/GlintTextureReadbackD3D12.cpp",
++      "d3d12/GlintTextureReadbackD3D12.h",
++      "d3d12/glint/texture_capture.cc",
++      "d3d12/glint/texture_capture.h",
+       "d3d12/Forward.h",
+       "d3d12/GPUDescriptorHeapAllocationD3D12.cpp",
+       "d3d12/GPUDescriptorHeapAllocationD3D12.h",
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp
+@@ -121,6 +121,11 @@
+ 
+     ID3D12CommandList* d3d12CommandList = GetCommandList();
+     commandQueue->ExecuteCommandLists(1, &d3d12CommandList);
++    // Publish only after the real command list was submitted. Fence completion
++    // is a separate mandatory gate before reading any capture bytes.
++    for (const auto& marker : mGlintReadbackSubmissions) {
++        marker->store(true, std::memory_order_release);
++    }
+ 
+     return {};
+ }
+@@ -151,6 +156,13 @@
+     return mD3d12CommandList4.Get();
+ }
+ 
++void CommandRecordingContext::AddGlintReadbackSubmission(
++    std::shared_ptr<std::atomic<bool>> marker) {
++    DAWN_ASSERT(marker);
++    mGlintReadbackSubmissions.push_back(std::move(marker));
++    SetNeedsSubmit();
++}
++
+ void CommandRecordingContext::Release() {
+     mD3d12CommandList.Reset();
+     mD3d12CommandList1.Reset();
+@@ -162,6 +174,7 @@
+     mSharedTextures.clear();
+     mHeapsPendingUsage.clear();
+     mTempBuffers.clear();
++    mGlintReadbackSubmissions.clear();
+ 
+     ReleaseKeyedMutexes();
+ }
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.h
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.h
+@@ -27,6 +27,8 @@
+ #ifndef SRC_DAWN_NATIVE_D3D12_COMMANDRECORDINGCONTEXT_H_
+ #define SRC_DAWN_NATIVE_D3D12_COMMANDRECORDINGCONTEXT_H_
+ 
++#include <atomic>
++#include <memory>
+ #include <vector>
+ 
+ #include "absl/container/flat_hash_set.h"
+@@ -59,6 +61,7 @@
+     void TrackHeapUsage(Heap* heap, ExecutionSerial serial);
+ 
+     void AddToTempBuffers(Ref<Buffer> tempBuffer);
++    void AddGlintReadbackSubmission(std::shared_ptr<std::atomic<bool>> marker);
+ 
+     MaybeError AcquireKeyedMutex(Ref<d3d::KeyedMutex> keyedMutex);
+ 
+@@ -74,6 +77,7 @@
+     absl::flat_hash_set<Ref<d3d::KeyedMutex>> mAcquiredKeyedMutexes;
+     std::vector<Heap*> mHeapsPendingUsage;
+     std::vector<Ref<Buffer>> mTempBuffers;
++    std::vector<std::shared_ptr<std::atomic<bool>>> mGlintReadbackSubmissions;
+ };
+ }  // namespace dawn::native::d3d12
+ 
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc
+@@ -0,0 +1,166 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "texture_capture.h"
++
++#include <limits>
++#include <new>
++#include <utility>
++
++namespace glint::candidate::d3d12 {
++HRESULT TextureCapture::Record(ID3D12Device* device,
++                               ID3D12GraphicsCommandList* commands,
++                               ID3D12Resource* texture,
++                               ID3D12Fence* completion_fence,
++                               uint64_t completion_value,
++                               uint64_t allocation_budget,
++                               std::unique_ptr<TextureCapture>* result) {
++    if (!result || *result) {
++        return E_INVALIDARG;
++    }
++    if (!device || !commands || !texture || !completion_fence || completion_value == 0 ||
++        completion_value == std::numeric_limits<uint64_t>::max() || allocation_budget == 0) {
++        return E_INVALIDARG;
++    }
++    auto source = texture->GetDesc();
++    const uint64_t prior_completion = completion_fence->GetCompletedValue();
++    if (prior_completion == std::numeric_limits<uint64_t>::max()) {
++        return DXGI_ERROR_DEVICE_REMOVED;
++    }
++    if (prior_completion >= completion_value) {
++        return E_INVALIDARG;
++    }
++    if (source.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS) {
++        source.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
++    } else if (source.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS) {
++        source.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
++    }
++    if (source.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D || source.Width == 0 ||
++        source.Height == 0 || source.DepthOrArraySize != 1 || source.MipLevels != 1 ||
++        source.SampleDesc.Count != 1 ||
++        (source.Format != DXGI_FORMAT_R8G8B8A8_UNORM &&
++         source.Format != DXGI_FORMAT_B8G8R8A8_UNORM) ||
++        source.Width > std::numeric_limits<uint32_t>::max() / 4) {
++        return E_INVALIDARG;
++    }
++    // A signal from another device must never authorize reading this resource.
++    Microsoft::WRL::ComPtr<ID3D12Device> texture_device, commands_device, fence_device;
++    HRESULT hr = texture->GetDevice(IID_PPV_ARGS(&texture_device));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    hr = commands->GetDevice(IID_PPV_ARGS(&commands_device));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    hr = completion_fence->GetDevice(IID_PPV_ARGS(&fence_device));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (texture_device.Get() != device || commands_device.Get() != device ||
++        fence_device.Get() != device) {
++        return E_INVALIDARG;
++    }
++    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
++    UINT rows = 0;
++    UINT64 row_bytes = 0, total_bytes = 0;
++    device->GetCopyableFootprints(&source, 0, 1, 0, &footprint, &rows, &row_bytes, &total_bytes);
++    if (rows != source.Height || row_bytes != source.Width * 4 || footprint.Offset != 0 ||
++        footprint.Footprint.Depth != 1 || footprint.Footprint.RowPitch < row_bytes ||
++        footprint.Footprint.RowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT != 0) {
++        return E_INVALIDARG;
++    }
++    const uint64_t mapped_bytes = static_cast<uint64_t>(footprint.Footprint.RowPitch) * rows;
++    if (total_bytes > mapped_bytes || mapped_bytes == 0 ||
++        mapped_bytes > std::numeric_limits<size_t>::max() || mapped_bytes > allocation_budget) {
++        return E_OUTOFMEMORY;
++    }
++    D3D12_RESOURCE_DESC destination{};
++    destination.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
++    destination.Width = mapped_bytes;
++    destination.Height = 1;
++    destination.DepthOrArraySize = 1;
++    destination.MipLevels = 1;
++    destination.SampleDesc.Count = 1;
++    destination.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
++    const auto allocation = device->GetResourceAllocationInfo(0, 1, &destination);
++    if (allocation.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
++        allocation.SizeInBytes == 0 || allocation.SizeInBytes > allocation_budget) {
++        return E_OUTOFMEMORY;
++    }
++    std::unique_ptr<TextureCapture> capture(new (std::nothrow) TextureCapture());
++    if (!capture) {
++        return E_OUTOFMEMORY;
++    }
++    D3D12_HEAP_PROPERTIES heap{};
++    heap.Type = D3D12_HEAP_TYPE_READBACK;
++    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
++    hr = device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &destination,
++                                         D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
++                                         IID_PPV_ARGS(&capture->resource_));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    void* mapped = nullptr;
++    D3D12_RANGE read_range{0, static_cast<SIZE_T>(mapped_bytes)};
++    hr = capture->resource_->Map(0, &read_range, &mapped);
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (!mapped) {
++        capture->resource_->Unmap(0, nullptr);
++        return E_FAIL;
++    }
++    capture->mapped_ = std::span<const uint8_t>(static_cast<const uint8_t*>(mapped),
++                                                static_cast<size_t>(mapped_bytes));
++    capture->submitted_ = std::make_shared<std::atomic<bool>>(false);
++    capture->device_ = device;
++    capture->fence_ = completion_fence;
++    capture->completion_value_ = completion_value;
++    capture->allocation_bytes_ = allocation.SizeInBytes;
++    capture->width_ = static_cast<uint32_t>(source.Width);
++    capture->height_ = source.Height;
++    capture->row_pitch_ = footprint.Footprint.RowPitch;
++    capture->format_ = source.Format;
++    D3D12_TEXTURE_COPY_LOCATION destination_location{};
++    destination_location.pResource = capture->resource_.Get();
++    destination_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
++    destination_location.PlacedFootprint = footprint;
++    D3D12_TEXTURE_COPY_LOCATION source_location{};
++    source_location.pResource = texture;
++    source_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
++    source_location.SubresourceIndex = 0;
++    commands->CopyTextureRegion(&destination_location, 0, 0, 0, &source_location, nullptr);
++    *result = std::move(capture);
++    return S_OK;
++}
++
++TextureCapture::~TextureCapture() {
++    if (resource_ && !mapped_.empty()) {
++        D3D12_RANGE written{0, 0};
++        resource_->Unmap(0, &written);
++    }
++}
++
++HRESULT TextureCapture::ReadCompleted(std::span<const uint8_t>* result) const {
++    if (!result) {
++        return E_INVALIDARG;
++    }
++    *result = {};
++    if (!submitted_->load(std::memory_order_acquire)) {
++        return E_PENDING;
++    }
++    const HRESULT device_status = device_->GetDeviceRemovedReason();
++    if (FAILED(device_status)) {
++        return device_status;
++    }
++    const uint64_t completed = fence_->GetCompletedValue();
++    if (completed == std::numeric_limits<uint64_t>::max()) {
++        return DXGI_ERROR_DEVICE_REMOVED;
++    }
++    if (completed < completion_value_) {
++        return E_PENDING;
++    }
++    *result = mapped_;
++    return S_OK;
++}
++}  // namespace glint::candidate::d3d12
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h
+@@ -0,0 +1,55 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_D3D12_TEXTURE_CAPTURE_H_
++#define GLINT_D3D12_TEXTURE_CAPTURE_H_
++
++#include <d3d12.h>
++#include <wrl/client.h>
++
++#include <atomic>
++#include <cstddef>
++#include <cstdint>
++#include <memory>
++#include <span>
++
++namespace glint::candidate::d3d12 {
++class TextureCapture {
++  public:
++    // Caller owns validation, source initialization and COPY_SOURCE transition.
++    // Mark submission only after ExecuteCommandLists. Retain the returned resource
++    // until that submission retires, even if this CPU capture is cancelled early.
++    static HRESULT Record(ID3D12Device* device,
++                          ID3D12GraphicsCommandList* commands,
++                          ID3D12Resource* texture,
++                          ID3D12Fence* completion_fence,
++                          uint64_t completion_value,
++                          uint64_t allocation_budget,
++                          std::unique_ptr<TextureCapture>* result);
++    ~TextureCapture();
++    TextureCapture(const TextureCapture&) = delete;
++    TextureCapture& operator=(const TextureCapture&) = delete;
++    HRESULT ReadCompleted(std::span<const uint8_t>* result) const;
++    std::shared_ptr<std::atomic<bool>> submission_marker() const { return submitted_; }
++    Microsoft::WRL::ComPtr<ID3D12Resource> retirement_resource() const { return resource_; }
++    uint32_t width() const { return width_; }
++    uint32_t height() const { return height_; }
++    uint32_t row_pitch() const { return row_pitch_; }
++    uint64_t allocation_bytes() const { return allocation_bytes_; }
++    DXGI_FORMAT format() const { return format_; }
++
++  private:
++    TextureCapture() = default;
++    Microsoft::WRL::ComPtr<ID3D12Device> device_;
++    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
++    Microsoft::WRL::ComPtr<ID3D12Fence> fence_;
++    std::shared_ptr<std::atomic<bool>> submitted_;
++    std::span<const uint8_t> mapped_;
++    uint64_t completion_value_ = 0;
++    uint64_t allocation_bytes_ = 0;
++    uint32_t width_ = 0;
++    uint32_t height_ = 0;
++    uint32_t row_pitch_ = 0;
++    DXGI_FORMAT format_ = DXGI_FORMAT_UNKNOWN;
++};
++}  // namespace glint::candidate::d3d12
++#endif
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
+@@ -0,0 +1,44 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "src/dawn/native/d3d12/GlintTextureReadbackD3D12.h"
++
++#include "src/dawn/native/d3d/D3DError.h"
++#include "src/dawn/native/d3d12/CommandRecordingContext.h"
++#include "src/dawn/native/d3d12/DeviceD3D12.h"
++#include "src/dawn/native/d3d12/QueueD3D12.h"
++#include "src/dawn/native/d3d12/SharedFenceD3D12.h"
++#include "src/dawn/native/d3d12/TextureD3D12.h"
++namespace dawn::native::d3d12 {
++ResultOrError<std::unique_ptr<glint::candidate::d3d12::TextureCapture>>
++RecordGlintTextureReadbackSnapshot(Device* device,
++                                   CommandRecordingContext* context,
++                                   Texture* texture,
++                                   uint64_t allocation_budget) {
++    DAWN_INTERNAL_ERROR_IF(!device || !context || !texture || texture->GetDevice() != device,
++                           "Invalid Glint texture capture owner.");
++    DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
++    DAWN_INTERNAL_ERROR_IF(!texture->HasAccess() || !texture->GetD3D12Resource(),
++                           "Glint texture capture has no resource access.");
++    const auto format = texture->GetFormat().format;
++    DAWN_INTERNAL_ERROR_IF(
++        format != wgpu::TextureFormat::RGBA8Unorm && format != wgpu::TextureFormat::BGRA8Unorm,
++        "Unsupported Glint texture capture format.");
++    DAWN_INTERNAL_ERROR_IF(!(texture->GetInternalUsage() & wgpu::TextureUsage::CopySrc),
++                           "Glint texture capture requires native copy access.");
++    const auto range = SubresourceRange::SingleMipAndLayer(0, 0, Aspect::Color);
++    DAWN_TRY(texture->EnsureSubresourceContentInitialized(context, range));
++    texture->TrackUsageAndTransitionNow(context, wgpu::TextureUsage::CopySrc, range);
++    auto* queue = ToBackend(device->GetQueue());
++    std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture;
++    DAWN_TRY(
++        CheckHRESULT(glint::candidate::d3d12::TextureCapture::Record(
++                         device->GetD3D12Device(), context->GetCommandList(),
++                         texture->GetD3D12Resource(), queue->GetSharedFence()->GetD3DFence(),
++                         uint64_t{queue->GetPendingCommandSerial()}, allocation_budget, &capture),
++                     "Glint full texture capture"));
++    // GPU ownership survives cancellation of the CPU snapshot ticket.
++    device->ReferenceUntilUnused(capture->retirement_resource());
++    context->AddGlintReadbackSubmission(capture->submission_marker());
++    return std::move(capture);
++}
++}  // namespace dawn::native::d3d12
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
+@@ -0,0 +1,21 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREREADBACKD3D12_H_
++#define SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREREADBACKD3D12_H_
++#include <memory>
++
++#include "src/dawn/native/Error.h"
++#include "src/dawn/native/d3d12/glint/texture_capture.h"
++namespace dawn::native::d3d12 {
++class Device;
++class Texture;
++class CommandRecordingContext;
++// Native validated command recording only. Caller reserves a bounded GPU budget
++// and registers this capture with the readback provenance transaction.
++ResultOrError<std::unique_ptr<glint::candidate::d3d12::TextureCapture>>
++RecordGlintTextureReadbackSnapshot(Device* device,
++                                   CommandRecordingContext* context,
++                                   Texture* texture,
++                                   uint64_t allocation_budget);
++}  // namespace dawn::native::d3d12
++#endif

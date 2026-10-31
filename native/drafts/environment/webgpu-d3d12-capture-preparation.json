@@ -1,0 +1,150 @@
+{
+  "passed": true,
+  "sources": [
+    {
+      "source": "third_party/dawn/src/dawn/native/BUILD.gn",
+      "before_sha256": "97285402706cc76ba93e91e788fc7c27e1e58fb1cb86ab7594f4d9bc28e2e7fc",
+      "staged_sha256": "bc22c6d70520d3da8ccb255688a9663d2f9b6d5d9ea27e326c13d0dcb25b5252"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp",
+      "before_sha256": "d109d1fec5ca6f7d14396773571762fc74229f7f9148c4c69e49e86cdd90b672",
+      "staged_sha256": "865e9865a802fb0cfce34994186f32bb4c405834852661027c7d4c4b83b296b2"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.h",
+      "before_sha256": "166777e891ad2bfe96343d58d3a45dde21a29c19610e23b9b5db0f2452451fc0",
+      "staged_sha256": "6e71497339036094c6b56a62dcefdb54fa8f5cd12af929da1375cf42008bd393"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc",
+      "before_sha256": null,
+      "staged_sha256": "183f4c0243eac86b4cf2a5ab41fc099f57152be4a92c1568b96e02e364f1db4c"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h",
+      "before_sha256": null,
+      "staged_sha256": "ad4d4bdcb0a366bab9af3f9b2b2c9476ba4cc2b2e21388fc3e710282f26a4b5d"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp",
+      "before_sha256": null,
+      "staged_sha256": "e24856099da7aea240e58f12a49f19fdb429dea24687e9584875ac0514e6c4ad"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h",
+      "before_sha256": null,
+      "staged_sha256": "b5f07b4566a630782cb522ac91690cca9dd8c3b677e1a551a348deec43eec35e"
+    }
+  ],
+  "patch_sha256": "5d814d145b3149b99fcf04dba7e2cd0e0b345bf44d1c6350d376054cdb7891e0",
+  "postguards_passed": true,
+  "scope": "Hardware-tested isolated D3D12 capture core plus syntax-checked unselected Dawn glue",
+  "native_capture_hook_installed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "schema": 1,
+  "selected": false,
+  "browser_integrated": false,
+  "production_admitted": false,
+  "patch": "webgpu-d3d12-capture-next.patch",
+  "dawn_revision": "0a2c7df818e285d6db0f085135139cda04cee8bb",
+  "exact_patch_roundtrip_verified": true,
+  "syntax_checks": [
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "dd3e09ee001729cf707f26e2cbe7ef801c86835fede1dad8ab85d9d09c5b67c1",
+  "hardware_checks": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 22525,
+        "browser_integrated": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 22525,
+        "browser_integrated": false
+      }
+    }
+  ],
+  "hardware_report_sha256": "13edc17a11e4c8bd6cd6d3b93124746131d444f9f2ba9f5d100c04f19b784380",
+  "measured_hardware_source_sha256": {
+    "texture_capture.h": "ad4d4bdcb0a366bab9af3f9b2b2c9476ba4cc2b2e21388fc3e710282f26a4b5d",
+    "capture_test.cc": "62019a1d781784e3c0853e143ad32549f02eb26f0cab59674cebba58b64ff1c5",
+    "texture_capture.cc": "183f4c0243eac86b4cf2a5ab41fc099f57152be4a92c1568b96e02e364f1db4c",
+    "check.py": "1dcd23f56d36b7a5e2eec6151c1f8e889ee93c1bc7a479e63d7fa662ade6dd81"
+  },
+  "hardware_adapter": true,
+  "software_adapter_fallback": false,
+  "device_gpu_budget_retirement_verified": false,
+  "dawn_submission_runtime_verified": false,
+  "snapshot_store_integration_verified": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "native_webgpu_readback_protection": false,
+  "public_source_sha256": {
+    "native/drafts/webgpu-d3d12-capture/capture_test.cc": "62019a1d781784e3c0853e143ad32549f02eb26f0cab59674cebba58b64ff1c5",
+    "native/drafts/webgpu-d3d12-capture/check.py": "a8f59a0d1c2e65e48443d06c74bcc0ed4fceaa69b8b24919b9eba1271398be28",
+    "native/drafts/webgpu-d3d12-capture/texture_capture.cc": "183f4c0243eac86b4cf2a5ab41fc099f57152be4a92c1568b96e02e364f1db4c",
+    "native/drafts/webgpu-d3d12-capture/texture_capture.h": "ad4d4bdcb0a366bab9af3f9b2b2c9476ba4cc2b2e21388fc3e710282f26a4b5d"
+  },
+  "public_hardware_checks": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 22525,
+        "browser_integrated": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 22525,
+        "browser_integrated": false
+      }
+    }
+  ],
+  "public_hardware_report_sha256": "47a257414fa48979c7c07fe17028fcc228d07b5f1ed0e6130b7457853b5dd3b1",
+  "public_hardware_source_sha256": {
+    "texture_capture.h": "ad4d4bdcb0a366bab9af3f9b2b2c9476ba4cc2b2e21388fc3e710282f26a4b5d",
+    "capture_test.cc": "62019a1d781784e3c0853e143ad32549f02eb26f0cab59674cebba58b64ff1c5",
+    "texture_capture.cc": "183f4c0243eac86b4cf2a5ab41fc099f57152be4a92c1568b96e02e364f1db4c",
+    "check.py": "a8f59a0d1c2e65e48443d06c74bcc0ed4fceaa69b8b24919b9eba1271398be28"
+  }
+}

@@ -1,5 +1,15 @@
 # Glint architecture
 
+## Unselected D3D12 full-surface producer
+
+The [hardware capture draft](drafts/webgpu-d3d12-capture/README.md) passed eight
+actual GPU cases and **22,525 assertions** in each of normal/ASan runs: typed and
+typeless RGBA/BGRA, padded rows, immutable successive snapshots, submit/fence
+gates and resource retention during CPU cancellation. Three Dawn translation units
+passed syntax checks. The seven-file Dawn patch is unselected; automatic native
+copy interception, snapshot-store integration, GPU-budget retirement and actual
+Dawn/browser submission remain unverified. No pixels are protected by this draft.
+
 ## Unselected private WebGPU transport
 
 The [private policy transport draft](drafts/webgpu-private-policy/README.md) adds

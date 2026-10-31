@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "1300fa22c3ea75d6d5b02bbe9c5c49167c78ca15",
+  "counts": {
+    "tests": 4974,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4973
+  },
+  "duration_seconds": 450.75,
+  "log_sha256": "9b97ee9a47bc6a748d33661e40b0db716ec828da8d7776c11b7d1914f8bd90ca",
+  "junit_sha256": "8ede0b284d4d4294810cec73e14295bbad2e955fc07731f5fd09f72d32123d51",
+  "schema": 1,
+  "raw_report_sha256": "2fc51f21cc2b92250d0594215ec20cbd8f198d5d2a291a8685a0b542bfecc5c9",
+  "scope": "Full Python regression at 1300fa2 before D3D12 capture source preparation; not native/browser/privacy admission",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
