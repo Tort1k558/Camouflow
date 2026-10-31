@@ -1,0 +1,69 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -30,7 +30,8 @@
+ 
+ int main(int argc, char** argv) {
+     const bool copyMutation = argc == 2 && std::strcmp(argv[1], "--mutation-copy") == 0;
+-    const bool byteBudget = copyMutation || (argc == 2 && std::strcmp(argv[1], "--mutation-render") == 0);
++    const bool storageMutation = argc == 2 && std::strcmp(argv[1], "--mutation-storage") == 0;
++    const bool byteBudget = copyMutation || storageMutation || (argc == 2 && std::strcmp(argv[1], "--mutation-render") == 0);
+     const bool nativeLossBeforeMap = argc == 2 && std::strcmp(argv[1], "--native-loss-before-map") == 0;
+     const bool destroyDeviceAfterRequest = argc == 2 && std::strcmp(argv[1], "--device-destroy-before-response") == 0;
+     const bool lifetimeMode = nativeLossBeforeMap || destroyDeviceAfterRequest;
+@@ -181,7 +182,7 @@
+         wgpu::TextureDescriptor descriptor{};
+         descriptor.size = {side, side, 1};
+         descriptor.format = wgpu::TextureFormat::RGBA8Unorm;
+-        descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::TextureBinding;
++        descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::StorageBinding;
+         auto texture = device.CreateTexture(&descriptor);
+         auto view = texture.CreateView();
+         auto initialize = device.CreateCommandEncoder();
+@@ -411,6 +412,38 @@
+             layout.rowsPerImage = side;
+             wgpu::Extent3D extent{side, side, 1};
+             queue.WriteTexture(&copy, changedRaw.data(), changedRaw.size(), &layout, &extent);
++        } else if (storageMutation) {
++            wgpu::ShaderSourceWGSL storageSource{};
++            storageSource.code = R"(
++                @group(0) @binding(0) var image: texture_storage_2d<rgba8unorm, write>;
++                @compute @workgroup_size(8, 8) fn main(@builtin(global_invocation_id) id: vec3u) {
++                    if (id.x >= 64u || id.y >= 64u) { return; }
++                    textureStore(image, vec2i(id.xy), vec4f(64.0, 128.0, 191.0, 255.0) / 255.0);
++                }
++            )";
++            wgpu::ShaderModuleDescriptor storageModuleDescriptor{};
++            storageModuleDescriptor.nextInChain = &storageSource;
++            auto storageModule = device.CreateShaderModule(&storageModuleDescriptor);
++            wgpu::ComputePipelineDescriptor storagePipelineDescriptor{};
++            storagePipelineDescriptor.compute.module = storageModule;
++            storagePipelineDescriptor.compute.entryPoint = "main";
++            auto storagePipeline = device.CreateComputePipeline(&storagePipelineDescriptor);
++            wgpu::BindGroupEntry storageEntry{};
++            storageEntry.binding = 0;
++            storageEntry.textureView = texture.CreateView();
++            wgpu::BindGroupDescriptor storageGroupDescriptor{};
++            storageGroupDescriptor.layout = storagePipeline.GetBindGroupLayout(0);
++            storageGroupDescriptor.entryCount = 1;
++            storageGroupDescriptor.entries = &storageEntry;
++            auto storageGroup = device.CreateBindGroup(&storageGroupDescriptor);
++            auto storageEncoder = device.CreateCommandEncoder();
++            auto storagePass = storageEncoder.BeginComputePass();
++            storagePass.SetPipeline(storagePipeline);
++            storagePass.SetBindGroup(0, storageGroup);
++            storagePass.DispatchWorkgroups(8, 8);
++            storagePass.End();
++            auto storageCommands = storageEncoder.Finish();
++            queue.Submit(1, &storageCommands);
+         } else {
+             auto writeEncoder = device.CreateCommandEncoder();
+             auto writePass = writeEncoder.BeginRenderPass(&passDescriptor);
+@@ -458,7 +491,7 @@
+                     "\"mutation\":\"%s\",\"new_gpu_reference_matched\":true,"
+                     "\"old_snapshot_unchanged\":true,\"new_cpu_reference_matched\":true,"
+                     "\"budget_drained_before_device_destroy\":true,\"browser_integrated\":false}\n",
+-                    copyMutation ? "copy-destination" : "render-target");
++                    copyMutation ? "copy-destination" : storageMutation ? "storage-write" : "render-target");
+         return 0;
+     }
+     constexpr uint32_t width = 8, height = 8, pitch = 256;

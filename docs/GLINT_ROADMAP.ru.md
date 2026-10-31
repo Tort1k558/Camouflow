@@ -1,6 +1,22 @@
 # Glint: план проверки и развития
 
-## Complete component candidate compiled; two compatibility gates remain failed
+## Revision-3 resource batch: source-ready, not compiled
+
+The 118-patch browser passes its WebGPU consistency and baseline/ready GPU-process
+recovery gates; legacy Audio compatibility remains failed. Two measured native
+resource corrections now compose the explicit 120-patch revision-3 candidate:
+scratch/output reuse and weak projection leases. All patches replay/reverse,
+270 upstream files restore, and seven final sources match the standalone code.
+Render/copy/storage mutations retain old snapshots and drain resources; deliberately
+broken invalidation controls detect stale GPU values. This is not browser admission.
+
+Next: regress the new candidate/tooling extension, perform an exact backed-up
+source transition, compile Windows at maximum j4, then repeat real browser,
+worker, GPU/Audio and resource checks. Preserve the 118-patch runtime for comparison.
+Recoverable capture quotas, external/shared texture controls and legacy Audio
+remain unresolved; Linux/macOS remain deferred.
+
+## Earlier full component candidate measurements
 
 The preserved 001–116 browser passed the 160-check runtime suite, 60 worker
 startup checks, combined Canvas/Audio/WebGL surfaces and eight-profile combined

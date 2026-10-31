@@ -1,0 +1,185 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index 07dd905..196cdf6 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -3739,6 +3739,7 @@ source_set("camouflow_native_privacy") {
+ test("camouflow_native_privacy_unittests") {
+   sources = [
+     "//base/test/run_all_unittests.cc",
++    "camouflow_native/document_canvas_policy_validation_unittest.cc",
+     "camouflow_native/privacy_key_derivation_unittest.cc",
+     "camouflow_native/privacy_profile_key_unittest.cc",
+     "camouflow_native/privacy_key_service_unittest.cc",
+diff --git a/content/browser/camouflow_native/document_canvas_policy_validation_unittest.cc b/content/browser/camouflow_native/document_canvas_policy_validation_unittest.cc
+new file mode 100644
+index 0000000..10fa0e1
+--- /dev/null
++++ b/content/browser/camouflow_native/document_canvas_policy_validation_unittest.cc
+@@ -0,0 +1,114 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h"
++
++#include "base/unguessable_token.h"
++#include "net/base/schemeful_site.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace blink {
++namespace {
++
++using Seed = std::array<uint8_t, 32>;
++
++StorageKey FirstParty() {
++  return StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://canvas.test/")));
++}
++
++TEST(GlintDocumentCanvasPolicyTest, MatchingPartitionReturnsOwnedSeed) {
++  const auto key = FirstParty();
++  const auto encoding = key.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  Seed seed{};
++  seed[0] = 17;
++  auto validated = ValidateGlintDocumentCanvasPolicy(1, *encoding, seed, key);
++  ASSERT_TRUE(validated);
++  EXPECT_EQ(*validated, seed);
++  seed[0] = 99;
++  EXPECT_EQ((*validated)[0], 17);
++}
++
++TEST(GlintDocumentCanvasPolicyTest, UnknownVersionRejectsMatchingPartition) {
++  const auto key = FirstParty();
++  const auto encoding = key.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  for (uint32_t version : {0u, 2u, UINT32_MAX}) {
++    EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(version, *encoding, Seed{}, key));
++  }
++}
++
++TEST(GlintDocumentCanvasPolicyTest, MissingCommitmentRejectsPolicy) {
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(1, {}, Seed{}, FirstParty()));
++}
++
++TEST(GlintDocumentCanvasPolicyTest, OriginChangeRejectsPreviousCommitment) {
++  const auto key = FirstParty();
++  const auto encoding = key.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  const auto next = key.WithOrigin(
++      url::Origin::Create(GURL("https://next.test/")));
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(1, *encoding, Seed{}, next));
++}
++
++TEST(GlintDocumentCanvasPolicyTest, RetainedTopLevelSiteMattersWithPartitioningOff) {
++  const auto origin = url::Origin::Create(GURL("https://canvas.test/"));
++  const auto first = StorageKey::Create(
++      origin, net::SchemefulSite(GURL("https://first.test/")),
++      mojom::AncestorChainBit::kCrossSite, false);
++  const auto second = StorageKey::Create(
++      origin, net::SchemefulSite(GURL("https://second.test/")),
++      mojom::AncestorChainBit::kCrossSite, false);
++  ASSERT_EQ(first, second);
++  const auto encoding = first.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(1, *encoding, Seed{}, second));
++}
++
++TEST(GlintDocumentCanvasPolicyTest, RetainedAncestorChainMatters) {
++  const auto origin = url::Origin::Create(GURL("https://canvas.test/"));
++  const net::SchemefulSite site(GURL("https://canvas.test/"));
++  const auto same = StorageKey::Create(
++      origin, site, mojom::AncestorChainBit::kSameSite, false);
++  const auto cross = StorageKey::Create(
++      origin, site, mojom::AncestorChainBit::kCrossSite, false);
++  const auto encoding = same.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(1, *encoding, Seed{}, cross));
++}
++
++TEST(GlintDocumentCanvasPolicyTest, StorageNonceChangeRejectsCommitment) {
++  const auto origin = url::Origin::Create(GURL("https://canvas.test/"));
++  const auto first = StorageKey::CreateWithNonce(
++      origin, base::UnguessableToken::Create());
++  const auto second = StorageKey::CreateWithNonce(
++      origin, base::UnguessableToken::Create());
++  const auto encoding = first.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(1, *encoding, Seed{}, second));
++}
++
++TEST(GlintDocumentCanvasPolicyTest, OpaqueOriginRequiresExactOwnedIdentity) {
++  const auto first = StorageKey::CreateFirstParty(url::Origin());
++  const auto second = StorageKey::CreateFirstParty(url::Origin());
++  const auto encoding = first.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  EXPECT_TRUE(ValidateGlintDocumentCanvasPolicy(1, *encoding, Seed{}, first));
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(1, *encoding, Seed{}, second));
++}
++
++TEST(GlintDocumentCanvasPolicyTest, EmbeddedNullAndTrailingDataAreNotIgnored) {
++  const auto key = FirstParty();
++  auto encoding = key.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  ASSERT_NE(encoding->find('\0'), std::string::npos);
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(
++      1, std::string_view(*encoding).substr(0, encoding->find('\0')), Seed{}, key));
++  encoding->push_back('\0');
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(1, *encoding, Seed{}, key));
++}
++
++}  // namespace
++}  // namespace blink
+diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
+index 4d7fbfa..ed67e2d 100644
+--- a/third_party/blink/public/common/BUILD.gn
++++ b/third_party/blink/public/common/BUILD.gn
+@@ -288,6 +288,7 @@ source_set("headers") {
+     "shared_storage/module_script_downloader.h",
+     "sms/webotp_constants.h",
+     "sms/webotp_service_outcome.h",
++    "native_privacy/document_canvas_policy_validation.h",
+     "storage_key/storage_key.h",
+     "subresource_load_metrics.h",
+     "switches.h",
+diff --git a/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h b/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h
+new file mode 100644
+index 0000000..32a3d8e
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h
+@@ -0,0 +1,35 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_
++#define THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_
++
++#include <array>
++#include <cstdint>
++#include <optional>
++#include <string_view>
++
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace blink {
++
++// Inputs must come from the browser's navigation commit, not renderer requests.
++// This checks partition consistency; it does not authenticate an IPC sender.
++inline std::optional<std::array<uint8_t, 32>> ValidateGlintDocumentCanvasPolicy(
++    uint32_t version,
++    std::string_view browser_partition_encoding,
++    const std::array<uint8_t, 32>& seed,
++    const StorageKey& final_document_partition) {
++  if (version != 1 || browser_partition_encoding.empty()) {
++    return std::nullopt;
++  }
++  const auto final_encoding =
++      final_document_partition.SerializeForNativePrivacy();
++  if (!final_encoding || *final_encoding != browser_partition_encoding) {
++    return std::nullopt;
++  }
++  return seed;
++}
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_

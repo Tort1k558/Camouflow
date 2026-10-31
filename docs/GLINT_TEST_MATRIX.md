@@ -63,8 +63,21 @@ passes the 54-case native matrix, 24 large CPU/shader/readback comparisons,
 12 render/copy mutation runs and six deliberately broken invalidation controls.
 Old snapshots remain unchanged; allocation accounting drains while the device
 is still alive. This resolves the measured duplicate-projection sampler path
-in standalone code only. Storage-write invalidation, external exclusion and
+in standalone code only. External exclusion and
 Chromium integration remain separate gates; no new candidate is selected.
+The follow-up 27-case matrix also passes RGBA8 write-only storage mutations,
+with nine deliberately stale controls across render/copy/storage writes.
+
+### Explicit revision-3 source candidate
+
+[`upstream-156-webgpu-r3`](../native/drafts/upstream-156-webgpu-r3/README.md)
+now composes both resource corrections after the exact 118-patch prefix.
+All 120 patches replay/reverse, all 270 upstream inputs restore, and seven final
+source files match the measured native prototype. It is selectable for research
+builds only: no Chromium compilation or new runtime receipt follows from this
+preparation. Limits remain 180 GiB and maximum jobs 4. The preceding full host
+regression passed 5,380 tests with one skip at `b6dfe64`; the new candidate/helper
+extension requires its own regression before an engine transition.
 
 ## 2026-11-01: measured 001–116 runtime and revision-2 correction
 

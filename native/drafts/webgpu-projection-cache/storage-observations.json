@@ -1,0 +1,395 @@
+{
+  "schema": 1,
+  "passed": true,
+  "input_postguards_passed": true,
+  "scope": "Standalone RGBA8 write-only storage, render/copy mutations and intentionally stale controls; not readable storage textures, external sharing or Chromium runtime admission",
+  "base_packet_sha256": "ce11a5f52da47f5d06b7e81b707493993cdcd72a990d6494ceae9a4aef543ed1",
+  "base_fixture_sha256": "c3aeb11a56fd33b977b91561e5c7240ca1e9f36c2e33b7fd24a9758a86ef936a",
+  "source_sha256": "df838ea6abf15fe301c26d867a111a807d389e937d8a466afaa12dc28cc0fcf0",
+  "patch": "storage-mutation-fixture.patch",
+  "patch_sha256": "c257325b50351e192d70b7bde3a2cab5188409ecf6a291ce7875d0caf98c5c0e",
+  "report_sha256": "3cc35536f8a04b04c56cba1ec31d90d4330209258186ff01c55efa1dd294effd",
+  "runs": [
+    {
+      "variant": "uncached",
+      "mode": "--mutation-render",
+      "attempt": 1,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "render-target",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "uncached",
+      "mode": "--mutation-render",
+      "attempt": 2,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "render-target",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "uncached",
+      "mode": "--mutation-render",
+      "attempt": 3,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "render-target",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "uncached",
+      "mode": "--mutation-copy",
+      "attempt": 1,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "copy-destination",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "uncached",
+      "mode": "--mutation-copy",
+      "attempt": 2,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "copy-destination",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "uncached",
+      "mode": "--mutation-copy",
+      "attempt": 3,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "copy-destination",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "uncached",
+      "mode": "--mutation-storage",
+      "attempt": 1,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "storage-write",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "uncached",
+      "mode": "--mutation-storage",
+      "attempt": 2,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "storage-write",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "uncached",
+      "mode": "--mutation-storage",
+      "attempt": 3,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "storage-write",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-render",
+      "attempt": 1,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "render-target",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-render",
+      "attempt": 2,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "render-target",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-render",
+      "attempt": 3,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "render-target",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-copy",
+      "attempt": 1,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "copy-destination",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-copy",
+      "attempt": 2,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "copy-destination",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-copy",
+      "attempt": 3,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "copy-destination",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-storage",
+      "attempt": 1,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "storage-write",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-storage",
+      "attempt": 2,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "storage-write",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "cached",
+      "mode": "--mutation-storage",
+      "attempt": 3,
+      "returncode": 0,
+      "passed": true,
+      "observation": {
+        "passed": true,
+        "actual_wire_client_server_executed": true,
+        "mutation": "storage-write",
+        "new_gpu_reference_matched": true,
+        "old_snapshot_unchanged": true,
+        "new_cpu_reference_matched": true,
+        "budget_drained_before_device_destroy": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-render",
+      "attempt": 1,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-render",
+      "attempt": 2,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-render",
+      "attempt": 3,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-copy",
+      "attempt": 1,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-copy",
+      "attempt": 2,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-copy",
+      "attempt": 3,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-storage",
+      "attempt": 1,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-storage",
+      "attempt": 2,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    },
+    {
+      "variant": "stale",
+      "mode": "--mutation-storage",
+      "attempt": 3,
+      "returncode": 1,
+      "passed": true,
+      "stale_gpu_marker_observed": true
+    }
+  ],
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

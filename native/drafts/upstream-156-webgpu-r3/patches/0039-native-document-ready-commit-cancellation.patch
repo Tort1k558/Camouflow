@@ -1,0 +1,48 @@
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+index b91f4ab..13bf1da 100644
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -7138,10 +7138,20 @@ void NavigationRequest::CommitNavigation() {
+ 
+   // ReadyToCommitNavigation selects the exact origin carried on the wire.
+   // Recomputing opaque about:blank origins can create a different nonce.
++  // ReadyToCommitNavigation transferred this request to the RenderFrameHost.
++  // Failure processing cannot transition READY_TO_COMMIT to WILL_FAIL_REQUEST.
++  const auto abort_privacy_commit = [this] {
++    net_error_ = net::ERR_ABORTED;
++    FrameTreeNode* node = frame_tree_node_;
++    GetRenderFrameHost()->NavigationRequestCancelled(
++        this, NavigationDiscardReason::kInternalCancellation);
++    // The request is destroyed; only the saved frame-tree node remains usable.
++    node->render_manager()->DiscardSpeculativeRFHIfUnused(
++        NavigationDiscardReason::kInternalCancellation);
++  };
+   const auto privacy_mode = GetGlintDocumentPrivacyBootstrapMode();
+   if (privacy_mode == glint::candidate::DocumentPrivacyBootstrapMode::kConflict) {
+-    OnRequestFailedInternal(network::URLLoaderCompletionStatus(net::ERR_ABORTED),
+-                            true, std::nullopt, false);
++    abort_privacy_commit();
+     return;
+   }
+   if (privacy_mode == glint::candidate::DocumentPrivacyBootstrapMode::kSurfaces) {
+@@ -7150,8 +7160,7 @@ void NavigationRequest::CommitNavigation() {
+         commit_params_->origin_to_commit);
+     if (!policy) {
+       // Failure destroys this request; do not access it after cancellation.
+-      OnRequestFailedInternal(network::URLLoaderCompletionStatus(net::ERR_ABORTED),
+-                              true, std::nullopt, false);
++      abort_privacy_commit();
+       return;
+     }
+     commit_params_->glint_document_surface_policy_required = true;
+@@ -7164,9 +7173,7 @@ void NavigationRequest::CommitNavigation() {
+                                               commit_params_->origin_to_commit));
+     if (!policy) {
+       // Failure destroys this request; do not send an unprotected commit.
+-      OnRequestFailedInternal(
+-          network::URLLoaderCompletionStatus(net::ERR_ABORTED),
+-          true /* skip_throttles */, std::nullopt, false /* collapse_frame */);
++      abort_privacy_commit();
+       return;
+     }
+     commit_params_->glint_document_canvas_commit = std::move(policy);

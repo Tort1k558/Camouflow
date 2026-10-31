@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "scope": "Reversible explicit candidate-name extension; measured historical helper bytes and observations are unchanged",
+  "patch": "webgpu-r3-host-source-upgrade.patch",
+  "patch_sha256": "20196d38e0b7032455e7fa0470a4eeb2f6c1fe3d7bdb752d02d344fb6a8b558a",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "62c46ec853ed07b796995c9574c45a98a63ab9b944e54db1716945858751f021",
+      "after_sha256": "3458d158778cb3ea2efedcf83415c3706ef9385e226404dff6c2cf040bfe2c83"
+    }
+  ]
+}

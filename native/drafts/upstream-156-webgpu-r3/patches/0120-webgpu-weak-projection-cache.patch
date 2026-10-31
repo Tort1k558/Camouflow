@@ -1,0 +1,185 @@
+--- a/src/dawn/native/d3d12/glint/projected_texture.h
++++ b/src/dawn/native/d3d12/glint/projected_texture.h
+@@ -36,6 +36,8 @@
+     Microsoft::WRL::ComPtr<IUnknown> retirement_handle() const { return retirement_; }
+     std::shared_ptr<std::atomic<bool>> submission_marker() const { return submitted_; }
+     HRESULT CompletionStatus() const;
++    static std::unique_ptr<ProjectedTexture> CloneLease(
++        std::shared_ptr<const ProjectedTexture> source);
+ 
+   private:
+     ProjectedTexture() = default;
+--- a/src/dawn/native/d3d12/glint/projected_texture.cc
++++ b/src/dawn/native/d3d12/glint/projected_texture.cc
+@@ -45,6 +45,8 @@
+   public:
+     ProjectedTextureRetirement(std::shared_ptr<CaptureMemoryBudget> budget, uint64_t bytes)
+         : budget_(std::move(budget)), bytes_(bytes) {}
++    explicit ProjectedTextureRetirement(std::shared_ptr<const ProjectedTexture> source)
++        : bytes_(0), source_(std::move(source)) {}
+     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** result) override {
+         if (!result) {
+             return E_POINTER;
+@@ -82,11 +84,12 @@
+         descriptors.Reset();
+         root.Reset();
+         pipeline.Reset();
+-        budget_->Release(bytes_);
++        if (budget_) budget_->Release(bytes_);
+     }
+     std::atomic<ULONG> references_{1};
+     std::shared_ptr<CaptureMemoryBudget> budget_;
+     uint64_t bytes_;
++    std::shared_ptr<const ProjectedTexture> source_;
+ };
+ 
+ HRESULT ProjectedTexture::Record(ID3D12Device* device,
+@@ -295,6 +298,25 @@
+     return S_OK;
+ }
+ 
++std::unique_ptr<ProjectedTexture> ProjectedTexture::CloneLease(
++    std::shared_ptr<const ProjectedTexture> source) {
++    if (!source || !source->retirement_.Get()) return nullptr;
++    std::unique_ptr<ProjectedTexture> result(new (std::nothrow) ProjectedTexture());
++    if (!result) return nullptr;
++    ComPtr<ProjectedTextureRetirement> hold;
++    hold.Attach(new (std::nothrow) ProjectedTextureRetirement(source));
++    if (!hold) return nullptr;
++    result->texture_ = source->texture_;
++    result->canonical_pixel_buffer_ = source->canonical_pixel_buffer_;
++    result->canonical_pixel_format_ = source->canonical_pixel_format_;
++    result->retirement_ = hold;
++    result->fence_ = source->fence_;
++    result->submitted_ = source->submitted_;
++    result->completion_value_ = source->completion_value_;
++    result->allocation_bytes_ = source->allocation_bytes_;
++    return result;
++}
++
+ HRESULT ProjectedTexture::CompletionStatus() const {
+     const uint64_t completed = fence_->GetCompletedValue();
+     if (completed == std::numeric_limits<uint64_t>::max()) {
+--- a/src/dawn/native/d3d12/TextureD3D12.h
++++ b/src/dawn/native/d3d12/TextureD3D12.h
+@@ -28,6 +28,7 @@
+ #ifndef SRC_DAWN_NATIVE_D3D12_TEXTURED3D12_H_
+ #define SRC_DAWN_NATIVE_D3D12_TEXTURED3D12_H_
+ 
++#include <memory>
+ #include <optional>
+ #include <vector>
+ 
+@@ -39,6 +40,7 @@
+ #include "src/dawn/native/d3d12/IntegerTypes.h"
+ #include "src/dawn/native/d3d12/ResourceHeapAllocationD3D12.h"
+ #include "src/dawn/native/d3d12/d3d12_platform.h"
++#include "src/dawn/native/d3d12/glint/projected_texture.h"
+ 
+ namespace dawn::native {
+ namespace d3d {
+@@ -47,6 +49,7 @@
+ 
+ namespace d3d12 {
+ class SharedTextureMemory;
++class GlintTextureProjector;
+ class CommandRecordingContext;
+ class Device;
+ 
+@@ -62,6 +65,11 @@
+     static ResultOrError<Ref<Texture>> CreateFromSharedTextureMemory(
+         SharedTextureMemory* memory,
+         const UnpackedPtr<TextureDescriptor>& descriptor);
++
++    std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture> GetGlintProjection(
++        const GlintTextureProjector* owner, DXGI_FORMAT format) const;
++    void CacheGlintProjection(const GlintTextureProjector* owner, DXGI_FORMAT format,
++        const std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture>& projection);
+ 
+     DXGI_FORMAT GetD3D12Format() const;
+     ID3D12Resource* GetD3D12Resource() const;
+@@ -166,6 +174,9 @@
+     bool mIsExternalSwapChainTexture = false;
+ 
+     SubresourceStorage<StateAndDecay> mSubresourceStateAndDecay;
++    const GlintTextureProjector* mGlintProjectionOwner = nullptr;
++    DXGI_FORMAT mGlintProjectionFormat = DXGI_FORMAT_UNKNOWN;
++    std::weak_ptr<const glint::candidate::d3d12::ProjectedTexture> mGlintProjection;
+ };
+ 
+ class TextureView final : public TextureViewBase {
+--- a/src/dawn/native/d3d12/TextureD3D12.cpp
++++ b/src/dawn/native/d3d12/TextureD3D12.cpp
+@@ -349,11 +349,30 @@
+ Texture::~Texture() = default;
+ 
+ void Texture::DestroyImpl(DestroyReason reason) {
++    mGlintProjection.reset();
++    mGlintProjectionOwner = nullptr;
+     TextureBase::DestroyImpl(reason);
+     ToBackend(GetDevice())->DeallocateMemory(mResourceAllocation);
+     // Set mIsExternalSwapChainTexture to false to prevent ever calling
+     // ID3D12SharingContract::Present again.
+     mIsExternalSwapChainTexture = false;
++}
++
++std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture> Texture::GetGlintProjection(
++    const GlintTextureProjector* owner, DXGI_FORMAT format) const {
++    if (!owner || owner != mGlintProjectionOwner || format != mGlintProjectionFormat ||
++        mResourceAllocation.GetInfo().mMethod == AllocationMethod::kExternal ||
++        mIsExternalSwapChainTexture || !HasAccess()) return nullptr;
++    return mGlintProjection.lock();
++}
++
++void Texture::CacheGlintProjection(const GlintTextureProjector* owner, DXGI_FORMAT format,
++    const std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture>& projection) {
++    if (mResourceAllocation.GetInfo().mMethod == AllocationMethod::kExternal ||
++        mIsExternalSwapChainTexture || !HasAccess()) return;
++    mGlintProjectionOwner = owner;
++    mGlintProjectionFormat = format;
++    mGlintProjection = projection;
+ }
+ 
+ DXGI_FORMAT Texture::GetD3D12Format() const {
+@@ -498,6 +517,13 @@
+                                          StateAndDecay* state,
+                                          D3D12_RESOURCE_STATES newState,
+                                          ExecutionSerial pendingCommandSerial) {
++    constexpr auto writes = D3D12_RESOURCE_STATE_COPY_DEST | D3D12_RESOURCE_STATE_RENDER_TARGET |
++                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_RESOLVE_DEST |
++                            D3D12_RESOURCE_STATE_DEPTH_WRITE;
++    if ((newState & writes) != 0) {
++        mGlintProjection.reset();
++        mGlintProjectionOwner = nullptr;
++    }
+     D3D12_RESOURCE_STATES lastState = state->lastState;
+ 
+     // If the transition is from-UAV-to-UAV, then a UAV barrier is needed.
+--- a/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
++++ b/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
+@@ -357,6 +357,13 @@
+                            "Glint projection policy is invalid.");
+     const auto range = SubresourceRange::SingleMipAndLayer(0, 0, Aspect::Color);
+     DAWN_TRY(texture->EnsureSubresourceContentInitialized(context, range));
++    if (auto cached = texture->GetGlintProjection(this, viewFormat)) {
++        auto lease = glint::candidate::d3d12::ProjectedTexture::CloneLease(std::move(cached));
++        DAWN_INTERNAL_ERROR_IF(!lease, "Glint cached projection lease allocation failed.");
++        mDevice->ReferenceUntilUnused(lease->retirement_handle());
++        context->AddGlintReadbackSubmission(lease->submission_marker());
++        return std::move(lease);
++    }
+     // Private backend copying does not require exposing CopySrc in the WebGPU API usage.
+     texture->TrackUsageAndTransitionNow(context, D3D12_RESOURCE_STATE_COPY_SOURCE, range);
+     auto* queue = ToBackend(mDevice->GetQueue());
+@@ -368,6 +375,10 @@
+         mDevice->GetGlintReadbackBudget(), &projected), "Glint protected texture projection"));
+     mDevice->ReferenceUntilUnused(projected->retirement_handle());
+     context->AddGlintReadbackSubmission(projected->submission_marker());
+-    return std::move(projected);
++    std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture> shared(std::move(projected));
++    texture->CacheGlintProjection(this, viewFormat, shared);
++    auto lease = glint::candidate::d3d12::ProjectedTexture::CloneLease(std::move(shared));
++    DAWN_INTERNAL_ERROR_IF(!lease, "Glint projection lease allocation failed.");
++    return std::move(lease);
+ }
+ }  // namespace dawn::native::d3d12

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Unselected 120-patch replay, reversal and standalone source composition; not Chromium compilation/runtime admission",
+  "manifest_sha256": "e24f5dc0957eb9cc0a1294fd12d0151b48b15299d4babbdad93e520a3cc65ef3",
+  "forward_patches": 120,
+  "reverse_patches": 120,
+  "upstream_files_restored": 270,
+  "standalone_engine_sources_matched": 7,
+  "compiled": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

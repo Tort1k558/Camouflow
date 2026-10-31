@@ -42,7 +42,17 @@ deliberately broken **test-only** native variant. Never include it in a browser
 candidate. Its executable must fail specifically with `CACHE_MUTATION_STALE_GPU`.
 
 The measurements use normal MSVC STL/no-op `raw_ptr`, not Chromium allocator or
-ASan builds. Storage-write invalidation, external/shared exclusion, additional
-view formats, full Chromium embedding and browser recovery require separate
+ASan builds. External/shared exclusion, additional storage/view formats,
+full Chromium embedding and browser recovery require separate
 gates. Retained-budget exhaustion still loses the device; recoverable quotas,
 privacy admission and production admission remain unverified.
+
+## Write-only storage mutation
+
+The subsequent [27-case matrix](storage-observations.json) passes render-target,
+copy-destination and actual RGBA8 write-only storage-texture mutations against
+uncached/cached libraries and the deliberately stale library. All 18 positive
+runs preserve old snapshots, return new CPU/GPU values and drain the budget
+before destroying the device. All nine negative runs report the exact stale-GPU
+marker. Apply [the fixture extension](storage-mutation-fixture.patch) after the
+mutation fixture. This does not admit readable storage textures or other formats.
