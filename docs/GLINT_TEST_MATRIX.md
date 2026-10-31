@@ -1,5 +1,29 @@
 # Glint browser test matrix
 
+## 2026-10-31: complete standalone Dawn/D3D12 component execution
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Native component build/link | Passed with the 29-packet Dawn sources and actual Tint/D3D12 backend | Standalone CMake, MSVC STL/no-op raw_ptr; not Chromium/Wire |
+| Unprotected hardware compute | 64 output values matched after real queue submission and MapAsync | Compatibility baseline only |
+| Protected texture capture and CPU delivery contract | 8x8 RGBA reference matched; 100 changed channels | Actual GPU snapshot and observer; transport filter invoked explicitly, not through Wire |
+| CPU read followed by dependent GPU compute, negative control | Failed: metadata plan denied, device lost | Reproduced after completing the shared capture on the CPU |
+| Snapshot lifetime correction | 3 standalone hardware runs passed | 64 projected shader values matched; shader-output CPU delivery and subsequent metadata plan accepted |
+
+The raw native MapAsync endpoint intentionally precedes the Chromium Wire filter:
+its raw bytes are not themselves evidence of a renderer-visible leak. The probe
+explicitly applies the real observer's PrepareReadMap contract, then dispatches a
+shader reading the original logical input. The uncorrected dispatch fails because
+CPU completion releases the native snapshot still required by GPU input planning.
+The unselected [retention correction](../native/drafts/webgpu-capture-retention/README.md)
+keeps that capability until provenance collection. It passes this ordering without
+removing CPU-first delivery or substituting synthetic snapshots. Exhaustive native
+retirement, quotas and failure cleanup remain open.
+
+This proves one combined standalone GPU ordering, not the complete combined
+browser matrix, Wire integration, anti-bot site results or a release. Selected
+browser binaries and canonical source are unchanged.
+
 ## 2026-10-31: actual standalone native command iterator and pool
 
 | Gate | Result | Boundary |

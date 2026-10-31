@@ -1,5 +1,22 @@
 # Glint architecture
 
+## Native CPU delivery must preserve dependent GPU capabilities
+
+The unselected [capture-retention correction](drafts/webgpu-capture-retention/README.md)
+was checked in the complete standalone Dawn/Tint/D3D12 component on hardware.
+CPU-first delivery previously reset a native snapshot still referenced by buffer
+provenance; a later projected compute dispatch then lost the device. Retaining
+pixel and shader-byte capabilities until existing provenance collection fixes
+that reproduced ordering. Three complete runs matched the CPU reference for
+8x8 texture delivery and 64 transformed compute outputs; output delivery and a
+subsequent input metadata plan also passed.
+
+Native MapAsync is the raw transport endpoint. This probe invokes the real
+observer's delivery contract explicitly, not Chromium's Wire filter. It does not
+prove Wire/browser integration, complete native resource-budget/retirement stress,
+render/bundle behavior or privacy admission. The 29-packet source batch plus this
+correction remain separate from selected 001-076 browser binaries.
+
 ## Actual standalone Dawn command storage/pool execution
 
 The [native iterator check](drafts/webgpu-command-iterator/README.md) compiles six

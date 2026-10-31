@@ -1,5 +1,19 @@
 # Glint: план проверки и развития
 
+## CPU-first capture lifetime: real standalone GPU regression
+
+The [retention correction](../native/drafts/webgpu-capture-retention/README.md)
+fixes a reproduced CPU-delivery-before-compute failure in the complete standalone
+Dawn/Tint/D3D12 component. Three hardware runs passed texture capture, explicit
+observer delivery, projected native buffer compute, shader-output delivery and a
+subsequent metadata plan. The original source lost the device after CPU completion
+released a snapshot still required by GPU input planning.
+
+Next: reproducible automated component preparation, native lifetime/quota/failure
+stress, same-submit and chained compute, render/bundle execution, then actual Wire
+and browser consistency. The patch remains unselected; no latest-browser or
+privacy/production admission follows from this standalone result.
+
 ## Native iterator/pool: actual standalone execution, not only a model
 
 The [real Dawn storage check](../native/drafts/webgpu-command-iterator/README.md)
