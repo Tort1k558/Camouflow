@@ -638,5 +638,24 @@
       }
     }
   ],
-  "public_checker_sha256": "d523fdf9dbe1e0c8f4553e007111f0003183155d0519d3921202ce60afc67748"
+  "public_checker_sha256": "d523fdf9dbe1e0c8f4553e007111f0003183155d0519d3921202ce60afc67748",
+  "full_python_baseline": {
+    "git_head": "becb858b83bd08a4f6d36f98677c4eebeaea2362",
+    "counts": {
+      "tests": 5065,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5064
+    },
+    "duration_seconds": 534.422,
+    "passed": true,
+    "postguards_passed": true,
+    "log_sha256": "51fe07d40fafa7f810c36c15c4f1c30799a5cb3d0b57aa185f88f82040311871",
+    "junit_sha256": "a4fb74d8356a157692225d8d6eb4a1c41ed72a091c006ac11e30824374fb3102",
+    "native_runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false,
+    "raw_report_sha256": "48ef6741477bdc3bb8616c05e27dad3844cd164be1c4e6ac662072416fdaa695"
+  }
 }

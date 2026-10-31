@@ -40,6 +40,21 @@ checks source hashes before compiling the actual adapter/controller.
 
 ## Before admission
 
+Run the public three-route consistency gate on the selected Windows runtime:
+
+```powershell
+.venv\Scripts\python.exe scripts\verify_native_webgpu_consistency.py `
+  --executable D:\Glint156Candidate\preserved-runtime76-20261031-v1\runtime\chrome.exe `
+  --driver-stage D:\GlintManagerQA\staged-python-js70-20261030-v1 `
+  --work-dir D:\GlintManagerQA\webgpu-consistency-new
+```
+
+On measured 001-076 this correctly returns **1**, not PASS: native copies and
+shader/storage readbacks retain raw colors while the protected PNG differs.
+[Exact source and observations](../environment/webgpu-shader-dataflow76-observations.json).
+This is not execution of the unselected service packet. Passing the scoped
+consistency gate would still not admit all GPU surfaces or browser privacy.
+
 - Link the complete static/component packet and execute the eight real Wire tests.
 - Test actual ordinary and shared-memory transfer, not only backing selection.
 - Exercise mapped-at-creation/write mappings, cancellation, stale callbacks,

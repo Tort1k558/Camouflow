@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## Actual shader-dataflow gap: reproducible failing gate
+
+[Public gate](../scripts/verify_native_webgpu_consistency.py) and
+[001-076 measurements](../native/drafts/environment/webgpu-shader-dataflow76-observations.json):
+baseline colors matched across native copy, `textureLoad` storage-buffer output
+and PNG. With ready policies, PNG differed by 382 channels (maximum one), while
+both GPU routes still returned raw reference colors. CLI correctly returned 1;
+fixture execution, guards and cleanup passed, **consistency did not**.
+Next: execute the new native/Wire packet, then track shader resource dependencies
+and preserve ordinary compute compatibility. Protecting only texture copies is
+not sufficient. These measurements do not execute or admit the unselected packet.
+
 ## Service / Wire readback: complete source chain, runtime still open
 
 [Source and scoped checks](../native/drafts/webgpu-service-readback/README.md):

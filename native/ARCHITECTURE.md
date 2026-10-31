@@ -1,5 +1,18 @@
 # Glint architecture
 
+## Actual 001-076 WebGPU shader-dataflow consistency gate
+
+The public [`verify_native_webgpu_consistency.py`](../scripts/verify_native_webgpu_consistency.py)
+now compares a native texture copy and `textureLoad` compute output through a
+storage/staging buffer with independently decoded PNG bytes. Actual baseline and
+ready documents completed; the ready PNG changed 382 channels by at most one,
+while both GPU paths retained the same raw reference hash. The gate correctly
+returned **1 / failed**, with runtime/source guards and owned-profile cleanup
+verified. This is a measured 001-076 mismatch, not execution of the new service
+packet. Counts belong to this fixture/profile/partition, not a quality score or
+a comparison with earlier captures. Worker/restart and shader propagation gates
+remain open; compatibility alone must never admit readback privacy.
+
 ## Unselected GPU-service / Wire readback chain
 
 The [17-path service delta](drafts/webgpu-service-readback/README.md) prepares

@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## Actual 001-076 WebGPU copy / shader / PNG gate
+
+| Check | Measured result | Boundary |
+| --- | --- | --- |
+| Baseline document | Native copy, shader storage read and PNG match exact integer colors | Controlled 16x16 fixture only |
+| Ready document | PNG differs by 382 channels, maximum one; both GPU routes retain raw colors | Existing 001-076 mismatch, not new service-packet execution |
+| Public gate | Exit 1, consistency false; fixture validation and input/runtime guards true | No false PASS from compatibility alone |
+| Cleanup | All owned runtimes closed and profile directory removed | No user profiles or production data |
+| Full Python baseline | 5064 passed, 1 skipped at `becb858` | Predates the new public consistency gate |
+
+[Measured source and scope](../native/drafts/environment/webgpu-shader-dataflow76-observations.json).
+Channel counts belong to this capture/profile/partition and are not detector scores.
+
 ## Unselected native / GPU-service / Wire readback
 
 | Gate | Result | Boundary |

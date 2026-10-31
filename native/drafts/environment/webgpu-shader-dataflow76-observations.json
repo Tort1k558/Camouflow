@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Actual selected Windows 001-076 documents: canvas render, native copy, textureLoad shader-to-storage-to-staging and PNG; not the unselected service packet",
+  "source": "native/drafts/environment/first-script/webgpu_shader_dataflow.js",
+  "source_sha256": "5500fc6ec1ef2c9f2bf42b6e73686bd0609189adf7ab881356b405e9a3dcf785",
+  "cli": "scripts/verify_native_webgpu_consistency.py",
+  "cli_sha256": "ce54720310e8de1435d719d50e5bb98b72cb1de4a9dc691ea2d6dd92770c4938",
+  "public_cli_integrated": true,
+  "public_cli_returncode": 1,
+  "raw_report_sha256": "c1ba247f62dc9e8eaff3efacb485c551f1fa2a83b244ee13b6d666a69094b1ff",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "03b34a8d3786d9c313b89afc1609c032091656678f936ee7087d62fca40e1d00",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "ca69cc734d4829bcb2357012d77fdda0fb72130fe91f5cf48da3f67acb17d7b3",
+  "fixture_validation_passed": true,
+  "surface_noise_observed": true,
+  "readback_consistent": false,
+  "consistency_gate_passed": false,
+  "rows": [
+    {
+      "mode": "baseline",
+      "measured": true,
+      "deviation_from_reference": {
+        "direct": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        },
+        "shader": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        },
+        "png": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        }
+      },
+      "direct_vs_shader": {
+        "changed_channels": 0,
+        "maximum_delta": 0
+      },
+      "png_vs_direct": {
+        "changed_channels": 0,
+        "maximum_delta": 0
+      },
+      "png_vs_shader": {
+        "changed_channels": 0,
+        "maximum_delta": 0
+      },
+      "shader_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+    },
+    {
+      "mode": "ready",
+      "measured": true,
+      "deviation_from_reference": {
+        "direct": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        },
+        "shader": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        },
+        "png": {
+          "changed_channels": 382,
+          "maximum_delta": 1
+        }
+      },
+      "direct_vs_shader": {
+        "changed_channels": 0,
+        "maximum_delta": 0
+      },
+      "png_vs_direct": {
+        "changed_channels": 382,
+        "maximum_delta": 1
+      },
+      "png_vs_shader": {
+        "changed_channels": 382,
+        "maximum_delta": 1
+      },
+      "shader_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+    }
+  ],
+  "owned_profiles_removed": true,
+  "native_webgpu_shader_readback_protected": false,
+  "unselected_service_packet_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

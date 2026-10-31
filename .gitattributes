@@ -136,3 +136,4 @@ native/drafts/webgpu-readback-controller/*.cc text eol=lf
 native/drafts/webgpu-readback-controller/*.py text eol=lf
 native/drafts/webgpu-service-readback/*.cc text eol=lf
 native/drafts/webgpu-service-readback/*.py text eol=lf
+scripts/verify_native_webgpu_consistency.py text eol=lf
