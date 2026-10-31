@@ -1,3 +1,4 @@
+diff --git a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
 --- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
 +++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
 @@ -725,7 +725,7 @@

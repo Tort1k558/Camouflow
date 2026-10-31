@@ -14,6 +14,10 @@
 | Buffer destruction after sending MapAsync to server | Mapping aborted; client remains unmapped, 3 runs | One cancellation ordering, not complete race coverage |
 | Capture-slot exhaustion and reuse | Overflow mapping denied; fresh protected capture succeeds after destruction, 3 runs | Fixed 16-slot retention/collection, not full native byte-budget accounting |
 | Actual device capture-budget counter | Sampled usage within 64 MiB; zero after device destruction in 12 successful runs | Tracked capture/projection allocations only; no forced byte-budget exhaustion or total VRAM profiling |
+| Actual direct/bundle read-only storage draws | 3 runs per route; full 8×8 reference matched | Standalone normal build, not Chromium allocator/ASan |
+| Actual direct/bundle vertex binding | 3 runs per route; projected Uint32 instance attribute matched | Instance-step input; not all vertex layouts/ranges |
+| Actual direct/bundle index binding | 3 runs per route; projected Uint16 index matched | One-point draw encoded into 1×1 output; not arbitrary meshes/indirect draws |
+| Actual direct/bundle writable fragment storage | 3 runs per route; complete 2 KiB copyback and dependent compute matched | Single first-word XOR; broader alias/range/heap stress remains open |
 
 The public [Wire probe](../native/drafts/webgpu-capture-retention/README.md) uses
 actual native queue submissions, Wire callbacks and the real filter implementation.

@@ -1,0 +1,248 @@
+{
+  "passed": true,
+  "scope": "Actual standalone Wire/D3D12 storage, instance-vertex, Uint16 point-index and writable fragment render paths; not Chromium/browser",
+  "runs": [
+    {
+      "args": [
+        "--render-direct"
+      ],
+      "attempt": 1,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-direct"
+      ],
+      "attempt": 2,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-direct"
+      ],
+      "attempt": 3,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-bundle"
+      ],
+      "attempt": 1,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-bundle"
+      ],
+      "attempt": 2,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-bundle"
+      ],
+      "attempt": 3,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--vertex-direct"
+      ],
+      "attempt": 1,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":true,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--vertex-direct"
+      ],
+      "attempt": 2,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":true,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--vertex-direct"
+      ],
+      "attempt": 3,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":true,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--vertex-bundle"
+      ],
+      "attempt": 1,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":true,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--vertex-bundle"
+      ],
+      "attempt": 2,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":true,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--vertex-bundle"
+      ],
+      "attempt": 3,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":true,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--index-direct"
+      ],
+      "attempt": 1,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":true,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--index-direct"
+      ],
+      "attempt": 2,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":true,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--index-direct"
+      ],
+      "attempt": 3,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":true,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--index-bundle"
+      ],
+      "attempt": 1,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":true,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--index-bundle"
+      ],
+      "attempt": 2,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":true,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--index-bundle"
+      ],
+      "attempt": 3,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":true,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-writable-direct"
+      ],
+      "attempt": 1,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-writable-direct"
+      ],
+      "attempt": 2,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-writable-direct"
+      ],
+      "attempt": 3,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-writable-bundle"
+      ],
+      "attempt": 1,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-writable-bundle"
+      ],
+      "attempt": 2,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--render-writable-bundle"
+      ],
+      "attempt": 3,
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":true,\"render_bundle_executed\":true,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": ""
+    }
+  ],
+  "fixture_sha256": "f9a9e89091e34f836319c20476c9e172df77a7973f4285c24a3fd768a3692448",
+  "cmake_sha256": "2cc3e3bc2488b01866a6824fad30e0e3909ff7f81f410ceb76ed086181da9ddd",
+  "executable_sha256": "81532a86949d487bacbabd03ba1405aef9c26dd3cf59e677c25cfd0c1356ae23",
+  "browser_integrated": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "schema": 1,
+  "public_inputs_match_compiled_inputs": true,
+  "actual_native_render_bundle_decoder_executed": true,
+  "chromium_gpu_process_executed": false,
+  "chromium_miracle_ptr_executed": false,
+  "sanitizer": "none",
+  "standalone_noop_raw_ptr": true,
+  "full_python_baseline": {
+    "git_head": "b0ceb7b7d5cd55e3b99463baebbb8eb6e8e44127",
+    "counts": {
+      "tests": 5272,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5271
+    },
+    "postguards_passed": true,
+    "scope": "Before the current render-fixture publication; not a full-suite result for these new inputs",
+    "covers_current_render_fixture": false
+  }
+}

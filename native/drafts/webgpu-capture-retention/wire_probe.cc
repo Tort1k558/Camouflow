@@ -32,7 +32,18 @@ int main(int argc, char** argv) {
     const bool unsupportedFormat = argc == 2 && std::strcmp(argv[1], "--unsupported-format") == 0;
     const bool cancelMap = argc == 2 && std::strcmp(argv[1], "--cancel-map") == 0;
     const bool snapshotQuota = argc == 2 && std::strcmp(argv[1], "--snapshot-quota") == 0;
-    Check(argc == 1 || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota);
+    const bool vertexDirect = argc == 2 && std::strcmp(argv[1], "--vertex-direct") == 0;
+    const bool vertexBundle = argc == 2 && std::strcmp(argv[1], "--vertex-bundle") == 0;
+    const bool vertexMode = vertexDirect || vertexBundle;
+    const bool indexDirect = argc == 2 && std::strcmp(argv[1], "--index-direct") == 0;
+    const bool indexBundle = argc == 2 && std::strcmp(argv[1], "--index-bundle") == 0;
+    const bool indexMode = indexDirect || indexBundle;
+    const bool writableDirect = argc == 2 && std::strcmp(argv[1], "--render-writable-direct") == 0;
+    const bool writableBundle = argc == 2 && std::strcmp(argv[1], "--render-writable-bundle") == 0;
+    const bool writableMode = writableDirect || writableBundle;
+    const bool renderDirect = vertexDirect || indexDirect || writableDirect || (argc == 2 && std::strcmp(argv[1], "--render-direct") == 0);
+    const bool renderBundle = vertexBundle || indexBundle || writableBundle || (argc == 2 && std::strcmp(argv[1], "--render-bundle") == 0);
+    Check(argc == 1 || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota || renderDirect || renderBundle);
     const bool expectDenied = unsupportedFormat || cancelMap || snapshotQuota;
     dawnProcSetProcs(&dawn::native::GetProcs());
     dawn::native::Instance nativeInstance;
@@ -163,6 +174,8 @@ int main(int argc, char** argv) {
     inputDescriptor.size = bytes;
     inputDescriptor.usage = wgpu::BufferUsage::CopySrc | wgpu::BufferUsage::CopyDst |
                             wgpu::BufferUsage::Storage;
+    if (vertexMode) inputDescriptor.usage |= wgpu::BufferUsage::Vertex;
+    if (indexMode) inputDescriptor.usage |= wgpu::BufferUsage::Index;
     auto input = device.CreateBuffer(&inputDescriptor);
     wgpu::TexelCopyBufferInfo bufferCopy{};
     bufferCopy.buffer = input;
@@ -291,6 +304,196 @@ int main(int argc, char** argv) {
     for (uint32_t y = 0; y < height; ++y)
         for (uint32_t x = 0; x < width * 4; ++x)
             Check(repeated[y * pitch + x] == expected[y * width * 4 + x]);
+    if (renderDirect || renderBundle) {
+        wgpu::ShaderSourceWGSL renderSource{};
+        renderSource.code = R"(
+            @group(0) @binding(0) var<storage, read> pixels: array<u32>;
+            @vertex fn vs(@builtin(vertex_index) id: u32) -> @builtin(position) vec4f {
+                let positions = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+                return vec4f(positions[id], 0.0, 1.0);
+            }
+            @fragment fn fs() -> @location(0) vec4f {
+                let p = pixels[0];
+                return vec4f(f32(p & 255u), f32((p >> 8u) & 255u),
+                             f32((p >> 16u) & 255u), f32((p >> 24u) & 255u)) / 255.0;
+            }
+        )";
+        if (writableMode) {
+            renderSource.code = R"(
+                @group(0) @binding(0) var<storage, read_write> pixels: array<u32>;
+                @vertex fn vs(@builtin(vertex_index) id: u32) -> @builtin(position) vec4f {
+                    let positions = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+                    return vec4f(positions[id], 0.0, 1.0);
+                }
+                @fragment fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
+                    if (position.x < 1.0 && position.y < 1.0) {
+                        pixels[0] = pixels[0] ^ 0x00112233u;
+                    }
+                    return vec4f(0.0, 0.0, 1.0, 1.0);
+                }
+            )";
+        }
+        if (vertexMode) {
+            renderSource.code = R"(
+                struct VertexOutput {
+                    @builtin(position) position: vec4f,
+                    @location(0) @interpolate(flat) pixel: u32,
+                }
+                @vertex fn vs(@location(0) pixel: u32, @builtin(vertex_index) id: u32) -> VertexOutput {
+                    let positions = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+                    return VertexOutput(vec4f(positions[id], 0.0, 1.0), pixel);
+                }
+                @fragment fn fs(in: VertexOutput) -> @location(0) vec4f {
+                    let p = in.pixel;
+                    return vec4f(f32(p & 255u), f32((p >> 8u) & 255u),
+                                 f32((p >> 16u) & 255u), f32((p >> 24u) & 255u)) / 255.0;
+                }
+            )";
+        }
+        if (indexMode) {
+            renderSource.code = R"(
+                struct VertexOutput {
+                    @builtin(position) position: vec4f,
+                    @location(0) @interpolate(flat) pixel: u32,
+                }
+                @vertex fn vs(@builtin(vertex_index) id: u32) -> VertexOutput {
+                    return VertexOutput(vec4f(0.0, 0.0, 0.0, 1.0), id | 0xff000000u);
+                }
+                @fragment fn fs(in: VertexOutput) -> @location(0) vec4f {
+                    let p = in.pixel;
+                    return vec4f(f32(p & 255u), f32((p >> 8u) & 255u),
+                                 f32((p >> 16u) & 255u), f32((p >> 24u) & 255u)) / 255.0;
+                }
+            )";
+        }
+        wgpu::ShaderModuleDescriptor renderShaderDescriptor{};
+        renderShaderDescriptor.nextInChain = &renderSource;
+        auto renderShader = device.CreateShaderModule(&renderShaderDescriptor);
+        wgpu::ColorTargetState target{};
+        target.format = wgpu::TextureFormat::RGBA8Unorm;
+        wgpu::FragmentState fragment{};
+        fragment.module = renderShader;
+        fragment.entryPoint = "fs";
+        fragment.targetCount = 1;
+        fragment.targets = &target;
+        wgpu::RenderPipelineDescriptor renderPipelineDescriptor{};
+        renderPipelineDescriptor.vertex.module = renderShader;
+        renderPipelineDescriptor.vertex.entryPoint = "vs";
+        renderPipelineDescriptor.fragment = &fragment;
+        renderPipelineDescriptor.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
+        if (indexMode) renderPipelineDescriptor.primitive.topology = wgpu::PrimitiveTopology::PointList;
+        wgpu::VertexAttribute attribute{};
+        attribute.format = wgpu::VertexFormat::Uint32;
+        attribute.shaderLocation = 0;
+        wgpu::VertexBufferLayout vertexLayout{};
+        vertexLayout.arrayStride = 4;
+        vertexLayout.stepMode = wgpu::VertexStepMode::Instance;
+        vertexLayout.attributeCount = 1;
+        vertexLayout.attributes = &attribute;
+        if (vertexMode) {
+            renderPipelineDescriptor.vertex.bufferCount = 1;
+            renderPipelineDescriptor.vertex.buffers = &vertexLayout;
+        }
+        auto renderPipeline = device.CreateRenderPipeline(&renderPipelineDescriptor);
+        wgpu::BindGroupEntry renderEntry{};
+        renderEntry.binding = 0;
+        renderEntry.buffer = input;
+        renderEntry.size = bytes;
+        wgpu::BindGroupDescriptor renderGroupDescriptor{};
+        wgpu::BindGroup renderGroup;
+        if (!vertexMode && !indexMode) {
+            renderGroupDescriptor.layout = renderPipeline.GetBindGroupLayout(0);
+            renderGroupDescriptor.entryCount = 1;
+            renderGroupDescriptor.entries = &renderEntry;
+            renderGroup = device.CreateBindGroup(&renderGroupDescriptor);
+        }
+        wgpu::TextureDescriptor renderTextureDescriptor{};
+        const uint32_t renderWidth = indexMode ? 1 : width;
+        const uint32_t renderHeight = indexMode ? 1 : height;
+        renderTextureDescriptor.size = {renderWidth, renderHeight, 1};
+        renderTextureDescriptor.format = target.format;
+        renderTextureDescriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
+        auto renderTexture = device.CreateTexture(&renderTextureDescriptor);
+        auto renderMap = device.CreateBuffer(&mapDescriptor);
+        wgpu::RenderPassColorAttachment color{};
+        color.view = renderTexture.CreateView();
+        color.loadOp = wgpu::LoadOp::Clear;
+        color.storeOp = wgpu::StoreOp::Store;
+        color.clearValue = {0, 0, 0, 0};
+        wgpu::RenderPassDescriptor passDescriptor{};
+        passDescriptor.colorAttachmentCount = 1;
+        passDescriptor.colorAttachments = &color;
+        auto renderEncoder = device.CreateCommandEncoder();
+        auto renderPass = renderEncoder.BeginRenderPass(&passDescriptor);
+        if (renderBundle) {
+            wgpu::RenderBundleEncoderDescriptor bundleDescriptor{};
+            bundleDescriptor.colorFormatCount = 1;
+            bundleDescriptor.colorFormats = &target.format;
+            auto bundleEncoder = device.CreateRenderBundleEncoder(&bundleDescriptor);
+            bundleEncoder.SetPipeline(renderPipeline);
+            if (vertexMode) bundleEncoder.SetVertexBuffer(0, input, 0, bytes);
+            else if (!indexMode) bundleEncoder.SetBindGroup(0, renderGroup);
+            if (indexMode) {
+                bundleEncoder.SetIndexBuffer(input, wgpu::IndexFormat::Uint16, 0, bytes);
+                bundleEncoder.DrawIndexed(1);
+            } else bundleEncoder.Draw(3);
+            auto bundle = bundleEncoder.Finish();
+            renderPass.ExecuteBundles(1, &bundle);
+        } else {
+            renderPass.SetPipeline(renderPipeline);
+            if (vertexMode) renderPass.SetVertexBuffer(0, input, 0, bytes);
+            else if (!indexMode) renderPass.SetBindGroup(0, renderGroup);
+            if (indexMode) {
+                renderPass.SetIndexBuffer(input, wgpu::IndexFormat::Uint16, 0, bytes);
+                renderPass.DrawIndexed(1);
+            } else renderPass.Draw(3);
+        }
+        renderPass.End();
+        if (writableMode) renderEncoder.CopyBufferToBuffer(input, 0, readback, 0, bytes);
+        wgpu::TexelCopyTextureInfo renderedCopy{};
+        renderedCopy.texture = renderTexture;
+        bufferCopy.buffer = renderMap;
+        wgpu::Extent3D renderExtent{renderWidth, renderHeight, 1};
+        renderEncoder.CopyTextureToBuffer(&renderedCopy, &bufferCopy, &renderExtent);
+        auto renderCommands = renderEncoder.Finish();
+        queue.Submit(1, &renderCommands);
+        auto rendered = wireRead(renderMap, bytes);
+        std::vector<uint8_t> renderExpected(renderWidth * renderHeight * 4);
+        for (size_t i = 0; i < renderExpected.size(); ++i) renderExpected[i] = expected[i % 4];
+        if (writableMode) {
+            for (size_t i = 0; i < renderExpected.size(); ++i)
+                renderExpected[i] = (i % 4 >= 2) ? 255 : 0;
+        }
+        if (indexMode) {
+            renderExpected[2] = 0;
+            renderExpected[3] = 255;
+        }
+        Check(glint::candidate::TransformEdgeCoherentCanvas(renderExpected, renderWidth, renderHeight, seed));
+        for (uint32_t y = 0; y < renderHeight; ++y)
+            for (uint32_t x = 0; x < renderWidth * 4; ++x) {
+                if (rendered[y * pitch + x] != renderExpected[y * renderWidth * 4 + x])
+                    std::fprintf(stderr, "Render mismatch row=%u byte=%u actual=%u expected=%u\n",
+                                 y, x, rendered[y * pitch + x], renderExpected[y * renderWidth * 4 + x]);
+                Check(rendered[y * pitch + x] == renderExpected[y * renderWidth * 4 + x]);
+            }
+        renderMap.Destroy();
+        renderTexture.Destroy();
+        if (writableMode) {
+            uint32_t first = 0;
+            std::memcpy(&first, expected.data(), 4);
+            first ^= 0x00112233u;
+            std::memcpy(expected.data(), &first, 4);
+            auto copiedBack = wireRead(readback, bytes);
+            for (uint32_t y = 0; y < height; ++y)
+                for (uint32_t x = 0; x < pitch; ++x) {
+                    const uint8_t wanted = x < width * 4 ? expected[y * width * 4 + x] : 0;
+                    if (copiedBack[y * pitch + x] != wanted)
+                        std::fprintf(stderr, "Render copyback mismatch row=%u byte=%u actual=%u expected=%u\n",
+                                     y, x, copiedBack[y * pitch + x], wanted);
+                    Check(copiedBack[y * pitch + x] == wanted);
+                }
+        }
+    }
     wgpu::BufferDescriptor outputDescriptor{};
     outputDescriptor.size = packed;
     outputDescriptor.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopySrc;
@@ -368,8 +571,15 @@ int main(int argc, char** argv) {
                 "\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,"
                 "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
                 "\"capture_bytes_after_destroy\":%llu,"
+                "\"render_pass_executed\":%s,\"render_bundle_executed\":%s,"
+                "\"vertex_buffer_executed\":%s,"
+                "\"index_buffer_executed\":%s,"
+                "\"render_writable_copyback_executed\":%s,"
                 "\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\n", changed,
                 static_cast<unsigned long long>(budget->limit_bytes()),
                 static_cast<unsigned long long>(bytesAfterFirstMap),
-                static_cast<unsigned long long>(budget->used_bytes()));
+                static_cast<unsigned long long>(budget->used_bytes()),
+                renderDirect || renderBundle ? "true" : "false", renderBundle ? "true" : "false",
+                vertexMode ? "true" : "false", indexMode ? "true" : "false",
+                writableMode ? "true" : "false");
 }

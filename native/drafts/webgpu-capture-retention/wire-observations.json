@@ -6,7 +6,7 @@
       "args": [],
       "attempt": 1,
       "returncode": 0,
-      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":false,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
       "stderr": "",
       "browser_integrated": false
     },
@@ -14,7 +14,7 @@
       "args": [],
       "attempt": 2,
       "returncode": 0,
-      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":false,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
       "stderr": "",
       "browser_integrated": false
     },
@@ -22,7 +22,7 @@
       "args": [],
       "attempt": 3,
       "returncode": 0,
-      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"render_pass_executed\":false,\"render_bundle_executed\":false,\"vertex_buffer_executed\":false,\"index_buffer_executed\":false,\"render_writable_copyback_executed\":false,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
       "stderr": "",
       "browser_integrated": false
     }
@@ -34,7 +34,7 @@
     "attempt": 1,
     "returncode": 1,
     "stdout": "",
-    "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 266\r\n",
+    "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 279\r\n",
     "browser_integrated": false
   },
   "native_d3d12_queue_executed": true,
@@ -48,9 +48,9 @@
   "clean_reproduction_automated": false,
   "public_inputs_sha256": {
     "CMakeLists.txt": "2cc3e3bc2488b01866a6824fad30e0e3909ff7f81f410ceb76ed086181da9ddd",
-    "wire_probe.cc": "732d2aae7bde6db606d03f683f141c194d8f34b4b0e84401307c9c52de55364e"
+    "wire_probe.cc": "f9a9e89091e34f836319c20476c9e172df77a7973f4285c24a3fd768a3692448"
   },
-  "executable_sha256": "cfc0c41f44f32415904d783366932ad318c4f946ec65a481f8f5f40876cc79b4",
+  "executable_sha256": "81532a86949d487bacbabd03ba1405aef9c26dd3cf59e677c25cfd0c1356ae23",
   "public_inputs_match_compiled_inputs": true,
   "without_filter_negative_controls": [
     {
@@ -60,7 +60,7 @@
       "attempt": 1,
       "returncode": 1,
       "stdout": "",
-      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 266\r\n",
+      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 279\r\n",
       "browser_integrated": false
     },
     {
@@ -70,7 +70,7 @@
       "attempt": 2,
       "returncode": 1,
       "stdout": "",
-      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 266\r\n",
+      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 279\r\n",
       "browser_integrated": false
     },
     {
@@ -80,7 +80,7 @@
       "attempt": 3,
       "returncode": 1,
       "stdout": "",
-      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 266\r\n",
+      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 279\r\n",
       "browser_integrated": false
     }
   ],

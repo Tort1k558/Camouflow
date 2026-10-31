@@ -1,5 +1,14 @@
 # Glint architecture
 
+The current [standalone Wire fixture](drafts/webgpu-capture-retention/README.md)
+also executes direct and bundled storage, instance-vertex, Uint16 point-index and
+writable-fragment input paths: 24 hardware runs passed. Writable cases verify full
+2 KiB copyback, padding and a later compute consumer after CPU delivery. This
+executes actual render/bundle decoding and GPU routing, rather than only modeled
+traversal. Scope remains normal standalone Dawn/no-op raw_ptr, not Chromium
+allocator/ASan or renderer integration; uniform/indirect/heap and broader range
+coverage remain open. The source batch is still unselected.
+
 ## Standalone Wire delivery now executes the actual filter
 
 The [Wire hardware probe](drafts/webgpu-capture-retention/README.md) runs actual

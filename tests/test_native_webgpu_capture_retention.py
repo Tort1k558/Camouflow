@@ -132,3 +132,35 @@ def test_wire_native_capture_accounting_drains_without_claiming_total_vram_cover
     assert 'GetGlintReadbackBudget()' in source and 'requireBudgetDrained();' in source
     project = (MODULE / 'CMakeLists.txt').read_text(encoding='utf-8-sig')
     assert 'TARGET_PROPERTY:dawn_native_objects,COMPILE_DEFINITIONS' in project
+
+
+def test_wire_real_render_and_bundle_paths_bind_the_executed_fixture():
+    record = json.loads((MODULE / 'wire-render-observations.json').read_bytes())
+    assert record['passed'] and record['public_inputs_match_compiled_inputs']
+    assert hashlib.sha256((MODULE / 'wire_probe.cc').read_bytes()).hexdigest() == record['fixture_sha256']
+    assert hashlib.sha256((MODULE / 'CMakeLists.txt').read_bytes()).hexdigest() == record['cmake_sha256']
+    assert record['actual_native_render_bundle_decoder_executed']
+    assert record['sanitizer'] == 'none' and record['standalone_noop_raw_ptr']
+    for key in ('chromium_gpu_process_executed', 'chromium_miracle_ptr_executed',
+                'browser_integrated', 'privacy_admitted', 'production_admitted'):
+        assert record[key] is False
+    modes = {'--render-direct', '--render-bundle', '--vertex-direct', '--vertex-bundle',
+             '--index-direct', '--index-bundle', '--render-writable-direct', '--render-writable-bundle'}
+    assert {row['args'][0] for row in record['runs']} == modes
+    assert len(record['runs']) == 24
+    for mode in modes:
+        rows = [row for row in record['runs'] if row['args'] == [mode]]
+        assert {row['attempt'] for row in rows} == {1, 2, 3}
+        for row in rows:
+            assert row['returncode'] == 0 and row['stderr'] == ''
+            result = json.loads(row['stdout'])
+            assert result['passed'] and result['actual_wire_client_server_executed']
+            assert result['native_d3d12_queue_executed'] and result['render_pass_executed']
+            assert result['render_bundle_executed'] == mode.endswith('bundle')
+            assert result['vertex_buffer_executed'] == mode.startswith('--vertex')
+            assert result['index_buffer_executed'] == mode.startswith('--index')
+            assert result['render_writable_copyback_executed'] == ('writable' in mode)
+            assert result['projected_compute_values'] == 64
+            assert result['capture_bytes_after_destroy'] == 0
+            assert result['observer_delivery_called_manually'] is False
+            assert result['browser_integrated'] is False

@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## Actual direct and bundled native render inputs
+
+The [public Wire fixture](../native/drafts/webgpu-capture-retention/README.md)
+passed 24 hardware render runs: direct/bundled read-only storage, instance-step
+vertex data, Uint16 point indices and writable fragment storage. Writable routes
+verify complete 2 KiB copyback/padding and a dependent compute consumer after CPU
+delivery. Native pass/bundle decoding is now executed, not only modeled.
+
+Remaining: uniform/dynamic roots, indirect controls, broader alias/range/heap and
+device-loss stress, Chromium allocator configuration and actual browser integration.
+These normal standalone results do not enable the unselected source batch.
+
 ## Actual standalone Wire/GPU delivery
 
 Three [Wire hardware runs](../native/drafts/webgpu-capture-retention/README.md)

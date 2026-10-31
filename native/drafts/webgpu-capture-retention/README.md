@@ -2,6 +2,22 @@
 
 ## Actual standalone Wire delivery
 
+The same compiled fixture additionally passed **24 render runs**, three per route:
+
+| Native render input | Direct draw | Render bundle | Observed scope |
+| --- | --- | --- | --- |
+| Read-only storage | Passed | Passed | Full 8×8 output compared through Wire |
+| Vertex binding, instance step | Passed | Passed | Projected `Uint32` attribute supplies the colour |
+| Index binding | Passed | Passed | `Uint16` point draw; vertex index encoded into a 1×1 output |
+| Writable fragment storage | Passed | Passed | First-word XOR, complete 2 KiB copyback including padding, then dependent compute |
+
+All routes start after CPU delivery of the source capture and finish with the
+ordinary 64-value compute check. They execute actual native pass/bundle decoding,
+buffer address/descriptor routing and shader work, not an extracted backend model.
+The tracked capture budget drains to zero. These are normal standalone builds,
+**not ASan/Chromium allocator runs**. Uniform/dynamic-root, indirect, arbitrary
+mesh/range/heap stress and Chromium renderer integration remain separate gates.
+
 `glint_wire_probe` additionally runs actual Dawn Wire client/server serialization,
 default inline memory transfer and the real Glint filter factory over a hardware
 D3D12 device. Three runs passed: 100 protected texture channels, repeated mapping,
