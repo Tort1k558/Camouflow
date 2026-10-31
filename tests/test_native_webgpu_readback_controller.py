@@ -69,6 +69,8 @@ def test_controller_readback_failures_do_not_authorize_raw_fallback():
 
 def test_public_cpu_sources_are_bound_without_redefining_native_integration():
     record = preparation()
+    checker = ROOT / 'native/drafts/webgpu-readback-controller/check.py'
+    assert hashlib.sha256(checker.read_bytes()).hexdigest() == record['public_checker_sha256']
     assert len(record['public_cli_report_sha256']) == 64
     assert record['public_cli_runs'] == record['cpu_runs']
     sources = record['cpu_sources_sha256']

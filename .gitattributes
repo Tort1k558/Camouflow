@@ -132,3 +132,5 @@ scripts/fetch_native_rebase_sources.py text eol=lf
 
 native/drafts/shared-readback-core/*.cc text eol=lf
 native/drafts/shared-readback-core/*.py text eol=lf
+native/drafts/webgpu-readback-controller/*.cc text eol=lf
+native/drafts/webgpu-readback-controller/*.py text eol=lf

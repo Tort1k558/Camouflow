@@ -165,5 +165,24 @@
     "third_party/dawn/include/dawn/native/DawnNative.h": "a01330cb40b91f749fe59a9fdbe7e71067b4f21f4d6453880ad85d094e05e652"
   },
   "gn_observations": "webgpu-readback-controller-gn-observations.json",
-  "public_checker_sha256": "b44607ad50f719e0548d5b04f3e569d49910f54f100b9ab01324ae94d04d14a5"
+  "public_checker_sha256": "b44607ad50f719e0548d5b04f3e569d49910f54f100b9ab01324ae94d04d14a5",
+  "full_python_baseline": {
+    "git_head": "059894db26f6a4f41a9ccc77cf78cfd869dcedba",
+    "counts": {
+      "tests": 5059,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5058
+    },
+    "duration_seconds": 535.469,
+    "passed": true,
+    "postguards_passed": true,
+    "log_sha256": "c8b33d4e2c66661aaca976b2759cd3258c4b306593f10831962864091845f102",
+    "junit_sha256": "df0bd8d66d4b3cebc3fa5c94c1a288f38279df6763a8275518a40ba6445287c2",
+    "native_runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false,
+    "raw_report_sha256": "939816009898d32c7875ef9509c1acf4e8489c2d9c95033114b32eaf30f96c02"
+  }
 }

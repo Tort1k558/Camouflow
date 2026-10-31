@@ -25,6 +25,8 @@ The combined **56-path** source tree was reproduced from five public packets.
 Static/component GN generation and seven target header checks each passed;
 original sources, Git indexes and build outputs were restored exactly.
 This verifies graph/header dependencies, not component linking.
+Full Python regression at `059894d`: **5058 passed, 1 skipped**, with source guards
+preserved. This is not a native runtime or privacy result.
 
 Run the public isolated check on Windows, using existing pinned sources/SDK and
 a fresh external D: output:
