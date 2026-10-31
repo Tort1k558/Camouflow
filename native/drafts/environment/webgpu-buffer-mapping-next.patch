@@ -1,0 +1,169 @@
+--- /dev/null
++++ b/gpu/command_buffer/common/glint/buffer_scatter_mapping.h
+@@ -0,0 +1,80 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#ifndef GLINT_WEBGPU_BUFFER_SCATTER_MAPPING_H_
++#define GLINT_WEBGPU_BUFFER_SCATTER_MAPPING_H_
++#include <algorithm>
++#include <array>
++#include <cstdint>
++#include <limits>
++#include <optional>
++#include "gpu/command_buffer/common/glint/webgpu_readback_provenance.h"
++namespace glint::candidate {
++constexpr uint64_t kWebGpuBufferScatterByteLimit = 64 * 1024 * 1024;
++// Sixteen DWORDs match the native scatter ABI. This carries geometry, not authorization.
++// Structural mapping only. Native policy/epoch, immutable GPU snapshot
++// ownership, binding routing and alias/copyback authorization remain the
++// caller's duties.
++inline std::optional<std::array<uint32_t, 16>> BuildWebGpuBufferScatterWords(
++    const WebGpuReadbackRegion& region,
++    uint64_t destination_bytes, bool source_bgra = false) {
++  const auto& layout = region.snapshot_layout;
++  const auto& rectangle = region.source_rect;
++  if (region.kind != WebGpuReadbackRegionKind::kPixels || !region.size ||
++      !region.snapshot.device_epoch || !region.snapshot.snapshot_id ||
++      !region.snapshot.source_version || !region.snapshot.policy_generation ||
++      !destination_bytes || destination_bytes > kWebGpuBufferScatterByteLimit ||
++      region.buffer_offset > destination_bytes ||
++      region.size > destination_bytes - region.buffer_offset ||
++      region.snapshot_offset >
++          std::numeric_limits<uint64_t>::max() - region.size ||
++      !rectangle.full_width || !rectangle.full_height ||
++      rectangle.full_width > 8192 || rectangle.full_height > 8192 ||
++      rectangle.x > rectangle.full_width ||
++      rectangle.y > rectangle.full_height ||
++      layout.width > rectangle.full_width - rectangle.x ||
++      layout.height > rectangle.full_height - rectangle.y) {
++    return std::nullopt;
++  }
++  const auto end =
++      WebGpuReadbackEnd(layout, std::numeric_limits<size_t>::max());
++  const auto packed = WebGpuPackedPixelBytes(
++      {0, 0, rectangle.full_width, rectangle.full_height, layout.format});
++  if (!end || !packed || *packed > kWebGpuBufferScatterByteLimit) {
++    return std::nullopt;
++  }
++  const uint64_t begin = std::max(layout.offset, region.snapshot_offset);
++  const uint64_t finish = std::min(*end, region.snapshot_offset + region.size);
++  if (begin >= finish) {
++    return std::nullopt;
++  }
++  const uint64_t pitch =
++      layout.row_pitch ? layout.row_pitch : uint64_t{layout.width} * 4;
++  const uint64_t relative = begin - layout.offset;
++  const uint64_t row = relative / pitch, column = relative % pitch;
++  const uint64_t prefix = begin - region.snapshot_offset;
++  const uint64_t first_pixel_delta =
++      column < uint64_t{layout.width} * 4 ? 0 : pitch - column;
++  if (first_pixel_delta >= finish - begin ||
++      !WebGpuCanonicalByte(region,
++                           region.buffer_offset + prefix + first_pixel_delta)) {
++    return std::nullopt;
++  }
++  return std::array<uint32_t, 16>{
++      static_cast<uint32_t>(region.buffer_offset),
++      static_cast<uint32_t>(region.size),
++      static_cast<uint32_t>(prefix),
++      static_cast<uint32_t>(row),
++      static_cast<uint32_t>(column),
++      static_cast<uint32_t>(pitch),
++      layout.width,
++      layout.height,
++      rectangle.x,
++      rectangle.y,
++      rectangle.full_width,
++      rectangle.full_height,
++      (layout.format == WebGpuPixelFormat::kBgra8Unorm) != source_bgra ? 1u : 0u,
++      static_cast<uint32_t>(destination_bytes),
++      static_cast<uint32_t>(*packed),
++      0};
++}
++}  // namespace glint::candidate
++#endif
+--- a/gpu/command_buffer/common/BUILD.gn
++++ b/gpu/command_buffer/common/BUILD.gn
+@@ -75,6 +75,7 @@
+     "glint/webgpu_readback_features.h",
+     "glint/webgpu_readback_layout.cc",
+     "glint/webgpu_readback_layout.h",
++    "glint/buffer_scatter_mapping.h",
+     "glint/webgpu_readback_provenance.cc",
+     "glint/webgpu_readback_provenance.h",
+     "glint/webgpu_readback_snapshot.cc",
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -30,6 +30,7 @@
+ 
+ #include <webgpu/webgpu_cpp.h>
+ 
++#include <array>
+ #include <cstdint>
+ #include <memory>
+ #include <span>
+@@ -133,6 +134,7 @@
+     uint32_t sourceY = 0;
+     GlintReadbackFormat format = GlintReadbackFormat::Unsupported;
+     std::shared_ptr<const GlintGpuReadbackSnapshot> snapshot;
++    std::array<uint32_t, 16> mapping{};
+ };
+ struct GlintGpuInputPlan {
+     uint64_t deviceEpoch = 0;
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -1,6 +1,7 @@
+ // Copyright 2026 CamouFlow contributors.
+ // SPDX-License-Identifier: MIT
+ #include "glint_webgpu_readback_observer.h"
++#include "gpu/command_buffer/common/glint/buffer_scatter_mapping.h"
+ 
+ #include <openssl/mem.h>
+ 
+@@ -366,10 +367,13 @@
+           PixelFormat(gpu->GetFormat()) != std::optional{region.snapshot_layout.format}) return nullptr;
+       if (result->regions.size() >= dawn::native::kGlintShaderBufferUseLimit * kWebGpuReadbackRegionLimit)
+         return nullptr;
++      const auto mapping = BuildWebGpuBufferScatterWords(
++          region, use.buffer.size, gpu->GetFormat() == dawn::native::GlintReadbackFormat::Bgra8Unorm);
++      if (!mapping) return nullptr;
+       result->regions.push_back({use.buffer, region.buffer_offset, region.size,
+           region.snapshot_offset, region.snapshot_layout.offset, region.snapshot_layout.row_pitch,
+           region.snapshot_layout.width, region.snapshot_layout.height,
+-          region.source_rect.x, region.source_rect.y, gpu->GetFormat(), std::move(gpu)});
++          region.source_rect.x, region.source_rect.y, gpu->GetFormat(), std::move(gpu), *mapping});
+     }
+   }
+   gpu_input_plan_ = result;
+--- a/third_party/dawn/src/dawn/native/d3d12/BufferD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/BufferD3D12.h
+@@ -70,6 +70,7 @@
+     bool CheckIsResidentForTesting() const;
+ 
+     MaybeError EnsureDataInitialized(CommandRecordingContext* commandContext);
++    MaybeError EnsureGlintAllocationInitialized(CommandRecordingContext* commandContext);
+     ResultOrError<bool> EnsureDataInitializedAsDestination(CommandRecordingContext* commandContext,
+                                                            uint64_t offset,
+                                                            uint64_t size);
+--- a/third_party/dawn/src/dawn/native/d3d12/BufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/BufferD3D12.cpp
+@@ -631,6 +631,20 @@
+     return mResourceAllocation.GetInfo().mMethod == allocationMethod;
+ }
+ 
++MaybeError Buffer::EnsureGlintAllocationInitialized(CommandRecordingContext* commandContext) {
++    DAWN_INTERNAL_ERROR_IF(!commandContext || !HasAccess() || !HasPrivateGlintReadbackBacking() ||
++        GetAllocatedSize() < GetSize() || GetAllocatedSize() != GetD3D12Resource()->GetDesc().Width ||
++        !GetDevice()->IsToggleEnabled(Toggle::LazyClearResourceOnFirstUse),
++        "Glint full allocation initialization requires private secure buffer backing.");
++    DAWN_ASSERT(GetDevice()->IsLockedByCurrentThreadIfNeeded());
++    DAWN_TRY(EnsureDataInitialized(commandContext));
++    // Logical full-overwrite initialization does not itself prove initialized padding.
++    if (GetAllocatedSize() > GetSize()) {
++        DAWN_TRY(ClearBuffer(commandContext, 0, GetSize(), GetAllocatedSize() - GetSize()));
++    }
++    return {};
++}
++
+ MaybeError Buffer::EnsureDataInitialized(CommandRecordingContext* commandContext) {
+     if (!NeedsInitialization()) {
+         return {};

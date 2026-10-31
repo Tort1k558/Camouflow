@@ -83,7 +83,7 @@ def test_canonical_plane_altered_inputs_are_refused_before_compilation():
     proof = preparation()['changed_input_refusal']
     assert proof['passed']
     assert {row['case'] for row in proof['cases']} == {
-        'fixture', 'checker', 'shared-checker', 'parameters', 'packet', 'source-gate',
+        'fixture', 'checker', 'shared-checker', 'mapping', 'parameters', 'packet', 'source-gate',
         'source-record', 'edge-shader', 'missing-extension', 'base-fixture', 'consumer-shader',
         'predecessor-packet',
     }

@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## Shared scatter words / physical allocation — CPU contract, not native GPU clearing
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Replay / reverse | 23 packets, 86 paths | Unselected external staging |
+| Native target-flag syntax | 15 units passed | No component link |
+| CPU normal / ASan | 110,776 assertions each, including 12,802 prior-plan; separate 10,154 legacy checks | Actual mapper/controller; fake allocation/device operations |
+| Mapping oracle | Crops, padding, clipped/large offsets and both source/destination layouts agree | Not a native producer dispatch |
+| Allocation contract | Logical contents preserved, tail cleared, invalid preparation denied | Extracted method, not actual GPU ClearBuffer |
+| Prior GPU regressions | Scatter/shadow/plane normal/ASan passed using shared mapper | Original standalone scopes remain |
+| Changed inputs | 8 refusals before compilation | Not runtime security admission |
+
+[Implementation and reproduction](../native/drafts/webgpu-buffer-mapping/README.md).
+Producer/tracker/writeback, real GPU padding/queue/Wire/DXC and combined browser
+consistency remain unfinished or unverified. Selected runtime unchanged.
+
 ## Native buffer descriptors/root addresses — standalone hardware methods
 
 | Gate | Measured result | Boundary |

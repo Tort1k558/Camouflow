@@ -2514,3 +2514,25 @@ Dawn objects/allocator в fixture подменены; данные shadow зап
 Далее — input-plan producer, установка overrides в реальном binding tracker и
 writable copyback. Native queue/Wire/DXC, indirect ancestry и browser consistency
 ещё не проверены; выбранный runtime не менялся.
+
+## Общий scatter mapper и подготовка physical allocation — пакет 23
+
+Существующий mapper вынесен в GPU-common header. Observer передаёт проверенные
+16 DWORD mapping в native input plan: Dawn не потребуется зависеть от Chromium
+provenance implementation. Standalone adapter только bit-cast тех же значений;
+копия header для fixtures совпадает с native source по SHA. Каналы преобразуются
+как source-layout XOR destination-layout, без повторного BGRA swap.
+
+Добавлен EnsureGlintAllocationInitialized: логическая инициализация отдельно от
+обнуления padding. Небезопасный lazy-clear режим, недоступное/imported backing
+и несовместимые размеры отвергаются. Producer пока не вызывает этот API.
+
+23 пакета / 86 файлов replay/reverse; 15 native syntax units прошли. CPU normal/ASan:
+по 110 776 проверок (включая 12 802 prior-plan), отдельно 10 154 legacy-controller.
+Oracle проверяет crops, padding, clipped/large offsets и RGBA/BGRA в обоих layout.
+Allocation/device в fixture подменены: это не реальное GPU clearing padding.
+С общим mapper повторно прошли scatter, budgeted shadow и immutable-plane GPU tests.
+[Код и команда](../native/drafts/webgpu-buffer-mapping/README.md).
+
+Остаются native producer, реальный binding tracker/writeback, GPU padding clear,
+queue/Wire/DXC и browser consistency. Выбранный runtime не менялся.

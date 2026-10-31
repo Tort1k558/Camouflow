@@ -1246,3 +1246,26 @@ The actual input-plan shadow producer, binding-tracker installation and writable
 copyback are not connected. Native queue/Wire/DXC, indirect ancestry and browser
 consistency remain unverified. Existing GPU scatter/shadow/plane fixtures were
 rerun with the updated shared runner; none of these checks selects a new runtime.
+
+## Shared native scatter words and allocation preparation (unselected)
+
+The [mapping extension](drafts/webgpu-buffer-mapping/README.md) moves the existing
+scatter mapper into a GPU-common header. The observer exports its checked sixteen
+DWORDs with each input region, avoiding a Dawn dependency on Chromium provenance
+code. Standalone mapping only bit-casts the same algorithm; its fixture header is
+byte-identical to the native header. Source/destination channel layouts determine
+the XOR conversion, avoiding double BGRA swapping for native pixel planes.
+
+Buffer::EnsureGlintAllocationInitialized prepares logical contents then explicitly
+clears padding. It rejects inaccessible/imported backing, inconsistent sizes and
+insecure lazy-clear configuration. The producer has not called it yet. Tests run
+the extracted initialization contract with fake device/buffer operations, not GPU
+ClearBuffer or native queue execution.
+
+Twenty-three packets replay/reverse across 86 paths and fifteen native syntax units
+passed. CPU normal/ASan passed 110,776 assertions each (including 12,802 prior-plan
+checks), plus the separate 10,154-check legacy controller fixture. Byte-oracle
+comparison covers crops, padding, clipped/large lineage offsets and both channel
+layouts. Prior GPU scatter/shadow/plane fixtures passed again with the shared
+mapper. Producer/tracker/writeback, actual padding GPU clears, Wire/DXC and browser
+consistency remain incomplete or unverified; selected runtime is unchanged.

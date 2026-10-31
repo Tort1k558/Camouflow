@@ -22,7 +22,7 @@ def test_buffer_scatter_binds_sources_and_reuses_the_existing_source_gate():
                       (MODULE.parent / 'webgpu-edge-compute/edge_compute.hlsl', 'edge_shader_sha256')):
         assert hashlib.sha256(path.read_bytes()).hexdigest() == record[key]
     assert set(record['sources_sha256']) == {
-        'buffer_scatter.h', 'buffer_scatter_parameters.h', 'buffer_scatter.hlsl', 'compute_test.cc',
+        'buffer_scatter.h', 'buffer_scatter_mapping.h', 'buffer_scatter_parameters.h', 'buffer_scatter.hlsl', 'compute_test.cc',
     }
 
 
@@ -87,7 +87,7 @@ def test_buffer_scatter_modified_inputs_are_refused_before_child_compilation():
     refusal = observations()['changed_input_refusal']
     assert refusal['passed']
     assert {row['case'] for row in refusal['cases']} == {
-        'shader', 'builder', 'parameters', 'fixture', 'checker', 'edge-shader', 'source-gate', 'source-record',
+        'shader', 'builder', 'mapping', 'parameters', 'fixture', 'checker', 'edge-shader', 'source-gate', 'source-record',
     }
     for row in refusal['cases']:
         assert row['passed'] and row['returncode'] == 2

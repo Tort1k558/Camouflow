@@ -78,7 +78,7 @@ def test_buffer_shadow_changed_dependencies_are_refused_before_compilation():
     refusal = preparation()['changed_input_refusal']
     assert refusal['passed']
     assert {row['case'] for row in refusal['cases']} == {
-        'fixture', 'checker', 'shared-checker', 'parameters', 'packet', 'source-gate',
+        'fixture', 'checker', 'shared-checker', 'mapping', 'parameters', 'packet', 'source-gate',
         'source-record', 'edge-shader', 'missing-extension',
     }
     for row in refusal['cases']:
