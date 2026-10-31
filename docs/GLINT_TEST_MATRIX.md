@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## Unselected native compute projection packet
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Source replay | Eleven packets, 77 composed paths; new 15-path packet reverses exactly | Active Chromium checkout unchanged |
+| Native syntax | Seven target-flag units passed without diagnostics | Not GN generation, linking or Dawn execution |
+| Policy seed | Normal/ASan: 29 assertions and 8,000 concurrent samples each | Real CPU observer, not native device lifecycle |
+| Bundled DXC experiment | Hardware normal/ASan: 8 cases, 19,220 assertions and 8 quota cases each | Standalone typed-shadow fixture, not native bindings |
+| Compute descriptor routing | Direct/indirect source hooks; dispatch-local copies and state invalidation prepared | Actual dispatch, state restoration and heap rollover pending |
+| Unsupported inputs | Readable storage/external/resource-table and unsupported sampled views rejected | No raw fallback or complete format/raster support |
+| Shader output maps | Opaque output still denied | Trusted protected-output provenance remains unfinished |
+| Python baseline | 5137 passed, 1 skipped at `d1b089b` | Before this packet; no browser/privacy admission |
+
+[Reproducible CPU check and explicit remaining gates](../native/drafts/webgpu-compute-projection/README.md).
+The selected browser and its negative Canvas/GPU consistency result are unchanged.
+
 ## Standalone hardware shadow-texture dataflow
 
 | Gate | Result | Boundary |

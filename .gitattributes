@@ -151,3 +151,5 @@ native/drafts/webgpu-shadow-texture/*.h text eol=lf
 native/drafts/webgpu-shadow-texture/*.hlsl text eol=lf
 native/drafts/webgpu-shadow-texture/*.py text eol=lf
 native/drafts/webgpu-shadow-texture/*.patch text eol=lf
+native/drafts/webgpu-compute-projection/*.cc text eol=lf
+native/drafts/webgpu-compute-projection/*.py text eol=lf

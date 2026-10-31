@@ -1,5 +1,17 @@
 # Glint architecture
 
+## Native compute projection preparation
+
+The [unselected compute packet](drafts/webgpu-compute-projection/README.md) connects
+sampled-texture shadows to direct/indirect compute recording using dispatch-local
+descriptor copies, logical-device checks, shared quota retirement and GPU-state
+invalidation. Seven target-flag syntax units passed; eleven packets replay/reverse
+exactly. The CPU seed check passed normal/ASan with 8,000 concurrent reads each.
+A separate bundled-DXC hardware experiment passed eight typed-texture cases each
+in normal/ASan; it does not execute Dawn routing. Opaque shader-output maps remain
+denied. Native dispatch/state/heap rollover, raster, linking and the browser
+consistency gate remain unverified. This packet is not selected or released.
+
 ## Standalone GPU shadow-texture helper
 
 The [projected texture helper](drafts/webgpu-shadow-texture/README.md) records

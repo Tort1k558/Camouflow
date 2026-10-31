@@ -1,0 +1,1026 @@
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -42,6 +42,7 @@
+                      dawn::native::GlintBufferWriteKind kind) override;
+   void OnBufferDestroyed(WGPUBuffer buffer) override;
+   void OnExecutionError() override;
++  bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) override;
+   void OnShaderScope(const dawn::native::GlintShaderScope& scope) override;
+   dawn::native::GlintReadbackMapStatus ClassifyReadMap(
+       dawn::native::GlintBufferIdentity buffer,
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -227,6 +227,13 @@
+   }
+   Collect();
+ }
++bool GlintWebGPUReadbackObserver::CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) {
++  std::lock_guard lock(mutex_);
++  std::fill(seed.begin(), seed.end(), 0);
++  if (failed_ || !policy_) return false;
++  std::copy(policy_->seed().begin(), policy_->seed().end(), seed.begin());
++  return true;
++}
+ void GlintWebGPUReadbackObserver::OnExecutionError() {
+   std::lock_guard lock(mutex_);
+   Fail();
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -123,6 +123,8 @@
+     virtual void OnBufferDestroyed(WGPUBuffer buffer) = 0;
+     // Recording/submission failure invalidates speculative dependency metadata.
+     virtual void OnExecutionError() = 0;
++    // Private native projection only; failed/invalid policies must clear output.
++    virtual bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) = 0;
+     // Validated binding ranges, not proof of exact shader writes.
+     virtual void OnShaderScope(const GlintShaderScope& scope) = 0;
+     virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
+--- a/third_party/dawn/src/dawn/native/BUILD.gn
++++ b/third_party/dawn/src/dawn/native/BUILD.gn
+@@ -621,6 +621,11 @@
+       "d3d12/DeviceD3D12.h",
+       "d3d12/GlintTextureReadbackD3D12.cpp",
+       "d3d12/GlintTextureReadbackD3D12.h",
++      "d3d12/GlintTextureProjectionD3D12.cpp",
++      "d3d12/GlintTextureProjectionD3D12.h",
++      "d3d12/GlintEdgeProjectionShader.h",
++      "d3d12/glint/projected_texture.cc",
++      "d3d12/glint/projected_texture.h",
+       "d3d12/glint/texture_capture.cc",
+       "d3d12/glint/texture_capture.h",
+       "d3d12/Forward.h",
+--- a/third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.h
+@@ -28,6 +28,8 @@
+ #ifndef SRC_DAWN_NATIVE_D3D12_BINDGROUPD3D12_H_
+ #define SRC_DAWN_NATIVE_D3D12_BINDGROUPD3D12_H_
+ 
++#include <span>
++
+ #include "src/dawn/common/MutexProtected.h"
+ #include "src/dawn/common/PlacementAllocated.h"
+ #include "src/dawn/common/ityp_stack_vec.h"
+@@ -37,6 +39,13 @@
+ #include "src/utils/span.h"
+ 
+ namespace dawn::native::d3d12 {
++
++struct GlintTextureViewOverride {
++    BindingIndex binding;
++    // Keep quota and all GPU resources alive until after the texture reference is released.
++    ComPtr<IUnknown> retirement;
++    ComPtr<ID3D12Resource> resource;
++};
+ 
+ class Device;
+ class SamplerHeapCacheEntry;
+@@ -55,6 +64,11 @@
+     // in the current allocator's heap. If false is returned, caller should
+     // AllocateAndSwitchShaderVisibleHeap and populate again.
+     bool PopulateViews(ShaderVisibleDescriptorAllocator* viewAllocator);
++    // A dispatch-local descriptor copy. Never modifies the bind group's cached table.
++    ResultOrError<bool> PopulateGlintViews(
++        ShaderVisibleDescriptorAllocator* allocator,
++        std::span<const GlintTextureViewOverride> overrides,
++        GPUDescriptorHeapAllocation* allocation);
+     bool PopulateSamplers(ShaderVisibleDescriptorAllocator* samplerAllocator);
+ 
+     D3D12_GPU_DESCRIPTOR_HANDLE GetBaseViewDescriptor() const;
+--- a/third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.cpp
+@@ -27,11 +27,14 @@
+ 
+ #include "src/dawn/native/d3d12/BindGroupD3D12.h"
+ 
++#include <algorithm>
+ #include <utility>
++#include <vector>
+ 
+ #include "src/dawn/common/MatchVariant.h"
+ #include "src/dawn/common/Range.h"
+ #include "src/dawn/native/ExternalTexture.h"
++#include "src/dawn/native/d3d/D3DError.h"
+ #include "src/dawn/native/Queue.h"
+ #include "src/dawn/native/d3d12/BindGroupLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/BufferD3D12.h"
+@@ -303,6 +306,66 @@
+     return true;
+ }
+ 
++ResultOrError<bool> BindGroup::PopulateGlintViews(
++    ShaderVisibleDescriptorAllocator* allocator,
++    std::span<const GlintTextureViewOverride> overrides,
++    GPUDescriptorHeapAllocation* allocation) {
++    auto* device = ToBackend(GetDevice());
++    const auto* layout = ToBackend(GetLayout());
++    const auto count = layout->GetCbvUavSrvDescriptorCount();
++    DAWN_INTERNAL_ERROR_IF(!allocator || allocator->GetDevice() != device || !allocation ||
++                           overrides.empty() || count == 0,
++                           "Invalid Glint dispatch-local descriptor allocation.");
++    const auto offsets = layout->GetDescriptorHeapOffsets();
++    std::vector<BindingIndex> seen;
++    for (const auto& replacement : overrides) {
++        DAWN_INTERNAL_ERROR_IF(replacement.binding >= layout->GetBindingCount() ||
++                               !replacement.resource || !replacement.retirement ||
++                               std::find(seen.begin(), seen.end(), replacement.binding) != seen.end(),
++                               "Invalid or duplicate Glint sampled-texture override.");
++        const auto& info = layout->GetBindingInfo(replacement.binding);
++        DAWN_INTERNAL_ERROR_IF(!std::holds_alternative<TextureBindingInfo>(info.bindingLayout) ||
++                               info.visibility == wgpu::ShaderStage::None ||
++                               offsets[replacement.binding] >= count,
++                               "Glint overrides require a visible sampled-texture binding.");
++        auto* view = ToBackend(GetBindingAsTextureView(replacement.binding));
++        DAWN_INTERNAL_ERROR_IF(!view || view->GetDevice() != device,
++                               "Glint sampled-texture view belongs to another logical device.");
++        auto* source = ToBackend(view->GetTexture())->GetD3D12Resource();
++        DAWN_INTERNAL_ERROR_IF(!source, "Glint source texture was destroyed.");
++        const auto& srv = view->GetSRVDescriptor();
++        const auto projected = replacement.resource->GetDesc();
++        const auto original = source->GetDesc();
++        ComPtr<ID3D12Device> owner;
++        DAWN_TRY(CheckHRESULT(replacement.resource->GetDevice(IID_PPV_ARGS(&owner)),
++                              "Glint projected texture physical owner"));
++        DAWN_INTERNAL_ERROR_IF(owner.Get() != device->GetD3D12Device() ||
++                               projected.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
++                               projected.Format != srv.Format || projected.Width != original.Width ||
++                               projected.Height != original.Height || projected.DepthOrArraySize != 1 ||
++                               projected.MipLevels != 1 || projected.SampleDesc.Count != 1 ||
++                               (projected.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) ||
++                               srv.ViewDimension != D3D12_SRV_DIMENSION_TEXTURE2D ||
++                               srv.Texture2D.MostDetailedMip != 0 || srv.Texture2D.MipLevels != 1,
++                               "Glint projection descriptor is incompatible with its source view.");
++        seen.push_back(replacement.binding);
++    }
++    D3D12_CPU_DESCRIPTOR_HANDLE base;
++    if (!allocator->AllocateGPUDescriptors(count, device->GetQueue()->GetPendingCommandSerial(),
++                                            &base, allocation)) {
++        return false;
++    }
++    device->GetD3D12Device()->CopyDescriptorsSimple(
++        count, base, mCPUViewAllocation.GetBaseDescriptor(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
++    for (const auto& replacement : overrides) {
++        const auto& srv = ToBackend(GetBindingAsTextureView(replacement.binding))->GetSRVDescriptor();
++        D3D12_CPU_DESCRIPTOR_HANDLE slot{
++            base.ptr + uint64_t{offsets[replacement.binding]} * layout->GetViewSizeIncrement()};
++        device->GetD3D12Device()->CreateShaderResourceView(replacement.resource.Get(), &srv, slot);
++    }
++    return true;
++}
++
+ D3D12_GPU_DESCRIPTOR_HANDLE BindGroup::GetBaseViewDescriptor() const {
+     return mGPUViewAllocation.GetBaseDescriptor();
+ }
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -47,6 +47,7 @@
+ #include "src/dawn/native/d3d12/BindGroupLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/ComputePipelineD3D12.h"
+ #include "src/dawn/native/d3d12/DeviceD3D12.h"
++#include "src/dawn/native/d3d12/GlintTextureProjectionD3D12.h"
+ #include "src/dawn/native/d3d12/GlintTextureReadbackD3D12.h"
+ #include "src/dawn/native/d3d12/ImmediatesLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/PipelineLayoutD3D12.h"
+@@ -419,6 +420,10 @@
+                               SpanAsBytes(data));
+     }
+ 
++    void InvalidateAfterGlintProjection() {
++        if (this->mLastPipeline) this->mDirty |= this->mLastPipeline->GetImmediateMask();
++    }
++
+     // Calling this after BindGroupTrackerBase::Apply() to update root signature.
+     void Apply(CommandRecordingContext* commandContext) {
+         DAWN_ASSERT(this->mLastPipeline != nullptr);
+@@ -617,6 +622,52 @@
+         observer->OnShaderScope({uses, textureInputs, true});
+     }
+ 
++    MaybeError PrepareGlintComputeProjection(CommandRecordingContext* context) {
++        static_assert(std::is_same_v<PipelineType, ComputePipeline>);
++        for (BindGroupIndex index{0u}; index < kMaxBindGroupsTyped; ++index) {
++            if (!mGlintViews[index].empty()) {
++                mDirtyBindGroups.set(index);
++                mDirtyBindGroupsObjectChangedOrIsDynamic.set(index);
++            }
++            mGlintViews[index].clear();
++            mGlintViewAllocations[index] = {};
++        }
++        if (!mDevice->GetGlintReadbackObserver()) return {};
++        DAWN_INTERNAL_ERROR_IF(!mPipeline || mPipeline->GetLayout()->UsesResourceTable(),
++                               "Glint compute projection does not yet support resource tables.");
++        const auto mask = mPipeline->GetLayout()->GetBindGroupLayoutsMask();
++        bool recorded = false;
++        for (BindGroupIndex groupIndex : mask) {
++            auto* group = mBindGroups[groupIndex];
++            DAWN_INTERNAL_ERROR_IF(!group || group->GetDevice() != mDevice,
++                                   "Invalid Glint compute bind-group owner.");
++            const auto* layout = group->GetLayout();
++            for (const auto& external : group->GetBoundExternalTextures()) {
++                DAWN_INTERNAL_ERROR_IF(external, "Glint external-texture projection is unsupported.");
++            }
++            for (BindingIndex index : layout->GetStorageTextureIndices()) {
++                const auto& info = layout->GetBindingInfo(index);
++                if (!(info.visibility & wgpu::ShaderStage::Compute)) continue;
++                const auto access = std::get<StorageTextureBindingInfo>(info.bindingLayout).access;
++                DAWN_INTERNAL_ERROR_IF(access != wgpu::StorageTextureAccess::WriteOnly,
++                                       "Glint readable storage-texture projection is unsupported.");
++            }
++            for (BindingIndex index : layout->GetSampledTextureIndices()) {
++                if (!(layout->GetBindingInfo(index).visibility & wgpu::ShaderStage::Compute)) continue;
++                GlintTextureProjector* projector;
++                DAWN_TRY_ASSIGN(projector, mDevice->GetGlintTextureProjector());
++                std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected;
++                DAWN_TRY_ASSIGN(projected, projector->Record(
++                    context, ToBackend(group->GetBindingAsTextureView(index))));
++                mGlintViews[groupIndex].push_back(
++                    {index, projected->retirement_handle(), projected->texture()});
++                recorded = true;
++            }
++        }
++        if (recorded) RestoreAfterGlintProjection(context->GetCommandList());
++        return {};
++    }
++
+     void NotifyGlintComputeScope(BufferBase* indirectBuffer = nullptr,
+                                 uint64_t indirectOffset = 0) {
+         if (indirectBuffer) {
+@@ -640,9 +691,14 @@
+     }
+ 
+     MaybeError Apply(CommandRecordingContext* commandContext, ImmediateTrackerType* immediates) {
++        ID3D12GraphicsCommandList* commandList = commandContext->GetCommandList();
++        if (mGlintStateInvalidated) {
++            mLastAppliedPipeline = nullptr;
++            immediates->InvalidateAfterGlintProjection();
++            commandList->SetPipelineState(CurrentPipeline()->GetPipelineState());
++            mGlintStateInvalidated = false;
++        }
+         BeforeApply();
+-
+-        ID3D12GraphicsCommandList* commandList = commandContext->GetCommandList();
+         UpdateRootSignatureIfNecessary(commandList);
+ 
+         PipelineLayout* pipelineLayout = ToBackend(mPipeline->GetLayout());
+@@ -664,7 +720,9 @@
+         bool populatedSamplers = true;
+         for (BindGroupIndex index : mDirtyBindGroups) {
+             BindGroup* group = ToBackend(mBindGroups[index]);
+-            populatedViews = populatedViews && group->PopulateViews(viewAllocator);
++            if (populatedViews) {
++                DAWN_TRY_ASSIGN(populatedViews, PopulateGlintViews(index, viewAllocator));
++            }
+             populatedSamplers = populatedSamplers && group->PopulateSamplers(samplerAllocator);
+         }
+         if (usesResourceTable) {
+@@ -709,7 +767,7 @@
+ 
+             for (BindGroupIndex index : mBindGroupLayoutsMask) {
+                 BindGroup* group = ToBackend(mBindGroups[index]);
+-                populatedViews = group->PopulateViews(viewAllocator);
++                DAWN_TRY_ASSIGN(populatedViews, PopulateGlintViews(index, viewAllocator));
+                 populatedSamplers = group->PopulateSamplers(samplerAllocator);
+                 DAWN_ASSERT(populatedViews);
+                 DAWN_ASSERT(populatedSamplers);
+@@ -744,18 +802,33 @@
+ 
+     void ResetRootSamplerTables() { mBoundRootSamplerTables = {}; }
+ 
++    void InvalidateAfterGlintProjection() {
++        mGlintStateInvalidated = true;
++        ResetRootSamplerTables();
++        MarkBindGroupsDirty();
++    }
++
+     void MarkBindGroupsDirty() {
+         mDirtyBindGroupsObjectChangedOrIsDynamic |= mBindGroupLayoutsMask;
+         mDirtyBindGroups |= mBindGroupLayoutsMask;
+     }
+ 
+     void SetID3D12DescriptorHeaps(ID3D12GraphicsCommandList* commandList);
++    void RestoreAfterGlintProjection(ID3D12GraphicsCommandList* commandList);
+ 
+     void SetResourceTable(ResourceTable* resourceTable) { mResourceTable = resourceTable; }
+ 
+     ResourceTable* GetResourceTable() { return mResourceTable; }
+ 
+   private:
++    ResultOrError<bool> PopulateGlintViews(BindGroupIndex index,
++                                           ShaderVisibleDescriptorAllocator* allocator) {
++        auto* group = ToBackend(mBindGroups[index]);
++        if (mGlintViews[index].empty()) return group->PopulateViews(allocator);
++        if (allocator->IsAllocationStillValid(mGlintViewAllocations[index])) return true;
++        return group->PopulateGlintViews(allocator, mGlintViews[index], &mGlintViewAllocations[index]);
++    }
++
+     enum class RootBufferViewType { CBV, SRV, UAV };
+ 
+     static constexpr bool kIsRenderPipeline = std::is_same_v<PipelineType, RenderPipeline>;
+@@ -924,7 +997,8 @@
+ 
+         if (cbvUavSrvCount > 0) {
+             uint32_t parameterIndex = pipelineLayout->GetCbvUavSrvRootParameterIndex(index);
+-            const D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor = group->GetBaseViewDescriptor();
++            const D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor = mGlintViews[index].empty()
++                ? group->GetBaseViewDescriptor() : mGlintViewAllocations[index].GetBaseDescriptor();
+             SetRootDescriptorTable(commandList, parameterIndex, baseDescriptor);
+         }
+ 
+@@ -959,6 +1033,9 @@
+     raw_ptr<ResourceTable> mResourceTable = nullptr;
+ 
+     PerBindGroup<D3D12_GPU_DESCRIPTOR_HANDLE> mBoundRootSamplerTables = {};
++    bool mGlintStateInvalidated = false;
++    PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
++    PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+ };
+ 
+ // Owns both BindGroupStateTrackers for compute and render, ensuring that when one of them sets
+@@ -993,6 +1070,12 @@
+         mGraphicsBindingTracker.MarkBindGroupsDirty();
+     }
+ 
++    void RestoreAfterGlintProjection(ID3D12GraphicsCommandList* commandList) {
++        mComputeBindingTracker.InvalidateAfterGlintProjection();
++        mGraphicsBindingTracker.InvalidateAfterGlintProjection();
++        SetID3D12DescriptorHeaps(commandList);
++    }
++
+     BindGroupStateTracker<ComputePipeline>* GetComputeBindingTracker() {
+         return &mComputeBindingTracker;
+     }
+@@ -1010,6 +1093,12 @@
+ void BindGroupStateTracker<PipelineType>::SetID3D12DescriptorHeaps(
+     ID3D12GraphicsCommandList* commandList) {
+     mHeapState->SetID3D12DescriptorHeaps(commandList);
++}
++
++template <typename PipelineType>
++void BindGroupStateTracker<PipelineType>::RestoreAfterGlintProjection(
++    ID3D12GraphicsCommandList* commandList) {
++    mHeapState->RestoreAfterGlintProjection(commandList);
+ }
+ 
+ namespace {
+@@ -1682,6 +1771,7 @@
+                     break;
+                 }
+ 
++                DAWN_TRY(bindingTracker->PrepareGlintComputeProjection(commandContext));
+                 DAWN_TRY(TransitionAndClearForSyncScope(commandContext, scope));
+                 DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+                 immediates.SetNumWorkgroups(dispatch->x, dispatch->y, dispatch->z);
+@@ -1698,6 +1788,7 @@
+                 const SyncScopeResourceUsage& scope =
+                     resourceUsages.dispatchUsages[currentDispatch++];
+ 
++                DAWN_TRY(bindingTracker->PrepareGlintComputeProjection(commandContext));
+                 DAWN_TRY(TransitionAndClearForSyncScope(commandContext, scope));
+                 DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+                 immediates.Apply(commandContext);
+--- a/third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.h
+@@ -46,6 +46,7 @@
+ }
+ 
+ namespace dawn::native::d3d12 {
++class GlintTextureProjector;
+ 
+ class PlatformFunctions;
+ class ResidencyManager;
+@@ -98,6 +99,7 @@
+     void ReferenceUntilUnused(ComPtr<IUnknown> object);
+     const std::shared_ptr<glint::candidate::d3d12::CaptureMemoryBudget>&
+     GetGlintReadbackBudget() const { return mGlintReadbackBudget; }
++    ResultOrError<GlintTextureProjector*> GetGlintTextureProjector();
+ 
+     MaybeError CopyFromStagingToBuffer(BufferBase* source,
+                                        uint64_t sourceOffset,
+@@ -255,6 +257,7 @@
+     ComPtr<ID3D12CommandSignature> mDrawIndexedIndirectSignature;
+ 
+     std::shared_ptr<glint::candidate::d3d12::CaptureMemoryBudget> mGlintReadbackBudget;
++    std::unique_ptr<GlintTextureProjector> mGlintTextureProjector;
+     MutexProtected<SerialQueue<ExecutionSerial, ComPtr<IUnknown>>> mUsedComObjectRefs;
+ 
+     std::unique_ptr<MutexProtected<ResourceAllocatorManager>> mResourceAllocatorManager;
+--- a/third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.cpp
+@@ -46,6 +46,7 @@
+ #include "src/dawn/native/d3d12/BindGroupLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/CommandBufferD3D12.h"
+ #include "src/dawn/native/d3d12/ComputePipelineD3D12.h"
++#include "src/dawn/native/d3d12/GlintTextureProjectionD3D12.h"
+ #include "src/dawn/native/d3d12/PhysicalDeviceD3D12.h"
+ #include "src/dawn/native/d3d12/PipelineLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/PlatformFunctionsD3D12.h"
+@@ -69,6 +70,14 @@
+ #include "src/utils/compiler.h"
+ 
+ namespace dawn::native::d3d12 {
++ResultOrError<GlintTextureProjector*> Device::GetGlintTextureProjector() {
++    DAWN_ASSERT(IsLockedByCurrentThreadIfNeeded());
++    if (!mGlintTextureProjector) {
++        DAWN_TRY_ASSIGN(mGlintTextureProjector, GlintTextureProjector::Create(this));
++    }
++    return mGlintTextureProjector.get();
++}
++
+ namespace {
+ // TODO(dawn:155): Figure out these values.
+ static constexpr uint16_t kShaderVisibleDescriptorHeapSize = 1024;
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
+@@ -0,0 +1,27 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#ifndef SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREPROJECTIOND3D12_H_
++#define SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREPROJECTIOND3D12_H_
++#include <memory>
++#include "src/dawn/native/Error.h"
++#include "src/dawn/native/d3d12/d3d12_platform.h"
++#include "src/dawn/native/d3d12/glint/projected_texture.h"
++
++namespace dawn::native::d3d12 {
++class Device;
++class TextureView;
++class CommandRecordingContext;
++class GlintTextureProjector {
++  public:
++    static ResultOrError<std::unique_ptr<GlintTextureProjector>> Create(Device* device);
++    // Caller must be outside a native render pass and restore backend state.
++    ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>> Record(
++        CommandRecordingContext* context, TextureView* view);
++
++  private:
++    explicit GlintTextureProjector(Device* device) : mDevice(device) {}
++    Device* mDevice;
++    ComPtr<ID3D12RootSignature> mRoot;
++    ComPtr<ID3D12PipelineState> mPipeline;
++};
++}  // namespace dawn::native::d3d12
++#endif
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
+@@ -0,0 +1,125 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#include "src/dawn/native/d3d12/GlintTextureProjectionD3D12.h"
++
++#include <array>
++#include "dawn/native/DawnNative.h"
++#include "src/dawn/native/Toggles.h"
++#include "src/dawn/native/d3d/D3DError.h"
++#include "src/dawn/native/d3d12/CommandRecordingContext.h"
++#include "src/dawn/native/d3d12/DeviceD3D12.h"
++#include "src/dawn/native/d3d12/GlintEdgeProjectionShader.h"
++#include "src/dawn/native/d3d12/PlatformFunctionsD3D12.h"
++#include "src/dawn/native/d3d12/QueueD3D12.h"
++#include "src/dawn/native/d3d12/SharedFenceD3D12.h"
++#include "src/dawn/native/d3d12/TextureD3D12.h"
++
++namespace dawn::native::d3d12 {
++namespace {
++struct ProjectionSeed {
++    std::array<uint8_t, 32> bytes{};
++    ~ProjectionSeed() { SecureZeroMemory(bytes.data(), bytes.size()); }
++};
++}  // namespace
++
++ResultOrError<std::unique_ptr<GlintTextureProjector>> GlintTextureProjector::Create(Device* device) {
++    DAWN_INTERNAL_ERROR_IF(!device || !device->GetGlintReadbackObserver(),
++                           "Glint projection requires an installed device policy.");
++    DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
++    auto projector = std::unique_ptr<GlintTextureProjector>(new GlintTextureProjector(device));
++    const auto* functions = device->GetFunctions();
++    DAWN_INTERNAL_ERROR_IF(!functions->d3d12SerializeRootSignature,
++                           "Glint root serialization is unavailable.");
++    D3D12_DESCRIPTOR_RANGE ranges[2]{};
++    ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
++    ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
++    D3D12_ROOT_PARAMETER parameters[3]{};
++    for (size_t i = 0; i < 2; ++i) {
++        ranges[i].NumDescriptors = 1;
++        parameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
++        parameters[i].DescriptorTable.NumDescriptorRanges = 1;
++        parameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
++    }
++    parameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
++    parameters[2].Constants.Num32BitValues = 16;
++    D3D12_ROOT_SIGNATURE_DESC root{};
++    root.NumParameters = 3;
++    root.pParameters = parameters;
++    ComPtr<ID3DBlob> serialized, errors;
++    DAWN_TRY(CheckHRESULT(functions->d3d12SerializeRootSignature(
++        &root, D3D_ROOT_SIGNATURE_VERSION_1, &serialized, &errors), "Glint root serialization"));
++    DAWN_TRY(CheckHRESULT(device->GetD3D12Device()->CreateRootSignature(
++        0, serialized->GetBufferPointer(), serialized->GetBufferSize(), IID_PPV_ARGS(&projector->mRoot)),
++        "Glint projection root creation"));
++    D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
++    desc.pRootSignature = projector->mRoot.Get();
++    // Follow the device's existing compiler selection; never silently retry another compiler.
++    if (device->IsToggleEnabled(Toggle::UseDXC)) {
++        auto compiler = device->GetDxcCompiler();
++        DAWN_INTERNAL_ERROR_IF(!compiler, "Glint selected DXC compiler is unavailable.");
++        DxcBuffer source{};
++        source.Ptr = kGlintEdgeProjectionHlsl;
++        source.Size = sizeof(kGlintEdgeProjectionHlsl) - 1;
++        source.Encoding = DXC_CP_UTF8;
++        std::array<LPCWSTR, 8> arguments{
++            L"-E", L"edge_main", L"-T", L"cs_6_0", L"-HV", L"2018", L"-WX", L"-Ges"};
++        ComPtr<IDxcResult> result;
++        DAWN_TRY(CheckHRESULT(compiler->Compile(&source, arguments.data(), arguments.size(), nullptr,
++                                               IID_PPV_ARGS(&result)), "Glint DXC compile"));
++        HRESULT status = E_FAIL;
++        DAWN_TRY(CheckHRESULT(result->GetStatus(&status), "Glint DXC status"));
++        DAWN_TRY(CheckHRESULT(status, "Glint DXC shader compilation"));
++        ComPtr<IDxcBlob> shader;
++        DAWN_TRY(CheckHRESULT(result->GetResult(&shader), "Glint DXC bytecode"));
++        desc.CS = {shader->GetBufferPointer(), shader->GetBufferSize()};
++        DAWN_TRY(CheckHRESULT(device->GetD3D12Device()->CreateComputePipelineState(
++            &desc, IID_PPV_ARGS(&projector->mPipeline)), "Glint DXC pipeline creation"));
++    } else {
++        DAWN_INTERNAL_ERROR_IF(!functions->d3dCompile, "Glint selected FXC compiler is unavailable.");
++        ComPtr<ID3DBlob> shader;
++        DAWN_TRY(CheckHRESULT(functions->d3dCompile(
++            kGlintEdgeProjectionHlsl, sizeof(kGlintEdgeProjectionHlsl) - 1, nullptr, nullptr,
++            nullptr, "edge_main", "cs_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
++            0, &shader, &errors), "Glint FXC shader compilation"));
++        desc.CS = {shader->GetBufferPointer(), shader->GetBufferSize()};
++        DAWN_TRY(CheckHRESULT(device->GetD3D12Device()->CreateComputePipelineState(
++            &desc, IID_PPV_ARGS(&projector->mPipeline)), "Glint FXC pipeline creation"));
++    }
++    return std::move(projector);
++}
++
++ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>>
++GlintTextureProjector::Record(CommandRecordingContext* context, TextureView* view) {
++    DAWN_INTERNAL_ERROR_IF(!context || !view || view->GetDevice() != mDevice,
++                           "Invalid Glint texture-view owner.");
++    DAWN_ASSERT(mDevice->IsLockedByCurrentThreadIfNeeded());
++    auto* texture = ToBackend(view->GetTexture());
++    DAWN_INTERNAL_ERROR_IF(!texture || texture->GetDevice() != mDevice || !texture->HasAccess() ||
++                           !texture->GetD3D12Resource(), "Glint projection source is inaccessible.");
++    DAWN_INTERNAL_ERROR_IF(view->GetDimension() != wgpu::TextureViewDimension::e2D ||
++        view->GetBaseMipLevel() != 0 || view->GetLevelCount() != 1 || texture->GetNumMipLevels() != 1 ||
++        view->GetBaseArrayLayer() != 0 || view->GetLayerCount() != 1 || !view->IsSwizzleIdentity(),
++        "Unsupported Glint projection texture-view range.");
++    const auto format = view->GetFormat().format;
++    DAWN_INTERNAL_ERROR_IF(format != wgpu::TextureFormat::RGBA8Unorm &&
++                           format != wgpu::TextureFormat::BGRA8Unorm,
++                           "Unsupported Glint projection texture-view format.");
++    auto observer = mDevice->GetGlintReadbackObserver();
++    ProjectionSeed seed;
++    DAWN_INTERNAL_ERROR_IF(!observer || !observer->CopyShaderProjectionSeed(seed.bytes),
++                           "Glint projection policy is invalid.");
++    const auto range = SubresourceRange::SingleMipAndLayer(0, 0, Aspect::Color);
++    DAWN_TRY(texture->EnsureSubresourceContentInitialized(context, range));
++    // Private backend copying does not require exposing CopySrc in the WebGPU API usage.
++    texture->TrackUsageAndTransitionNow(context, D3D12_RESOURCE_STATE_COPY_SOURCE, range);
++    auto* queue = ToBackend(mDevice->GetQueue());
++    std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected;
++    DAWN_TRY(CheckHRESULT(glint::candidate::d3d12::ProjectedTexture::Record(
++        mDevice->GetD3D12Device(), context->GetCommandList(), texture->GetD3D12Resource(),
++        view->GetD3D12Format(), true, mRoot.Get(), mPipeline.Get(), seed.bytes,
++        queue->GetSharedFence()->GetD3DFence(), uint64_t{queue->GetPendingCommandSerial()},
++        mDevice->GetGlintReadbackBudget(), &projected), "Glint protected texture projection"));
++    mDevice->ReferenceUntilUnused(projected->retirement_handle());
++    context->AddGlintReadbackSubmission(projected->submission_marker());
++    return std::move(projected);
++}
++}  // namespace dawn::native::d3d12
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintEdgeProjectionShader.h
+@@ -0,0 +1,149 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#ifndef SRC_DAWN_NATIVE_D3D12_GLINTEDGEPROJECTIONSHADER_H_
++#define SRC_DAWN_NATIVE_D3D12_GLINTEDGEPROJECTIONSHADER_H_
++namespace dawn::native::d3d12 {
++inline constexpr char kGlintEdgeProjectionHlsl[] = R"GLINT_EDGE(
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++// Experimental fixed-32-byte-key HMAC-SHA-256 projection; not browser-integrated.
++ByteAddressBuffer Input : register(t0);
++RWByteAddressBuffer Output : register(u0);
++cbuffer Parameters : register(b0) {
++    uint4 Key0;
++    uint4 Key1;
++    uint Width;
++    uint Height;
++    uint Pitch;
++    uint Offset;
++    uint Bgra;
++    uint Operation;
++    uint MessageBytes;
++    uint Reserved;
++};
++
++static const uint K[64] = {
++    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
++    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
++    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
++    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
++    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
++    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
++    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
++    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
++};
++static const uint IV[8] = {
++    0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,
++    0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19
++};
++static const uint Domain[30] = {
++    103,108,105,110,116,46,99,97,110,118,97,115,46,101,100,
++    103,101,46,99,97,110,100,105,100,97,116,101,46,118,49
++};
++uint Rotate(uint value, uint bits) { return (value >> bits) | (value << (32 - bits)); }
++uint Swap(uint value) {
++    return (value << 24) | ((value & 0xff00) << 8) |
++           ((value >> 8) & 0xff00) | (value >> 24);
++}
++void Initialize(out uint state[8]) {
++    [unroll] for (uint i = 0; i < 8; ++i) state[i] = IV[i];
++}
++void Compress(inout uint state[8], uint block[16]) {
++    uint w[16];
++    [unroll] for (uint loadIndex = 0; loadIndex < 16; ++loadIndex) w[loadIndex] = block[loadIndex];
++    uint a = state[0], b = state[1], c = state[2], d = state[3];
++    uint e = state[4], f = state[5], g = state[6], h = state[7];
++    [loop] for (uint round = 0; round < 64; ++round) {
++        uint slot = round & 15;
++        if (round >= 16) {
++            uint x = w[(round - 15) & 15], y = w[(round - 2) & 15];
++            uint small0 = Rotate(x, 7) ^ Rotate(x, 18) ^ (x >> 3);
++            uint small1 = Rotate(y, 17) ^ Rotate(y, 19) ^ (y >> 10);
++            w[slot] += small0 + w[(round - 7) & 15] + small1;
++        }
++        uint s1 = Rotate(e, 6) ^ Rotate(e, 11) ^ Rotate(e, 25);
++        uint choose = (e & f) ^ (~e & g);
++        uint t1 = h + s1 + choose + K[round] + w[slot];
++        uint s0 = Rotate(a, 2) ^ Rotate(a, 13) ^ Rotate(a, 22);
++        uint majority = (a & b) ^ (a & c) ^ (b & c);
++        uint t2 = s0 + majority;
++        h = g; g = f; f = e; e = d + t1;
++        d = c; c = b; b = a; a = t1 + t2;
++    }
++    state[0] += a; state[1] += b; state[2] += c; state[3] += d;
++    state[4] += e; state[5] += f; state[6] += g; state[7] += h;
++}
++void SetByte(inout uint words[16], uint index, uint value) {
++    words[index / 4] |= (value & 255) << (24 - (index % 4) * 8);
++}
++void Hmac(uint message[16], uint length, out uint digest[8]) {
++    uint key[8] = {Key0.x,Key0.y,Key0.z,Key0.w,Key1.x,Key1.y,Key1.z,Key1.w};
++    uint block[16];
++    [unroll] for (uint padIndex = 0; padIndex < 16; ++padIndex)
++        block[padIndex] = (padIndex < 8 ? Swap(key[min(padIndex, 7)]) : 0) ^ 0x36363636;
++    Initialize(digest);
++    Compress(digest, block);
++    SetByte(message, length, 128);
++    message[15] = (64 + length) * 8;
++    Compress(digest, message);
++    uint inner[8];
++    [unroll] for (uint innerIndex = 0; innerIndex < 8; ++innerIndex) inner[innerIndex] = digest[innerIndex];
++    [unroll] for (uint outerPad = 0; outerPad < 16; ++outerPad)
++        block[outerPad] = (outerPad < 8 ? Swap(key[min(outerPad, 7)]) : 0) ^ 0x5c5c5c5c;
++    Initialize(digest);
++    Compress(digest, block);
++    [unroll] for (uint outerMessage = 0; outerMessage < 16; ++outerMessage)
++        block[outerMessage] = outerMessage < 8 ? inner[min(outerMessage, 7)] : 0;
++    block[8] = 0x80000000;
++    block[15] = 768;
++    Compress(digest, block);
++}
++uint Canonical(uint packed) {
++    return Bgra != 0 ? (packed & 0xff00ff00) | ((packed & 255) << 16) |
++                       ((packed >> 16) & 255) : packed;
++}
++bool Different(uint center, uint neighbour) {
++    return (neighbour >> 24) == 255 && ((center ^ neighbour) & 0x00fefefe) != 0;
++}
++[numthreads(1,1,1)]
++void hmac_main(uint3 tid : SV_DispatchThreadID) {
++        if (MessageBytes > 55) return;
++        uint message[16];
++        [unroll] for (uint clearMessage = 0; clearMessage < 16; ++clearMessage) message[clearMessage] = 0;
++        [loop] for (uint inputByte = 0; inputByte < MessageBytes; ++inputByte)
++            SetByte(message, inputByte, (Input.Load((inputByte / 4) * 4) >> ((inputByte % 4) * 8)) & 255);
++        uint digest[8];
++        Hmac(message, MessageBytes, digest);
++        [unroll] for (uint outputWord = 0; outputWord < 8; ++outputWord) Output.Store(outputWord * 4, Swap(digest[outputWord]));
++}
++[numthreads(4,4,1)]
++void edge_main(uint3 tid : SV_DispatchThreadID) {
++    if (tid.x >= Width || tid.y >= Height) return;
++    uint address = Offset + tid.y * Pitch + tid.x * 4;
++    uint center = Canonical(Input.Load(address));
++    bool edge = false;
++    if ((center >> 24) == 255) {
++        uint left = Offset + tid.y * Pitch + (max(tid.x, 1) - 1) * 4;
++        uint right = Offset + tid.y * Pitch + min(tid.x + 1, Width - 1) * 4;
++        uint up = Offset + (max(tid.y, 1) - 1) * Pitch + tid.x * 4;
++        uint down = Offset + min(tid.y + 1, Height - 1) * Pitch + tid.x * 4;
++        if (tid.x > 0) edge = edge || Different(center, Canonical(Input.Load(left)));
++        if (tid.x + 1 < Width) edge = edge || Different(center, Canonical(Input.Load(right)));
++        if (tid.y > 0) edge = edge || Different(center, Canonical(Input.Load(up)));
++        if (tid.y + 1 < Height) edge = edge || Different(center, Canonical(Input.Load(down)));
++    }
++    if (edge) {
++        uint message[16];
++        [unroll] for (uint clearPixel = 0; clearPixel < 16; ++clearPixel) message[clearPixel] = 0;
++        [unroll] for (uint domainByte = 0; domainByte < 30; ++domainByte) SetByte(message, domainByte, Domain[domainByte]);
++        SetByte(message, 30, (center & 255) >> 1);
++        SetByte(message, 31, ((center >> 8) & 255) >> 1);
++        SetByte(message, 32, ((center >> 16) & 255) >> 1);
++        uint digest[8];
++        Hmac(message, 33, digest);
++        uint bits = digest[0] >> 24;
++        center = (center & 0xfffefefe) | (bits & 1) | ((bits & 2) << 7) | ((bits & 4) << 14);
++    }
++    Output.Store(address, Canonical(center));
++}
++)GLINT_EDGE";
++}  // namespace dawn::native::d3d12
++#endif
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/projected_texture.h
+@@ -0,0 +1,45 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#ifndef GLINT_D3D12_PROJECTED_TEXTURE_H_
++#define GLINT_D3D12_PROJECTED_TEXTURE_H_
++#include "texture_capture.h"
++
++namespace glint::candidate::d3d12 {
++class ProjectedTexture {
++ public:
++  ProjectedTexture(const ProjectedTexture&) = delete;
++  ProjectedTexture& operator=(const ProjectedTexture&) = delete;
++  // Requires an initialized COPY_SOURCE texture, an open DIRECT command list and
++  // the trusted edge_main pipeline/root ABI (two tables + sixteen DWORDs).
++  // Changes compute pipeline/root/descriptor state; caller must restore it.
++  static HRESULT Record(ID3D12Device* device,
++                        ID3D12GraphicsCommandList* commands,
++                        ID3D12Resource* source,
++                        DXGI_FORMAT view_format,
++                        bool source_initialized,
++                        ID3D12RootSignature* root,
++                        ID3D12PipelineState* pipeline,
++                        std::span<const uint8_t, 32> key,
++                        ID3D12Fence* fence,
++                        uint64_t completion_value,
++                        const std::shared_ptr<CaptureMemoryBudget>& budget,
++                        std::unique_ptr<ProjectedTexture>* result);
++  // Borrowed pointer: retain the retirement handle for every use of this resource.
++  // Output state is NON_PIXEL_SHADER_RESOURCE | PIXEL_SHADER_RESOURCE.
++  ID3D12Resource* texture() const { return texture_; }
++  uint64_t allocation_bytes() const { return allocation_bytes_; }
++  // Queue must retain this handle until GPU retirement, even after CPU deletion.
++  Microsoft::WRL::ComPtr<IUnknown> retirement_handle() const { return retirement_; }
++  std::shared_ptr<std::atomic<bool>> submission_marker() const { return submitted_; }
++  HRESULT CompletionStatus() const;
++
++ private:
++  ProjectedTexture() = default;
++  ID3D12Resource* texture_ = nullptr;
++  Microsoft::WRL::ComPtr<IUnknown> retirement_;
++  Microsoft::WRL::ComPtr<ID3D12Fence> fence_;
++  std::shared_ptr<std::atomic<bool>> submitted_;
++  uint64_t completion_value_ = 0;
++  uint64_t allocation_bytes_ = 0;
++};
++}  // namespace glint::candidate::d3d12
++#endif
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/projected_texture.cc
+@@ -0,0 +1,224 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#include "projected_texture.h"
++#include <array>
++#include <cstring>
++#include <limits>
++#include <new>
++
++namespace glint::candidate::d3d12 {
++using Microsoft::WRL::ComPtr;
++namespace {
++constexpr uint64_t kDescriptorCharge = 64 * 1024;
++constexpr uint64_t kRawLimit = 64 * 1024 * 1024;
++struct Parameters {
++    std::array<uint8_t, 32> key;
++    uint32_t width, height, pitch, offset;
++    uint32_t bgra, operation, message_bytes, reserved;
++};
++static_assert(sizeof(Parameters) == 64);
++bool SameDevice(ID3D12Device* device, ID3D12DeviceChild* child) {
++    if (!child) return false;
++    ComPtr<ID3D12Device> owner;
++    ComPtr<IUnknown> expected, actual;
++    return SUCCEEDED(child->GetDevice(IID_PPV_ARGS(&owner))) &&
++           SUCCEEDED(owner.As(&actual)) && SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&expected))) &&
++           expected.Get() == actual.Get();
++}
++void Transition(ID3D12GraphicsCommandList* commands, ID3D12Resource* resource,
++                D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
++    D3D12_RESOURCE_BARRIER barrier{};
++    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
++    barrier.Transition.pResource = resource;
++    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
++    barrier.Transition.StateBefore = before;
++    barrier.Transition.StateAfter = after;
++    commands->ResourceBarrier(1, &barrier);
++}
++}  // namespace
++
++class ProjectedTextureRetirement final : public IUnknown {
++ public:
++    ProjectedTextureRetirement(std::shared_ptr<CaptureMemoryBudget> budget, uint64_t bytes)
++        : budget_(std::move(budget)), bytes_(bytes) {}
++    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** result) override {
++        if (!result) return E_POINTER;
++        *result = nullptr;
++        if (iid != __uuidof(IUnknown)) return E_NOINTERFACE;
++        *result = static_cast<IUnknown*>(this);
++        AddRef();
++        return S_OK;
++    }
++    ULONG STDMETHODCALLTYPE AddRef() override { return references_.fetch_add(1, std::memory_order_relaxed) + 1; }
++    ULONG STDMETHODCALLTYPE Release() override {
++        const ULONG remaining = references_.fetch_sub(1, std::memory_order_acq_rel) - 1;
++        if (remaining == 0) delete this;
++        return remaining;
++    }
++    ComPtr<ID3D12Resource> original, input, output, shadow;
++    ComPtr<ID3D12DescriptorHeap> descriptors;
++    ComPtr<ID3D12RootSignature> root;
++    ComPtr<ID3D12PipelineState> pipeline;
++ private:
++    ~ProjectedTextureRetirement() {
++        original.Reset(); input.Reset(); output.Reset(); shadow.Reset();
++        descriptors.Reset(); root.Reset(); pipeline.Reset();
++        budget_->Release(bytes_);
++    }
++    std::atomic<ULONG> references_{1};
++    std::shared_ptr<CaptureMemoryBudget> budget_;
++    uint64_t bytes_;
++};
++
++HRESULT ProjectedTexture::Record(ID3D12Device* device,
++                                ID3D12GraphicsCommandList* commands,
++                                ID3D12Resource* source,
++                                DXGI_FORMAT view_format,
++                                bool source_initialized,
++                                ID3D12RootSignature* root,
++                                ID3D12PipelineState* pipeline,
++                                std::span<const uint8_t, 32> key,
++                                ID3D12Fence* fence,
++                                uint64_t completion_value,
++                                const std::shared_ptr<CaptureMemoryBudget>& budget,
++                                std::unique_ptr<ProjectedTexture>* result) {
++    if (!result || *result || !device || !commands || !source || !root || !pipeline || !fence ||
++        !budget || !source_initialized || budget->limit_bytes() == 0 || completion_value == 0 ||
++        completion_value == std::numeric_limits<uint64_t>::max()) return E_INVALIDARG;
++    if (commands->GetType() != D3D12_COMMAND_LIST_TYPE_DIRECT ||
++        !SameDevice(device, commands) || !SameDevice(device, source) || !SameDevice(device, root) ||
++        !SameDevice(device, pipeline) || !SameDevice(device, fence)) return E_INVALIDARG;
++    const uint64_t completed = fence->GetCompletedValue();
++    if (completed == std::numeric_limits<uint64_t>::max()) return DXGI_ERROR_DEVICE_REMOVED;
++    if (completed >= completion_value) return E_INVALIDARG;
++    const auto original_desc = source->GetDesc();
++    auto shadow_desc = original_desc;
++    const bool rgba = view_format == DXGI_FORMAT_R8G8B8A8_UNORM &&
++        (original_desc.Format == view_format || original_desc.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS);
++    const bool bgra = view_format == DXGI_FORMAT_B8G8R8A8_UNORM &&
++        (original_desc.Format == view_format || original_desc.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS);
++    if ((!rgba && !bgra) || original_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
++        original_desc.DepthOrArraySize != 1 || original_desc.MipLevels != 1 || original_desc.SampleDesc.Count != 1 ||
++        original_desc.SampleDesc.Quality != 0 || original_desc.Width == 0 || original_desc.Height == 0 ||
++        original_desc.Width > 8192 || original_desc.Height > 8192) return E_INVALIDARG;
++    shadow_desc.Format = view_format;
++    shadow_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
++    shadow_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
++    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
++    UINT rows = 0;
++    UINT64 row_size = 0, total = 0;
++    device->GetCopyableFootprints(&shadow_desc, 0, 1, 0, &footprint, &rows, &row_size, &total);
++    const uint64_t raw_bytes = static_cast<uint64_t>(footprint.Footprint.RowPitch) * original_desc.Height;
++    if (rows != original_desc.Height || row_size != original_desc.Width * 4 || total == 0 ||
++        total > raw_bytes || raw_bytes > kRawLimit || raw_bytes == 0) return E_INVALIDARG;
++    D3D12_RESOURCE_DESC raw_desc{};
++    raw_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
++    raw_desc.Width = raw_bytes;
++    raw_desc.Height = raw_desc.DepthOrArraySize = raw_desc.MipLevels = 1;
++    raw_desc.SampleDesc.Count = 1;
++    raw_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
++    auto output_desc = raw_desc;
++    output_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
++    uint64_t charged = kDescriptorCharge;
++    for (const auto& desc : {raw_desc, output_desc, shadow_desc}) {
++        const auto info = device->GetResourceAllocationInfo(0, 1, &desc);
++        if (info.SizeInBytes == 0 || info.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
++            info.SizeInBytes > std::numeric_limits<uint64_t>::max() - charged) return E_INVALIDARG;
++        charged += info.SizeInBytes;
++    }
++    if (!budget->Reserve(charged)) return E_OUTOFMEMORY;
++    ComPtr<ProjectedTextureRetirement> hold;
++    hold.Attach(new (std::nothrow) ProjectedTextureRetirement(budget, charged));
++    if (!hold) { budget->Release(charged); return E_OUTOFMEMORY; }
++    std::unique_ptr<ProjectedTexture> projected(new (std::nothrow) ProjectedTexture());
++    if (!projected) return E_OUTOFMEMORY;
++    projected->submitted_ = std::make_shared<std::atomic<bool>>(false);
++    D3D12_HEAP_PROPERTIES heap{};
++    heap.Type = D3D12_HEAP_TYPE_DEFAULT;
++    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
++    auto create = [&](const D3D12_RESOURCE_DESC& desc, D3D12_RESOURCE_STATES state,
++                      ComPtr<ID3D12Resource>* target) {
++        return device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, state,
++                                               nullptr, IID_PPV_ARGS(target->GetAddressOf()));
++    };
++    HRESULT status = create(raw_desc, D3D12_RESOURCE_STATE_COPY_DEST, &hold->input);
++    if (FAILED(status)) return status;
++    status = create(output_desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &hold->output);
++    if (FAILED(status)) return status;
++    status = create(shadow_desc, D3D12_RESOURCE_STATE_COPY_DEST, &hold->shadow);
++    if (FAILED(status)) return status;
++    D3D12_DESCRIPTOR_HEAP_DESC descriptor_desc{};
++    descriptor_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
++    descriptor_desc.NumDescriptors = 2;
++    descriptor_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
++    status = device->CreateDescriptorHeap(&descriptor_desc, IID_PPV_ARGS(&hold->descriptors));
++    if (FAILED(status)) return status;
++    hold->original = source; hold->root = root; hold->pipeline = pipeline;
++    const UINT increment = device->GetDescriptorHandleIncrementSize(descriptor_desc.Type);
++    auto cpu = hold->descriptors->GetCPUDescriptorHandleForHeapStart();
++    D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
++    srv.Format = DXGI_FORMAT_R32_TYPELESS;
++    srv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
++    srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
++    srv.Buffer.NumElements = static_cast<UINT>(raw_bytes / 4);
++    srv.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
++    device->CreateShaderResourceView(hold->input.Get(), &srv, cpu);
++    cpu.ptr += increment;
++    D3D12_UNORDERED_ACCESS_VIEW_DESC uav{};
++    uav.Format = DXGI_FORMAT_R32_TYPELESS;
++    uav.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
++    uav.Buffer.NumElements = static_cast<UINT>(raw_bytes / 4);
++    uav.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
++    device->CreateUnorderedAccessView(hold->output.Get(), nullptr, &uav, cpu);
++    projected->texture_ = hold->shadow.Get();
++    projected->retirement_ = hold;
++    projected->fence_ = fence;
++    projected->completion_value_ = completion_value;
++    projected->allocation_bytes_ = charged;
++    D3D12_TEXTURE_COPY_LOCATION from{}, raw{}, to{};
++    from.pResource = source;
++    from.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
++    raw.pResource = hold->input.Get();
++    raw.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
++    raw.PlacedFootprint = footprint;
++    to.pResource = hold->shadow.Get();
++    to.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
++    // All fallible allocations/validation precede the first recorded command.
++    commands->CopyTextureRegion(&raw, 0, 0, 0, &from, nullptr);
++    Transition(commands, hold->input.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
++                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
++    commands->SetPipelineState(pipeline);
++    commands->SetComputeRootSignature(root);
++    ID3D12DescriptorHeap* heaps[] = {hold->descriptors.Get()};
++    commands->SetDescriptorHeaps(1, heaps);
++    auto gpu = hold->descriptors->GetGPUDescriptorHandleForHeapStart();
++    commands->SetComputeRootDescriptorTable(0, gpu);
++    gpu.ptr += increment;
++    commands->SetComputeRootDescriptorTable(1, gpu);
++    Parameters params{};
++    std::memcpy(params.key.data(), key.data(), key.size());
++    params.width = static_cast<uint32_t>(original_desc.Width);
++    params.height = original_desc.Height;
++    params.pitch = footprint.Footprint.RowPitch;
++    params.bgra = bgra ? 1 : 0;
++    commands->SetComputeRoot32BitConstants(2, 16, &params, 0);
++    SecureZeroMemory(&params, sizeof(params));
++    commands->Dispatch((static_cast<uint32_t>(original_desc.Width) + 3) / 4,
++                       (original_desc.Height + 3) / 4, 1);
++    Transition(commands, hold->output.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
++                D3D12_RESOURCE_STATE_COPY_SOURCE);
++    raw.pResource = hold->output.Get();
++    commands->CopyTextureRegion(&to, 0, 0, 0, &raw, nullptr);
++    Transition(commands, hold->shadow.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
++                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
++    *result = std::move(projected);
++    return S_OK;
++
++}
++
++HRESULT ProjectedTexture::CompletionStatus() const {
++    const uint64_t completed = fence_->GetCompletedValue();
++    if (completed == std::numeric_limits<uint64_t>::max()) return DXGI_ERROR_DEVICE_REMOVED;
++    if (!submitted_->load(std::memory_order_acquire)) return E_PENDING;
++    return completed < completion_value_ ? E_PENDING : S_OK;
++}
++}  // namespace glint::candidate::d3d12
+--- a/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h
+@@ -24,6 +24,8 @@
+   private:
+     friend class TextureCapture;
+     friend class CaptureRetirement;
++    friend class ProjectedTexture;
++    friend class ProjectedTextureRetirement;
+     bool Reserve(uint64_t bytes);
+     void Release(uint64_t bytes);
+     const uint64_t limit_bytes_;

@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## Native compute routing: source packet prepared, not browser-admitted
+
+[Eleven-packet compute projection preparation](../native/drafts/webgpu-compute-projection/README.md)
+now includes sampled-texture routing before direct/indirect compute dispatch,
+dispatch-local descriptor copies, ownership/quota retention and GPU-state
+restoration preparation. Seven native-flag syntax units passed. CPU seed checks
+passed normal/ASan (29 assertions and 8,000 concurrent reads each). A separate
+bundled-DXC hardware experiment passed eight typed-texture cases in both modes.
+Full Python baseline: 5137 passed, 1 skipped at `d1b089b`.
+
+Next: actual Dawn state/descriptor/heap-rollover execution, protected shader-output
+provenance, raster routing, GN/component checks and the real browser consistency
+gate. Unsupported inputs fail closed; shader-derived mapped output remains denied.
+The selected 001–076 browser is unchanged. This is not a completed GPU privacy gate.
+
 ## GPU shadow-texture helper: hardware dataflow verified
 
 [Native resource helper and public check](../native/drafts/webgpu-shadow-texture/README.md)
