@@ -1,5 +1,18 @@
 # Glint architecture
 
+## Standalone Wire delivery now executes the actual filter
+
+The [Wire hardware probe](drafts/webgpu-capture-retention/README.md) runs actual
+Dawn client/server serialization and default inline transfer over D3D12. Three
+runs passed protected texture delivery, repeated mapping, CPU-first delivery before
+projected compute, and unrelated-byte passthrough. The missing-filter control
+observes raw pixels and fails the exact protected-pixel comparison. No observer
+delivery method is called manually in this probe.
+
+This closes a standalone Wire/GPU ordering gate only. Chromium GPU-process embedding,
+its shared-memory services, renderer/worker APIs, hostile transport, races and
+failure cleanup remain separate requirements; runtime selection is unchanged.
+
 ## Native CPU delivery must preserve dependent GPU capabilities
 
 The unselected [capture-retention correction](drafts/webgpu-capture-retention/README.md)

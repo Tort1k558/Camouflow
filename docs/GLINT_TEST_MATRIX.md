@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## 2026-10-31: actual standalone Wire plus hardware GPU delivery
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Actual Dawn Wire client/server + Glint filter factory | 3 hardware runs passed | Default inline transfer; not Chromium shared-memory service |
+| Texture → buffer → client MapAsync | 100 changed channels matched CPU reference | No manually invoked observer delivery |
+| Repeated mapping | Same protected pixels | No cumulative transformation |
+| CPU-first delivery → projected native compute → client MapAsync | 64 output values matched | Real shader input projection and output serialization |
+| Unrelated buffer copy/map | 16 values unchanged | Same observer-enabled device |
+| Missing filter factory, negative control | Explicit pixel mismatch; actual bytes equal raw pixels | Not an arbitrary crash treated as success |
+
+The public [Wire probe](../native/drafts/webgpu-capture-retention/README.md) uses
+actual native queue submissions, Wire callbacks and the real filter implementation.
+It does not prove Chromium GPU-process/renderer/worker integration, shared backing,
+hostile transport, cancellation/device loss, complete allocator behavior or release
+readiness. The correction remains unselected; selected browser binaries are unchanged.
+
 ## 2026-10-31: complete standalone Dawn/D3D12 component execution
 
 | Gate | Observed result | Boundary |

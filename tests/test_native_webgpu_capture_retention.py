@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,4 +51,43 @@ def test_retention_fixture_uses_native_inputs_and_keeps_delivery_boundary_explic
     assert 'input.Destroy();' in source
     record = observation()
     for key in ('wire_executed', 'browser_integrated', 'privacy_admitted', 'production_admitted'):
+        assert record[key] is False
+
+
+def test_wire_hardware_observation_binds_the_compiled_public_inputs():
+    record = json.loads((MODULE / 'wire-observations.json').read_bytes())
+    assert record['public_inputs_match_compiled_inputs']
+    for name, expected in record['public_inputs_sha256'].items():
+        assert hashlib.sha256((MODULE / name).read_bytes()).hexdigest() == expected
+    source = (MODULE / 'wire_probe.cc').read_text(encoding='utf-8-sig')
+    assert 'dawn::wire::WireClient' in source and 'dawn::wire::WireServer' in source
+    assert 'CreateGlintWebGPUReadbackFilterFactory()' in source
+    assert 'observer->PrepareReadMap' not in source
+    assert '#include "native_probe.cc"' not in source
+
+
+def test_wire_hardware_covers_cpu_first_dispatch_repeated_mapping_and_unrelated_bytes():
+    record = json.loads((MODULE / 'wire-observations.json').read_bytes())
+    assert len(record['corrected_runs']) == 3
+    for row in record['corrected_runs']:
+        assert row['returncode'] == 0 and row['stderr'] == ''
+        result = json.loads(row['stdout'])
+        assert result['passed'] and result['actual_wire_client_server_executed']
+        assert result['native_d3d12_queue_executed']
+        assert result['protected_channels'] == 100
+        assert result['projected_compute_values'] == 64
+        assert result['unrelated_values'] == 16 and result['repeated_map']
+        assert result['observer_delivery_called_manually'] is False
+        assert result['browser_integrated'] is False
+
+
+def test_wire_missing_filter_control_observes_raw_pixels_not_an_arbitrary_crash():
+    record = json.loads((MODULE / 'wire-observations.json').read_bytes())
+    negative = record['without_filter_negative_control']
+    assert negative['args'] == ['--without-filter'] and negative['returncode'] == 1
+    assert 'WIRE_FILTER_MISMATCH' in negative['stderr']
+    match = re.search(r'actual=(\d+) expected=(\d+) raw=(\d+)', negative['stderr'])
+    assert match and match[1] == match[3] and match[1] != match[2]
+    for key in ('chromium_miracle_ptr_executed', 'chromium_gpu_process_executed',
+                'browser_integrated', 'privacy_admitted', 'production_admitted'):
         assert record[key] is False

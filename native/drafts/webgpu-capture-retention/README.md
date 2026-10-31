@@ -1,5 +1,19 @@
 # Capture capability retention — unselected
 
+## Actual standalone Wire delivery
+
+`glint_wire_probe` additionally runs actual Dawn Wire client/server serialization,
+default inline memory transfer and the real Glint filter factory over a hardware
+D3D12 device. Three runs passed: 100 protected texture channels, repeated mapping,
+CPU-first delivery followed by 64 projected compute values, and 16 unchanged
+unrelated values. No observer delivery method is called manually. Disabling only
+the filter factory makes the pixel comparison fail with actual bytes equal to raw
+pixels; an arbitrary crash is not accepted as this negative control.
+
+This checks the standalone Wire implementation, not Chromium GPU-process embedding,
+renderer/worker APIs or Chromium shared-memory transfer services. Hostile transport,
+shared backing, races, cancellation and device-loss integration remain open.
+
 CPU delivery must not retire a snapshot still referenced by buffer provenance.
 The next GPU dispatch needs that same native capability to project the logical
 buffer input. Releasing it in `Complete()` caused a real native device loss.
@@ -60,7 +74,7 @@ and exhaustive dependency attestation remain to be added.
 
 ## Remaining gates
 
-Wire/renderer integration, same-submit CPU/GPU orderings, writable and chained
+Chromium Wire/renderer integration, same-submit CPU/GPU orderings, writable and chained
 dispatch stress, render/bundle paths, cancellation/device loss, native allocation
 quotas and retirement, ASan/full Chromium allocator builds, and browser consistency.
 This patch does not change runtime selection, privacy admission or production.

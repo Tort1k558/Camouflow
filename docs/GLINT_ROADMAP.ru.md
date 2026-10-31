@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## Actual standalone Wire/GPU delivery
+
+Three [Wire hardware runs](../native/drafts/webgpu-capture-retention/README.md)
+passed texture delivery, repeated mapping, CPU-first projected compute and unchanged
+unrelated data through actual client/server serialization and the real filter.
+The missing-filter negative control returns raw pixels and fails explicitly.
+No manual observer-delivery call substitutes for Wire in this probe.
+
+Next: Chromium GPU-process/shared-memory embedding, hostile transport and races,
+same-submit/chained/render cases, native lifetime/quota stress and browser APIs.
+Standalone inline Wire is not proof of Chromium renderer/worker integration.
+
 ## CPU-first capture lifetime: real standalone GPU regression
 
 The [retention correction](../native/drafts/webgpu-capture-retention/README.md)

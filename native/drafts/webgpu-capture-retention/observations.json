@@ -20,18 +20,21 @@
   "production_admitted": false,
   "corrected_runs": [
     {
+      "args": [],
       "returncode": 0,
       "stdout": "{\"passed\":true,\"hardware_adapter\":true,\"native_dawn_queue_executed\":true,\"baseline_compute_values\":64,\"glint_protected_inputs_tested\":true,\"browser_integrated\":false}\r\n",
       "stderr": "Direct readback raw mismatches=0 projected mismatches=100 healthy=1\r\nProtected direct texture readback matched (100 changed channels)\r\nProtected native buffer shader matched CPU reference\r\nDevice lost 2: Device was destroyed.\r\n",
       "browser_integrated": false
     },
     {
+      "args": [],
       "returncode": 0,
       "stdout": "{\"passed\":true,\"hardware_adapter\":true,\"native_dawn_queue_executed\":true,\"baseline_compute_values\":64,\"glint_protected_inputs_tested\":true,\"browser_integrated\":false}\r\n",
       "stderr": "Direct readback raw mismatches=0 projected mismatches=100 healthy=1\r\nProtected direct texture readback matched (100 changed channels)\r\nProtected native buffer shader matched CPU reference\r\nDevice lost 2: Device was destroyed.\r\n",
       "browser_integrated": false
     },
     {
+      "args": [],
       "returncode": 0,
       "stdout": "{\"passed\":true,\"hardware_adapter\":true,\"native_dawn_queue_executed\":true,\"baseline_compute_values\":64,\"glint_protected_inputs_tested\":true,\"browser_integrated\":false}\r\n",
       "stderr": "Direct readback raw mismatches=0 projected mismatches=100 healthy=1\r\nProtected direct texture readback matched (100 changed channels)\r\nProtected native buffer shader matched CPU reference\r\nDevice lost 2: Device was destroyed.\r\n",
@@ -41,7 +44,7 @@
   "public_inputs_sha256": {
     "next.patch": "ad31c1ce802811cfd68459b3df8b88add8c11222dcf6502e668dae1039e6162b",
     "native_probe.cc": "351e981b0e5c6f7f4b4bed477107c1f7783e3dbd278acd27f7ceabbab9199d00",
-    "CMakeLists.txt": "601edf35b979756a7c70e949adc448af8bbcc8d7a28fcbee26ccc7cfe44a1021"
+    "CMakeLists.txt": "b2980cd822fa3da7ddbc198e80fbacdf23a2e9b48baf3b9e92a2b5389a7a7645"
   },
   "patch_replay_reverse_passed": true,
   "observer_content_hash_encoding": "UTF-8 LF",

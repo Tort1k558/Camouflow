@@ -59,3 +59,7 @@ add_executable(glint_dawn_probe native_probe.cc)
 target_link_libraries(glint_dawn_probe PRIVATE dawn::dawn_native dawn::dawn_proc dawn::dawncpp_headers)
 
 target_include_directories(glint_dawn_probe BEFORE PRIVATE "${GLINT_SOURCE}" "${CHROMIUM_ROOT}")
+
+add_executable(glint_wire_probe wire_probe.cc "${DAWN_SOURCE}/src/dawn/utils/TerribleCommandBuffer.cpp" "${GLINT_SOURCE}/gpu/command_buffer/service/glint_webgpu_wire_filter.cc")
+target_link_libraries(glint_wire_probe PRIVATE dawn::dawn_native dawn::dawn_proc dawn::dawn_wire dawn::dawncpp_headers)
+target_include_directories(glint_wire_probe BEFORE PRIVATE "${GLINT_SOURCE}" "${CHROMIUM_ROOT}" "${DAWN_SOURCE}")

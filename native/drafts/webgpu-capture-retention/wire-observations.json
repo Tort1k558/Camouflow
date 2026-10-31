@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "scope": "Actual standalone Dawn Wire client/server plus native D3D12 GPU; not Chromium GPU process or browser",
+  "corrected_runs": [
+    {
+      "args": [],
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": "",
+      "browser_integrated": false
+    },
+    {
+      "args": [],
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": "",
+      "browser_integrated": false
+    },
+    {
+      "args": [],
+      "returncode": 0,
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stderr": "",
+      "browser_integrated": false
+    }
+  ],
+  "without_filter_negative_control": {
+    "args": [
+      "--without-filter"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 174\r\n",
+    "browser_integrated": false
+  },
+  "native_d3d12_queue_executed": true,
+  "wire_executed": true,
+  "observer_delivery_called_manually": false,
+  "chromium_miracle_ptr_executed": false,
+  "chromium_gpu_process_executed": false,
+  "browser_integrated": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "clean_reproduction_automated": false,
+  "public_inputs_sha256": {
+    "CMakeLists.txt": "b2980cd822fa3da7ddbc198e80fbacdf23a2e9b48baf3b9e92a2b5389a7a7645",
+    "wire_probe.cc": "3cacf81e36029c401201358a80d391233ea2cfebecbcfb117bfe14baab105662"
+  },
+  "executable_sha256": "8160b27e543990281b5a130821ee0b3fc20073d622c10234a5c0fb175dde7f33",
+  "public_inputs_match_compiled_inputs": true
+}
