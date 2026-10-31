@@ -1,0 +1,251 @@
+--- a/compute_test.cc
++++ b/compute_test.cc
+@@ -17,9 +17,11 @@
+ 
+ #include "buffer_scatter.h"
+ #include "gpu/command_buffer/common/glint/canvas_readback_candidate.h"
++#include "projected_buffer.h"
+ 
+ using Microsoft::WRL::ComPtr;
+-size_t assertions = 0, cases = 0, changed_channels = 0, rejected = 0;
++size_t assertions = 0, cases = 0, changed_channels = 0, rejected = 0,
++       budget_rejections = 0, cancelled_cases = 0;
+ void Check(bool valid, int line) {
+   ++assertions;
+   if (!valid) {
+@@ -80,7 +82,7 @@
+ 
+ using glint::candidate::BufferScatterParameters;
+ struct Output {
+-  std::vector<uint8_t> shadow, consumed, projected;
++  std::vector<uint8_t> shadow, consumed, projected, original;
+ };
+ class Compute {
+  public:
+@@ -172,6 +174,8 @@
+         Buffer(device_.Get(), initial.size(), D3D12_HEAP_TYPE_READBACK);
+     auto projected_read =
+         Buffer(device_.Get(), input.size(), D3D12_HEAP_TYPE_READBACK);
++    auto original_read =
++        Buffer(device_.Get(), initial.size(), D3D12_HEAP_TYPE_READBACK);
+     void* mapped = nullptr;
+     const D3D12_RANGE no_read{0, 0};
+     Ok(upload->Map(0, &no_read, &mapped));
+@@ -228,7 +232,7 @@
+     Transition(cmd.Get(), projected.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+     Transition(cmd.Get(), shadow.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+-               D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
++               D3D12_RESOURCE_STATE_COPY_SOURCE);
+     Transition(cmd.Get(), consumed.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+     cmd->SetComputeRootSignature(root_.Get());
+@@ -248,36 +252,138 @@
+     Transition(cmd.Get(), projected.Get(),
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+-    bind(1, 2);
+-    for (const auto& params : mappings) {
+-      CHECK(params.destination_bytes <= initial.size() &&
+-            params.protected_bytes <= input.size());
+-      cmd->SetComputeRoot32BitConstants(2, 16, &params, 0);
+-      const uint32_t threads = (params.region_bytes + 3) / 4;
+-      cmd->Dispatch(std::min(64u, (threads + 63) / 64), (threads + 4095) / 4096,
+-                    1);
+-      D3D12_RESOURCE_BARRIER barrier{};
+-      barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+-      barrier.UAV.pResource = shadow.Get();
+-      cmd->ResourceBarrier(1, &barrier);
+-    }
+-    Transition(cmd.Get(), shadow.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+-               D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
++    using namespace glint::candidate::d3d12;
++    CHECK(mappings.size() % 2 == 0);
++    std::vector<ProjectedBufferRegion> regions;
++    ComPtr<IUnknown> plane_owner, original_owner;
++    Ok(projected.As(&plane_owner));
++    Ok(shadow.As(&original_owner));
++    for (size_t i = 0; i < mappings.size() / 2; ++i) {
++      regions.push_back({projected, plane_owner, mappings[i]});
++    }
++    const uint64_t logical_bytes = regions[0].parameters.destination_bytes;
++    auto budget = std::make_shared<CaptureMemoryBudget>(1024 * 1024);
++    const uint64_t completion = serial_ + 1;
++    for (size_t invalid = 0; invalid < 13; ++invalid) {
++      auto bad = regions;
++      IUnknown* owner = original_owner.Get();
++      bool initialized = true;
++      uint64_t serial = completion;
++      ID3D12Resource* raw = shadow.Get();
++      uint64_t logical = logical_bytes;
++      if (invalid == 0) {
++        initialized = false;
++      }
++      if (invalid == 1) {
++        owner = nullptr;
++      }
++      if (invalid == 2) {
++        bad[0].source_retirement.Reset();
++      }
++      if (invalid == 3) {
++        bad[0].canonical_source = shadow;
++      }
++      if (invalid == 4) {
++        ++bad[0].parameters.destination_bytes;
++      }
++      if (invalid == 5) {
++        bad[0].parameters.region_bytes = 0;
++      }
++      if (invalid == 6) {
++        bad[0].parameters.reserved = 1;
++      }
++      if (invalid == 7) {
++        bad.push_back(bad[0]);
++      }
++      if (invalid == 8) {
++        serial = 0;
++      }
++      if (invalid == 9) {
++        serial = UINT64_MAX;
++      }
++      if (invalid == 10) {
++        logical = 0;
++      }
++      if (invalid == 11) {
++        raw = shadow_read.Get();
++      }
++      if (invalid == 12) {
++        serial = serial_;
++      }
++      std::unique_ptr<ProjectedBuffer> denied;
++      CHECK(ProjectedBuffer::Record(device_.Get(), cmd.Get(), raw, owner,
++                                    logical, initialized, bad, root_.Get(),
++                                    pipelines_[1].Get(), fence_.Get(), serial,
++                                    budget, &denied) == E_INVALIDARG);
++      CHECK(!denied && budget->used_bytes() == 0);
++      ++budget_rejections;
++    }
++    auto small_budget = std::make_shared<CaptureMemoryBudget>(1);
++    std::unique_ptr<ProjectedBuffer> denied;
++    CHECK(ProjectedBuffer::Record(device_.Get(), cmd.Get(), shadow.Get(),
++                                  original_owner.Get(), logical_bytes, true,
++                                  regions, root_.Get(), pipelines_[1].Get(),
++                                  fence_.Get(), completion, small_budget,
++                                  &denied) == E_OUTOFMEMORY);
++    CHECK(!denied && small_budget->used_bytes() == 0);
++    ++budget_rejections;
++    std::unique_ptr<ProjectedBuffer> first, second;
++    Ok(ProjectedBuffer::Record(device_.Get(), cmd.Get(), shadow.Get(),
++                               original_owner.Get(), logical_bytes, true,
++                               regions, root_.Get(), pipelines_[1].Get(),
++                               fence_.Get(), completion, budget, &first));
++    CHECK(first && first->buffer() != shadow.Get());
++    const auto first_charge = first->allocation_bytes();
++    CHECK(first_charge > 0 && budget->used_bytes() == first_charge);
++    auto hold_first = first->retirement_handle();
++    auto first_marker = first->submission_marker();
++    Ok(ProjectedBuffer::Record(device_.Get(), cmd.Get(), first->buffer(),
++                               hold_first.Get(), logical_bytes, true, regions,
++                               root_.Get(), pipelines_[1].Get(), fence_.Get(),
++                               completion, budget, &second));
++    CHECK(second && second->buffer() != first->buffer());
++    const auto total_charge = first_charge + second->allocation_bytes();
++    CHECK(budget->used_bytes() == total_charge);
++    auto hold_second = second->retirement_handle();
++    auto second_marker = second->submission_marker();
++    auto* private_shadow = second->buffer();
++    if ((edge.key[0] & 1) != 0) {
++      first.reset();
++      second.reset();
++      ++cancelled_cases;
++    }
++    CHECK(!first_marker->load() && !second_marker->load() &&
++          budget->used_bytes() == total_charge);
++    // Restore application state after the private helper replaced
++    // root/pipeline/heap bindings.
++    auto private_cpu = descriptors->GetCPUDescriptorHandleForHeapStart();
++    private_cpu.ptr += increment * 4;
++    D3D12_SHADER_RESOURCE_VIEW_DESC private_srv{};
++    private_srv.Format = DXGI_FORMAT_R32_TYPELESS;
++    private_srv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
++    private_srv.Shader4ComponentMapping =
++        D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
++    private_srv.Buffer.NumElements = static_cast<UINT>(initial.size() / 4);
++    private_srv.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
++    device_->CreateShaderResourceView(private_shadow, &private_srv,
++                                      private_cpu);
++    cmd->SetComputeRootSignature(root_.Get());
++    cmd->SetDescriptorHeaps(1, heaps);
+     bind(2, 4);
+     BufferScatterParameters consume{};
+     consume.destination_bytes = static_cast<uint32_t>(initial.size());
+     cmd->SetComputeRoot32BitConstants(2, 16, &consume, 0);
+     const uint32_t words = static_cast<uint32_t>(initial.size() / 4);
+     cmd->Dispatch(std::min(64u, (words + 63) / 64), (words + 4095) / 4096, 1);
+-    Transition(cmd.Get(), shadow.Get(),
+-               D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+-               D3D12_RESOURCE_STATE_COPY_SOURCE);
++
+     Transition(cmd.Get(), consumed.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                D3D12_RESOURCE_STATE_COPY_SOURCE);
+     Transition(cmd.Get(), projected.Get(),
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+                D3D12_RESOURCE_STATE_COPY_SOURCE);
+-    cmd->CopyBufferRegion(shadow_read.Get(), 0, shadow.Get(), 0,
++    cmd->CopyBufferRegion(shadow_read.Get(), 0, private_shadow, 0,
++                          initial.size());
++    cmd->CopyBufferRegion(original_read.Get(), 0, shadow.Get(), 0,
+                           initial.size());
+     cmd->CopyBufferRegion(consumed_read.Get(), 0, consumed.Get(), 0,
+                           initial.size());
+@@ -286,6 +392,8 @@
+     Ok(cmd->Close());
+     ID3D12CommandList* lists[] = {cmd.Get()};
+     queue_->ExecuteCommandLists(1, lists);
++    first_marker->store(true);
++    second_marker->store(true);
+     const uint64_t serial = ++serial_;
+     Ok(queue_->Signal(fence_.Get(), serial));
+     HANDLE event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+@@ -305,9 +413,19 @@
+       resource->Unmap(0, &no_read);
+       return result;
+     };
+-    return {read(shadow_read.Get(), initial.size()),
+-            read(consumed_read.Get(), initial.size()),
+-            read(projected_read.Get(), input.size())};
++    Output result{read(shadow_read.Get(), initial.size()),
++                  read(consumed_read.Get(), initial.size()),
++                  read(projected_read.Get(), input.size()),
++                  read(original_read.Get(), initial.size())};
++    first.reset();
++    hold_first.Reset();
++    CHECK(budget->used_bytes() ==
++          total_charge);  // Dependent shadow still owns the first quota lease.
++    second.reset();
++    CHECK(budget->used_bytes() == total_charge);
++    hold_second.Reset();
++    CHECK(budget->used_bytes() == 0);
++    return result;
+   }
+ 
+  private:
+@@ -423,6 +541,7 @@
+   mappings.insert(mappings.end(), repeated.begin(), repeated.end());
+   const auto output = gpu.Run(input, initial, edge, mappings);
+   CHECK(output.projected == projected_expected);
++  CHECK(output.original == initial);
+   for (size_t i = 0; i < expected.size(); ++i) {
+     CHECK(output.shadow[i] == expected[i]);
+     CHECK(output.consumed[i] == static_cast<uint8_t>(expected[i] ^ 0xa5));
+@@ -490,7 +609,8 @@
+   }
+   CHECK(changed_channels > 0);
+   std::printf(
+-      R"({"passed":true,"hardware_adapter":true,"cases":%zu,"assertions":%zu,"changed_channels":%zu,"rejected_parameters":%zu,"gpu_projection_scatter_consumer_verified":true,"split_only_scatter_verified":true,"duplicate_scatter_verified":true,"protected_source_unchanged":true,"native_binding_routing_installed":false,"browser_integrated":false})"
++      R"({"passed":true,"hardware_adapter":true,"cases":%zu,"assertions":%zu,"changed_channels":%zu,"rejected_parameters":%zu,"budget_rejections":%zu,"cpu_cancel_cases":%zu,"gpu_projection_scatter_consumer_verified":true,"budgeted_shadow_helper_executed":true,"dependent_quota_lifetime_verified":true,"original_buffer_unchanged":true,"native_binding_routing_installed":false,"browser_integrated":false})"
+       "\n",
+-      cases, assertions, changed_channels, rejected);
++      cases, assertions, changed_channels, rejected, budget_rejections,
++      cancelled_cases);
+ }

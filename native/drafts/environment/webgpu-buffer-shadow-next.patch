@@ -1,0 +1,379 @@
+--- a/third_party/dawn/src/dawn/native/BUILD.gn
++++ b/third_party/dawn/src/dawn/native/BUILD.gn
+@@ -624,6 +624,9 @@
+       "d3d12/GlintTextureProjectionD3D12.cpp",
+       "d3d12/GlintTextureProjectionD3D12.h",
+       "d3d12/GlintEdgeProjectionShader.h",
++      "d3d12/glint/buffer_scatter_parameters.h",
++      "d3d12/glint/projected_buffer.cc",
++      "d3d12/glint/projected_buffer.h",
+       "d3d12/glint/projected_texture.cc",
+       "d3d12/glint/projected_texture.h",
+       "d3d12/glint/texture_capture.cc",
+--- a/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h
+@@ -25,6 +25,8 @@
+     friend class TextureCapture;
+     friend class CaptureRetirement;
+     friend class ProjectedTexture;
++    friend class ProjectedBuffer;
++    friend class ProjectedBufferRetirement;
+     friend class ProjectedTextureRetirement;
+     bool Reserve(uint64_t bytes);
+     void Release(uint64_t bytes);
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/projected_buffer.h
+@@ -0,0 +1,52 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#ifndef GLINT_D3D12_PROJECTED_BUFFER_H_
++#define GLINT_D3D12_PROJECTED_BUFFER_H_
++#include <array>
++
++#include "buffer_scatter_parameters.h"
++#include "texture_capture.h"
++
++namespace glint::candidate::d3d12 {
++struct ProjectedBufferRegion {
++    Microsoft::WRL::ComPtr<ID3D12Resource> canonical_source;
++    Microsoft::WRL::ComPtr<IUnknown> source_retirement;
++    BufferScatterParameters parameters;
++};
++
++class ProjectedBuffer {
++  public:
++    ProjectedBuffer(const ProjectedBuffer&) = delete;
++    ProjectedBuffer& operator=(const ProjectedBuffer&) = delete;
++    // Caller proves native policy/epoch and immutable canonical-plane identities.
++    // Raw allocation must be initialized and COPY_SOURCE; planes must be private
++    // DEFAULT-heap buffers in NON_PIXEL_SHADER_RESOURCE. Requires an open DIRECT
++    // list and the trusted scatter_main root/pipeline ABI. Clobbers compute state.
++    static HRESULT Record(ID3D12Device* device,
++                          ID3D12GraphicsCommandList* commands,
++                          ID3D12Resource* original,
++                          IUnknown* original_retirement,
++                          uint64_t logical_bytes,
++                          bool allocation_initialized,
++                          std::span<const ProjectedBufferRegion> regions,
++                          ID3D12RootSignature* root,
++                          ID3D12PipelineState* pipeline,
++                          ID3D12Fence* fence,
++                          uint64_t completion_value,
++                          const std::shared_ptr<CaptureMemoryBudget>& budget,
++                          std::unique_ptr<ProjectedBuffer>* result);
++    // Borrowed GENERIC_READ resource. Every consumer must retain retirement_handle(),
++    // including dependent shadows; retaining only the resource loses quota ownership.
++    ID3D12Resource* buffer() const { return buffer_; }
++    Microsoft::WRL::ComPtr<IUnknown> retirement_handle() const { return retirement_; }
++    std::shared_ptr<std::atomic<bool>> submission_marker() const { return submitted_; }
++    uint64_t allocation_bytes() const { return allocation_bytes_; }
++
++  private:
++    ProjectedBuffer() = default;
++    ID3D12Resource* buffer_ = nullptr;
++    Microsoft::WRL::ComPtr<IUnknown> retirement_;
++    std::shared_ptr<std::atomic<bool>> submitted_;
++    uint64_t allocation_bytes_ = 0;
++};
++}  // namespace glint::candidate::d3d12
++#endif
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/projected_buffer.cc
+@@ -0,0 +1,277 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#include "projected_buffer.h"
++
++#include <algorithm>
++#include <limits>
++#include <new>
++
++namespace glint::candidate::d3d12 {
++using Microsoft::WRL::ComPtr;
++namespace {
++constexpr size_t kRegionLimit = 16;
++constexpr uint64_t kDescriptorCharge = 64 * 1024;
++bool SameDevice(ID3D12Device* device, ID3D12DeviceChild* child) {
++    if (!child) {
++        return false;
++    }
++    ComPtr<ID3D12Device> owner;
++    ComPtr<IUnknown> expected, actual;
++    return SUCCEEDED(child->GetDevice(IID_PPV_ARGS(&owner))) && SUCCEEDED(owner.As(&actual)) &&
++           SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&expected))) &&
++           expected.Get() == actual.Get();
++}
++void Transition(ID3D12GraphicsCommandList* commands,
++                ID3D12Resource* resource,
++                D3D12_RESOURCE_STATES before,
++                D3D12_RESOURCE_STATES after) {
++    D3D12_RESOURCE_BARRIER barrier{};
++    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
++    barrier.Transition.pResource = resource;
++    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
++    barrier.Transition.StateBefore = before;
++    barrier.Transition.StateAfter = after;
++    commands->ResourceBarrier(1, &barrier);
++}
++bool BufferShape(const D3D12_RESOURCE_DESC& desc) {
++    return desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
++           desc.Format == DXGI_FORMAT_UNKNOWN && desc.Width && desc.Width % 4 == 0 &&
++           desc.Width <= kBufferScatterByteLimit && desc.Height == 1 &&
++           desc.DepthOrArraySize == 1 && desc.MipLevels == 1 && desc.SampleDesc.Count == 1 &&
++           desc.SampleDesc.Quality == 0 && desc.Layout == D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
++}
++}  // namespace
++
++class ProjectedBufferRetirement final : public IUnknown {
++  public:
++    ProjectedBufferRetirement(std::shared_ptr<CaptureMemoryBudget> budget, uint64_t bytes)
++        : budget_(std::move(budget)), bytes_(bytes) {}
++    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** result) override {
++        if (!result) {
++            return E_POINTER;
++        }
++        *result = nullptr;
++        if (iid != __uuidof(IUnknown)) {
++            return E_NOINTERFACE;
++        }
++        *result = static_cast<IUnknown*>(this);
++        AddRef();
++        return S_OK;
++    }
++    ULONG STDMETHODCALLTYPE AddRef() override {
++        return references_.fetch_add(1, std::memory_order_relaxed) + 1;
++    }
++    ULONG STDMETHODCALLTYPE Release() override {
++        const ULONG left = references_.fetch_sub(1, std::memory_order_acq_rel) - 1;
++        if (!left) {
++            delete this;
++        }
++        return left;
++    }
++    ComPtr<ID3D12Resource> original, shadow;
++    ComPtr<IUnknown> original_owner;
++    std::array<ComPtr<ID3D12Resource>, kRegionLimit> planes;
++    std::array<ComPtr<IUnknown>, kRegionLimit> leases;
++    ComPtr<ID3D12DescriptorHeap> descriptors;
++    ComPtr<ID3D12RootSignature> root;
++    ComPtr<ID3D12PipelineState> pipeline;
++    ComPtr<ID3D12Fence> fence;
++
++  private:
++    ~ProjectedBufferRetirement() {
++        original.Reset();
++        shadow.Reset();
++        for (auto& source : planes) {
++            source.Reset();
++        }
++        for (auto& owner : leases) {
++            owner.Reset();
++        }
++        descriptors.Reset();
++        root.Reset();
++        pipeline.Reset();
++        fence.Reset();
++        original_owner.Reset();
++        budget_->Release(bytes_);
++    }
++    std::atomic<ULONG> references_{1};
++    std::shared_ptr<CaptureMemoryBudget> budget_;
++    uint64_t bytes_;
++};
++
++HRESULT ProjectedBuffer::Record(ID3D12Device* device,
++                                ID3D12GraphicsCommandList* commands,
++                                ID3D12Resource* original,
++                                IUnknown* original_retirement,
++                                uint64_t logical_bytes,
++                                bool allocation_initialized,
++                                std::span<const ProjectedBufferRegion> regions,
++                                ID3D12RootSignature* root,
++                                ID3D12PipelineState* pipeline,
++                                ID3D12Fence* fence,
++                                uint64_t completion_value,
++                                const std::shared_ptr<CaptureMemoryBudget>& budget,
++                                std::unique_ptr<ProjectedBuffer>* result) {
++    if (!result || *result || !device || !commands || !original || !original_retirement || !root ||
++        !pipeline || !fence || !budget || !allocation_initialized || !logical_bytes ||
++        logical_bytes > kBufferScatterByteLimit || regions.empty() ||
++        regions.size() > kRegionLimit || !completion_value ||
++        completion_value == std::numeric_limits<uint64_t>::max() || !budget->limit_bytes()) {
++        return E_INVALIDARG;
++    }
++    if (commands->GetType() != D3D12_COMMAND_LIST_TYPE_DIRECT || !SameDevice(device, commands) ||
++        !SameDevice(device, original) || !SameDevice(device, root) ||
++        !SameDevice(device, pipeline) || !SameDevice(device, fence)) {
++        return E_INVALIDARG;
++    }
++    const uint64_t completed = fence->GetCompletedValue();
++    if (completed == std::numeric_limits<uint64_t>::max()) {
++        return DXGI_ERROR_DEVICE_REMOVED;
++    }
++    if (completed >= completion_value) {
++        return E_INVALIDARG;
++    }
++    auto desc = original->GetDesc();
++    if (!BufferShape(desc) || logical_bytes > desc.Width) {
++        return E_INVALIDARG;
++    }
++    D3D12_HEAP_PROPERTIES original_heap{};
++    D3D12_HEAP_FLAGS original_flags{};
++    if (FAILED(original->GetHeapProperties(&original_heap, &original_flags)) ||
++        (original_heap.Type != D3D12_HEAP_TYPE_DEFAULT &&
++         original_heap.Type != D3D12_HEAP_TYPE_UPLOAD) ||
++        (original_flags & (D3D12_HEAP_FLAG_SHARED | D3D12_HEAP_FLAG_SHARED_CROSS_ADAPTER))) {
++        return E_INVALIDARG;
++    }
++    for (size_t index = 0; index < regions.size(); ++index) {
++        const auto& region = regions[index];
++        const auto& p = region.parameters;
++        if (!region.canonical_source || !region.source_retirement ||
++            region.canonical_source.Get() == original ||
++            !SameDevice(device, region.canonical_source.Get()) ||
++            p.destination_bytes != logical_bytes || !p.region_bytes ||
++            p.destination_offset > logical_bytes ||
++            p.region_bytes > logical_bytes - p.destination_offset ||
++            p.prefix_bytes >= p.region_bytes || !p.source_pitch ||
++            p.initial_column >= p.source_pitch || !p.copy_width || !p.copy_height ||
++            p.initial_row >= p.copy_height || !p.full_width || !p.full_height ||
++            p.full_width > 8192 || p.full_height > 8192 || p.source_x > p.full_width ||
++            p.source_y > p.full_height || p.copy_width > p.full_width - p.source_x ||
++            p.copy_height > p.full_height - p.source_y || p.bgra > 1 || p.reserved ||
++            uint64_t{p.full_width} * p.full_height * 4 != p.protected_bytes ||
++            p.protected_bytes > kBufferScatterByteLimit) {
++            return E_INVALIDARG;
++        }
++        const auto source_desc = region.canonical_source->GetDesc();
++        D3D12_HEAP_PROPERTIES heap{};
++        D3D12_HEAP_FLAGS flags{};
++        if (!BufferShape(source_desc) || p.protected_bytes > source_desc.Width ||
++            (source_desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) ||
++            FAILED(region.canonical_source->GetHeapProperties(&heap, &flags)) ||
++            heap.Type != D3D12_HEAP_TYPE_DEFAULT ||
++            (flags & (D3D12_HEAP_FLAG_SHARED | D3D12_HEAP_FLAG_SHARED_CROSS_ADAPTER))) {
++            return E_INVALIDARG;
++        }
++        for (size_t prior = 0; prior < index; ++prior) {
++            const auto& other = regions[prior].parameters;
++            if (uint64_t{other.destination_offset} + other.region_bytes > p.destination_offset &&
++                uint64_t{p.destination_offset} + p.region_bytes > other.destination_offset) {
++                return E_INVALIDARG;
++            }
++        }
++    }
++    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
++    const auto allocation = device->GetResourceAllocationInfo(0, 1, &desc);
++    if (!allocation.SizeInBytes || allocation.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
++        allocation.SizeInBytes > std::numeric_limits<uint64_t>::max() - kDescriptorCharge) {
++        return E_INVALIDARG;
++    }
++    const uint64_t charge = allocation.SizeInBytes + kDescriptorCharge;
++    if (!budget->Reserve(charge)) {
++        return E_OUTOFMEMORY;
++    }
++    ComPtr<ProjectedBufferRetirement> hold;
++    hold.Attach(new (std::nothrow) ProjectedBufferRetirement(budget, charge));
++    if (!hold) {
++        budget->Release(charge);
++        return E_OUTOFMEMORY;
++    }
++    D3D12_HEAP_PROPERTIES heap{};
++    heap.Type = D3D12_HEAP_TYPE_DEFAULT;
++    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
++    HRESULT status = device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
++                                                     D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
++                                                     IID_PPV_ARGS(&hold->shadow));
++    if (FAILED(status)) {
++        return status;
++    }
++    D3D12_DESCRIPTOR_HEAP_DESC heap_desc{};
++    heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
++    heap_desc.NumDescriptors = static_cast<UINT>(regions.size() * 2);
++    heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
++    status = device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&hold->descriptors));
++    if (FAILED(status)) {
++        return status;
++    }
++    auto projected = std::unique_ptr<ProjectedBuffer>(new (std::nothrow) ProjectedBuffer());
++    if (!projected) {
++        return E_OUTOFMEMORY;
++    }
++    projected->submitted_ = std::make_shared<std::atomic<bool>>(false);
++    hold->original = original;
++    hold->original_owner = original_retirement;
++    hold->root = root;
++    hold->pipeline = pipeline;
++    hold->fence = fence;
++    const UINT increment = device->GetDescriptorHandleIncrementSize(heap_desc.Type);
++    auto cpu = hold->descriptors->GetCPUDescriptorHandleForHeapStart();
++    for (size_t index = 0; index < regions.size(); ++index) {
++        const auto& region = regions[index];
++        hold->planes[index] = region.canonical_source;
++        hold->leases[index] = region.source_retirement;
++        D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
++        srv.Format = DXGI_FORMAT_R32_TYPELESS;
++        srv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
++        srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
++        srv.Buffer.NumElements = static_cast<UINT>(region.canonical_source->GetDesc().Width / 4);
++        srv.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
++        device->CreateShaderResourceView(region.canonical_source.Get(), &srv, cpu);
++        cpu.ptr += increment;
++        D3D12_UNORDERED_ACCESS_VIEW_DESC uav{};
++        uav.Format = DXGI_FORMAT_R32_TYPELESS;
++        uav.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
++        uav.Buffer.NumElements = static_cast<UINT>(desc.Width / 4);
++        uav.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
++        device->CreateUnorderedAccessView(hold->shadow.Get(), nullptr, &uav, cpu);
++        cpu.ptr += increment;
++    }
++    // No command recording occurs until validation, quotas, ownership and allocations succeed.
++    commands->CopyBufferRegion(hold->shadow.Get(), 0, original, 0, desc.Width);
++    Transition(commands, hold->shadow.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
++               D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
++    commands->SetComputeRootSignature(root);
++    commands->SetPipelineState(pipeline);
++    ID3D12DescriptorHeap* heaps[] = {hold->descriptors.Get()};
++    commands->SetDescriptorHeaps(1, heaps);
++    auto gpu = hold->descriptors->GetGPUDescriptorHandleForHeapStart();
++    for (const auto& region : regions) {
++        commands->SetComputeRootDescriptorTable(0, gpu);
++        gpu.ptr += increment;
++        commands->SetComputeRootDescriptorTable(1, gpu);
++        gpu.ptr += increment;
++        commands->SetComputeRoot32BitConstants(2, 16, &region.parameters, 0);
++        const uint32_t threads = (region.parameters.region_bytes + 3) / 4;
++        commands->Dispatch(std::min(64u, (threads + 63) / 64), (threads + 4095) / 4096, 1);
++        D3D12_RESOURCE_BARRIER barrier{};
++        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
++        barrier.UAV.pResource = hold->shadow.Get();
++        commands->ResourceBarrier(1, &barrier);
++    }
++    Transition(commands, hold->shadow.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
++               D3D12_RESOURCE_STATE_GENERIC_READ);
++    projected->buffer_ = hold->shadow.Get();
++    projected->allocation_bytes_ = charge;
++    projected->retirement_ = hold;
++    *result = std::move(projected);
++    return S_OK;
++}
++}  // namespace glint::candidate::d3d12
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/buffer_scatter_parameters.h
+@@ -0,0 +1,18 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#ifndef GLINT_BUFFER_SCATTER_PARAMETERS_H_
++#define GLINT_BUFFER_SCATTER_PARAMETERS_H_
++#include <cstdint>
++namespace glint::candidate {
++struct BufferScatterParameters {
++    uint32_t destination_offset, region_bytes, prefix_bytes, initial_row;
++    uint32_t initial_column, source_pitch, copy_width, copy_height;
++    uint32_t source_x, source_y, full_width, full_height;
++    uint32_t bgra, destination_bytes, protected_bytes, reserved;
++};
++static_assert(sizeof(BufferScatterParameters) == 64);
++constexpr uint64_t kBufferScatterByteLimit = 64 * 1024 * 1024;
++constexpr uint32_t kBufferScatterThreadsPerRow = 4096;
++
++}  // namespace glint::candidate
++
++#endif

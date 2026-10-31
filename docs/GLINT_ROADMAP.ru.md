@@ -2395,3 +2395,23 @@ Actual Dawn/Wire, DXC и browser consistency ещё не подтвержден�
 матрицу маршрутов/режимов. Не выполнять чужие скрипты на личных профилях и
 не публиковать hardware dumps. Этот план добавляет проверки, но не утверждает,
 что перечисленные модули уже реализованы.
+
+## Бюджетные GPU shadows — следующий связанный пакет
+
+Подготовлен [нативный helper](../native/drafts/webgpu-buffer-shadow/README.md):
+private shadow сохраняет полный размер исходного allocation, заменяет только
+отслеживаемые байты и удерживает владельцев ресурсов/квоты до завершения потребителей.
+Связанный shadow удерживает также квоту родителя; один COM-указатель этого не обеспечивает.
+
+| Проверка | Результат | Ограничение |
+| --- | --- | --- |
+| Replay / reverse | 17 пакетов, 84 файла | Только отдельный staging |
+| Нативный синтаксис | 14 translation units | Не линковка и не браузер |
+| Hardware normal / ASan | 58 случаев, 178 960 проверок в каждом | Standalone D3D12 helper, FXC |
+| Владение / бюджет | 812 отказов; 26 отмен CPU до submit | Не жизненный цикл реальной очереди Dawn |
+| Изменённые входы | 9 отказов до компиляции | Не аудит runtime-безопасности |
+
+Далее: immutable canonical GPU registry с проверкой device/policy/epoch,
+подключение binding/alias/dynamic-offset/writeback и ancestry для validated controls.
+После этого — actual Dawn/Wire, DXC и browser consistency. В выбранном браузере
+001–076 новый helper не включён; прежняя ошибка Canvas/GPU consistency не закрыта.

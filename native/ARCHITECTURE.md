@@ -1136,3 +1136,19 @@ new keys, while ordinary restarts preserve existing owned keys.
   cross-site privacy protection can be activated.
 - Own-fork Linux/macOS runtime, GPU/audio/Canvas protection and production
   security rebasing are not complete.
+
+## Budgeted GPU buffer helper (unselected)
+
+The [buffer-shadow packet](drafts/webgpu-buffer-shadow/README.md) adds a native
+D3D12 helper with allocation-size/descriptor budget accounting, full physical
+buffer preservation, canonical-plane leases and transitive retirement ownership.
+All structural validation and allocation precede command recording. Consumers
+must retain the retirement handle, not only the borrowed buffer COM resource.
+
+The seventeen-packet chain replays/reverses across 84 paths; fourteen native
+target-flag syntax units passed. The actual helper ran on hardware in standalone
+normal/ASan fixtures: 58 cases, 178,960 assertions, 812 helper/quota rejections and
+26 pre-submit CPU cancellation cases each. A dependent shadow retains upstream
+quota through final release. This does not establish immutable-plane authorization,
+native registry/binding/queue/Wire integration, DXC or browser consistency.
+Selected patches, runtime and privacy/production admission remain unchanged.

@@ -42,7 +42,7 @@ and state transitions precede shader consumption/readback. See also the
 1. Capture an immutable canonical GPU snapshot at copy-execution time; retaining
    the mutable original texture is insufficient.
 2. Bind snapshots to the native device/policy/epoch with bounded resource ownership.
-3. Add a budgeted per-logical-buffer shadow allocator; preserve dynamic offsets and
+3. Integrate the [standalone budgeted shadow helper](../webgpu-buffer-shadow/README.md); preserve dynamic offsets and
    aliases, route actual uniform/storage/control bindings and copy back writable ranges.
 4. Prove validated-scratch ancestry for projected logical indirect/count inputs.
 5. Verify DXC, actual Dawn/Wire execution, resource cancellation/device loss,

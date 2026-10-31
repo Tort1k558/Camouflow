@@ -17,7 +17,8 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def main():
+def main(*, module=MODULE, record_name='webgpu-buffer-scatter-observations.json',
+         expected_result=None, extension_required=False):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('chromium-root', 'sdk-root', 'work-dir'):
         parser.add_argument('--' + name, type=Path, required=True)
@@ -27,20 +28,28 @@ def main():
             or p.is_symlink() or p.is_junction() or p.drive.upper() != 'D:'
             for p in (chromium, sdk, out)) or not chromium.is_dir() or not sdk.is_dir()
             or out.exists() or not out.parent.is_dir()
-            or any(out.is_relative_to(p) or p.is_relative_to(out) for p in (MODULE, chromium, sdk))):
+            or any(out.is_relative_to(p) or p.is_relative_to(out) for p in (module, MODULE, chromium, sdk))):
         parser.error('Use canonical D: checkout/SDK and a fresh external D: output')
     if shutil.disk_usage(out.parent).free < 1024**3:
         parser.error('At least 1 GiB free on D: is required')
-    record_path = ENV / 'webgpu-buffer-scatter-observations.json'
+    record_path = ENV / record_name
     record = json.loads(record_path.read_bytes())
     source_gate = MODULE.parent / 'webgpu-execution-inputs/check.py'
     source_record = ENV / 'webgpu-execution-inputs-preparation.json'
     edge_shader = MODULE.parent / 'webgpu-edge-compute/edge_compute.hlsl'
-    expected = [(MODULE / name, value) for name, value in record['sources_sha256'].items()]
-    expected += [(Path(__file__), record['checker_sha256']),
+    expected = [(module / name, value) for name, value in record['sources_sha256'].items()]
+    expected += [(module / 'check.py', record['checker_sha256']),
                  (source_gate, record['source_gate_checker_sha256']),
                  (source_record, record['source_gate_record_sha256']),
                  (edge_shader, record['edge_shader_sha256'])]
+    if module != MODULE:
+        expected.append((Path(__file__), record['shared_checker_sha256']))
+    expected += [(MODULE / name, value) for name, value in record.get('dependency_sources_sha256', {}).items()]
+    extension = record.get('source_extension')
+    if extension_required and not extension:
+        parser.error('Missing required native shadow source extension')
+    if extension:
+        expected.append((ENV / extension['patch'], extension['patch_sha256']))
     for path, value in expected:
         if digest(path) != value:
             parser.error('Measured buffer-scatter source/dependency differs')
@@ -61,7 +70,7 @@ def main():
     environment = dict(os.environ, TMP=str(temp), TEMP=str(temp))
     report = {
         'schema': 1, 'passed': False, 'measurement_complete': False, 'runs': [],
-        'scope': __doc__, 'hardware_execution_verified': False,
+        'scope': record['scope'], 'hardware_execution_verified': False,
         'native_binding_routing_installed': False, 'native_immutable_gpu_snapshot_registry_implemented': False,
         'native_budgeted_shadow_buffer_allocator_implemented': False,
         'actual_native_device_queue_executed': False, 'actual_wire_server_roundtrip_executed': False,
@@ -82,16 +91,51 @@ def main():
         report['source_gate'] = {key: gate_report[key] for key in ('passed', 'measurement_complete', 'postguards_passed', 'runs')}
         guards.update({Path(p): value for p, value in gate_report['input_sha256'].items()})
         native = gate_dir / 'sources'
+        fixture = MODULE / 'compute_test.cc'
+        if extension:
+            for row in extension['sources']:
+                relative = Path(row['source'])
+                path = native / relative
+                if relative.is_absolute() or '..' in relative.parts or path != path.resolve():
+                    raise ValueError('Unsafe native shadow source path')
+                actual = digest(path) if path.is_file() else None
+                if actual != row['before_sha256'] or (actual is None and path.exists()):
+                    raise ValueError('Native shadow source preimage differs')
+            subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
+                            str(ENV / extension['patch'])], cwd=native, capture_output=True, check=True)
+            for row in extension['sources']:
+                path = native / row['source']
+                if not path.is_file() or digest(path) != row['after_sha256']:
+                    raise ValueError('Native shadow source result differs')
+                guards[path] = row['after_sha256']
+            fixture_dir = out / 'fixture'
+            fixture_dir.mkdir()
+            fixture = fixture_dir / 'compute_test.cc'
+            shutil.copyfile(MODULE / 'compute_test.cc', fixture)
+            subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
+                            str(module / record['fixture_patch'])], cwd=fixture_dir, capture_output=True, check=True)
+            if digest(fixture) != record['composed_fixture_sha256']:
+                raise ValueError('Native shadow hardware fixture differs')
+            guards[fixture] = digest(fixture)
+            abi = native / 'third_party/dawn/src/dawn/native/d3d12/glint/buffer_scatter_parameters.h'
+            if digest(abi) != digest(MODULE / 'buffer_scatter_parameters.h'):
+                raise ValueError('Native and shared scatter parameter ABI differ')
+            report['native_source_extension_verified'] = True
         math = native / 'gpu/command_buffer/common/glint'
         sources = [math / (name + '.cc') for name in (
             'canvas_readback_candidate', 'webgpu_readback_layout', 'webgpu_readback_provenance')]
-        sources.append(MODULE / 'compute_test.cc')
+        sources.append(fixture)
+        if extension:
+            sources += [native / 'third_party/dawn/src/dawn/native/d3d12/glint' / name
+                        for name in ('projected_buffer.cc', 'texture_capture.cc')]
         flags = [str(compiler), '/nologo', '/std:c++20', '/W4', '/WX', '/EHsc', '/MT',
                  '/Od', '/Z7', '/DNOMINMAX', '/DWIN32_LEAN_AND_MEAN', '/winsysroot:' + str(sdk)]
         flags += ['/imsvc' + str(sdk / 'VC/Tools/MSVC/14.51.36231/include')]
         flags += ['/imsvc' + str(sdk / 'Windows Kits/10/Include/10.0.28000.0' / kind)
                   for kind in ('ucrt', 'shared', 'um', 'winrt')]
-        flags += ['/I' + str(p) for p in (MODULE, native, chromium, chromium / 'third_party/boringssl/src/include')]
+        flags += ['/I' + str(p) for p in (module, MODULE,
+                  native / 'third_party/dawn/src/dawn/native/d3d12/glint',
+                  native, chromium, chromium / 'third_party/boringssl/src/include')]
         link = ['-fuse-ld=lld', '/link', *('/LIBPATH:' + str(p) for p in (
             sdk / 'VC/Tools/MSVC/14.51.36231/lib/x64',
             sdk / 'Windows Kits/10/Lib/10.0.28000.0/ucrt/x64',
@@ -119,15 +163,16 @@ def main():
             if result.returncode:
                 raise RuntimeError('Buffer-scatter hardware fixture execution failed')
             value = row['result'] = json.loads(result.stdout)
-            if not (value.get('passed') is True and value.get('hardware_adapter') is True
-                    and value.get('cases') == 58 and value.get('assertions') == 176704
-                    and value.get('rejected_parameters') == 696
-                    and value.get('gpu_projection_scatter_consumer_verified') is True
-                    and value.get('split_only_scatter_verified') is True
-                    and value.get('duplicate_scatter_verified') is True
-                    and value.get('protected_source_unchanged') is True
-                    and value.get('native_binding_routing_installed') is False
-                    and value.get('browser_integrated') is False):
+            required = expected_result if expected_result is not None else {
+                'passed': True, 'hardware_adapter': True, 'cases': 58, 'assertions': 176704,
+                'rejected_parameters': 696, 'gpu_projection_scatter_consumer_verified': True,
+                'split_only_scatter_verified': True, 'duplicate_scatter_verified': True,
+                'protected_source_unchanged': True, 'native_binding_routing_installed': False,
+                'browser_integrated': False,
+            }
+            if not isinstance(value, dict) or any(
+                    name not in value or type(value[name]) is not type(field) or value[name] != field
+                    for name, field in required.items()):
                 raise ValueError('Missing explicit standalone GPU scope')
             print(mode, result.stdout.strip(), flush=True)
         report.update(passed=True, measurement_complete=True, hardware_execution_verified=True)

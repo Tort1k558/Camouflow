@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Budgeted GPU shadow helper — standalone, not browser admission
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Source replay / reverse | 17 packets, 84 paths | Unselected staging; browser remains 001–076 |
+| Native syntax | 14 translation units passed | No component link or native queue execution |
+| Actual D3D12 helper, normal / ASan | 58 cases, 178,960 assertions each | FXC on one local hardware adapter |
+| Resource safety | 812 invalid/quota refusals; 26 CPU cancellation cases per run; dependent quota retained | Standalone ownership fixture, not Dawn queue lifetime |
+| Changed-input guard | 9 altered/missing dependency cases refused before compilation | Not a runtime security audit |
+
+[Sources and reproduction](../native/drafts/webgpu-buffer-shadow/README.md).
+Immutable registry, binding routing/write-back, actual Dawn/Wire and browser
+consistency remain open. The selected browser's negative consistency gate is unchanged.
+
 ## Tagged-byte GPU scatter primitive — not native binding integration
 
 | Gate | Result | Boundary |
