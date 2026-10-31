@@ -2592,3 +2592,24 @@ dispatch → copyback → capture, allocator retirement/cancellation/device loss
 настоящие padding clears, Wire и согласованность браузера ещё не проверены.
 Projected buffer inputs для indirect dispatch пока явно запрещены; render/bundles
 нуждаются в pass-wide routing. Новый runtime и production не допущены.
+
+## 31 октября — воспроизводимая GPU projection → native buffer descriptors цепочка
+
+[Общий аппаратный прогон](../native/drafts/webgpu-buffer-chain/README.md) теперь
+соединяет native seeded projection, immutable pixel plane, budgeted shadow и
+извлечённые native descriptor methods с реальным shader consumer. Приватный
+буфер получается из GPU plane, а не подставленного CPU-шаблона. Typed-texture и
+buffer consumers совпадают с CPU oracle после изменения исходной текстуры.
+
+| Проверка | Результат | Ограничение |
+| --- | --- | --- |
+| GPU normal / ASan | По 20 случаев / 193 424 проверки | Реальный D3D12, Dawn objects/descriptor allocator — mock |
+| Данные | Native RGBA/BGRA, typeless storage, immutable snapshot после source mutation | Не полный браузер |
+| Владение | Shared quota и dependent retirement assertions сохранены | Fixture-managed leases, не actual Dawn retirement |
+| Изменённые входы | 12 отказов до hardware compilation | 10 до любой компиляции, 2 после CPU source gate |
+
+CLI запускает CPU producer gate пакета 25 и проверяет source extension 26–27.
+Это не выполнение actual GlintTextureProjector::RecordBuffers, binding tracker,
+receipt issuer или Dawn queue. Combined dynamic roots/writable copyback остаются
+следующим расширением; у них пока отдельные проверки. Wire, device loss и
+согласованность браузера не подтверждены. Новый runtime/production не допущены.

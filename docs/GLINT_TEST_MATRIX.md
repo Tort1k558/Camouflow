@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## 2026-10-31: standalone GPU projection through native buffer descriptors
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Hardware normal/ASan | 20 cases / 193,424 assertions each | Native GPU projection/plane/shadow and extracted descriptor methods; Dawn objects/allocator mocked |
+| Consumers | Typed texture and raw buffer match CPU oracle after source mutation | No combined actual Dawn dispatch |
+| Source gate | Packet-25 producer CPU gate plus checked 26–27 extension | Not native receipt issuance |
+| Changed inputs | 12 refusals before hardware compilation | 10 before all compilation; 2 after the CPU source gate |
+
+The new buffer consumer uses GPU-produced projected data, not a CPU substitute.
+RGBA/BGRA layout, typeless storage, shared quota and dependent retirement remain
+checked. Actual native producer/tracker/queue, dynamic roots and writable copyback
+in this combined chain, Wire, device loss and browser consistency are not proved.
+Runtime selection and privacy/production admission are unchanged.
+
+
 ## 2026-10-31: direct compute routing and exact-scope receipts (unselected)
 
 | Gate | Measured result | Scope limit |

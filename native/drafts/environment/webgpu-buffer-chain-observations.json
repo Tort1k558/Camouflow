@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "scope": "Native GPU projection -> immutable plane -> budgeted shadow -> extracted buffer descriptors -> real hardware shader; Dawn objects/allocator mocked, not full native tracker/queue",
+  "sources_sha256": {
+    "compute_test.cc": "d0d8de2bb74932df8d2717f012f4ff78659c19109d0d07e49d848501b9e0bb9d",
+    "buffer_consumer.hlsl": "c51028985211389270f67ce4284501ca7da78be52bd02541a5ece6224be11655"
+  },
+  "checker_sha256": "00760e0a92c26b84b9bd601a1fedf8278ed9426a2a69ddc01d54b5e03189ccfa",
+  "shared_checker_sha256": "05d1b1f3554e853e3b17497f42aa4e3d59b99f8ec06240f2eec9d39f42094912",
+  "source_gate_checker_sha256": "d4b3f0540225e919a7bc026807f89b820f81fc540ace9022f1bfe14a21087e69",
+  "source_gate_record_sha256": "2023c45eb17ea8f58584d884567218e43fba442ed4078e325794a06c25110f89",
+  "edge_shader_sha256": "8df3080e76a56beff08ded188db011143924bdaec4c84c0dec520647aa02913a",
+  "dependency_files_sha256": {
+    "webgpu-shadow-texture/texture_consumer.hlsl": "638e1ae5186bac218b0d3776db17172b24d585cb96034e5ac75ff26004d37a44",
+    "webgpu-buffer-scatter/buffer_scatter.hlsl": "8b9cde56215ad5427f28e4bf763b4ab1730cb3ac14596d9b17ec1f1629129008",
+    "webgpu-buffer-bindings/check.py": "c9aff7141c9f4c8dc74ccfa3fdd44c9425e5570535b6add2ab7f94f6601cb31e",
+    "webgpu-buffer-bindings/descriptor_fixture.h": "90d8c5bb4c4feda725082c621c5e879a87a504f16005f1acf432389ee96b9324"
+  },
+  "source_extension": {
+    "prerequisites": [
+      {
+        "patch": "webgpu-buffer-routing-next.patch",
+        "sha256": "1259b6e3a1a96c6790eb0e0c02f500097151fa2c6d16466f2902e09c57190a52"
+      }
+    ],
+    "patch": "webgpu-buffer-receipt-next.patch",
+    "patch_sha256": "8910fa2a889102a5a5541bb30f2b6fd9b98cf321af9a89111926caaca3bb1aa2",
+    "sources": [
+      {
+        "source": "third_party/dawn/include/dawn/native/DawnNative.h",
+        "before_sha256": "8726996a4b4d6f6ce2301456ea8302fa1fb38b1c96d9b5ae815f23b4559e0793",
+        "after_sha256": "50197dd262d5816cd0d17ef1bbbe22b28ee67e5006efb8318618761ceeb4fe67"
+      },
+      {
+        "source": "third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp",
+        "before_sha256": "befc2c6d1d5e9c4f382c7c9afb14c4a3b28eba4406835b717cbb72a44eb9cfcf",
+        "after_sha256": "e94ede5cda790a4b0ec866df5900c59d8c071505583db2d1248c9da7d343f0b8"
+      },
+      {
+        "source": "gpu/command_buffer/service/glint_webgpu_readback_observer.h",
+        "before_sha256": "c31ac1d507cb66907b7723e92ad42406893d7cfdec2ebe1d6289b023e9587daa",
+        "after_sha256": "09f6ebaa06081ce21392894dd33868ba94749ce551acef02df87ab5b7b1e30fd"
+      },
+      {
+        "source": "gpu/command_buffer/service/glint_webgpu_readback_observer.cc",
+        "before_sha256": "b73e32a91a01f5f40a032462736f5ae61822edd98ab1ae18d1349db2d8735c22",
+        "after_sha256": "dd8822bf6d00651608447806cc93621843b13ae51d9c9c327159957f2312af09"
+      }
+    ]
+  },
+  "composed_fixture_sha256": "d0d8de2bb74932df8d2717f012f4ff78659c19109d0d07e49d848501b9e0bb9d",
+  "generated_sources_sha256": {
+    "native_method.inc": "0a3b827468c1da6b1a52ce49fe3323b763dfa2bd74d24fdc796caaba521d2d9f",
+    "descriptor_fixture.h": "90d8c5bb4c4feda725082c621c5e879a87a504f16005f1acf432389ee96b9324"
+  },
+  "full_python_baseline": {
+    "passed": true,
+    "postguards_passed": true,
+    "git_head": "7ad1930961a47c3cb85d1ab639c224a5de89d45a",
+    "counts": {
+      "tests": 5243,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5242
+    }
+  },
+  "actual_native_projection_and_budgeted_shadow_helpers_executed": true,
+  "extracted_native_descriptor_methods_executed": true,
+  "dawn_objects_and_descriptor_allocator_mocked": true,
+  "actual_glint_texture_projector_record_buffers_executed": false,
+  "actual_native_binding_tracker_apply_executed": false,
+  "dynamic_uniform_root_combined_chain_executed": false,
+  "writable_copyback_combined_chain_executed": false,
+  "native_receipt_issuer_executed": false,
+  "actual_native_device_queue_executed": false,
+  "actual_wire_server_roundtrip_executed": false,
+  "canvas_gpu_shader_consistency_resolved": false,
+  "runtime_verified": false,
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "public_checker_observation": {
+    "passed": true,
+    "measurement_complete": true,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": true,
+          "cases": 20,
+          "assertions": 193424,
+          "shared_quota_cases": 20,
+          "typed_texture_consumer_verified": true,
+          "canonical_plane_verified": true,
+          "native_buffer_descriptor_chain_verified": true,
+          "source_mutation_isolated": true,
+          "dependent_retirement_verified": true,
+          "browser_integrated": false
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": true,
+          "cases": 20,
+          "assertions": 193424,
+          "shared_quota_cases": 20,
+          "typed_texture_consumer_verified": true,
+          "canonical_plane_verified": true,
+          "native_buffer_descriptor_chain_verified": true,
+          "source_mutation_isolated": true,
+          "dependent_retirement_verified": true,
+          "browser_integrated": false
+        }
+      }
+    ],
+    "hardware_execution_verified": true,
+    "source_gate": {
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "runs": [
+        {
+          "sanitizer": "none",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "cases": 1216,
+            "assertions": 24288,
+            "native_producer_control_flow_executed": true,
+            "backend_mocked": true,
+            "actual_native_device_queue_executed": false
+          }
+        },
+        {
+          "sanitizer": "address",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "cases": 1216,
+            "assertions": 24288,
+            "native_producer_control_flow_executed": true,
+            "backend_mocked": true,
+            "actual_native_device_queue_executed": false
+          }
+        }
+      ]
+    },
+    "native_source_extension_verified": true,
+    "actual_native_device_queue_executed": false,
+    "actual_wire_server_roundtrip_executed": false,
+    "native_binding_routing_installed": false,
+    "privacy_admitted": false,
+    "production_admitted": false,
+    "postguards_passed": true
+  },
+  "changed_input_refusal": {
+    "passed": true,
+    "cases": [
+      {
+        "case": "packet",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "fixture",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "checker",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "shared-checker",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "source-gate-checker",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "source-gate-record",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "edge-shader",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "consumer-shader",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "descriptor-checker",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "descriptor-header",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": false,
+        "passed": true
+      },
+      {
+        "case": "generated-method-hash",
+        "returncode": 1,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": true,
+        "passed": true
+      },
+      {
+        "case": "generated-header-hash",
+        "returncode": 1,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": true,
+        "passed": true
+      }
+    ]
+  }
+}

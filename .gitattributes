@@ -194,3 +194,6 @@ native/drafts/webgpu-buffer-producer/*.py text eol=lf
 native/drafts/webgpu-buffer-producer/*.cc text eol=lf
 native/drafts/webgpu-buffer-receipt/*.py text eol=lf
 native/drafts/webgpu-buffer-receipt/*.cc text eol=lf
+native/drafts/webgpu-buffer-chain/*.py text eol=lf
+native/drafts/webgpu-buffer-chain/*.cc text eol=lf
+native/drafts/webgpu-buffer-chain/*.hlsl text eol=lf

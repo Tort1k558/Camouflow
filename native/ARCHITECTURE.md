@@ -1323,3 +1323,23 @@ capture execution on Dawn, allocator retirement/cancellation/device loss, native
 padding clears, Wire and browser consistency remain unverified. Projected buffer
 inputs on indirect dispatch remain denied; pass-wide render/bundle routing is open.
 Runtime selection and privacy/production admission are unchanged.
+
+## Standalone projection-to-buffer-descriptor hardware chain
+
+The [combined fixture](drafts/webgpu-buffer-chain/README.md) connects actual native
+seeded GPU projection, immutable native-format pixel planes and budgeted buffer
+shadows to extracted native WriteBufferDescriptor/PopulateGlintViews methods and
+a hardware shader consumer. The consumed buffer is GPU-produced, not another
+CPU-initialized pattern. Both typed-texture and raw-buffer consumers match the
+CPU oracle after source mutation; shared quotas and dependent leases remain tested.
+
+Normal/ASan each passed 20 cases / 193,424 assertions. The reproducible runner uses
+the packet-25 CPU producer gate and checked packet-26/27 source extension, and
+reuses the shared descriptor fixture. Twelve changed-input controls deny hardware
+compilation: ten before any compilation, two after the CPU source gate.
+
+Dawn objects/descriptor allocation remain mocked. Actual GlintTextureProjector
+RecordBuffers, native tracker/receipt/queue execution and dynamic/writable paths
+are not part of this combined proof. Fence/submission and lease retention are
+fixture-managed. Full native execution, Wire, device loss and browser consistency
+remain open; runtime selection and privacy/production admission are unchanged.
