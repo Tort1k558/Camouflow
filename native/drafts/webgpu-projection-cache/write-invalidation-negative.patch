@@ -1,0 +1,11 @@
+--- a/src/dawn/native/d3d12/TextureD3D12.cpp
++++ b/src/dawn/native/d3d12/TextureD3D12.cpp
+@@ -520,7 +520,7 @@
+     constexpr auto writes = D3D12_RESOURCE_STATE_COPY_DEST | D3D12_RESOURCE_STATE_RENDER_TARGET |
+                             D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_RESOLVE_DEST |
+                             D3D12_RESOURCE_STATE_DEPTH_WRITE;
+-    if ((newState & writes) != 0) {
++    if (false && (newState & writes) != 0) {
+         mGlintProjection.reset();
+         mGlintProjectionOwner = nullptr;
+     }

@@ -1,0 +1,181 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -29,7 +29,8 @@
+ }
+ 
+ int main(int argc, char** argv) {
+-    const bool byteBudget = argc == 2 && std::strcmp(argv[1], "--byte-budget") == 0;
++    const bool copyMutation = argc == 2 && std::strcmp(argv[1], "--mutation-copy") == 0;
++    const bool byteBudget = copyMutation || (argc == 2 && std::strcmp(argv[1], "--mutation-render") == 0);
+     const bool nativeLossBeforeMap = argc == 2 && std::strcmp(argv[1], "--native-loss-before-map") == 0;
+     const bool destroyDeviceAfterRequest = argc == 2 && std::strcmp(argv[1], "--device-destroy-before-response") == 0;
+     const bool lifetimeMode = nativeLossBeforeMap || destroyDeviceAfterRequest;
+@@ -172,7 +173,7 @@
+         gpu::webgpu::GlintReadbackLimits{});
+     Check(dawn::native::InstallGlintReadbackObserver(nativeDevice, observer));
+     if (byteBudget) {
+-        constexpr uint32_t side = 2048;
++        constexpr uint32_t side = 64;
+         constexpr uint32_t rowPitch = (side * 4 + 255) & ~255u;
+         constexpr uint64_t bufferBytes = uint64_t{side} * rowPitch;
+         Check(budget->limit_bytes() == 64 * 1024 * 1024);
+@@ -180,7 +181,7 @@
+         wgpu::TextureDescriptor descriptor{};
+         descriptor.size = {side, side, 1};
+         descriptor.format = wgpu::TextureFormat::RGBA8Unorm;
+-        descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::TextureBinding;
++        descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::TextureBinding;
+         auto texture = device.CreateTexture(&descriptor);
+         auto view = texture.CreateView();
+         auto initialize = device.CreateCommandEncoder();
+@@ -200,7 +201,7 @@
+                 return vec4f(positions[id], 0.0, 1.0);
+             }
+             @fragment fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
+-                if (position.x < 1024.0) { return vec4f(64.0, 128.0, 191.0, 255.0) / 255.0; }
++                if (position.x < 32.0) { return vec4f(64.0, 128.0, 191.0, 255.0) / 255.0; }
+                 return vec4f(191.0, 64.0, 128.0, 255.0) / 255.0;
+             }
+         )";
+@@ -304,6 +305,8 @@
+         retained.front().Unmap();
+         pump();
+         Check(!deviceLostDone.load() && budget->used_bytes() == charge);
++        auto verifyGPU = [&](const std::vector<uint8_t>& expectedLarge,
++                             const std::vector<uint8_t>& rawLarge, bool expectProtected) {
+ 
+         wgpu::BufferDescriptor sampleOutputDescriptor{};
+         sampleOutputDescriptor.size = 64;
+@@ -375,10 +378,14 @@
+             uint32_t expectedWord = 0, rawWord = 0;
+             std::memcpy(&expectedWord, expectedPixel.data(), 4);
+             std::memcpy(&rawWord, rawLarge.data() + offset, 4);
++            if (sampledWords[index] != (expectedWord ^ 0xa1b2c3d4u)) {
++                std::fprintf(stderr, "CACHE_MUTATION_STALE_GPU index=%zu actual=%u expected=%u\n",
++                             index, sampledWords[index], expectedWord ^ 0xa1b2c3d4u);
++            }
+             Check(sampledWords[index] == (expectedWord ^ 0xa1b2c3d4u));
+             if (expectedWord != rawWord) ++protectedSampleCount;
+         }
+-        Check(protectedSampleCount > 0);
++        Check((protectedSampleCount > 0) == expectProtected);
+         sampleRead.Unmap();
+         sampleRead.Destroy();
+         sampleOutput.Destroy();
+@@ -386,58 +393,72 @@
+         sampleEntries[0].textureView = nullptr;
+         sampleEntries[1].buffer = nullptr;
+         pump();
++        };
++        verifyGPU(expectedLarge, rawLarge, true);
+ 
+ 
+-        while (budget->limit_bytes() - budget->used_bytes() >= charge) {
+-            Check(retained.size() < 8);
+-            const auto before = budget->used_bytes();
+-            retained.push_back(capture());
+-            complete();
+-            Check(budget->used_bytes() == before + charge);
+-        }
+-        const auto beforeFault = budget->used_bytes();
+-        Check(retained.size() < 16 && beforeFault > 0);
+-        Check(budget->limit_bytes() - beforeFault < charge);
+-        auto denied = capture();
+-        Check(toServer->Flush());
+-        wait(deviceLostDone);
+-        Check(deviceLostCallbacks.load() == 1);
+-        Check(actualLostReason == wgpu::DeviceLostReason::Unknown);
+-        Check(dawn::native::IsDeviceLost(nativeDevice));
+-        Check(deviceLostMessage.find("Glint") != std::string::npos);
+-        Check(deviceLostMessage.find("E_OUTOFMEMORY") != std::string::npos);
+-        std::atomic_bool mapDone = false;
+-        std::atomic_uint mapCallbacks = 0;
+-        denied.MapAsync(wgpu::MapMode::Read, 0, 8, wgpu::CallbackMode::AllowSpontaneous,
+-            [&](wgpu::MapAsyncStatus status, wgpu::StringView) {
+-                Check(mapCallbacks.fetch_add(1) == 0);
+-                Check(status == wgpu::MapAsyncStatus::Aborted);
+-                mapDone = true;
+-            });
+-        wait(mapDone);
+-        Check(mapCallbacks.load() == 1);
+-        Check(denied.GetMapState() == wgpu::BufferMapState::Unmapped);
++
++        std::vector<uint8_t> changedRaw(uint64_t{side} * side * 4);
++        for (size_t offset = 0; offset < changedRaw.size(); offset += 4) {
++            changedRaw[offset] = 64; changedRaw[offset + 1] = 128;
++            changedRaw[offset + 2] = 191; changedRaw[offset + 3] = 255;
++        }
++        if (copyMutation) {
++            wgpu::TexelCopyTextureInfo copy{};
++            copy.texture = texture;
++            wgpu::TexelCopyBufferLayout layout{};
++            layout.bytesPerRow = side * 4;
++            layout.rowsPerImage = side;
++            wgpu::Extent3D extent{side, side, 1};
++            queue.WriteTexture(&copy, changedRaw.data(), changedRaw.size(), &layout, &extent);
++        } else {
++            auto writeEncoder = device.CreateCommandEncoder();
++            auto writePass = writeEncoder.BeginRenderPass(&passDescriptor);
++            writePass.End();
++            auto writeCommands = writeEncoder.Finish();
++            queue.Submit(1, &writeCommands);
++        }
++        complete();
++        auto changedExpected = changedRaw;
++        Check(glint::candidate::TransformEdgeCoherentCanvas(changedExpected, side, side, seed));
++        Check(changedExpected == changedRaw);
++        verifyGPU(changedExpected, changedRaw, false);
++        auto verifyRead = [&](const wgpu::Buffer& buffer, const std::vector<uint8_t>& expected) {
++            std::atomic_bool done = false;
++            std::atomic_uint callbacks = 0;
++            buffer.MapAsync(wgpu::MapMode::Read, 0, bufferBytes, wgpu::CallbackMode::AllowSpontaneous,
++                [&](wgpu::MapAsyncStatus status, wgpu::StringView) {
++                    Check(callbacks.fetch_add(1) == 0);
++                    Check(status == wgpu::MapAsyncStatus::Success);
++                    done = true;
++                });
++            wait(done);
++            Check(callbacks.load() == 1 && !deviceLostDone.load());
++            const auto* data = static_cast<const uint8_t*>(buffer.GetConstMappedRange(0, bufferBytes));
++            Check(data != nullptr && expected.size() == bufferBytes);
++            for (size_t offset = 0; offset < expected.size(); ++offset) Check(data[offset] == expected[offset]);
++            buffer.Unmap();
++            pump();
++        };
++        verifyRead(retained.front(), expectedLarge);
++        retained.push_back(capture());
++        complete();
++        verifyRead(retained.back(), changedExpected);
++        verifyRead(retained.front(), expectedLarge);
+         for (auto& buffer : retained) buffer.Destroy();
+-        denied.Destroy();
++        pump();
++        requireBudgetDrained();
++        Check(observer->IsHealthy() && !deviceLostDone.load());
+         texture.Destroy();
+         device.Destroy();
+         pump();
+         requireBudgetDrained();
+-        Check(deviceLostCallbacks.load() == 1 && mapCallbacks.load() == 1);
+-        Check(lossValidation.errors.load() >= 1 && lossValidation.errors.load() <= 16);
++        Check(deviceLostCallbacks.load() == 1 && actualLostReason == wgpu::DeviceLostReason::Destroyed);
+         std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                    "\"hardware_adapter_selected\":true,\"large_surface_pixels_verified\":true,\"large_shader_samples_verified\":true,\"capture_budget_limit_bytes\":%llu,"
+-                    "\"capture_bytes_before_fault\":%llu,\"per_capture_charge_bytes\":%llu,"
+-                    "\"retained_captures_before_fault\":%zu,\"device_lost_under_capture_budget_pressure\":true,"
+-                    "\"owned_capture_out_of_memory_observed\":true,\"map_status\":\"aborted\","
+-                    "\"map_callback_count\":1,\"device_lost_callback_count\":1,"
+-                    "\"map_state\":\"unmapped\",\"cpu_texture_upload_used\":false,"
+-                    "\"capture_bytes_after_destroy\":%llu,\"physical_memory_exhaustion_attempted\":false,"
+-                    "\"hardware_tdr_tested\":false,\"browser_integrated\":false}\n",
+-                    static_cast<unsigned long long>(budget->limit_bytes()),
+-                    static_cast<unsigned long long>(beforeFault),
+-                    static_cast<unsigned long long>(charge), retained.size(),
+-                    static_cast<unsigned long long>(budget->used_bytes()));
++                    "\"mutation\":\"%s\",\"new_gpu_reference_matched\":true,"
++                    "\"old_snapshot_unchanged\":true,\"new_cpu_reference_matched\":true,"
++                    "\"budget_drained_before_device_destroy\":true,\"browser_integrated\":false}\n",
++                    copyMutation ? "copy-destination" : "render-target");
+         return 0;
+     }
+     constexpr uint32_t width = 8, height = 8, pitch = 256;

@@ -58,6 +58,14 @@ Every corrected read matches the native edge/HMAC reference; padded rows are
 checked for zero padding. This still does not establish large shader-consumer
 routing or Chromium runtime admission.
 
+The subsequent [weak projection-cache draft](../native/drafts/webgpu-projection-cache/README.md)
+passes the 54-case native matrix, 24 large CPU/shader/readback comparisons,
+12 render/copy mutation runs and six deliberately broken invalidation controls.
+Old snapshots remain unchanged; allocation accounting drains while the device
+is still alive. This resolves the measured duplicate-projection sampler path
+in standalone code only. Storage-write invalidation, external exclusion and
+Chromium integration remain separate gates; no new candidate is selected.
+
 ## 2026-11-01: measured 001–116 runtime and revision-2 correction
 
 | Gate on the preserved 001–116 browser | Result | Boundary |

@@ -1,0 +1,110 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -180,7 +180,7 @@
+         wgpu::TextureDescriptor descriptor{};
+         descriptor.size = {side, side, 1};
+         descriptor.format = wgpu::TextureFormat::RGBA8Unorm;
+-        descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
++        descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::TextureBinding;
+         auto texture = device.CreateTexture(&descriptor);
+         auto view = texture.CreateView();
+         auto initialize = device.CreateCommandEncoder();
+@@ -305,6 +305,89 @@
+         pump();
+         Check(!deviceLostDone.load() && budget->used_bytes() == charge);
+ 
++        wgpu::BufferDescriptor sampleOutputDescriptor{};
++        sampleOutputDescriptor.size = 64;
++        sampleOutputDescriptor.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopySrc;
++        auto sampleOutput = device.CreateBuffer(&sampleOutputDescriptor);
++        wgpu::BufferDescriptor sampleReadDescriptor{};
++        sampleReadDescriptor.size = 64;
++        sampleReadDescriptor.usage = wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst;
++        auto sampleRead = device.CreateBuffer(&sampleReadDescriptor);
++        wgpu::ShaderSourceWGSL sampleSource{};
++        sampleSource.code = R"(
++            @group(0) @binding(0) var image: texture_2d<f32>;
++            @group(0) @binding(1) var<storage, read_write> result: array<u32>;
++            @compute @workgroup_size(1) fn main(@builtin(global_invocation_id) id: vec3u) {
++                let dims = textureDimensions(image);
++                let xs = array<u32, 4>(0u, dims.x / 2u - 1u, dims.x / 2u, dims.x - 1u);
++                let ys = array<u32, 4>(0u, 1u, dims.y / 2u, dims.y - 1u);
++                let pixel = vec4u(round(textureLoad(image, vec2i(i32(xs[id.x % 4u]), i32(ys[id.x / 4u])), 0) * 255.0));
++                result[id.x] = (pixel.r | (pixel.g << 8u) | (pixel.b << 16u) | (pixel.a << 24u)) ^ 0xa1b2c3d4u;
++            }
++        )";
++        wgpu::ShaderModuleDescriptor sampleModuleDescriptor{};
++        sampleModuleDescriptor.nextInChain = &sampleSource;
++        auto sampleModule = device.CreateShaderModule(&sampleModuleDescriptor);
++        wgpu::ComputePipelineDescriptor samplePipelineDescriptor{};
++        samplePipelineDescriptor.compute.module = sampleModule;
++        samplePipelineDescriptor.compute.entryPoint = "main";
++        auto samplePipeline = device.CreateComputePipeline(&samplePipelineDescriptor);
++        std::array<wgpu::BindGroupEntry, 2> sampleEntries{};
++        sampleEntries[0].binding = 0;
++        sampleEntries[0].textureView = texture.CreateView();
++        sampleEntries[1].binding = 1;
++        sampleEntries[1].buffer = sampleOutput;
++        sampleEntries[1].size = 64;
++        wgpu::BindGroupDescriptor sampleGroupDescriptor{};
++        sampleGroupDescriptor.layout = samplePipeline.GetBindGroupLayout(0);
++        sampleGroupDescriptor.entryCount = sampleEntries.size();
++        sampleGroupDescriptor.entries = sampleEntries.data();
++        auto sampleGroup = device.CreateBindGroup(&sampleGroupDescriptor);
++        auto sampleEncoder = device.CreateCommandEncoder();
++        auto samplePass = sampleEncoder.BeginComputePass();
++        samplePass.SetPipeline(samplePipeline);
++        samplePass.SetBindGroup(0, sampleGroup);
++        samplePass.DispatchWorkgroups(16);
++        samplePass.End();
++        sampleEncoder.CopyBufferToBuffer(sampleOutput, 0, sampleRead, 0, 64);
++        auto sampleCommands = sampleEncoder.Finish();
++        queue.Submit(1, &sampleCommands);
++        std::atomic_bool sampleMapDone = false;
++        std::atomic_uint sampleMapCallbacks = 0;
++        sampleRead.MapAsync(wgpu::MapMode::Read, 0, 64, wgpu::CallbackMode::AllowSpontaneous,
++            [&](wgpu::MapAsyncStatus status, wgpu::StringView) {
++                Check(sampleMapCallbacks.fetch_add(1) == 0);
++                Check(status == wgpu::MapAsyncStatus::Success);
++                sampleMapDone = true;
++            });
++        wait(sampleMapDone);
++        Check(!deviceLostDone.load() && sampleMapCallbacks.load() == 1);
++        const auto* sampledWords = static_cast<const uint32_t*>(sampleRead.GetConstMappedRange(0, 64));
++        Check(sampledWords != nullptr);
++        uint32_t protectedSampleCount = 0;
++        const std::array<uint32_t, 4> xs{0, side / 2 - 1, side / 2, side - 1};
++        const std::array<uint32_t, 4> ys{0, 1, side / 2, side - 1};
++        for (size_t index = 0; index < 16; ++index) {
++            const size_t offset = (uint64_t{ys[index / 4]} * side + xs[index % 4]) * 4;
++            std::array<uint8_t, 4> expectedPixel{};
++            std::memcpy(expectedPixel.data(), expectedLarge.data() + offset, 4);
++            if (descriptor.format == wgpu::TextureFormat::BGRA8Unorm) std::swap(expectedPixel[0], expectedPixel[2]);
++            uint32_t expectedWord = 0, rawWord = 0;
++            std::memcpy(&expectedWord, expectedPixel.data(), 4);
++            std::memcpy(&rawWord, rawLarge.data() + offset, 4);
++            Check(sampledWords[index] == (expectedWord ^ 0xa1b2c3d4u));
++            if (expectedWord != rawWord) ++protectedSampleCount;
++        }
++        Check(protectedSampleCount > 0);
++        sampleRead.Unmap();
++        sampleRead.Destroy();
++        sampleOutput.Destroy();
++        sampleGroup = nullptr;
++        sampleEntries[0].textureView = nullptr;
++        sampleEntries[1].buffer = nullptr;
++        pump();
++
++
+         while (budget->limit_bytes() - budget->used_bytes() >= charge) {
+             Check(retained.size() < 8);
+             const auto before = budget->used_bytes();
+@@ -343,7 +426,7 @@
+         Check(deviceLostCallbacks.load() == 1 && mapCallbacks.load() == 1);
+         Check(lossValidation.errors.load() >= 1 && lossValidation.errors.load() <= 16);
+         std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                    "\"hardware_adapter_selected\":true,\"large_surface_pixels_verified\":true,\"capture_budget_limit_bytes\":%llu,"
++                    "\"hardware_adapter_selected\":true,\"large_surface_pixels_verified\":true,\"large_shader_samples_verified\":true,\"capture_budget_limit_bytes\":%llu,"
+                     "\"capture_bytes_before_fault\":%llu,\"per_capture_charge_bytes\":%llu,"
+                     "\"retained_captures_before_fault\":%zu,\"device_lost_under_capture_budget_pressure\":true,"
+                     "\"owned_capture_out_of_memory_observed\":true,\"map_status\":\"aborted\","

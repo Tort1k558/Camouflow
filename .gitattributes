@@ -301,3 +301,4 @@ native/drafts/upstream-156-webgpu-r2/patches/*.patch text eol=lf
 native/drafts/environment/webgpu-r2-host-source-upgrade.json text eol=lf
 native/drafts/webgpu-capture-retention/wire-runtime-observations-20261101.json text eol=lf
 native/drafts/webgpu-scratch-reuse/* text eol=lf
+native/drafts/webgpu-projection-cache/* text eol=lf
