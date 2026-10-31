@@ -1,0 +1,250 @@
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
+@@ -1,13 +1,19 @@
+ // Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
+ #include "src/dawn/native/d3d12/GlintTextureProjectionD3D12.h"
+ 
++#include <algorithm>
+ #include <array>
++#include <atomic>
++#include <bit>
++#include <iterator>
++#include <new>
+ #include <string>
+ #include <string_view>
+ #include "dawn/native/DawnNative.h"
+ #include "src/dawn/native/Toggles.h"
+ #include "src/dawn/native/d3d/D3DError.h"
+ #include "src/dawn/native/d3d12/CommandRecordingContext.h"
++#include "src/dawn/native/d3d12/BufferD3D12.h"
+ #include "src/dawn/native/d3d12/DeviceD3D12.h"
+ #include "src/dawn/native/d3d12/GlintEdgeProjectionShader.h"
+ #include "src/dawn/native/d3d12/GlintBufferScatterShader.h"
+@@ -22,6 +28,63 @@
+     std::array<uint8_t, 32> bytes{};
+     ~ProjectionSeed() { SecureZeroMemory(bytes.data(), bytes.size()); }
+ };
++class GlintNativeBufferOwner final : public IUnknown {
++  public:
++    explicit GlintNativeBufferOwner(Ref<Buffer> buffer) : mBuffer(std::move(buffer)) {}
++    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** result) override {
++        if (!result) return E_POINTER;
++        *result = nullptr;
++        if (iid != __uuidof(IUnknown)) return E_NOINTERFACE;
++        *result = static_cast<IUnknown*>(this);
++        AddRef();
++        return S_OK;
++    }
++    ULONG STDMETHODCALLTYPE AddRef() override {
++        return mReferences.fetch_add(1, std::memory_order_relaxed) + 1;
++    }
++    ULONG STDMETHODCALLTYPE Release() override {
++        const ULONG left = mReferences.fetch_sub(1, std::memory_order_acq_rel) - 1;
++        if (!left) delete this;
++        return left;
++    }
++
++  private:
++    ~GlintNativeBufferOwner() = default;
++    std::atomic<ULONG> mReferences{1};
++    Ref<Buffer> mBuffer;
++};
++
++class GlintInputPlanTransaction {
++  public:
++    explicit GlintInputPlanTransaction(std::shared_ptr<GlintReadbackObserver> observer)
++        : mObserver(std::move(observer)) {}
++    ~GlintInputPlanTransaction() {
++        if (!mComplete) mObserver->OnExecutionError();
++    }
++    void Complete() { mComplete = true; }
++
++  private:
++    std::shared_ptr<GlintReadbackObserver> mObserver;
++    bool mComplete = false;
++};
++
++bool GlintRangeCovered(const GlintShaderScope& scope, WGPUBuffer handle,
++                       uint64_t offset, uint64_t size) {
++    const uint64_t end = offset + size;
++    while (offset < end) {
++        uint64_t next = offset;
++        for (const auto& use : scope.buffers) {
++            if (use.buffer.handle == handle && (use.readable || use.writable) &&
++                use.offset <= offset && use.offset + use.size > next) {
++                next = std::min(end, use.offset + use.size);
++            }
++        }
++        if (next == offset) return false;
++        offset = next;
++    }
++    return true;
++}
++
+ ResultOrError<ComPtr<ID3D12PipelineState>> CompileGlintProjectionPipeline(
+     Device* device, ID3D12RootSignature* root, std::string_view shaderSource,
+     const char* entryPoint) {
+@@ -174,6 +237,116 @@
+     return snapshot->mNative;
+ }
+ 
++ResultOrError<std::unique_ptr<GlintBufferProjectionBatch>>
++GlintTextureProjector::RecordBuffers(CommandRecordingContext* context,
++                                    const GlintShaderScope& scope,
++                                    std::span<const Ref<BufferBase>> owners) {
++    auto observer = mDevice->GetGlintReadbackObserver();
++    DAWN_INTERNAL_ERROR_IF(!context || !observer || !scope.complete ||
++        scope.buffers.size() > kGlintShaderBufferUseLimit ||
++        owners.size() > kGlintShaderBufferUseLimit,
++        "Invalid Glint native buffer projection scope.");
++    DAWN_ASSERT(mDevice->IsLockedByCurrentThreadIfNeeded());
++    GlintInputPlanTransaction transaction(observer);
++    for (const auto& use : scope.buffers) {
++        const auto owner = std::find_if(owners.begin(), owners.end(), [&](const auto& value) {
++            return value && ToAPI(value.Get()) == use.buffer.handle;
++        });
++        DAWN_INTERNAL_ERROR_IF(owner == owners.end() || (*owner)->GetDevice() != mDevice ||
++            !ToBackend(owner->Get())->HasAccess() ||
++            !ToBackend(owner->Get())->HasPrivateGlintReadbackBacking() ||
++            use.buffer.size != (*owner)->GetSize() || !use.rangeKnown ||
++            use.offset > use.buffer.size || use.size > use.buffer.size - use.offset,
++            "Glint input scope has no accessible matching native owner.");
++    }
++    auto batch = std::make_unique<GlintBufferProjectionBatch>();
++    batch->plan = observer->PrepareGpuInputPlan(scope);
++    DAWN_INTERNAL_ERROR_IF(!batch->plan ||
++        batch->plan->regions.size() > kGlintShaderBufferUseLimit * 16,
++        "Glint GPU input metadata plan was denied.");
++    struct Pending {
++        Ref<Buffer> buffer;
++        std::vector<glint::candidate::d3d12::ProjectedBufferRegion> regions;
++        std::vector<GlintBufferWriteRange> writes;
++    };
++    std::vector<Pending> pending;
++    for (const auto& region : batch->plan->regions) {
++        const auto owner = std::find_if(owners.begin(), owners.end(), [&](const auto& value) {
++            return value && ToAPI(value.Get()) == region.buffer.handle;
++        });
++        DAWN_INTERNAL_ERROR_IF(owner == owners.end() || (*owner)->GetDevice() != mDevice ||
++            region.buffer.size != (*owner)->GetSize() || !region.size ||
++            region.bufferOffset > region.buffer.size ||
++            region.size > region.buffer.size - region.bufferOffset ||
++            !GlintRangeCovered(scope, region.buffer.handle, region.bufferOffset, region.size),
++            "Glint projected region exceeds its actual native binding scope.");
++        auto* buffer = ToBackend(owner->Get());
++        auto pixels = ResolveSnapshot(region.snapshot);
++        const auto parameters = std::bit_cast<glint::candidate::BufferScatterParameters>(region.mapping);
++        DAWN_INTERNAL_ERROR_IF(!pixels || !pixels->PixelBuffer() ||
++            parameters.destination_offset != region.bufferOffset ||
++            parameters.region_bytes != region.size ||
++            parameters.destination_bytes != buffer->GetSize() ||
++            parameters.protected_bytes != pixels->PixelBuffer()->GetDesc().Width ||
++            parameters.full_width != region.snapshot->GetWidth() ||
++            parameters.full_height != region.snapshot->GetHeight() ||
++            parameters.bgra || region.format != region.snapshot->GetFormat(),
++            "Glint GPU input capability or scatter geometry differs.");
++        auto found = std::find_if(pending.begin(), pending.end(), [&](const auto& value) {
++            return value.buffer.Get() == buffer;
++        });
++        if (found == pending.end()) {
++            pending.push_back({Ref<Buffer>(buffer), {}, {}});
++            found = std::prev(pending.end());
++        }
++        DAWN_INTERNAL_ERROR_IF(found->regions.size() == 16,
++                              "Too many Glint projected regions for one native buffer.");
++        found->regions.push_back({pixels->PixelBuffer(), pixels->RetirementHandle(), parameters});
++    }
++    for (auto& item : pending) {
++        for (const auto& use : scope.buffers) {
++            if (use.buffer.handle == ToAPI(item.buffer.Get()) && use.writable && use.size) {
++                item.writes.push_back({use.offset, use.size});
++            }
++        }
++        std::sort(item.writes.begin(), item.writes.end(), [](const auto& a, const auto& b) {
++            return a.offset < b.offset;
++        });
++        std::vector<GlintBufferWriteRange> merged;
++        for (const auto& range : item.writes) {
++            if (!merged.empty() && range.offset <= merged.back().offset + merged.back().size) {
++                auto& last = merged.back();
++                last.size = std::max(last.offset + last.size, range.offset + range.size) - last.offset;
++            } else {
++                merged.push_back(range);
++            }
++        }
++        item.writes = std::move(merged);
++    }
++    DAWN_INTERNAL_ERROR_IF(!observer->CommitGpuInputPlan(batch->plan),
++                          "Glint GPU input plan became stale before native recording.");
++    if (!pending.empty()) DAWN_TRY(EnsureBufferPipeline());
++    auto* queue = ToBackend(mDevice->GetQueue());
++    for (auto& item : pending) {
++        DAWN_TRY(item.buffer->EnsureGlintAllocationInitialized(context));
++        item.buffer->TrackUsageAndTransitionNow(context, wgpu::BufferUsage::CopySrc);
++        ComPtr<GlintNativeBufferOwner> owner;
++        owner.Attach(new (std::nothrow) GlintNativeBufferOwner(item.buffer));
++        DAWN_INTERNAL_ERROR_IF(!owner, "Glint native buffer owner allocation failed.");
++        std::unique_ptr<glint::candidate::d3d12::ProjectedBuffer> projected;
++        DAWN_TRY(CheckHRESULT(glint::candidate::d3d12::ProjectedBuffer::Record(
++            mDevice->GetD3D12Device(), context->GetCommandList(), item.buffer->GetD3D12Resource(),
++            owner.Get(), item.buffer->GetSize(), true, item.regions, mRoot.Get(), mBufferPipeline.Get(),
++            queue->GetSharedFence()->GetD3DFence(), uint64_t{queue->GetPendingCommandSerial()},
++            mDevice->GetGlintReadbackBudget(), &projected), "Glint private buffer projection"));
++        mDevice->ReferenceUntilUnused(projected->retirement_handle());
++        context->AddGlintReadbackSubmission(projected->submission_marker());
++        batch->buffers.push_back({item.buffer, std::move(projected), std::move(item.writes)});
++    }
++    transaction.Complete();
++    return std::move(batch);
++}
++
+ ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>>
+ GlintTextureProjector::RecordTexture(CommandRecordingContext* context,
+                                    Texture* texture,
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
+@@ -2,6 +2,10 @@
+ #ifndef SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREPROJECTIOND3D12_H_
+ #define SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREPROJECTIOND3D12_H_
+ #include <memory>
++#include <span>
++#include <vector>
++#include "src/dawn/native/Buffer.h"
++#include "src/dawn/native/d3d12/glint/projected_buffer.h"
+ #include "dawn/native/DawnNative.h"
+ #include "src/dawn/native/Error.h"
+ #include "src/dawn/native/d3d12/d3d12_platform.h"
+@@ -30,6 +34,20 @@
+     const std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> mProjected;
+ };
+ 
++struct GlintBufferWriteRange {
++    uint64_t offset = 0;
++    uint64_t size = 0;
++};
++struct GlintProjectedBuffer {
++    Ref<BufferBase> source;
++    std::unique_ptr<glint::candidate::d3d12::ProjectedBuffer> projection;
++    std::vector<GlintBufferWriteRange> writableRanges;
++};
++struct GlintBufferProjectionBatch {
++    std::shared_ptr<const GlintGpuInputPlan> plan;
++    std::vector<GlintProjectedBuffer> buffers;
++};
++
+ class GlintTextureProjector {
+   public:
+     static ResultOrError<std::unique_ptr<GlintTextureProjector>> Create(Device* device);
+@@ -41,6 +59,12 @@
+         CommandRecordingContext* context, Texture* texture);
+     ResultOrError<std::shared_ptr<const GlintGpuReadbackSnapshot>> RecordCopySnapshot(
+         CommandRecordingContext* context, Texture* texture);
++    // Produces one shadow per owned logical buffer, outside a native render pass.
++    // Caller must install all aliases and restore backend state before execution.
++    // Metadata commit is not binding proof and never authorizes shader-byte output.
++    ResultOrError<std::unique_ptr<GlintBufferProjectionBatch>> RecordBuffers(
++        CommandRecordingContext* context, const GlintShaderScope& scope,
++        std::span<const Ref<BufferBase>> owners);
+     // Only the creating logical projector can unwrap the immutable capability.
+     std::shared_ptr<const GlintGpuPixelSnapshot> ResolveSnapshot(
+         const std::shared_ptr<const GlintGpuReadbackSnapshot>& snapshot) const;

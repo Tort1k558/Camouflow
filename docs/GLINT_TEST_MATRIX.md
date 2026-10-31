@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## 2026-10-31: native buffer producer API (unselected)
+
+| Gate | Measured result | Scope limit |
+| --- | --- | --- |
+| Source replay/reverse | 25 packets / 87 paths | No new selected runtime |
+| Native target-flag syntax | 15 units passed | No component link |
+| Producer normal/ASan | 1,216 cases / 24,288 assertions each | Extracted methods, mocked observer/device/queue/helper |
+| Compiler/cache normal/ASan | 53 assertions each; FXC/DXC pipeline creation | Real D3D12, mocked Dawn device |
+| Standalone hardware dispatch | 58 cases per FXC/DXC × normal/ASan | Not new native producer execution |
+| Changed-input refusals | 8 before compilation | Not runtime attestation |
+
+Producer API source is prepared, but the binding tracker does not call it.
+Writable copyback, exact-scope input receipts, actual native allocator/queue and
+padding clears, Wire, indirect/render routing and browser consistency remain open.
+No new anti-bot-site PASS, privacy admission or production release is claimed.
+
+
 ## Shared scatter words / physical allocation — CPU contract, not native GPU clearing
 
 | Gate | Measured result | Boundary |

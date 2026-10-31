@@ -190,3 +190,5 @@ native/drafts/webgpu-buffer-bindings/*.h text eol=lf
 native/drafts/webgpu-buffer-bindings/*.hlsl text eol=lf
 native/drafts/webgpu-buffer-mapping/*.py text eol=lf
 native/drafts/webgpu-buffer-mapping/*.cc text eol=lf
+native/drafts/webgpu-buffer-producer/*.py text eol=lf
+native/drafts/webgpu-buffer-producer/*.cc text eol=lf

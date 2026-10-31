@@ -1,0 +1,216 @@
+--- a/third_party/dawn/src/dawn/native/BUILD.gn
++++ b/third_party/dawn/src/dawn/native/BUILD.gn
+@@ -623,6 +623,7 @@
+       "d3d12/GlintTextureReadbackD3D12.h",
+       "d3d12/GlintTextureProjectionD3D12.cpp",
+       "d3d12/GlintTextureProjectionD3D12.h",
++      "d3d12/GlintBufferScatterShader.h",
+       "d3d12/GlintEdgeProjectionShader.h",
+       "d3d12/glint/buffer_scatter_parameters.h",
+       "d3d12/glint/projected_buffer.cc",
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintBufferScatterShader.h
+@@ -0,0 +1,60 @@
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++#ifndef SRC_DAWN_NATIVE_D3D12_GLINTBUFFERSCATTERSHADER_H_
++#define SRC_DAWN_NATIVE_D3D12_GLINTBUFFERSCATTERSHADER_H_
++namespace dawn::native::d3d12 {
++inline constexpr char kGlintBufferScatterHlsl[] = R"GLINT_SCATTER(
++// Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
++ByteAddressBuffer ProtectedPixels : register(t0);
++RWByteAddressBuffer Shadow : register(u0);
++cbuffer Mapping : register(b0) {
++    uint DestinationOffset; uint RegionBytes; uint PrefixBytes; uint InitialRow;
++    uint InitialColumn; uint SourcePitch; uint CopyWidth; uint CopyHeight;
++    uint SourceX; uint SourceY; uint FullWidth; uint FullHeight;
++    uint Bgra; uint DestinationBytes; uint ProtectedBytes; uint Reserved;
++};
++
++bool ProjectedByte(uint index, out uint source_address, out uint destination_address) {
++    source_address = 0; destination_address = 0;
++    if (index >= RegionBytes || index < PrefixBytes || !SourcePitch ||
++        InitialColumn >= SourcePitch || Bgra > 1 || Reserved != 0 ||
++        !CopyWidth || !CopyHeight || FullWidth > 8192 || FullHeight > 8192 ||
++        !FullWidth || !FullHeight || SourceX > FullWidth || SourceY > FullHeight ||
++        CopyWidth > FullWidth - SourceX || CopyHeight > FullHeight - SourceY ||
++        DestinationOffset > DestinationBytes || index >= DestinationBytes - DestinationOffset) return false;
++    const uint delta = index - PrefixBytes;
++    uint row = InitialRow + delta / SourcePitch;
++    const uint remainder = delta % SourcePitch;
++    uint column;
++    // Avoid uint overflow for legal very large native row pitches.
++    if (remainder >= SourcePitch - InitialColumn) {
++        row += 1; column = remainder - (SourcePitch - InitialColumn);
++    } else {
++        column = InitialColumn + remainder;
++    }
++    if (row >= CopyHeight || column >= CopyWidth * 4) return false;
++    uint channel = column % 4;
++    if (Bgra != 0 && channel % 2 == 0) channel = 2 - channel;
++    source_address = ((row + SourceY) * FullWidth + column / 4 + SourceX) * 4 + channel;
++    if (source_address >= ProtectedBytes) return false;
++    destination_address = DestinationOffset + index;
++    return true;
++}
++
++[numthreads(64,1,1)]
++void scatter_main(uint3 tid : SV_DispatchThreadID) {
++    const uint first = (tid.x + tid.y * 4096) * 4;
++    [unroll] for (uint byte_index = 0; byte_index < 4; ++byte_index) {
++        uint source_address, destination_address;
++        if (!ProjectedByte(first + byte_index, source_address, destination_address)) continue;
++        const uint value = (ProtectedPixels.Load(source_address & ~3u) >> ((source_address % 4) * 8)) & 255;
++        const uint shift = (destination_address % 4) * 8;
++        const uint mask = 255u << shift;
++        uint previous;
++        // Disjoint bytes can share a DWORD across threads/regions; preserve their bits atomically.
++        Shadow.InterlockedAnd(destination_address & ~3u, ~mask, previous);
++        Shadow.InterlockedOr(destination_address & ~3u, value << shift, previous);
++    }
++}
++)GLINT_SCATTER";
++}  // namespace dawn::native::d3d12
++#endif
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
+@@ -2,12 +2,15 @@
+ #include "src/dawn/native/d3d12/GlintTextureProjectionD3D12.h"
+ 
+ #include <array>
++#include <string>
++#include <string_view>
+ #include "dawn/native/DawnNative.h"
+ #include "src/dawn/native/Toggles.h"
+ #include "src/dawn/native/d3d/D3DError.h"
+ #include "src/dawn/native/d3d12/CommandRecordingContext.h"
+ #include "src/dawn/native/d3d12/DeviceD3D12.h"
+ #include "src/dawn/native/d3d12/GlintEdgeProjectionShader.h"
++#include "src/dawn/native/d3d12/GlintBufferScatterShader.h"
+ #include "src/dawn/native/d3d12/PlatformFunctionsD3D12.h"
+ #include "src/dawn/native/d3d12/QueueD3D12.h"
+ #include "src/dawn/native/d3d12/SharedFenceD3D12.h"
+@@ -19,6 +22,51 @@
+     std::array<uint8_t, 32> bytes{};
+     ~ProjectionSeed() { SecureZeroMemory(bytes.data(), bytes.size()); }
+ };
++ResultOrError<ComPtr<ID3D12PipelineState>> CompileGlintProjectionPipeline(
++    Device* device, ID3D12RootSignature* root, std::string_view shaderSource,
++    const char* entryPoint) {
++    DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
++    const auto* functions = device->GetFunctions();
++    const std::string entry(entryPoint);
++    const std::wstring wideEntryPoint(entry.begin(), entry.end());
++    ComPtr<ID3D12PipelineState> pipeline;
++    ComPtr<ID3DBlob> errors;
++    D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
++    desc.pRootSignature = root;
++    // Follow the device's existing compiler selection; never silently retry another compiler.
++    if (device->IsToggleEnabled(Toggle::UseDXC)) {
++        auto compiler = device->GetDxcCompiler();
++        DAWN_INTERNAL_ERROR_IF(!compiler, "Glint selected DXC compiler is unavailable.");
++        DxcBuffer source{};
++        source.Ptr = shaderSource.data();
++        source.Size = shaderSource.size();
++        source.Encoding = DXC_CP_UTF8;
++        std::array<LPCWSTR, 8> arguments{
++            L"-E", wideEntryPoint.c_str(), L"-T", L"cs_6_0", L"-HV", L"2018", L"-WX", L"-Ges"};
++        ComPtr<IDxcResult> result;
++        DAWN_TRY(CheckHRESULT(compiler->Compile(&source, arguments.data(), arguments.size(), nullptr,
++                                               IID_PPV_ARGS(&result)), "Glint DXC compile"));
++        HRESULT status = E_FAIL;
++        DAWN_TRY(CheckHRESULT(result->GetStatus(&status), "Glint DXC status"));
++        DAWN_TRY(CheckHRESULT(status, "Glint DXC shader compilation"));
++        ComPtr<IDxcBlob> shader;
++        DAWN_TRY(CheckHRESULT(result->GetResult(&shader), "Glint DXC bytecode"));
++        desc.CS = {shader->GetBufferPointer(), shader->GetBufferSize()};
++        DAWN_TRY(CheckHRESULT(device->GetD3D12Device()->CreateComputePipelineState(
++            &desc, IID_PPV_ARGS(&pipeline)), "Glint DXC pipeline creation"));
++    } else {
++        DAWN_INTERNAL_ERROR_IF(!functions->d3dCompile, "Glint selected FXC compiler is unavailable.");
++        ComPtr<ID3DBlob> shader;
++        DAWN_TRY(CheckHRESULT(functions->d3dCompile(
++            shaderSource.data(), shaderSource.size(), nullptr, nullptr,
++            nullptr, entryPoint, "cs_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
++            0, &shader, &errors), "Glint FXC shader compilation"));
++        desc.CS = {shader->GetBufferPointer(), shader->GetBufferSize()};
++        DAWN_TRY(CheckHRESULT(device->GetD3D12Device()->CreateComputePipelineState(
++            &desc, IID_PPV_ARGS(&pipeline)), "Glint FXC pipeline creation"));
++    }
++    return pipeline;
++}
+ }  // namespace
+ 
+ ResultOrError<std::unique_ptr<GlintTextureProjector>> GlintTextureProjector::Create(Device* device) {
+@@ -50,41 +98,20 @@
+     DAWN_TRY(CheckHRESULT(device->GetD3D12Device()->CreateRootSignature(
+         0, serialized->GetBufferPointer(), serialized->GetBufferSize(), IID_PPV_ARGS(&projector->mRoot)),
+         "Glint projection root creation"));
+-    D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
+-    desc.pRootSignature = projector->mRoot.Get();
+-    // Follow the device's existing compiler selection; never silently retry another compiler.
+-    if (device->IsToggleEnabled(Toggle::UseDXC)) {
+-        auto compiler = device->GetDxcCompiler();
+-        DAWN_INTERNAL_ERROR_IF(!compiler, "Glint selected DXC compiler is unavailable.");
+-        DxcBuffer source{};
+-        source.Ptr = kGlintEdgeProjectionHlsl;
+-        source.Size = sizeof(kGlintEdgeProjectionHlsl) - 1;
+-        source.Encoding = DXC_CP_UTF8;
+-        std::array<LPCWSTR, 8> arguments{
+-            L"-E", L"edge_main", L"-T", L"cs_6_0", L"-HV", L"2018", L"-WX", L"-Ges"};
+-        ComPtr<IDxcResult> result;
+-        DAWN_TRY(CheckHRESULT(compiler->Compile(&source, arguments.data(), arguments.size(), nullptr,
+-                                               IID_PPV_ARGS(&result)), "Glint DXC compile"));
+-        HRESULT status = E_FAIL;
+-        DAWN_TRY(CheckHRESULT(result->GetStatus(&status), "Glint DXC status"));
+-        DAWN_TRY(CheckHRESULT(status, "Glint DXC shader compilation"));
+-        ComPtr<IDxcBlob> shader;
+-        DAWN_TRY(CheckHRESULT(result->GetResult(&shader), "Glint DXC bytecode"));
+-        desc.CS = {shader->GetBufferPointer(), shader->GetBufferSize()};
+-        DAWN_TRY(CheckHRESULT(device->GetD3D12Device()->CreateComputePipelineState(
+-            &desc, IID_PPV_ARGS(&projector->mPipeline)), "Glint DXC pipeline creation"));
+-    } else {
+-        DAWN_INTERNAL_ERROR_IF(!functions->d3dCompile, "Glint selected FXC compiler is unavailable.");
+-        ComPtr<ID3DBlob> shader;
+-        DAWN_TRY(CheckHRESULT(functions->d3dCompile(
+-            kGlintEdgeProjectionHlsl, sizeof(kGlintEdgeProjectionHlsl) - 1, nullptr, nullptr,
+-            nullptr, "edge_main", "cs_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+-            0, &shader, &errors), "Glint FXC shader compilation"));
+-        desc.CS = {shader->GetBufferPointer(), shader->GetBufferSize()};
+-        DAWN_TRY(CheckHRESULT(device->GetD3D12Device()->CreateComputePipelineState(
+-            &desc, IID_PPV_ARGS(&projector->mPipeline)), "Glint FXC pipeline creation"));
+-    }
++    DAWN_TRY_ASSIGN(projector->mPipeline, CompileGlintProjectionPipeline(
++        device, projector->mRoot.Get(), kGlintEdgeProjectionHlsl, "edge_main"));
+     return std::move(projector);
++}
++
++MaybeError GlintTextureProjector::EnsureBufferPipeline() {
++    DAWN_ASSERT(mDevice->IsLockedByCurrentThreadIfNeeded());
++    DAWN_INTERNAL_ERROR_IF(!mDevice->GetGlintReadbackObserver(),
++                          "Glint buffer projection requires an installed device policy.");
++    if (!mBufferPipeline) {
++        DAWN_TRY_ASSIGN(mBufferPipeline, CompileGlintProjectionPipeline(
++            mDevice, mRoot.Get(), kGlintBufferScatterHlsl, "scatter_main"));
++    }
++    return {};
+ }
+ 
+ ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>>
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
+@@ -48,6 +48,7 @@
+ 
+ 
+   private:
++    MaybeError EnsureBufferPipeline();
+     ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>> RecordTexture(
+         CommandRecordingContext* context, Texture* texture, DXGI_FORMAT viewFormat);
+     explicit GlintTextureProjector(Device* device) : mDevice(device) {}
+@@ -56,6 +57,7 @@
+     Device* mDevice;
+     ComPtr<ID3D12RootSignature> mRoot;
+     ComPtr<ID3D12PipelineState> mPipeline;
++    ComPtr<ID3D12PipelineState> mBufferPipeline;
+ };
+ }  // namespace dawn::native::d3d12
+ #endif

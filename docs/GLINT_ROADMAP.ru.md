@@ -2536,3 +2536,27 @@ Allocation/device в fixture подменены: это не реальное GP
 
 Остаются native producer, реальный binding tracker/writeback, GPU padding clear,
 queue/Wire/DXC и browser consistency. Выбранный runtime не менялся.
+
+## 31 октября — native buffer producer API, пока без подключения к bindings
+
+Подготовлен [связанный пакет](../native/drafts/webgpu-buffer-producer/README.md):
+общий DXC/FXC compiler path, ленивый scatter pipeline и native API создания одной
+приватной копии на логический буфер. Проверяются владельцы, capability и покрытие
+диапазонов; writable-диапазоны объединяются без заполнения промежутков. Перед
+копированием вызывается явная инициализация allocation; native-владельцы сохраняются
+в retirement lease. Ошибка инвалидирует observer-транзакцию.
+
+| Проверка | Результат | Ограничение |
+| --- | --- | --- |
+| Replay / reverse | 25 пакетов, 87 путей | Не выбранный runtime |
+| Native syntax | 15 units прошли | Не линковка компонентов |
+| Producer CPU normal / ASan | 1 216 случаев / 24 288 проверок каждый | Observer/device/queue/GPU helper — mock |
+| Compiler/cache normal / ASan | 53 проверки каждый, FXC и DXC | Настоящий D3D12 device, не Dawn device |
+| Standalone GPU dispatch | По 58 случаев для FXC/DXC × normal/ASan | Не выполнение нового producer в Dawn |
+| Изменённые входы | 8 отказов до компиляции | Не runtime attestation |
+
+**Не подключено:** binding tracker, dynamic roots из общей shadow map, состояния
+буферов во время shader execution, writable copyback и exact-scope receipt для
+выходных данных. Настоящие padding clears, queue/cancellation/device loss,
+Wire, indirect ancestry и pass-wide render routing требуют следующих проверок.
+Согласованность браузера и privacy/production admission не подтверждены.

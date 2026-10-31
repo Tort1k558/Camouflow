@@ -1269,3 +1269,27 @@ comparison covers crops, padding, clipped/large lineage offsets and both channel
 layouts. Prior GPU scatter/shadow/plane fixtures passed again with the shared
 mapper. Producer/tracker/writeback, actual padding GPU clears, Wire/DXC and browser
 consistency remain incomplete or unverified; selected runtime is unchanged.
+
+## Native buffer shadow producer API (unselected)
+
+The [producer draft](drafts/webgpu-buffer-producer/README.md) creates one shadow
+per owned logical buffer, resolves projector-local immutable GPU capabilities,
+checks binding-range coverage and merges writable intervals without bridging
+holes. It commits observer metadata before recording, calls explicit allocation
+initialization, transitions originals through Dawn's usage tracker and retains
+native buffer owners with retirement leases. Errors invalidate the transaction.
+The binding tracker has not called this API; writable copyback is not implemented.
+
+The preceding pipeline packet shares the existing DXC/FXC selection and creates
+the scatter pipeline lazily. Missing/failing selected compilers never trigger a
+fallback. Extracted compilation/cache methods passed 53 assertions per normal/ASan
+on a real D3D12 device. Standalone edge/scatter/consumer dispatch passed 58 cases
+per FXC/DXC and sanitizer combination; this is not native Dawn queue execution.
+
+Twenty-five packets replay/reverse across 87 paths, with fifteen native syntax
+units passed. Extracted producer control flow passed 1,216 cases / 24,288 assertions
+per normal/ASan; observer/device/queue/helper operations were explicitly mocked.
+Eight changed-input checks refused compilation. Binding installation, shader-use
+states, writable copyback, exact-scope receipts, actual native allocation/queue
+retirement, Wire/indirect/render-pass routing and browser consistency remain open.
+Selected runtime, privacy and production admission are unchanged.
