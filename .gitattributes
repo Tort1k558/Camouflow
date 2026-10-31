@@ -180,3 +180,5 @@ native/drafts/webgpu-canonical-plane/*.py text eol=lf
 native/drafts/webgpu-canonical-plane/*.patch text eol=lf
 native/drafts/webgpu-copy-pixel-snapshot/*.py text eol=lf
 native/drafts/webgpu-copy-pixel-snapshot/*.cc text eol=lf
+native/drafts/webgpu-snapshot-lease/*.py text eol=lf
+native/drafts/webgpu-snapshot-lease/*.cc text eol=lf

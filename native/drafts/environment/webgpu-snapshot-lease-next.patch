@@ -1,0 +1,184 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -35,6 +35,7 @@
+ #include <span>
+ #include <string>
+ #include <string_view>
++#include <utility>
+ #include <vector>
+ 
+ #include "dawn/dawn_proc_table.h"
+@@ -53,6 +54,29 @@
+ 
+ enum class GlintReadbackStatus { Pending, Ready, Failed };
+ enum class GlintReadbackFormat { Unsupported, Rgba8Unorm, Bgra8Unorm };
++
++namespace d3d12 {
++class GlintTextureProjector;
++class GlintGpuPixelSnapshot;
++}  // namespace d3d12
++
++// Trusted native-owned capability. No backend resource/identity is exposed to script.
++class DAWN_NATIVE_EXPORT GlintGpuReadbackSnapshot final {
++  public:
++    uint32_t GetWidth() const { return mWidth; }
++    uint32_t GetHeight() const { return mHeight; }
++    GlintReadbackFormat GetFormat() const { return mFormat; }
++
++  private:
++    friend class d3d12::GlintTextureProjector;
++    GlintGpuReadbackSnapshot(std::shared_ptr<const d3d12::GlintGpuPixelSnapshot> native,
++                            uint32_t width, uint32_t height, GlintReadbackFormat format)
++        : mNative(std::move(native)), mWidth(width), mHeight(height), mFormat(format) {}
++    const std::shared_ptr<const d3d12::GlintGpuPixelSnapshot> mNative;
++    const uint32_t mWidth;
++    const uint32_t mHeight;
++    const GlintReadbackFormat mFormat;
++};
+ 
+ class DAWN_NATIVE_EXPORT GlintReadbackSnapshot {
+   public:
+@@ -63,6 +87,16 @@
+     virtual uint32_t GetHeight() const = 0;
+     virtual uint32_t GetRowPitch() const = 0;
+     virtual GlintReadbackFormat GetFormat() const = 0;
++    // An absent GPU capability is not permission to use raw shader inputs.
++    std::shared_ptr<const GlintGpuReadbackSnapshot> GetGpuSnapshot() const { return mGpuSnapshot; }
++
++  protected:
++    GlintReadbackSnapshot() = default;
++    explicit GlintReadbackSnapshot(std::shared_ptr<const GlintGpuReadbackSnapshot> snapshot)
++        : mGpuSnapshot(std::move(snapshot)) {}
++
++  private:
++    const std::shared_ptr<const GlintGpuReadbackSnapshot> mGpuSnapshot;
+ };
+ 
+ struct GlintBufferIdentity {
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
+@@ -2,6 +2,7 @@
+ #ifndef SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREPROJECTIOND3D12_H_
+ #define SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREPROJECTIOND3D12_H_
+ #include <memory>
++#include "dawn/native/DawnNative.h"
+ #include "src/dawn/native/Error.h"
+ #include "src/dawn/native/d3d12/d3d12_platform.h"
+ #include "src/dawn/native/d3d12/glint/projected_texture.h"
+@@ -11,6 +12,24 @@
+ class TextureView;
+ class Texture;
+ class CommandRecordingContext;
++// Per-projector identity outlives the Dawn Device only through resource leases.
++// It owns no Dawn references and cannot be confused with a reused Device address.
++struct GlintProjectionIdentity final {};
++class GlintGpuPixelSnapshot final {
++  public:
++    ID3D12Resource* PixelBuffer() const { return mProjected->canonical_pixel_buffer(); }
++    DXGI_FORMAT PixelFormat() const { return mProjected->canonical_pixel_format(); }
++    ComPtr<IUnknown> RetirementHandle() const { return mProjected->retirement_handle(); }
++
++  private:
++    friend class GlintTextureProjector;
++    GlintGpuPixelSnapshot(std::shared_ptr<const GlintProjectionIdentity> identity,
++                         std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected)
++        : mIdentity(std::move(identity)), mProjected(std::move(projected)) {}
++    const std::shared_ptr<const GlintProjectionIdentity> mIdentity;
++    const std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> mProjected;
++};
++
+ class GlintTextureProjector {
+   public:
+     static ResultOrError<std::unique_ptr<GlintTextureProjector>> Create(Device* device);
+@@ -20,12 +39,20 @@
+     // Copy recording uses the full native texture without constructing a frontend view.
+     ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>> RecordCopy(
+         CommandRecordingContext* context, Texture* texture);
++    ResultOrError<std::shared_ptr<const GlintGpuReadbackSnapshot>> RecordCopySnapshot(
++        CommandRecordingContext* context, Texture* texture);
++    // Only the creating logical projector can unwrap the immutable capability.
++    std::shared_ptr<const GlintGpuPixelSnapshot> ResolveSnapshot(
++        const std::shared_ptr<const GlintGpuReadbackSnapshot>& snapshot) const;
++
+ 
+ 
+   private:
+     ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>> RecordTexture(
+         CommandRecordingContext* context, Texture* texture, DXGI_FORMAT viewFormat);
+     explicit GlintTextureProjector(Device* device) : mDevice(device) {}
++    const std::shared_ptr<const GlintProjectionIdentity> mIdentity =
++        std::make_shared<const GlintProjectionIdentity>();
+     Device* mDevice;
+     ComPtr<ID3D12RootSignature> mRoot;
+     ComPtr<ID3D12PipelineState> mPipeline;
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
+@@ -119,6 +119,34 @@
+     return RecordTexture(context, texture, texture->GetD3D12Format());
+ }
+ 
++ResultOrError<std::shared_ptr<const GlintGpuReadbackSnapshot>>
++GlintTextureProjector::RecordCopySnapshot(CommandRecordingContext* context, Texture* texture) {
++    std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected;
++    DAWN_TRY_ASSIGN(projected, RecordCopy(context, texture));
++    const auto desc = projected->texture()->GetDesc();
++    const auto nativeFormat = projected->canonical_pixel_format();
++    auto* const pixels = projected->canonical_pixel_buffer();
++    DAWN_INTERNAL_ERROR_IF(!pixels || !desc.Width || !desc.Height ||
++        desc.Width > 8192 || desc.Height > 8192 ||
++        (nativeFormat != DXGI_FORMAT_R8G8B8A8_UNORM && nativeFormat != DXGI_FORMAT_B8G8R8A8_UNORM) ||
++        desc.Format != nativeFormat || pixels->GetDesc().Width != desc.Width * desc.Height * 4,
++        "Invalid Glint GPU pixel snapshot metadata.");
++    const auto format = nativeFormat == DXGI_FORMAT_B8G8R8A8_UNORM
++                            ? GlintReadbackFormat::Bgra8Unorm : GlintReadbackFormat::Rgba8Unorm;
++    auto native = std::shared_ptr<const GlintGpuPixelSnapshot>(
++        new GlintGpuPixelSnapshot(mIdentity, std::move(projected)));
++    return std::shared_ptr<const GlintGpuReadbackSnapshot>(new GlintGpuReadbackSnapshot(
++        std::move(native), static_cast<uint32_t>(desc.Width), desc.Height, format));
++}
++
++std::shared_ptr<const GlintGpuPixelSnapshot> GlintTextureProjector::ResolveSnapshot(
++    const std::shared_ptr<const GlintGpuReadbackSnapshot>& snapshot) const {
++    if (!snapshot || !snapshot->mNative || snapshot->mNative->mIdentity != mIdentity) {
++        return nullptr;
++    }
++    return snapshot->mNative;
++}
++
+ ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>>
+ GlintTextureProjector::RecordTexture(CommandRecordingContext* context,
+                                    Texture* texture,
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
+@@ -16,8 +16,8 @@
+   public:
+     explicit NativeGlintReadbackSnapshot(
+         std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture,
+-        std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected)
+-        : mCapture(std::move(capture)), mProjected(std::move(projected)) {}
++        std::shared_ptr<const GlintGpuReadbackSnapshot> projected)
++        : GlintReadbackSnapshot(std::move(projected)), mCapture(std::move(capture)) {}
+     GlintReadbackStatus Read(std::span<const uint8_t>* pixels) const override {
+         const HRESULT result = mCapture->ReadCompleted(pixels);
+         if (result == E_PENDING) {
+@@ -35,9 +35,6 @@
+ 
+   private:
+     std::unique_ptr<glint::candidate::d3d12::TextureCapture> mCapture;
+-    // Same registry ticket owns both the raw CPU capture and projected GPU plane.
+-    // Read() intentionally returns raw bytes: the CPU policy still transforms once.
+-    std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> mProjected;
+ };
+ class NativeGlintByteReadbackSnapshot final : public GlintByteReadbackSnapshot {
+   public:
+@@ -100,8 +97,8 @@
+     DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
+     GlintTextureProjector* projector;
+     DAWN_TRY_ASSIGN(projector, device->GetGlintTextureProjector());
+-    std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected;
+-    DAWN_TRY_ASSIGN(projected, projector->RecordCopy(context, texture));
++    std::shared_ptr<const GlintGpuReadbackSnapshot> projected;
++    DAWN_TRY_ASSIGN(projected, projector->RecordCopySnapshot(context, texture));
+     std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture;
+     DAWN_TRY_ASSIGN(capture, RecordGlintTextureReadbackSnapshot(device, context, texture));
+     return std::unique_ptr<GlintReadbackSnapshot>(

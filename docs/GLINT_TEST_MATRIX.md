@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Logical-owner GPU snapshot leases — extracted logic, not native queue execution
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Replay / reverse | 20 packets, 84 paths | Unselected external staging |
+| Native target-flag syntax | 14 units passed | Not native component linking |
+| Extracted normal / ASan | 512 iterations, 34,817 assertions each | Fake native resources/backend |
+| Logical ownership | Foreign owner and reused Device address rejected; GPU lease survives CPU ticket release | Not policy/epoch/source-token commit proof |
+| Capability API | Private payload construction, explicit dimensions/native format; CPU-only construction unchanged | No raw-input permission when capability absent |
+| Changed-input checks | 6 refusals before compilation | Not runtime security admission |
+
+[Implementation and reproduction](../native/drafts/webgpu-snapshot-lease/README.md).
+Real native queue/Wire, input plan/commit, binding/writeback, DXC and combined
+browser consistency remain unfinished or unverified. Selected runtime unchanged.
+
 ## Paired native copy snapshot — source/extracted logic, not queue execution
 
 | Gate | Measured result | Boundary |

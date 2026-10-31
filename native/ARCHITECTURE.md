@@ -1186,3 +1186,20 @@ assertions per normal/ASan run. Native device/queue recording was mocked, not ex
 The retained snapshot has no validated GPU input-lease export yet. Plan/commit
 association, real binding/writeback, Dawn/Wire/DXC and browser consistency remain
 unimplemented or unverified. This packet does not select or admit a new runtime.
+
+## Logical-owner GPU snapshot capability (unselected)
+
+The [snapshot-lease extension](drafts/webgpu-snapshot-lease/README.md) gives paired
+CPU snapshots an immutable owned GPU capability. Public metadata exposes only
+dimensions/format; the backend payload constructor is private to the projector.
+The native resolver compares a separate retained projector identity, not a raw
+Dawn Device address or shared physical adapter. Existing CPU-only implementations
+need no new virtual overrides; an absent capability is not raw-input permission.
+Leases retain GPU resources without retaining Dawn Device/Buffer references.
+
+Twenty packets replay/reverse across 84 paths and fourteen native syntax units
+passed. Extracted API/payload/factory/resolver code passed 512 synthetic iterations
+and 34,817 assertions per normal/ASan mode, including device-address reuse and
+ownership after CPU ticket destruction. Fake resources were used: no native queue,
+policy/epoch input-plan commit, actual bindings/Wire/DXC or browser consistency
+admission follows from this result. The selected runtime is unchanged.

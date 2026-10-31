@@ -2454,3 +2454,22 @@ factory/class/validation функции: 6 149 синтетических слу
 writeback, Dawn/Wire, DXC и browser consistency ещё не подтверждены. Ресурсы GPU
 делят текущую device quota; её исчерпание возвращает ошибку, не raw fallback.
 Выбранный браузер 001–076 не менялся.
+
+## GPU snapshot leases с логической идентичностью — пакет 20
+
+Парный snapshot экспортирует owned immutable capability через GetGpuSnapshot.
+Наружу доступны только размеры/формат; backend payload создаётся приватно projector.
+ResolveSnapshot проверяет отдельную identity, удерживаемую leases, а не Device*
+или общий GPU-адаптер. Поэтому повторное использование адреса устройства не
+делает старый lease подходящим новому устройству. Dawn Device/Buffer refs не удерживаются.
+
+20 пакетов / 84 файла replay/reverse; 14 native syntax units прошли. Извлечённые
+API/payload/factory/resolver: 512 синтетических итераций / 34 817 проверок в normal
+и ASan. Проверены foreign owner, повторное использование адреса, ошибки metadata,
+сохранение GPU после удаления CPU ticket и совместимое создание CPU-only snapshots.
+[Реализация и команда](../native/drafts/webgpu-snapshot-lease/README.md).
+
+Это не execution native queue: ресурсы в fixture подменены. Далее — input plan/commit
+по policy/epoch/source-copy token существующего observer, реальные bindings/aliases
+и writeback. Отсутствующий capability не разрешает raw shader input. Dawn/Wire,
+DXC и browser consistency не подтверждены; выбранный runtime остаётся 001–076.
