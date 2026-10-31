@@ -1,11 +1,26 @@
 # Glint browser test matrix
 
+## Private buffer backing: source and synthetic predicates
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Fourteen-packet source chain | 78 composed paths, complete replay/reverse verified | Three-file extension, unselected |
+| Backing policy | Binding scopes, indirect inputs and byte capture reject absent/shared/external/host-mapped backing | Source preparation, not actual native import testing |
+| CPU normal / ASan | 216 assertions each, 16 origin combinations and range/capacity edges | Exact extracted predicates; synthetic backend |
+| Native syntax | Ten target-flag units passed | No GN regeneration, native link or runtime for this extension |
+
+[Public reproduction and remaining gates](../native/drafts/webgpu-private-backing/README.md).
+The preceding thirteen-packet shader-capture batch separately passed static/component
+GN generation and 22 target dependency checks. Those results do not admit the new
+backing-policy extension or resolve the selected browser's Canvas/GPU inconsistency.
+
 ## Integrated shader capture: standalone proofs, not browser admission
 
 | Gate | Result | Boundary |
 | --- | --- | --- |
 | Source batch | 13 packets, 77 composed paths; 12-path delta reverses exactly | Active checkout and selected binary unchanged |
 | Native syntax | Ten target-flag units passed | Not actual Dawn capture/queue execution or linking |
+| Build graph | Static/component GN generation and 22 target dependency checks passed; source/guards restored | Thirteen-packet batch only; no C++ compilation or linking |
 | Query write invalidation | `ResolveQuerySet` notifies uncertain writes in prepared source | Full write-path audit and native runtime remain open |
 | GPU → controller → extracted filter `Prepare` | 8 cases, 47,613 assertions each normal/ASan; later unreported overwrite rejected | Synthetic Dawn handles; no real Wire factory/server/serialization |
 | Controller | 10,154 assertions and 2,000 cycles each normal/ASan | CPU eligibility/transactions, not native device lifecycle |

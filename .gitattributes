@@ -161,3 +161,5 @@ native/drafts/webgpu-shader-capture/*.py text eol=lf
 native/drafts/webgpu-shader-capture/*.cc text eol=lf
 native/drafts/webgpu-shader-capture/*.h text eol=lf
 native/drafts/webgpu-shader-capture/*.patch text eol=lf
+native/drafts/webgpu-private-backing/*.py text eol=lf
+native/drafts/webgpu-private-backing/*.cc text eol=lf

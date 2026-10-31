@@ -1085,6 +1085,16 @@ There is no signed online update catalog. Development bundles are unsigned.
 
 ## Known boundaries
 
+The [private-backing policy draft](drafts/webgpu-private-backing/README.md) adds one
+native predicate for compute binding scopes, indirect arguments and byte-capture
+sources. Shared/imported/host-mapped buffers may mutate outside tracked writes and
+must not become trusted captured-byte inputs. The fourteen-packet chain replays
+and reverses exactly across 78 paths; ten native syntax units and 216 synthetic
+predicate assertions per normal/ASan passed. Actual imports, queue execution and
+all native buffer-write paths are not verified. Static/component GN checks passed
+for the preceding thirteen-packet batch only, not this extension. Neither result
+is native component linking or browser privacy admission.
+
 Python startup rejects hard-linked privacy-key files before starting the browser
 driver, matching the native key-loader contract. A shared filesystem inode must
 not silently become the identity of two independently locked profiles. Rejection

@@ -8,6 +8,7 @@ not linked, selected or released in the browser.**
 | --- | --- | --- |
 | Native source | 13-packet replay, 77 composed paths; 12-path delta reverses exactly | No active checkout edits |
 | Compute hooks | Direct/indirect dispatch capture, logical owners and writable-range coverage prepared; 10 native syntax units passed | Actual Dawn recording/queue execution |
+| Build graph | Static/component GN generation and 22 target dependency checks passed; source bytes/mtimes restored | No C++ compilation or component linking |
 | Controller | 10,154 assertions, 2,000 transaction cycles in normal/ASan | Synthetic Dawn handles, not native device lifecycle |
 | Byte provenance | 4,886 assertions, 1,000 interval cases in normal/ASan | Controller eligibility is a separate gate |
 | GPU → snapshot → controller → filter `Prepare` | 8 hardware cases, 47,613 assertions each in normal/ASan | Extracted adapter/filter, not actual Wire factory/server/serialization |
@@ -59,8 +60,12 @@ The geometry/shadow fixtures and helpers are reused from existing public modules
   the extracted filter rejects its mismatching raw bytes and preserves owned output.
 
 Raster-output capture, GPU buffer-input projection, full formats, actual native
-device/queue/allocator execution, Wire server roundtrips, GN/component linking and
+device/queue/allocator execution, Wire server roundtrips, component linking and
 the real browser consistency gate remain unfinished. Prepared raster input routing
 is not raster-output admission. The selected 001–076 browser and its negative
 Canvas/GPU consistency result are unchanged. Do not enable this batch on an older
 binary or treat these checks as CAPTCHA results or a production release.
+
+The [private-backing extension](../webgpu-private-backing/README.md) rejects
+imported/shared/host-mapped buffers in prepared source. Its additional source
+changes are not covered by the thirteen-packet GN result above.

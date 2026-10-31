@@ -81,10 +81,23 @@ def test_shader_capture_does_not_admit_unfinished_native_browser_paths():
     for key in ('actual_native_device_queue_executed', 'actual_native_capture_hook_executed',
                 'actual_wire_server_roundtrip_executed', 'raster_output_capture_implemented',
                 'gpu_buffer_input_projection_implemented', 'selected', 'default_feature_enabled',
-                'gn_rechecked', 'component_link_verified', 'runtime_verified',
+                'component_link_verified', 'runtime_verified',
                 'canvas_gpu_shader_consistency_resolved', 'privacy_admitted', 'production_admitted',
                 'all_native_buffer_write_paths_audited'):
         assert record[key] is False
+
+
+def test_shader_capture_gn_checks_are_not_component_link_or_runtime():
+    record = preparation()
+    assert record['gn_rechecked'] is True
+    result = record['gn_only_observation']
+    assert result['passed'] and result['sources_restored'] and result['postguards_passed']
+    assert result['shader_capture_packet_sha256'] == record['patch_sha256']
+    assert len(result['runs']) == 26 and all(row['returncode'] == 0 for row in result['runs'])
+    for mode in ('static', 'component'):
+        assert sum(row['name'].startswith(mode + '-') for row in result['runs']) == 12
+    for key in ('native_compilation_started', 'component_link_verified', 'runtime_verified'):
+        assert result[key] is False
 
 
 def test_shader_capture_cli_reuses_sources_and_checks_requested_suite():

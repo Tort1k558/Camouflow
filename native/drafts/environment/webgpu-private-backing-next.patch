@@ -1,0 +1,48 @@
+--- a/third_party/dawn/src/dawn/native/d3d12/BufferD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/BufferD3D12.h
+@@ -53,6 +53,12 @@
+ 
+     ID3D12Resource* GetD3D12Resource() const;
+     D3D12_GPU_VIRTUAL_ADDRESS GetVA() const;
++    // Imported/shared or persistently host-mapped memory can change outside our write callbacks.
++    bool HasPrivateGlintReadbackBacking() const {
++        return GetD3D12Resource() && !mHostMappedHeap && !GetSharedResourceMemoryContents() &&
++               mResourceAllocation.GetInfo().mMethod != AllocationMethod::kExternal;
++    }
++
+ 
+     bool TrackUsageAndGetResourceBarrier(CommandRecordingContext* commandContext,
+                                          D3D12_RESOURCE_BARRIER* barrier,
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -500,7 +500,8 @@
+         std::vector<Ref<BufferBase>> owners;
+         auto append = [&](BufferBase* buffer, uint64_t offset, uint64_t size,
+                           bool writable) {
+-            if (!buffer || offset > buffer->GetSize() || size > buffer->GetSize() - offset ||
++            if (!buffer || !ToBackend(buffer)->HasPrivateGlintReadbackBacking() ||
++                offset > buffer->GetSize() || size > buffer->GetSize() - offset ||
+                 uses.size() == kGlintShaderBufferUseLimit) {
+                 return false;
+             }
+@@ -715,6 +716,9 @@
+         }
+         std::optional<GlintBoundScope> bound;
+         if (indirectBuffer) {
++            DAWN_INTERNAL_ERROR_IF(!ToBackend(indirectBuffer)->HasPrivateGlintReadbackBacking(),
++                                   "Glint compute capture requires private indirect-buffer backing.");
++
+             const std::array uses{
+                 GlintShaderBufferUse{{ToAPI(indirectBuffer), indirectBuffer->GetSize()},
+                                      true,
+--- a/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
+@@ -106,6 +106,8 @@
+                                offset > source->GetSize() || size > source->GetSize() - offset,
+                            "Invalid Glint byte-capture source owner or range.");
+     DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
++    DAWN_INTERNAL_ERROR_IF(!source->HasPrivateGlintReadbackBacking(),
++                           "Glint byte capture requires private buffer backing.");
+     DAWN_TRY(source->EnsureDataInitialized(context));
+     // Internal GPU copying does not expose a WebGPU CopySrc command or require that API usage.
+     source->TrackUsageAndTransitionNow(context, wgpu::BufferUsage::CopySrc);

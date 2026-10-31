@@ -687,7 +687,7 @@
   "gpu_buffer_input_projection_implemented": false,
   "selected": false,
   "default_feature_enabled": false,
-  "gn_rechecked": false,
+  "gn_rechecked": true,
   "component_link_verified": false,
   "runtime_verified": false,
   "canvas_gpu_shader_consistency_resolved": false,
@@ -1007,5 +1007,149 @@
       }
     ],
     "scope": "Changed-input checksum/extraction refusal only, not hostile-repository certification or a browser check"
+  },
+  "gn_only_observation": {
+    "passed": true,
+    "report_sha256": "17cfaf1a67093fca4a5da091252e5162b4dd2042794b4232d4e0b1ce49eeff5c",
+    "source_packet_sha256": "f3b705a0739afba5be102e1615efad4fd7d5a5b2616e6d7fe25b0f47ea514080",
+    "shader_capture_packet_sha256": "ac094500d5a53eb90d109b4483e3227c15605dab85d1e393bc95964a3c841efd",
+    "sources_restored": true,
+    "postguards_passed": true,
+    "native_compilation_started": false,
+    "component_link_verified": false,
+    "runtime_verified": false,
+    "elapsed_seconds": 299.766,
+    "runs": [
+      {
+        "name": "patch-check",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "patch-apply",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "static-gen",
+        "returncode": 0,
+        "log_sha256": "59493ef116ba59846ac482b32d782df4b0f95bb942571e6f015e2a51fb1c3420"
+      },
+      {
+        "name": "static-native-sources-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-native-api-static-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-native-api-shared-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-gpu-common-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-gpu-service-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-blink-core-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-blink-modules-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-wire-server-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-wire-api-static-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-wire-api-shared-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "static-dawn-unit-tests-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-gen",
+        "returncode": 0,
+        "log_sha256": "2f1bbb603a1b5efc14815e4b3121214111cbf79abb7783e70d892d40faac3788"
+      },
+      {
+        "name": "component-native-sources-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-native-api-static-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-native-api-shared-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-gpu-common-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-gpu-service-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-blink-core-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-blink-modules-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-wire-server-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-wire-api-static-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-wire-api-shared-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      },
+      {
+        "name": "component-dawn-unit-tests-check",
+        "returncode": 0,
+        "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed"
+      }
+    ]
   }
 }
