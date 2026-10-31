@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Unselected shader dependency scopes
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| CPU normal / ASan | 29 assertions, 400 concurrent scopes each | Synthetic snapshots/handles, no GPU shader execution |
+| Dependencies | Read-write aliases, captured/unsafe inputs, shader/copy propagation | Whole-buffer approximation; derived reads refused |
+| Metadata | Missing/oversized/duplicate/invalid identities fail closed; native allocation bounded | Not compatible shader pixel protection |
+| Native/service syntax | Two translation units passed | No link or native callback execution |
+| Combined GN | 69 paths, static/component generation and eleven header targets each | Exact source/index/output rollback |
+| Full Python baseline | 5097 passed, 1 skipped at `94739fe` | Predates this scope extension |
+
+[Source and remaining gates](../native/drafts/webgpu-shader-scope/README.md).
+The actual 001-076 shader/PNG mismatch remains unresolved; denial is not a PASS.
+
 ## Actual 001-076 WebGPU copy / shader / PNG gate
 
 | Check | Measured result | Boundary |

@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Whole-buffer shader dependency notifications plus interim refusal of potentially texture/readback-derived storage results; NOT compatible shader protection",
+  "patch": "webgpu-shader-scope-next.patch",
+  "patch_sha256": "3c68ff61d845a42f7aa9f1661ac83280c2a5a22a8af2d54cdac4cbc05d7d5cea",
+  "sources": [
+    {
+      "source": "third_party/dawn/include/dawn/native/DawnNative.h",
+      "before_sha256": "63cf805625251a701561762da454d558fb90199042868368f40c49d8248d32d7",
+      "staged_sha256": "48410274bb575a16812c014d7f1d8b5ec0c4089d3d329821c0b61deb564afaac"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp",
+      "before_sha256": "ce591e2f2470fb13823fa92666b5dd5dc0e9d17d2f83f16df2f276096cc98e7b",
+      "staged_sha256": "cce14150e1e80fb3a0f949238cf4d0d1b9da904f873bb1745c6f2f2273082c6f"
+    },
+    {
+      "source": "gpu/command_buffer/service/glint_webgpu_readback_observer.h",
+      "before_sha256": "0419a6c349ebce5ebc25ac5400576ea334b64f82b5f13cfc860fc79ed4f991a0",
+      "staged_sha256": "06e9f7a708b92921c44aa19904a3ad9f4c7a88deee189c6b75727a36b5488885"
+    },
+    {
+      "source": "gpu/command_buffer/service/glint_webgpu_readback_observer.cc",
+      "before_sha256": "dcab59394de0444937009144f1adea5d2192bad0a3e05432ba78859aeaea3860",
+      "staged_sha256": "ae1961e43af188bce695a77fcbad2276d4d8b47d927e02c2f2716c7ee1303dc5"
+    }
+  ],
+  "prerequisites": [
+    {
+      "patch": "shared-gpu-readback-core-next.patch",
+      "sha256": "86ebd83b852f55568cfcc77b3db5e4f9fd3b04c89cc2b2f76e921265e3778cb3"
+    },
+    {
+      "patch": "webgpu-renderer-policy-transport-next.patch",
+      "sha256": "4c9ffafa14f333dbaf61b82200b1148f00df7cbd8734f53194e8124b66d086f9"
+    },
+    {
+      "patch": "webgpu-export-seed-next.patch",
+      "sha256": "1845ecbfc2135f6e87b1571ea128722cc55852635df1c1cc4a138a24d78a0bf1"
+    },
+    {
+      "patch": "webgpu-native-copy-hook-next.patch",
+      "sha256": "0310438ca888b82b015dd1a8bc9bc55f61fd774d465a06c9739c6220ff68eceb"
+    },
+    {
+      "patch": "webgpu-readback-controller-next.patch",
+      "sha256": "dc4678ac4273ebec93fa5fc7b4326b4532bfb15da457c04623d55cc075d1bdba"
+    },
+    {
+      "patch": "webgpu-service-readback-next.patch",
+      "sha256": "6befcf99841194a0ac856c619a87be194960b090522a307e639715a53b86df74"
+    }
+  ],
+  "exact_patch_roundtrip_verified": true,
+  "syntax_checks": [
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/service/glint_webgpu_readback_observer.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_diagnostic_bytes": 0,
+  "syntax_report_sha256": "4ebf499702c01905d507b18abab39dd5a62f3e3d986a5a32d023df1cf9abea06",
+  "cpu_runs": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 29,
+        "interim_denial_only": true,
+        "compatible_shader_protection": false,
+        "concurrent_scopes": 400
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 29,
+        "interim_denial_only": true,
+        "compatible_shader_protection": false,
+        "concurrent_scopes": 400
+      }
+    }
+  ],
+  "cpu_report_sha256": "e6bbeee10715f9a3a65f13576bd487fd69100b72f3ad04d097ec1028eae08bd6",
+  "test_sha256": "3c367b57aa7c5f31738abfde0a66380fd4c4036b740e6c6fb620d1e11a8410cf",
+  "metadata_buffer_limit": 256,
+  "missing_scope_metadata_denies_device": true,
+  "input_inspection_precedes_output_mutation": true,
+  "borrowed_scope_not_retained": true,
+  "native_scope_bound_checked_before_vector_allocation": true,
+  "native_notification_paths": [
+    "dispatch",
+    "dispatch-indirect",
+    "render-pass"
+  ],
+  "entire_buffer_ranges_conservative": true,
+  "derived_storage_read_denial_prepared": true,
+  "default_feature_enabled": false,
+  "selected": false,
+  "gn_graph_verified": true,
+  "native_shader_scope_callbacks_executed": false,
+  "compatible_shader_protection": false,
+  "exact_binding_ranges_implemented": false,
+  "chromium_component_link_verified": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "canvas_gpu_shader_consistency_resolved": false,
+  "gn_observations": "webgpu-shader-scope-gn-observations.json",
+  "full_python_baseline": {
+    "git_head": "94739fe1f1bae6507ae176ad675098d021f28754",
+    "counts": {
+      "tests": 5098,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5097
+    },
+    "duration_seconds": 543.344,
+    "passed": true,
+    "postguards_passed": true,
+    "log_sha256": "f847dafa3a316f014b864d4a0d3a6a0a5a2d233dde4e2f1234d2d22ba70fc114",
+    "junit_sha256": "21916de20f360b24bf1c73e1028cd6cfc0ed6245a93001370bd170bc7f53e550",
+    "native_runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false,
+    "raw_report_sha256": "c55b22783501db3fe94dc2c24b0b22b1ea1f067c15a72383e5fc9e1677ee5d61"
+  }
+}

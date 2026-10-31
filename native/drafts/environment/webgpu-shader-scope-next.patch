@@ -1,0 +1,199 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -68,6 +68,19 @@
+ struct GlintBufferIdentity {
+     WGPUBuffer handle = nullptr;
+     uint64_t size = 0;
++};
++
++struct GlintShaderBufferUse {
++    GlintBufferIdentity buffer;
++    bool readable = false;
++    bool writable = false;
++};
++
++inline constexpr size_t kGlintShaderBufferUseLimit = 256;
++struct GlintShaderScope {
++    std::span<const GlintShaderBufferUse> buffers;
++    bool hasTextureInputs = false;
++    bool complete = false;
+ };
+ 
+ enum class GlintReadbackMapStatus { Denied, Unrelated, Protected };
+@@ -105,6 +118,8 @@
+                                uint64_t size,
+                                GlintBufferWriteKind kind) = 0;
+     virtual void OnBufferDestroyed(WGPUBuffer buffer) = 0;
++    // Whole-buffer potential dependencies, not proof of exact shader writes.
++    virtual void OnShaderScope(const GlintShaderScope& scope) = 0;
+     virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
+                                                    uint64_t offset,
+                                                    uint64_t size) = 0;
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -64,6 +64,51 @@
+ 
+ namespace {
+ 
++void NotifyGlintShaderScope(DeviceBase* device,
++                            const SyncScopeResourceUsage& scope,
++                            bool framebufferFetch = false) {
++    auto observer = device->GetGlintReadbackObserver();
++    if (!observer) {
++        return;
++    }
++    if (scope.buffers.size() != scope.bufferSyncInfos.size() ||
++        scope.textures.size() != scope.textureSyncInfos.size() ||
++        scope.buffers.size() > kGlintShaderBufferUseLimit) {
++        observer->OnShaderScope({});
++        return;
++    }
++    if (scope.buffers.empty()) {
++        return;
++    }
++    bool textureInputs =
++        framebufferFetch || scope.resourceTable != nullptr || !scope.externalTextures.empty();
++    constexpr auto textureReads = wgpu::TextureUsage::TextureBinding |
++                                  wgpu::TextureUsage::StorageBinding | kReadOnlyStorageTexture;
++    for (const auto& info : scope.textureSyncInfos) {
++        if (textureInputs) {
++            break;
++        }
++        info.Iterate([&](const SubresourceRange&, const TextureSyncInfo& usage) {
++            if (usage.usage & textureReads) {
++                textureInputs = true;
++            }
++        });
++    }
++    std::vector<GlintShaderBufferUse> uses;
++    uses.reserve(scope.buffers.size());
++    for (size_t index = 0; index < scope.buffers.size(); ++index) {
++        auto* buffer = scope.buffers[index];
++        const auto usage = scope.bufferSyncInfos[index].usage;
++        const bool writable = !IsSubset(usage, kReadOnlyBufferUsages);
++        const bool readable =
++            (usage & (kReadOnlyBufferUsages | kShaderBufferUsages)) != wgpu::BufferUsage::None;
++        if (readable || writable) {
++            uses.push_back({{ToAPI(buffer), buffer->GetSize()}, readable, writable});
++        }
++    }
++    observer->OnShaderScope({uses, textureInputs, true});
++}
++
+ DXGI_FORMAT DXGIIndexFormat(wgpu::IndexFormat format) {
+     switch (format) {
+         case wgpu::IndexFormat::Undefined:
+@@ -1049,6 +1094,8 @@
+                 DAWN_TRY(RecordRenderPass(commandContext,
+                                           descriptorHeapState.GetGraphicsBindingTracker(),
+                                           beginRenderPassCmd, nextRenderPassNumber, passHasUAV));
++                const auto& scope = GetResourceUsages().renderPasses[nextRenderPassNumber];
++                NotifyGlintShaderScope(GetDevice(), scope, scope.usesFramebufferFetch);
+ 
+                 nextRenderPassNumber++;
+                 break;
+@@ -1527,6 +1574,7 @@
+                 immediates.Apply(commandContext);
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
++                NotifyGlintShaderScope(GetDevice(), scope);
+                 break;
+             }
+ 
+@@ -1546,6 +1594,7 @@
+                     signature.Get(), 1,
+                     ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
++                NotifyGlintShaderScope(GetDevice(), scope);
+                 break;
+             }
+ 
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -41,6 +41,7 @@
+                      uint64_t size,
+                      dawn::native::GlintBufferWriteKind kind) override;
+   void OnBufferDestroyed(WGPUBuffer buffer) override;
++  void OnShaderScope(const dawn::native::GlintShaderScope& scope) override;
+   dawn::native::GlintReadbackMapStatus ClassifyReadMap(
+       dawn::native::GlintBufferIdentity buffer,
+       uint64_t offset,
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -227,6 +227,76 @@
+   }
+   Collect();
+ }
++void GlintWebGPUReadbackObserver::OnShaderScope(
++    const dawn::native::GlintShaderScope& scope) {
++  const auto uses = scope.buffers;
++  std::lock_guard lock(mutex_);
++  if (failed_) {
++    return;
++  }
++  if (!scope.complete ||
++      uses.size() > dawn::native::kGlintShaderBufferUseLimit ||
++      uses.size() > limits_.buffers) {
++    Fail();
++    return;
++  }
++  const uint64_t sequence = NextSequence();
++  if (!sequence) {
++    return;
++  }
++  bool derived = scope.hasTextureInputs;
++  // Inspect all inputs before mutating any output, including read-write
++  // aliases.
++  for (size_t index = 0; index < uses.size(); ++index) {
++    const auto& use = uses[index];
++    if (!use.buffer.handle ||
++        use.buffer.size > std::numeric_limits<size_t>::max()) {
++      Fail();
++      return;
++    }
++    for (size_t previous = 0; previous < index; ++previous) {
++      if (uses[previous].buffer.handle == use.buffer.handle) {
++        Fail();
++        return;
++      }
++    }
++    const auto found = buffers_.find(use.buffer.handle);
++    if (found == buffers_.end()) {
++      continue;
++    }
++    if (found->second.size != use.buffer.size) {
++      Fail();
++      return;
++    }
++    if (use.readable &&
++        (found->second.unsafe ||
++         found->second.provenance.PlanMap(0, use.buffer.size).status !=
++             WebGpuMapProvenance::kUnrelated)) {
++      derived = true;
++    }
++  }
++  for (const auto& use : uses) {
++    if (!use.writable) {
++      continue;
++    }
++    // Ordinary untracked buffer-only compute does not consume tracking slots.
++    if (!derived && !buffers_.contains(use.buffer.handle)) {
++      continue;
++    }
++    auto* output = GetBuffer(use.buffer);
++    if (!output) {
++      return;
++    }
++    if (derived || !output->provenance.RecordUncertainWrite(sequence, 0,
++                                                            use.buffer.size)) {
++      output->unsafe = true;
++    }
++  }
++  // Denial is an interim safety barrier, not compatible shader pixel
++  // protection.
++  Collect();
++}
++
+ void GlintWebGPUReadbackObserver::OnBufferDestroyed(WGPUBuffer buffer) {
+   std::lock_guard lock(mutex_);
+   buffers_.erase(buffer);

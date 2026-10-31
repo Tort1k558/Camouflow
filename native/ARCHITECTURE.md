@@ -1,5 +1,17 @@
 # Glint architecture
 
+## Unselected shader dependency barrier, not compatible protection
+
+The [four-path scope extension](drafts/webgpu-shader-scope/README.md) tracks
+potential whole-buffer shader dependencies at direct/indirect dispatch and render
+recording. Texture/readback-derived storage results are temporarily refused, not
+transformed compatibly. Missing/oversized metadata fails closed before allocating
+an unbounded event vector. Normal/ASan CPU tests passed 29 assertions and 400
+concurrent scopes each; two translation units passed syntax checks. The composed
+69-path tree passed static/component GN and eleven header targets each, with
+exact rollback. Native callbacks, exact binding ranges, compatible image compute
+and the measured copy/shader/PNG mismatch remain unverified or unresolved.
+
 ## Actual 001-076 WebGPU shader-dataflow consistency gate
 
 The public [`verify_native_webgpu_consistency.py`](../scripts/verify_native_webgpu_consistency.py)

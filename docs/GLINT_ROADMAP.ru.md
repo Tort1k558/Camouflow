@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## Shader scopes: dependency foundation, compatibility not implemented
+
+[Source and explicit limitations](../native/drafts/webgpu-shader-scope/README.md):
+whole-buffer texture/readback taint propagates through shader outputs and copies;
+unrepresentable results are refused rather than treated as unrelated/raw. This
+is an interim safety barrier, not the final compatible shader module. CPU
+normal/ASan passed 29 assertions and 400 concurrent scopes each; two syntax units
+and combined static/component GN/header checks passed with exact rollback.
+Next: exact binding ranges and compatible shader data paths, then actual native
+execution. A denied map does not pass the public consistency gate. Full Python
+baseline at `94739fe`: 5097 passed, 1 skipped; no new browser/privacy admission.
+
 ## Actual shader-dataflow gap: reproducible failing gate
 
 [Public gate](../scripts/verify_native_webgpu_consistency.py) and
