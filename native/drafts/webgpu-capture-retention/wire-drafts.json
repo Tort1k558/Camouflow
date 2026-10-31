@@ -29,6 +29,18 @@
       ],
       "compiled": false,
       "runtime_verified": false
+    },
+    {
+      "name": "byte-budget",
+      "patch": "wire-byte-budget.patch",
+      "patch_sha256": "7859288906edb9cba44b7443099894dbc93c394dea7cfc25aa40268ed04aa5bf",
+      "source_sha256": "23b0dec089c88ce78133a88f0e12c59673ee1187257e082ca727789a814bd265",
+      "modes": [
+        "--byte-budget"
+      ],
+      "compiled": false,
+      "runtime_verified": false,
+      "expected_outcome": "Device loss under bounded capture-byte pressure and aborted mapping; diagnostic reproduction only, not compatibility or quota recovery admission"
     }
   ],
   "patches_are_independent": true,

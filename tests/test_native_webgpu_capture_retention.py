@@ -15,7 +15,7 @@ def test_wire_draft_variants_replay_independently_without_claiming_runtime(tmp_p
     assert record['patches_are_independent'] is True
     for key in ('hardware_tdr_tested', 'browser_integrated', 'privacy_admitted', 'production_admitted'):
         assert record[key] is False
-    assert {row['name'] for row in record['variants']} == {'uniform', 'device-lifetime'}
+    assert {row['name'] for row in record['variants']} == {'uniform', 'device-lifetime', 'byte-budget'}
     for row in record['variants']:
         assert row['compiled'] is False and row['runtime_verified'] is False
         patch = MODULE / row['patch']
@@ -31,6 +31,14 @@ def test_wire_draft_variants_replay_independently_without_claiming_runtime(tmp_p
         restored = source.read_bytes()
         assert hashlib.sha256(restored).hexdigest() == row['source_sha256']
         assert all(mode.encode() in restored for mode in row['modes'])
+        if row['name'] == 'byte-budget':
+            block = restored.split(b'    if (byteBudget) {\n        constexpr uint32_t side = 2048;', 1)[1]
+            block = block.split(b'    constexpr uint32_t width = 8, height = 8, pitch = 256;', 1)[0]
+            assert b'budget->used_bytes() == before + charge' in block
+            assert b'retained.size() < 16' in block and b'requireBudgetDrained();' in block
+            assert b'GetMapState() == wgpu::BufferMapState::Unmapped' in block
+            for forbidden in (b'.ForceLoss(', b'.WriteTexture(', b'->Reserve(', b'OnTextureToBufferCopy('):
+                assert forbidden not in block
         subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
                        cwd=stage, check=True, capture_output=True, timeout=20)
         assert source.read_bytes() == original

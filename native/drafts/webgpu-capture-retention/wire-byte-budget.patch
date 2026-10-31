@@ -1,0 +1,243 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -6,6 +6,7 @@
+ #include <cstring>
+ #include <source_location>
+ #include <thread>
++#include <string>
+ #include <vector>
+ 
+ #include "dawn/dawn_proc.h"
+@@ -28,6 +29,10 @@
+ }
+ 
+ int main(int argc, char** argv) {
++    const bool byteBudget = argc == 2 && std::strcmp(argv[1], "--byte-budget") == 0;
++    const bool nativeLossBeforeMap = argc == 2 && std::strcmp(argv[1], "--native-loss-before-map") == 0;
++    const bool destroyDeviceAfterRequest = argc == 2 && std::strcmp(argv[1], "--device-destroy-before-response") == 0;
++    const bool lifetimeMode = nativeLossBeforeMap || destroyDeviceAfterRequest;
+     const bool withoutFilter = argc == 2 && std::strcmp(argv[1], "--without-filter") == 0;
+     const bool unsupportedFormat = argc == 2 && std::strcmp(argv[1], "--unsupported-format") == 0;
+     const bool cancelMap = argc == 2 && std::strcmp(argv[1], "--cancel-map") == 0;
+@@ -43,8 +48,8 @@
+     const bool writableMode = writableDirect || writableBundle;
+     const bool renderDirect = vertexDirect || indexDirect || writableDirect || (argc == 2 && std::strcmp(argv[1], "--render-direct") == 0);
+     const bool renderBundle = vertexBundle || indexBundle || writableBundle || (argc == 2 && std::strcmp(argv[1], "--render-bundle") == 0);
+-    Check(argc == 1 || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota || renderDirect || renderBundle);
+-    const bool expectDenied = unsupportedFormat || cancelMap || snapshotQuota;
++    Check(argc == 1 || byteBudget || lifetimeMode || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota || renderDirect || renderBundle);
++    const bool expectDenied = lifetimeMode || unsupportedFormat || cancelMap || snapshotQuota;
+     dawnProcSetProcs(&dawn::native::GetProcs());
+     dawn::native::Instance nativeInstance;
+     auto toServer = std::make_unique<dawn::utils::TerribleCommandBuffer>();
+@@ -101,7 +106,21 @@
+     Check(info.adapterType != wgpu::AdapterType::CPU);
+     std::atomic_bool deviceDone = false;
+     wgpu::Device device;
++    std::atomic_bool deviceLostDone = false;
++    std::atomic_uint deviceLostCallbacks = 0;
++    wgpu::DeviceLostReason actualLostReason = wgpu::DeviceLostReason::Unknown;
++    std::string deviceLostMessage;
+     wgpu::DeviceDescriptor deviceDescriptor{};
++    deviceDescriptor.SetDeviceLostCallback(wgpu::CallbackMode::AllowSpontaneous,
++        [&](const wgpu::Device&, wgpu::DeviceLostReason reason, wgpu::StringView message) {
++            Check(deviceLostCallbacks.fetch_add(1) == 0);
++            actualLostReason = reason;
++            if (byteBudget) {
++                Check(message.data != nullptr && message.length < 16384);
++                deviceLostMessage.assign(message.data, message.length);
++            }
++            deviceLostDone = true;
++        });
+     deviceDescriptor.SetUncapturedErrorCallback(
+         [](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView message) {
+             std::fprintf(stderr, "Wire device error: %.*s\n", static_cast<int>(message.length), message.data);
+@@ -141,6 +160,118 @@
+         std::make_shared<gpu::webgpu::GlintWebGPUDevicePolicy>(std::move(*policy)), 1,
+         gpu::webgpu::GlintReadbackLimits{});
+     Check(dawn::native::InstallGlintReadbackObserver(nativeDevice, observer));
++    if (byteBudget) {
++        constexpr uint32_t side = 2048;
++        constexpr uint64_t bufferBytes = uint64_t{side} * side * 4;
++        Check(budget->limit_bytes() == 64 * 1024 * 1024);
++        auto queue = device.GetQueue();
++        wgpu::TextureDescriptor descriptor{};
++        descriptor.size = {side, side, 1};
++        descriptor.format = wgpu::TextureFormat::RGBA8Unorm;
++        descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
++        auto texture = device.CreateTexture(&descriptor);
++        auto view = texture.CreateView();
++        auto initialize = device.CreateCommandEncoder();
++        wgpu::RenderPassColorAttachment attachment{};
++        attachment.view = view;
++        attachment.loadOp = wgpu::LoadOp::Clear;
++        attachment.storeOp = wgpu::StoreOp::Store;
++        attachment.clearValue = {0.25, 0.5, 0.75, 1.0};
++        wgpu::RenderPassDescriptor passDescriptor{};
++        passDescriptor.colorAttachmentCount = 1;
++        passDescriptor.colorAttachments = &attachment;
++        auto clear = initialize.BeginRenderPass(&passDescriptor);
++        clear.End();
++        auto initialized = initialize.Finish();
++        queue.Submit(1, &initialized);
++        auto complete = [&] {
++            std::atomic_bool done = false;
++            std::atomic_uint callbacks = 0;
++            queue.OnSubmittedWorkDone(wgpu::CallbackMode::AllowSpontaneous,
++                [&](wgpu::QueueWorkDoneStatus status, wgpu::StringView) {
++                    Check(callbacks.fetch_add(1) == 0);
++                    Check(status == wgpu::QueueWorkDoneStatus::Success);
++                    done = true;
++                });
++            wait(done);
++            Check(callbacks.load() == 1 && !deviceLostDone.load());
++        };
++        complete();
++        Check(budget->used_bytes() == 0);
++        wgpu::BufferDescriptor readDescriptor{};
++        readDescriptor.size = bufferBytes;
++        readDescriptor.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
++        std::vector<wgpu::Buffer> retained;
++        auto capture = [&] {
++            auto target = device.CreateBuffer(&readDescriptor);
++            wgpu::TexelCopyTextureInfo source{};
++            source.texture = texture;
++            wgpu::TexelCopyBufferInfo destination{};
++            destination.buffer = target;
++            destination.layout.bytesPerRow = side * 4;
++            destination.layout.rowsPerImage = side;
++            auto encoder = device.CreateCommandEncoder();
++            wgpu::Extent3D extent{side, side, 1};
++            encoder.CopyTextureToBuffer(&source, &destination, &extent);
++            auto command = encoder.Finish();
++            queue.Submit(1, &command);
++            return target;
++        };
++        retained.push_back(capture());
++        complete();
++        const uint64_t charge = budget->used_bytes();
++        Check(charge >= bufferBytes && charge <= budget->limit_bytes());
++        while (budget->limit_bytes() - budget->used_bytes() >= charge) {
++            Check(retained.size() < 8);
++            const auto before = budget->used_bytes();
++            retained.push_back(capture());
++            complete();
++            Check(budget->used_bytes() == before + charge);
++        }
++        const auto beforeFault = budget->used_bytes();
++        Check(retained.size() < 16 && beforeFault > 0);
++        Check(budget->limit_bytes() - beforeFault < charge);
++        auto denied = capture();
++        Check(toServer->Flush());
++        wait(deviceLostDone);
++        Check(deviceLostCallbacks.load() == 1);
++        Check(actualLostReason == wgpu::DeviceLostReason::Unknown);
++        Check(dawn::native::IsDeviceLost(nativeDevice));
++        Check(deviceLostMessage.find("Glint") != std::string::npos);
++        Check(deviceLostMessage.find("E_OUTOFMEMORY") != std::string::npos);
++        std::atomic_bool mapDone = false;
++        std::atomic_uint mapCallbacks = 0;
++        denied.MapAsync(wgpu::MapMode::Read, 0, 8, wgpu::CallbackMode::AllowSpontaneous,
++            [&](wgpu::MapAsyncStatus status, wgpu::StringView) {
++                Check(mapCallbacks.fetch_add(1) == 0);
++                Check(status == wgpu::MapAsyncStatus::Aborted);
++                mapDone = true;
++            });
++        wait(mapDone);
++        Check(mapCallbacks.load() == 1);
++        Check(denied.GetMapState() == wgpu::BufferMapState::Unmapped);
++        for (auto& buffer : retained) buffer.Destroy();
++        denied.Destroy();
++        texture.Destroy();
++        device.Destroy();
++        pump();
++        requireBudgetDrained();
++        Check(deviceLostCallbacks.load() == 1 && mapCallbacks.load() == 1);
++        std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
++                    "\"hardware_adapter_selected\":true,\"capture_budget_limit_bytes\":%llu,"
++                    "\"capture_bytes_before_fault\":%llu,\"per_capture_charge_bytes\":%llu,"
++                    "\"retained_captures_before_fault\":%zu,\"device_lost_under_capture_budget_pressure\":true,"
++                    "\"owned_capture_out_of_memory_observed\":true,\"map_status\":\"aborted\","
++                    "\"map_callback_count\":1,\"device_lost_callback_count\":1,"
++                    "\"map_state\":\"unmapped\",\"cpu_texture_upload_used\":false,"
++                    "\"capture_bytes_after_destroy\":%llu,\"physical_memory_exhaustion_attempted\":false,"
++                    "\"hardware_tdr_tested\":false,\"browser_integrated\":false}\n",
++                    static_cast<unsigned long long>(budget->limit_bytes()),
++                    static_cast<unsigned long long>(beforeFault),
++                    static_cast<unsigned long long>(charge), retained.size(),
++                    static_cast<unsigned long long>(budget->used_bytes()));
++        return 0;
++    }
+     constexpr uint32_t width = 8, height = 8, pitch = 256;
+     constexpr size_t packed = width * height * 4, bytes = pitch * height;
+     std::vector<uint8_t> pixels(packed);
+@@ -195,6 +326,18 @@
+     }
+     auto commands = encoder.Finish();
+     queue.Submit(1, &commands);
++    size_t bytesBeforeFault = 0;
++    if (lifetimeMode) {
++        Check(toServer->Flush());
++        bytesBeforeFault = budget->used_bytes();
++        Check(bytesBeforeFault > 0 && bytesBeforeFault <= budget->limit_bytes());
++        if (nativeLossBeforeMap) {
++            device.ForceLoss(wgpu::DeviceLostReason::Unknown, "Glint owned native loss control");
++            wait(deviceLostDone);
++            Check(dawn::native::IsDeviceLost(nativeDevice));
++        }
++    }
++    std::atomic_uint mapCallbacks = 0;
+     std::atomic_bool mapDone = false;
+     bool mapped = false;
+     wgpu::MapAsyncStatus mapStatus = wgpu::MapAsyncStatus::CallbackCancelled;
+@@ -202,10 +345,15 @@
+         [&](wgpu::MapAsyncStatus status, wgpu::StringView message) {
+             if (!expectDenied && status != wgpu::MapAsyncStatus::Success)
+                 std::fprintf(stderr, "Wire map: %.*s\n", static_cast<int>(message.length), message.data);
++            Check(mapCallbacks.fetch_add(1) == 0);
+             mapStatus = status;
+             mapped = status == wgpu::MapAsyncStatus::Success;
+             mapDone = true;
+         });
++    if (destroyDeviceAfterRequest) {
++        // Client destruction occurs before flushing the queued map request or any response.
++        device.Destroy();
++    }
+     if (cancelMap) {
+         Check(toServer->Flush());
+         readback.Destroy();
+@@ -213,6 +361,34 @@
+     wait(mapDone);
+     Check(budget->used_bytes() <= budget->limit_bytes());
+     const auto bytesAfterFirstMap = budget->used_bytes();
++    if (lifetimeMode) {
++        Check(!mapped && mapStatus == wgpu::MapAsyncStatus::Aborted);
++        Check(mapCallbacks.load() == 1);
++        Check(readback.GetMapState() == wgpu::BufferMapState::Unmapped);
++        wait(deviceLostDone);
++        Check(deviceLostCallbacks.load() == 1);
++        Check(actualLostReason == (nativeLossBeforeMap ? wgpu::DeviceLostReason::Unknown
++                                                      : wgpu::DeviceLostReason::Destroyed));
++        Check(dawn::native::IsDeviceLost(nativeDevice));
++        input.Destroy();
++        originalReadback.Destroy();
++        readback.Destroy();
++        device.Destroy();
++        pump();
++        requireBudgetDrained();
++        Check(mapCallbacks.load() == 1 && deviceLostCallbacks.load() == 1);
++        std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
++                    "\"hardware_adapter_selected\":true,\"native_device_lost\":true,"
++                    "\"fault\":\"%s\",\"native_queue_submitted_before_loss\":true,"
++                    "\"map_status\":\"aborted\",\"map_callback_count\":1,"
++                    "\"device_lost_callback_count\":1,\"map_state\":\"unmapped\","
++                    "\"capture_bytes_before_fault\":%llu,\"capture_bytes_after_destroy\":%llu,"
++                    "\"hardware_tdr_tested\":false,\"browser_integrated\":false}\n",
++                    nativeLossBeforeMap ? "native-force-loss-before-map" : "client-device-destroy-before-response",
++                    static_cast<unsigned long long>(bytesBeforeFault),
++                    static_cast<unsigned long long>(budget->used_bytes()));
++        return 0;
++    }
+     if (expectDenied) {
+         Check(!mapped);
+         Check(mapStatus == (cancelMap ? wgpu::MapAsyncStatus::Aborted : wgpu::MapAsyncStatus::Error));

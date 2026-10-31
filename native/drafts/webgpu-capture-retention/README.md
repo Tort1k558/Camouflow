@@ -105,7 +105,7 @@ and exhaustive dependency attestation remain to be added.
 
 ### Uncompiled Wire extensions
 
-[`wire-drafts.json`](wire-drafts.json) binds two **independent** patches against
+[`wire-drafts.json`](wire-drafts.json) binds three **independent** patches against
 the measured `wire_probe.cc`. Apply each patch in its own disposable staging
 directory containing that exact base file; do not apply them consecutively or
 change an active Chromium checkout.
@@ -118,11 +118,22 @@ before compiling; this does not change the user's global Git configuration.
 | --- | --- | --- |
 | [`wire-uniform.patch`](wire-uniform.patch) | Static/dynamic uniform bindings, direct/render-bundle paths; offset 256; protected input copied on GPU, not uploaded as substituted CPU pixels | Exact source replay only; compilation/runtime pending |
 | [`wire-device-lifetime.patch`](wire-device-lifetime.patch) | Real Wire `ForceLoss` before map and client device destruction before map response; one aborted map callback, one device-lost callback, unmapped buffer, capture-budget drain | Exact source replay only; compilation/runtime pending |
+| [`wire-byte-budget.patch`](wire-byte-budget.patch) | GPU-cleared 2048x2048 source, fewer than 16 retained slots, measured per-capture byte charges, allocation pressure against the actual 64 MiB budget, failed mapping and drain | Uncompiled diagnostic: expected current device loss is **not** a compatibility or quota-recovery PASS |
 
 Existing render, mapping-denial and no-filter negative controls must be repeated
-for both variants. Native API-injected loss is not a hardware TDR, Chromium GPU
+for all variants. Native API-injected loss is not a hardware TDR, Chromium GPU
 process crash or proof of browser recovery. These drafts grant no capability or
 release admission. The standalone MSVC STL/no-op `raw_ptr` limitation remains.
+
+The byte-budget variant does not upload a large CPU texture, mutate the device's
+budget or deliberately exhaust physical GPU/system memory. It first measures
+successful retained captures, then submits one more when the same capture charge
+no longer fits. The current native capture path classifies allocation failure via
+`CheckHRESULT`; the diagnostic therefore requires the actual Glint/E_OUTOFMEMORY
+device-loss callback, aborted mapping and zero retained capture bytes after
+destruction. Reproducing this failure would justify investigating recoverable
+quota handling; it would not prove that such handling already works. There is no
+claim of isolated peak/total GPU memory measurement or physical OOM attribution.
 
 Chromium Wire/renderer integration, same-submit CPU/GPU orderings, writable and chained
 dispatch stress, render/bundle paths, cancellation/device loss, native allocation

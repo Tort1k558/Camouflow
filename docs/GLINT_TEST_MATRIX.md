@@ -15,13 +15,14 @@ records layouts, not replacement browser results. A fresh remote CI run remains
 required. Neither this checkout fix nor the standalone draft replay admits new
 fingerprint features or a production release.
 
-## 2026-10-31: pending uniform and device-lifetime Wire variants
+## 2026-10-31: pending uniform, device-lifetime and byte-budget Wire variants
 
 | Gate | Measured result | Boundary |
 | --- | --- | --- |
-| Independent uniform and device-lifetime source replay | Both variants apply and reverse to exact recorded SHA-256; 10 retention tests passed | Source validation only; neither variant compiled or executed yet |
+| Independent uniform, device-lifetime and byte-budget source replay | All three variants apply and reverse to exact recorded SHA-256; 10 retention tests passed | Source validation only; none of these variants compiled or executed yet |
 | Uniform/dynamic binding routes | Prepared: direct/bundle, static/dynamic, offset 256 | No GPU result for these new routes |
 | Device lifetime controls | Prepared: native ForceLoss before map; client destroy before response | Not a hardware TDR or Chromium GPU-process recovery result |
+| Capture-byte budget fault | Prepared: GPU-cleared 2048x2048 source, measured retained allocations, fewer than 16 slots, failed map and zero-byte drain | Expected device loss is a diagnostic failure reproduction, not quota recovery or compatibility admission |
 
 The [public draft manifest](../native/drafts/webgpu-capture-retention/wire-drafts.json)
 binds each independent variant to the existing measured fixture, without replacing
