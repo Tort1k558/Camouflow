@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-10-31: full candidate pre-build regression
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Complete canonical Python suite at `d03d45f` | 5,277 passed, 1 skipped; no failures or errors | 494.266 seconds; not native compilation or browser API verification |
+| Regression source/runtime postguards | Passed | Tracked files, existing runtime, build graph and three repository indices unchanged |
+| Independent 001–076 runtime preservation | All 269 recorded assets rehashed successfully | Rollback/reference package, not the 001–116 candidate |
+| Exact baseline source transition preparation | 76 patches verified; 295 owned paths preserved; reverse checks passed | Chromium/V8 only; clean pinned Dawn dependency required |
+
+The complete candidate still requires real dependency stages, compilation and
+browser-level checks. These pre-build results grant no new fingerprint capability,
+privacy, CAPTCHA or production admission. The full candidate's source replay is
+documented [separately](../native/drafts/upstream-156-webgpu/README.md).
+
 ## 2026-10-31: actual standalone Wire plus hardware GPU delivery
 
 | Gate | Result | Boundary |
