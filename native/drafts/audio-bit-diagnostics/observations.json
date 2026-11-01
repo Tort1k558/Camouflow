@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "JS metric helper and Python summary self-checks only; not browser measurements",
+  "tool_checks": [
+    "float-differences",
+    "summary"
+  ],
+  "tool_report_sha256": "1fb98299e0eb0ac4c10e503312644b97971bb43ad35e386fa8fb1942d9cd1d25",
+  "input_postguards_passed": true,
+  "source_sha256": {
+    "difference.js": "ce17558476d8db6cb8ba71d99ed79367faa0580a2fc33f3fa613636a781b08f0",
+    "check-difference.js": "414bd9827c5a758e03e165457424ceaa586fff21c9a2e7019b42bca1d57d7d48",
+    "summarize.py": "fe692f05fab4f8e593a5b7b0eaab1aafc2e8114d96364563ead6989d6df38e0f",
+    "check-summary.py": "c294fc438acc9b8be14d849146bf321d4880da21657a59050adfe51657502a90",
+    "check.py": "76664f2d4bba573511d2dd67cf1bf81ed1caa23d494857d9a3964525ef03dea3"
+  },
+  "focused_host_tests": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "source": "tests/test_native_audio_bit_diagnostics_packet.py",
+    "source_sha256": "ab9b0d553093f6ee72981746d19bdd7f64d96887ba7ce5e453bcbc205618a4dc"
+  },
+  "selected": false,
+  "browser_executed": false,
+  "runtime_verified": false,
+  "native_sources_modified": false,
+  "production_admitted": false
+}
