@@ -48,7 +48,9 @@ is counted as success.
 
 ## Still required
 
-- Resolve the detached-copy budget for large source images without raw fallback.
+- The [owned-raster extension](../canvas-owned-raster/README.md) removes the
+  second private full raster in source; actual large-image/resource behaviour
+  still needs native and browser execution.
 - Link/execute all eleven native cases and the composed browser; repeat direct
   and transferred-frame copies, retained/replaced frames and profile ownership.
 - Test taint/error precedence, alpha, colour spaces, crop/scale and lifecycle;

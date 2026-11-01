@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "prepared_candidate": "upstream-156-image-r10",
+  "passed": true,
+  "scope": "Pre-registration complete source-chain replay only; not native test or browser execution",
+  "manifest_sha256": "3a1472a565328348b1cf4ae0038fbf905d2bd547f594f2cc4664b4143a1d7c48",
+  "preparation_report_sha256": "c432961ab6b127336f159e1f8bd55c5fd4203ecaa9fb5ecf94a36bd150df8336",
+  "forward_patches": 135,
+  "reverse_patches": 135,
+  "final_owned_files_matched": 406,
+  "upstream_files_restored": 273,
+  "canonical_sources_modified": false,
+  "registered": false,
+  "compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

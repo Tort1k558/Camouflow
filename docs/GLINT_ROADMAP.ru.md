@@ -1,5 +1,23 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: owned-raster source implementation and complete R10 preparation
+
+[Owned-raster packet](../native/drafts/canvas-owned-raster/README.md) now removes
+the second private pixel buffer without changing the edge-coherent transform or
+64 MiB cap. Ownership, immutable/subset/padding/format guards and origin/cache
+handling are implemented. Eight C++ type checks pass; ten new native cases bring
+the composed draft to 21, all still unexecuted.
+
+The complete prepared R10 source chain passes **135 apply / reverse patches**,
+406 final-file comparisons and 273 restored upstream inputs. It is not yet
+registered or built; R9 source/runtime is unchanged. Total Skia/GPU/process memory
+and real 4096-square image behaviour have not been measured.
+
+Next: register and bind the complete recipe, preserve R9 rollback/source state,
+build at maximum j4, execute all native cases, then repeat direct/transferred
+copies, large images, ownership/lifecycle/formats and resource measurements.
+Protected WebGPU acceptance and all manager/package/full-objective gates remain.
+
 ## 2026-11-02: transferred-frame provenance implemented as an unselected extension
 
 [Frame-provenance packet](../native/drafts/canvas-frame-provenance/README.md)

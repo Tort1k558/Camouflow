@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-11-02: single private raster and full source-chain replay
+
+[Owned-raster draft](../native/drafts/canvas-owned-raster/README.md): eight
+translation units type-check; ten new native cases are prepared, 21 with the
+two parent packets. The 4096×4096 case and all native cases remain **unexecuted**.
+The private buffer stays capped at 64 MiB; source and output share no mutable
+SkPixelRef, and the underlying pixel transform is unchanged. This is not a
+measurement of total browser/GPU memory or actual large-image compatibility.
+
+[Complete pre-registration replay](../native/drafts/canvas-owned-raster/full-composition-observations.json):
+**135 forward / reverse patches**, 406 final files matched, 273 upstream inputs
+restored, active sources unchanged. No new browser was linked and the R9 copy
+failures below remain. Next: register the composed recipe and execute its native,
+large-image, worker/format/resource and mixed-policy gates.
+
 ## 2026-11-02: real transferred-frame reproduction and source-only extension
 
 | Gate | Result |

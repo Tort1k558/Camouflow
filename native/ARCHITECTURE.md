@@ -1,5 +1,20 @@
 # Glint architecture
 
+## 2026-11-02: private-raster ownership and complete 135-patch preparation
+
+The [owned-raster extension](drafts/canvas-owned-raster/README.md) reuses the
+existing pixel transform while consuming one unique mutable full raster instead
+of allocating a second full copy. The 64 MiB private-buffer limit is unchanged;
+aliases, immutable/subset/padded data and non-normalized formats are rejected.
+Skia/GPU internal staging and total browser memory are outside that local bound.
+
+Eight translation units type-check. Ten new native cases bring the composed
+draft to 21, including an exact 4096-square image/budget case; none has executed.
+The complete unregistered R10 chain applies/reverses all 135 patches, matches
+406 final files and restores 273 inputs. Active R9 sources/runtime remain
+unchanged. Registration, native linking/execution, real large-image/resource
+tests and the full mixed-policy/manager/package gates remain necessary.
+
 ## 2026-11-02: frame-owner provenance extension and reproduced R9 bypass
 
 The [frame extension](drafts/canvas-frame-provenance/README.md) binds each

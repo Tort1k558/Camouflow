@@ -1,0 +1,244 @@
+{
+  "schema": 1,
+  "candidate_base": "upstream-156-canvas-r9",
+  "base_manifest_sha256": "cc160614d415bec6c71d8fcd29b57d884e406862dbe633d3e51a7300b7fa4b9f",
+  "parent_packets_sha256": {
+    "native\\drafts\\canvas-gpu-image-sources\\canvas-gpu-image-sources.patch": "2b0e1cb74f0c71448041e652353cfeea06d1e569faa81b3857e5dd9138df9891",
+    "native\\drafts\\canvas-frame-provenance\\canvas-frame-provenance.patch": "39f749a81721dd592398d1f312e29a31ddcc27d3d61c97af15ae2bb58108a533"
+  },
+  "patch_sha256": "25c6db6793e84392ec9388e128437d96c5782040bf64f036cfb5b37fb7d309a5",
+  "source_files": {
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": {
+      "before": "9594347e3a5664609e3e5de9efd038546d75040db8aab2b27e4e0332a18c0d2a",
+      "after": "9594347e3a5664609e3e5de9efd038546d75040db8aab2b27e4e0332a18c0d2a"
+    },
+    "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc": {
+      "before": "6ce84086ba5964f664964fd1bcf5c6ba94f666246d9be6dbea6306c8d9badc89",
+      "after": "6ce84086ba5964f664964fd1bcf5c6ba94f666246d9be6dbea6306c8d9badc89"
+    },
+    "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc": {
+      "before": "96b0790ff20ea20d9fd699642396016831ceda5a66b7c6322d9bf49e4888f0df",
+      "after": "96b0790ff20ea20d9fd699642396016831ceda5a66b7c6322d9bf49e4888f0df"
+    },
+    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc": {
+      "before": "850dfa9a1a46f3510115d8565621cad0221439de7e9588416efd0822cbf08fa6",
+      "after": "850dfa9a1a46f3510115d8565621cad0221439de7e9588416efd0822cbf08fa6"
+    },
+    "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc": {
+      "before": "91dd2257d0dcd84cab1ac63aec93e674ca779f6fb24044de1391b7883ce527e1",
+      "after": "91dd2257d0dcd84cab1ac63aec93e674ca779f6fb24044de1391b7883ce527e1"
+    },
+    "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc": {
+      "before": "cb8e70d292580945a3765007bbf933429fcbb7573db8b79c9269db2988af09be",
+      "after": "bcde22ed0d247030f57e4f9c17c0ed65a444a8262e48343c2f3c8e2780ca1b24"
+    },
+    "third_party/blink/renderer/platform/graphics/exported_canvas_resource.h": {
+      "before": "86ccb955e06b028f5bde245d9505bf1175b61cee1f1652a5be6b7c2e31ba6aa9",
+      "after": "86ccb955e06b028f5bde245d9505bf1175b61cee1f1652a5be6b7c2e31ba6aa9"
+    },
+    "third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc": {
+      "before": "c1e7b46e19be23629647c53e352686cbddc6b1369fc529c76bb0dc84b843dd6a",
+      "after": "c1e7b46e19be23629647c53e352686cbddc6b1369fc529c76bb0dc84b843dd6a"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h": {
+      "before": "bceb10b936d1c9235e8da9bff221be88ae3f932ec18c9acb5a229898b88b0609",
+      "after": "28b8233f016eab5a5ed941f9ace00da06e0a88a7ed2c01eb3fccdac679a2b094"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc": {
+      "before": "3df7f71effe0a5b22fd780501551a9fd48bbf3fc987bafc9fbbbf1cc24da8b00",
+      "after": "b78c7f5c8ccae79940179c8281f5d3c2b8344047d21a53833186dad4eea33a60"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h": {
+      "before": "0a7aea2fc385fa0d197714fda12234ef11a4b6b4b4762e16389e61a4d6b46c93",
+      "after": "18800b453da43f8236faf5c252885f70617119e4ea8254e4fd21950823f2f8ae"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc": {
+      "before": "a7433fa8a680aab29dc15f297a4165cd94228647c4eabe6249727b30de1594a0",
+      "after": "702e390d60396955276ae36586431e5b86e1256555b14b74053782de9cc5953c"
+    }
+  },
+  "canonical_source_bindings": {
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": {
+      "kind": "bound-frame-composition",
+      "canonical_sha256": "4475092d669eb167c37053ea9dcebdd582f7f8a0175441ab0b543e2347e867b1",
+      "parent_after_sha256": "9594347e3a5664609e3e5de9efd038546d75040db8aab2b27e4e0332a18c0d2a"
+    },
+    "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc": {
+      "kind": "bound-frame-composition",
+      "canonical_sha256": "6b67dfb92852544520898d1ee8e4aafdd5f2eec7c0900b4002f83ea7300ff0ac",
+      "parent_after_sha256": "6ce84086ba5964f664964fd1bcf5c6ba94f666246d9be6dbea6306c8d9badc89"
+    },
+    "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc": {
+      "kind": "bound-frame-composition",
+      "canonical_sha256": "a95075ae8cbfee459110ef9e8a9fa95c85e18b159e6a2e553462a3f271719720",
+      "parent_after_sha256": "96b0790ff20ea20d9fd699642396016831ceda5a66b7c6322d9bf49e4888f0df"
+    },
+    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc": {
+      "kind": "bound-frame-composition",
+      "canonical_sha256": "ddc7964c6212af91754ad800d5cc857a44ace50ff3f4f2591317605e46ebb537",
+      "parent_after_sha256": "850dfa9a1a46f3510115d8565621cad0221439de7e9588416efd0822cbf08fa6"
+    },
+    "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc": {
+      "kind": "bound-frame-composition",
+      "canonical_sha256": "70010c2aec7c827ac1bdd7110032d521f3758e2f79680868ffce7ca5b027df0e",
+      "parent_after_sha256": "91dd2257d0dcd84cab1ac63aec93e674ca779f6fb24044de1391b7883ce527e1"
+    },
+    "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc": {
+      "kind": "bound-frame-composition",
+      "canonical_sha256": "03a11de6766e1ac55004556a86b32a8c9f7fea2f6d3ebdb7dff0b171e6b69a44",
+      "parent_after_sha256": "cb8e70d292580945a3765007bbf933429fcbb7573db8b79c9269db2988af09be"
+    },
+    "third_party/blink/renderer/platform/graphics/exported_canvas_resource.h": {
+      "kind": "bound-frame-composition",
+      "canonical_sha256": "0a33b4a4c81ae3296efa4a4dff05ff4bb841fbc2d8186876bbf3d01a5d7031cc",
+      "parent_after_sha256": "86ccb955e06b028f5bde245d9505bf1175b61cee1f1652a5be6b7c2e31ba6aa9"
+    },
+    "third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc": {
+      "kind": "bound-frame-composition",
+      "canonical_sha256": "7078515a146b27992c728c5a54fef81f0c5f754ae13782241e88aae8b777423d",
+      "parent_after_sha256": "c1e7b46e19be23629647c53e352686cbddc6b1369fc529c76bb0dc84b843dd6a"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h": {
+      "kind": "verified-r9-owned-composition",
+      "canonical_sha256": "bceb10b936d1c9235e8da9bff221be88ae3f932ec18c9acb5a229898b88b0609"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc": {
+      "kind": "verified-r9-owned-composition",
+      "canonical_sha256": "3df7f71effe0a5b22fd780501551a9fd48bbf3fc987bafc9fbbbf1cc24da8b00"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h": {
+      "kind": "verified-r9-owned-composition",
+      "canonical_sha256": "0a7aea2fc385fa0d197714fda12234ef11a4b6b4b4762e16389e61a4d6b46c93"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc": {
+      "kind": "verified-r9-owned-composition",
+      "canonical_sha256": "a7433fa8a680aab29dc15f297a4165cd94228647c4eabe6249727b30de1594a0"
+    }
+  },
+  "changed_files": 5,
+  "overlay_source_files": 12,
+  "composed_forward_reverse_passed": true,
+  "type_checked_translation_units": 8,
+  "syntax_report_sha256": "d76e0d99c4f1807d90259dedcbe2a5c19337776d19e690e0461cf72afaaf9974",
+  "syntax_targets": [
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc",
+      "returncode": 0,
+      "response_sha256": "a7a5dbe3342196ffd717c14ac5781f01f486915dbd1e8be5009d7f97a1514892",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc",
+      "returncode": 0,
+      "response_sha256": "aad65355ef69192f422a89fee3d18b9e71d665073763894f791fbdf4428acaa6",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+      "returncode": 0,
+      "response_sha256": "75824241d11f6cc346c938ca6ad15609e97aba0689a07648db38d69101441ae4",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+      "returncode": 0,
+      "response_sha256": "d8e03c37986f82c418790167d8bc5aa957ecf22e534e985c353bd635ecdd21d0",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+      "returncode": 0,
+      "response_sha256": "399b792d350ceb71dd440906a4f7ed1b93bb7a58e4a379cae2cae3d9e76f3227",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc",
+      "returncode": 0,
+      "response_sha256": "7495ffbf2ebbcd7fcb36f6d9e57f2c3fa356a14026aa2b15882eb3f426bdea4a",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc",
+      "returncode": 0,
+      "response_sha256": "45f762b031d3b38a0a3d89f13a29617a664d339bf2a26c1428933edfe9ac3557",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc",
+      "returncode": 0,
+      "response_sha256": "ccaabee60d809e22f288bb3e26c8d10e62eb647fb17e4c90f0c3f5bc2169832b",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "native_new_cases": [
+    "ConsumesDenseAllocationAndInvalidatesGeneration",
+    "RejectsAliasedRasterWithoutChangingPixels",
+    "RejectsImmutableRaster",
+    "RejectsPremultipliedInputUntilNormalized",
+    "MatchesUnchangedPixelTransformOracle",
+    "RejectsPaddedRows",
+    "RejectsBgraUntilNormalized",
+    "RejectsSubsetBackingEvenAfterOriginalIsReleased",
+    "KeepsF16DisplayP3ColourSpace",
+    "Full4096RasterFitsUnchanged64MiBImageBudget"
+  ],
+  "composed_native_cases": {
+    "GlintGPUCanvasImageSourceTest": [
+      "UnselectedCopyRetainsIdentityWithoutAllocation",
+      "MissingImageIsNotRawFallback",
+      "DetachedCopyBudgetHasExactBoundary",
+      "DetachedImagePreservesBothOriginStates",
+      "RepeatedSnapshotsDoNotMutateTheSource",
+      "ExplicitSeedsDoNotAliasTheFixture",
+      "TranslucentSourceKeepsAlphaAndTaint"
+    ],
+    "GlintCanvasFrameSourceTest": [
+      "CommitmentBindsBothSourceKindAndOwnerSeed",
+      "MissingAndUnavailableDescriptorsAreNotProofs",
+      "RetainedProofCannotRebindToAnotherOwner",
+      "NativeCanvasDescriptorCannotCarryGpuProof"
+    ],
+    "GlintOwnedCanvasCopyTest": [
+      "ConsumesDenseAllocationAndInvalidatesGeneration",
+      "RejectsAliasedRasterWithoutChangingPixels",
+      "RejectsImmutableRaster",
+      "RejectsPremultipliedInputUntilNormalized",
+      "MatchesUnchangedPixelTransformOracle",
+      "RejectsPaddedRows",
+      "RejectsBgraUntilNormalized",
+      "RejectsSubsetBackingEvenAfterOriginalIsReleased",
+      "KeepsF16DisplayP3ColourSpace",
+      "Full4096RasterFitsUnchanged64MiBImageBudget"
+    ]
+  },
+  "prepared_native_tests": 10,
+  "composed_prepared_native_tests": 21,
+  "private_pixel_buffer_budget_bytes": 67108864,
+  "full_size_private_rasters": 1,
+  "pixel_transform_algorithm_changed": false,
+  "ownership_checks": [
+    "Unique mutable SkPixelRef",
+    "Dense full-extent normalized RGBA8/F16",
+    "No subset origin or padded rows",
+    "Immutable result and generation invalidation"
+  ],
+  "adapter_preserves_source_origin_and_orientation": true,
+  "owned_budget_does_not_bound_skia_gpu_internal_staging": true,
+  "earlier_preparation_failure_preserved": {
+    "report_sha256": "39250c470a0fc64c397e3061a192a3ef4e3cb6270e1743c1aafd019dee0c29b2",
+    "reason": "Preparation expected a wrapped function signature; no source modification or compiler invocation"
+  },
+  "selected": false,
+  "active_checkout_modified": false,
+  "compiled_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "original_r9_failure_repaired": false,
+  "remaining_gates": [
+    "Execute all 21 native cases, including the 4096-square image case",
+    "Measure actual GPU/worker/format/large-image compatibility and total process resources",
+    "Protected WebGPU acceptance, mixed-policy, lifecycle and manager/package gates"
+  ],
+  "privacy_admitted": false,
+  "production_admitted": false
+}
