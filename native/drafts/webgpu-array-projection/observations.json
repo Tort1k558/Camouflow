@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "selected": false,
+  "browser_integrated": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Complete 2D array/mip GPU projection primitive; not Dawn logical ownership or browser routing.",
+  "source_files": {
+    "src/dawn/native/d3d12/glint/projected_texture.cc": {
+      "before_sha256": "10486c809476912ee9c94170957619574ae9def9b13d754b401bc1ba5360975e",
+      "after_sha256": "81dd5486969207ef6e1cf1496206eab8978f53db68b20dbd87d2c9a9b0b38e53"
+    },
+    "src/dawn/native/d3d12/glint/projected_texture.h": {
+      "before_sha256": "93baae3b87d5a7c9463d2b442070006102a4b728554cac7c4dd5c4bf1b6b4880",
+      "after_sha256": "f69420edbec2734f51ecd7119120fa91f97165814e32c3f7de64fdc9a5de874b"
+    }
+  },
+  "patch_roundtrip_passed": true,
+  "capture_budget_limit_bytes": 67108864,
+  "previous_projection_observations_sha256": "552b2629069e1a955571f036a83894bad4274b6c7ca4aabf74d835174bc1916b",
+  "unresolved": [
+    "Paired CPU/GPU Dawn snapshot and copy propagation",
+    "Complete-resource cache ownership and invalidation",
+    "Dawn sampled-view descriptor validation",
+    "Actual document/iframe/worker maps, mutations and restarts"
+  ],
+  "source_sha256": {
+    "atomic-fixture.patch": "f2286a3ab339f4fa0b296312f791a59fbfaba597af54098cc0cb86308e961a90",
+    "atomic-negative-library.patch": "41262feb675ce577211c7ea4bf7a30cc8739f67ddad01250d1834ea90716e733",
+    "atomic-positive-library.patch": "30d0dcb4cabc21f4b0de4f3d9a02b37480e2bdf372943d0fb4dfea7665cc6caf",
+    "check.py": "afbf2d2fd4821afd3fbe93738dca53ad47648141186b45a3e38c0c4b42af8af8",
+    "check_native.py": "b3078b9f807a5d27c960eccc00c95131112519f52887ece38385e353942f07cc",
+    "edge_projection.hlsl": "9e9fb57a92303e930984543fe67c44ae5a48abf59740968ffa2fa7da87d7615f",
+    "next.patch": "2ebfbd266670bd80f4dfa8a7c7a723a39fdfaad44792f50ae10914c154872eb1",
+    "projected_texture.cc": "81dd5486969207ef6e1cf1496206eab8978f53db68b20dbd87d2c9a9b0b38e53",
+    "projected_texture.h": "f69420edbec2734f51ecd7119120fa91f97165814e32c3f7de64fdc9a5de874b",
+    "shadow_test.cc": "dbae06737d834db0ee35d41d28b01492ced9415902d9d74ea73ec8b1f1f9afae",
+    "texture_consumer.hlsl": "1047da903a233c5b91d4c37a4913e6e77d0bb424ad36009b9b7c7697034e4c76"
+  },
+  "cases": {
+    "arrays": {
+      "passed": true,
+      "report_sha256": "52bd6425eba31ef02a435661835d6ecbb9f3fe3a19bb0bdf4128d1876fc30bdd",
+      "postguards_passed": true,
+      "hardware_execution_verified": true,
+      "measured_sources_sha256": {
+        "projected_texture.cc": "81dd5486969207ef6e1cf1496206eab8978f53db68b20dbd87d2c9a9b0b38e53",
+        "projected_texture.h": "f69420edbec2734f51ecd7119120fa91f97165814e32c3f7de64fdc9a5de874b",
+        "shadow_test.cc": "dbae06737d834db0ee35d41d28b01492ced9415902d9d74ea73ec8b1f1f9afae",
+        "texture_consumer.hlsl": "1047da903a233c5b91d4c37a4913e6e77d0bb424ad36009b9b7c7697034e4c76"
+      },
+      "runs": [
+        {
+          "sanitizer": "none",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "hardware_adapter": true,
+            "cases": 12,
+            "assertions": 338090,
+            "subresources_per_case": 6,
+            "array_shader_verified": true,
+            "narrow_views_verified": true,
+            "canonical_bytes_verified": true,
+            "original_unchanged": true,
+            "late_quota_denial_drained": true,
+            "browser_integrated": false
+          }
+        },
+        {
+          "sanitizer": "address",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "hardware_adapter": true,
+            "cases": 12,
+            "assertions": 338090,
+            "subresources_per_case": 6,
+            "array_shader_verified": true,
+            "narrow_views_verified": true,
+            "canonical_bytes_verified": true,
+            "original_unchanged": true,
+            "late_quota_denial_drained": true,
+            "browser_integrated": false
+          }
+        }
+      ]
+    },
+    "single": {
+      "passed": true,
+      "report_sha256": "3f5302e0286249fa4826a01d35a05c634763d7b80d5b3b93b9a1fe837138f3df",
+      "postguards_passed": true,
+      "hardware_execution_verified": true,
+      "measured_sources_sha256": {
+        "projected_texture.cc": "81dd5486969207ef6e1cf1496206eab8978f53db68b20dbd87d2c9a9b0b38e53",
+        "projected_texture.h": "f69420edbec2734f51ecd7119120fa91f97165814e32c3f7de64fdc9a5de874b",
+        "shadow_test.cc": "447dc8c860d2152ae02473e0dd6842279e0d2062cc486461b6297f782c5d15ec",
+        "texture_consumer.hlsl": "638e1ae5186bac218b0d3776db17172b24d585cb96034e5ac75ff26004d37a44"
+      },
+      "runs": [
+        {
+          "sanitizer": "none",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "hardware_adapter": true,
+            "cases": 32,
+            "assertions": 99158,
+            "shared_quota_cases": 32,
+            "typed_texture_consumer_verified": true,
+            "original_unchanged": true,
+            "browser_integrated": false
+          }
+        },
+        {
+          "sanitizer": "address",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "hardware_adapter": true,
+            "cases": 32,
+            "assertions": 99158,
+            "shared_quota_cases": 32,
+            "typed_texture_consumer_verified": true,
+            "original_unchanged": true,
+            "browser_integrated": false
+          }
+        }
+      ]
+    },
+    "fastpath": {
+      "passed": true,
+      "report_sha256": "c1363569e7624647f5e6c0d2d48943d03a5c5d9bd436e684e4565f74779658ed",
+      "postguards_passed": true,
+      "hardware_execution_verified": true,
+      "measured_sources_sha256": {
+        "projected_texture.cc": "81dd5486969207ef6e1cf1496206eab8978f53db68b20dbd87d2c9a9b0b38e53",
+        "projected_texture.h": "f69420edbec2734f51ecd7119120fa91f97165814e32c3f7de64fdc9a5de874b",
+        "shadow_test.cc": "9017e2ab217d6684840d49f3cc531a94086dd00ef9266b3d6dfbc8ea55044c14",
+        "texture_consumer.hlsl": "638e1ae5186bac218b0d3776db17172b24d585cb96034e5ac75ff26004d37a44"
+      },
+      "runs": [
+        {
+          "sanitizer": "none",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "hardware_adapter": true,
+            "cases": 8,
+            "assertions": 19206,
+            "shared_quota_cases": 8,
+            "typed_texture_consumer_verified": true,
+            "original_unchanged": true,
+            "browser_integrated": false
+          }
+        },
+        {
+          "sanitizer": "address",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "hardware_adapter": true,
+            "cases": 8,
+            "assertions": 19206,
+            "shared_quota_cases": 8,
+            "typed_texture_consumer_verified": true,
+            "original_unchanged": true,
+            "browser_integrated": false
+          }
+        }
+      ]
+    },
+    "atomic-positive": {
+      "passed": true,
+      "report_sha256": "0a1bee2cc88fea13e5aa539ea1c1881f8d30883d4bfac48348960fdc58a4181b",
+      "postguards_passed": true,
+      "hardware_execution_verified": true,
+      "measured_sources_sha256": {
+        "projected_texture.cc": "77a8b2cc6df7399376297a7488d94c9ea18fd1e1240c7a03816e9c747e43c5a9",
+        "projected_texture.h": "f69420edbec2734f51ecd7119120fa91f97165814e32c3f7de64fdc9a5de874b",
+        "shadow_test.cc": "5589211c2cc552cfa0c7fb9c0e28b20ce7e604aa55a0b47b12a268b0ae201821",
+        "texture_consumer.hlsl": "1047da903a233c5b91d4c37a4913e6e77d0bb424ad36009b9b7c7697034e4c76"
+      },
+      "runs": [
+        {
+          "sanitizer": "none",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "hardware_adapter": true,
+            "cases": 12,
+            "assertions": 338090,
+            "subresources_per_case": 6,
+            "array_shader_verified": true,
+            "narrow_views_verified": true,
+            "canonical_bytes_verified": true,
+            "original_unchanged": true,
+            "late_quota_denial_drained": true,
+            "browser_integrated": false
+          }
+        },
+        {
+          "sanitizer": "address",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "hardware_adapter": true,
+            "cases": 12,
+            "assertions": 338090,
+            "subresources_per_case": 6,
+            "array_shader_verified": true,
+            "narrow_views_verified": true,
+            "canonical_bytes_verified": true,
+            "original_unchanged": true,
+            "late_quota_denial_drained": true,
+            "browser_integrated": false
+          }
+        }
+      ]
+    },
+    "atomic-negative": {
+      "passed": true,
+      "report_sha256": "ef20e42c276052b59b6482423dd788e7d0a416882d9ab00aee1167af1235802a",
+      "postguards_passed": true,
+      "hardware_execution_verified": false,
+      "measured_sources_sha256": {
+        "projected_texture.cc": "4166a07247cfcc1da977806f85928162b1790533159aec7b9b936797cb985c9a",
+        "projected_texture.h": "f69420edbec2734f51ecd7119120fa91f97165814e32c3f7de64fdc9a5de874b",
+        "shadow_test.cc": "5589211c2cc552cfa0c7fb9c0e28b20ce7e604aa55a0b47b12a268b0ae201821",
+        "texture_consumer.hlsl": "1047da903a233c5b91d4c37a4913e6e77d0bb424ad36009b9b7c7697034e4c76"
+      },
+      "runs": [
+        {
+          "sanitizer": "none",
+          "compile_returncode": 0,
+          "test_returncode": 23,
+          "expected_rejection_before_gpu_submit": true
+        }
+      ]
+    }
+  },
+  "native_target_syntax": {
+    "passed": true,
+    "scope": "Generated Dawn target flags and cached system module; syntax only, not linking or runtime.",
+    "report_sha256": "ec0f6b4529fc14a51a9b02a6b75fdbbfe444df6ac8c7117328a6ade4116d119d",
+    "runs": [
+      {
+        "source": "third_party/dawn/src/dawn/native/d3d12/glint/projected_texture.cc",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "response_sha256": "1f380ae1dbb3269191c0f7137b20cdff2e162149660f6927d3332e8c9df35ede"
+      },
+      {
+        "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "response_sha256": "bc11515ce0c92da31e324698445bf260b06fd7a8ed80eaabcd878d581d5219b6"
+      }
+    ],
+    "postguards_passed": true,
+    "checker_sha256": "b3078b9f807a5d27c960eccc00c95131112519f52887ece38385e353942f07cc",
+    "earlier_public_report_sha256": "78e2f26eb8ab072869c4d7304f2996e61031f5a7e06e8f1e2872be22104cbfd0"
+  },
+  "earlier_native_target_failure": {
+    "passed": false,
+    "report_sha256": "954f952268e8c21d87fc46ecae19d76e82e3d2cd9b39de75492d6be3a5a2bd79",
+    "reason": "Three try/catch blocks were incompatible with the exceptions-disabled Chromium target.",
+    "log_sha256": "4c2eb3aadf56608ea2da8f1035605efb3ffc6ec03342f68edb325947bc838af6",
+    "postguards_passed": true
+  },
+  "hardware_projection_passed": true,
+  "limitations": [
+    "Native routing and logical ownership not integrated.",
+    "Only supported single-sample 2D RGBA/BGRA UNORM/TYPELESS resources; not SRGB, FP16, depth, 3D or MSAA.",
+    "Device-owned 64 MiB quota is not a process-wide memory limit or general CPU-memory recovery guarantee."
+  ]
+}

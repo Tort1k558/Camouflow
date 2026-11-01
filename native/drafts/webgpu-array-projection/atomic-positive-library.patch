@@ -1,0 +1,18 @@
+--- a/projected_texture.cc
++++ b/projected_texture.cc
+@@ -7,6 +7,7 @@
+ #include <limits>
+ #include <new>
+ 
++extern "C" uint64_t glint_projection_recorded_commands;
+ namespace glint::candidate::d3d12 {
+ using Microsoft::WRL::ComPtr;
+ namespace {
+@@ -302,6 +303,7 @@
+     to.pResource = hold->shadow.Get();
+     to.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+     // All fallible allocations/validation precede the first recorded command.
++    ++::glint_projection_recorded_commands;
+     commands->CopyTextureRegion(&to, 0, 0, 0, &from, nullptr);
+     Transition(commands, hold->shadow.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

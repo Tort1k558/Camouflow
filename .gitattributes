@@ -322,3 +322,4 @@ native/drafts/environment/webgpu-r4-runtime-observations.json text eol=lf
 app/core/native/surface_driver.py text eol=lf
 native/drafts/webgpu-subresource-capture/* text eol=lf
 native/drafts/webgpu-subresource-projection/* text eol=lf
+native/drafts/webgpu-array-projection/* text eol=lf

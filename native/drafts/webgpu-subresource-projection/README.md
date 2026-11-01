@@ -36,6 +36,10 @@ python native/drafts/webgpu-subresource-projection/check.py `
 
 ## Integration still required
 
+The [complete-array follow-up](../webgpu-array-projection/README.md) now passes
+native array and narrow-view hardware checks. Dawn routing and actual browser
+maps remain unverified; this earlier single-slice draft alone cannot provide them.
+
 - Assemble compatible multi-layer/multi-mip sampled views; a single projected
   slice must not be passed off as a complete array view.
 - Propagate validated selection through Dawn copies and paired CPU/GPU snapshots.

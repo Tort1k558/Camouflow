@@ -19,6 +19,10 @@ is hardware-tested but does not yet repair paired GPU projection or the browser.
 The [selected-slice GPU projection](../webgpu-subresource-projection/README.md)
 also passed hardware and ASan checks, including canonical-buffer equality.
 Assembled array views, cache identity and native routing remain unintegrated.
+The [complete-array primitive](../webgpu-array-projection/README.md) now passes
+array/narrow-view hardware checks and actual Dawn-target syntax. It still needs
+paired native snapshots, view validation and cache integration before any browser
+repair can be claimed.
 
 Legacy Audio remains failed. Long-buffer AudioMath passed with both diagnostic
 selectors chosen before measurement; its original random cohort missed one

@@ -1,0 +1,23 @@
+--- a/shadow_test.cc
++++ b/shadow_test.cc
+@@ -17,6 +17,7 @@
+ using glint::candidate::d3d12::ProjectedTexture;
+ using glint::candidate::d3d12::CaptureMemoryBudget;
+ using glint::candidate::d3d12::TextureCapture;
++extern "C" { uint64_t glint_projection_recorded_commands = 0; }
+ size_t assertions = 0, cases = 0, quota_cases = 0;
+ void Check(bool valid, int line) {
+     ++assertions;
+@@ -194,7 +195,12 @@
+             fixture.root.Get(), fixture.projection.Get(), key, fence.Get(), 1, quota, &projected);
+     };
+     CHECK(record(budget, false) == E_INVALIDARG && !projected && budget->used_bytes() == 0);
++    const uint64_t before_denial = glint_projection_recorded_commands;
+     CHECK(record(late_denial, true) == E_OUTOFMEMORY && !projected && late_denial->used_bytes() == 0);
++    if (glint_projection_recorded_commands != before_denial) {
++        std::fputs("PARTIAL_RECORDING_BEFORE_QUOTA_DENIAL\n", stderr);
++        std::exit(23);
++    }
+     Ok(record(budget, true));
+     const uint64_t charged = projected->allocation_bytes();
+     CHECK(charged == budget->used_bytes() && charged > probe->allocation_bytes());

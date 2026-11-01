@@ -1,5 +1,28 @@
 # Glint: план проверки и развития
 
+## 2026-11-01: transactional complete-array projection primitive
+
+[Native follow-up](../native/drafts/webgpu-array-projection/README.md) projects every mip
+and layer before exposing a complete private array. It is not connected to Dawn
+or the browser yet; R5's recorded map failure remains unresolved.
+
+| Gate | Measured result |
+| --- | --- |
+| Array and nonzero-base narrow views | 12 cases, six subresources each; 338,090 assertions in each normal/ASan run |
+| Retained single-slice / original fast path | 32 / eight cases passed in both modes |
+| Late quota failure | No partial recording; injected violation detected before GPU submission |
+| Actual Dawn target flags | Two translation units passed syntax checks, without changing exception flags |
+
+An earlier standalone-successful revision failed Chromium syntax because of
+three `try/catch` blocks. The final code uses checked `nothrow` arrays; both the
+failure and its measured correction are retained in the observations.
+
+Next: pair CPU/GPU snapshots with selected mip/layer metadata, validate native
+copy ranges and sampled views, preserve full-resource cache invalidation, then
+compile one integrated packet and rerun the actual failing browser matrix.
+Resource exhaustion, legacy Audio, manager admission and end-to-end delivery
+remain open. No runtime capability or detector result is promoted by this draft.
+
 ## 2026-11-01: R5 browser measurements and subresource follow-up
 
 [Exact browser evidence](../native/drafts/upstream-156-webgpu-r5/browser-observations.json)
