@@ -1,5 +1,23 @@
 # Glint browser test matrix
 
+## 2026-11-01: Dawn array source packet composed; runtime still pending
+
+[Integration packet](../native/drafts/webgpu-array-native-integration/README.md) composes
+the three prerequisite primitives with six Dawn adapter files. All ten staged
+source hashes match; six translation units passed generated-target syntax.
+Canonical R5 sources and the existing browser remain unchanged.
+
+The packet carries mip/layer through paired CPU/GPU snapshots, emits per-layer
+copy notices with checked row/image offsets, validates exact sampled-view ranges,
+and requires cached projections to cover the complete resource. Existing write
+and shared-access cache invalidation remains in place.
+
+**Next:** register a new candidate preserving R5's exact prefix; perform a
+reversible source transition and Windows build at maximum j4; verify direct,
+sampled and multi-layer copies, padding, mutations, all contexts and restarts.
+Native linking, actual browser repair, allocation recovery and package admission
+are not established by these syntax checks. The full earlier goal remains open.
+
 ## 2026-11-01: transactional complete-array projection primitive
 
 [Native follow-up](../native/drafts/webgpu-array-projection/README.md) projects every mip

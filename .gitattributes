@@ -323,3 +323,4 @@ app/core/native/surface_driver.py text eol=lf
 native/drafts/webgpu-subresource-capture/* text eol=lf
 native/drafts/webgpu-subresource-projection/* text eol=lf
 native/drafts/webgpu-array-projection/* text eol=lf
+native/drafts/webgpu-array-native-integration/* text eol=lf

@@ -62,6 +62,10 @@ The isolated runners do not modify the canonical Chromium checkout.
 
 ## Remaining integration
 
+The [Dawn source packet](../webgpu-array-native-integration/README.md) now
+composes these adapters and passes six native-target syntax checks. Linking
+and actual browser verification remain pending; it is not an admitted runtime.
+
 Carry mip/layer selection through native copy and paired CPU/GPU snapshots;
 validate Dawn view descriptors and cache ownership/invalidation; then compile
 the complete packet and rerun actual document/iframe/worker maps, mutations

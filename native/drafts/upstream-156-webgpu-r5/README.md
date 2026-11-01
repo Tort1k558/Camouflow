@@ -23,6 +23,9 @@ The [complete-array primitive](../webgpu-array-projection/README.md) now passes
 array/narrow-view hardware checks and actual Dawn-target syntax. It still needs
 paired native snapshots, view validation and cache integration before any browser
 repair can be claimed.
+The [Dawn adapter packet](../webgpu-array-native-integration/README.md) now passes
+source composition and six target-flag syntax checks. R5's actual binary and
+its recorded failed map gate are unchanged; the packet requires a new candidate.
 
 Legacy Audio remains failed. Long-buffer AudioMath passed with both diagnostic
 selectors chosen before measurement; its original random cohort missed one

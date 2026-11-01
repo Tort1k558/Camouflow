@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "selected": false,
+  "native_target_syntax_passed": true,
+  "packet_composition_passed": true,
+  "browser_integrated": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Composed Dawn adapters and prerequisite primitives, generated-target syntax only; not native linking or browser execution.",
+  "packet_sha256": "f33fd1e68e313c7ca858fbcaf273fcf6db0795dd852b3b3f169c911300afc97d",
+  "checker_sha256": "a081501563a2728d50cd06f3aa4d536e835fe65dc10707d1cb9757a63f7f40b9",
+  "report_sha256": "690f11c34414d6653e70f9bd7976b3e59cdb26ad566a8d6b9452f4b5a15f9c36",
+  "runs": [
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "794a1ab835b0ab35af47d310bb54cf146f7ed71365e3ea9deed3dc0144b688f9"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "640c0bb42f7e720d6684ad8062bf05485668bd6debc90293d39619baa6e7bd14"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/projected_texture.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "52f43868879b6502bafbc5615de5ef4365b850a187e7b0534fd9112b3e5d7fbf"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "4d46e6a1aba59f371ec03fe2c14187c5f5efd66d98025fbbe0b1448d2747a057"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "b570aef895788c3bd09bc45793dd28f3c2c6d46e56c636d67c3d34d308ec77a2"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "34736a5b0621fab95fb3e60eb66719b4952ad6e2b61db5408119e18f79a55dc9"
+    }
+  ],
+  "prepared_source_sha256": {
+    "third_party/dawn/src/dawn/native/d3d12/BindGroupD3D12.cpp": "85a61293f795f4ca877a6703361e5139326426418d05ea3c4ba497a98a5ab592",
+    "third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp": "e7806181659c638f7fd8272c9bba560035a2aeeafbafc3ffc673039eb130c52a",
+    "third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp": "4fab925a1b349f1528b36d3b30049cc0883a2d64c95eae298920d252f81d0fc6",
+    "third_party/dawn/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h": "2ab6f36f6fd28c12226cbd7a5a8211d2bd8a30d42fd488245ca73abed6e71abf",
+    "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp": "1fb952151e02edbd08dbe48ad68d97ae7c0e6a80328cddda953b7b8cbc7c95b3",
+    "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h": "5ebe25487253ec4f185891dc570a4f5b91f1c03740b241b76d9d145285e90a89",
+    "third_party/dawn/src/dawn/native/d3d12/glint/projected_texture.cc": "81dd5486969207ef6e1cf1496206eab8978f53db68b20dbd87d2c9a9b0b38e53",
+    "third_party/dawn/src/dawn/native/d3d12/glint/projected_texture.h": "f69420edbec2734f51ecd7119120fa91f97165814e32c3f7de64fdc9a5de874b",
+    "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc": "e9bb295b4f3c72aba6340531a21c50c80853a518d43abd55e6d92893785d8cde",
+    "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h": "1c812f47698160e800f7aefb38be08e75c8615afe00bd84f118292ef89527eb3"
+  },
+  "postguards_passed": true,
+  "compiler_sha256": "46ec91bea01ec2a79087ed161a6cc39e5d99f8d90ae6423dbb6ca8e215fcf886",
+  "remaining_gates": [
+    "New candidate registration and reversible source transition",
+    "Native linking/build and actual contexts/workers/restarts",
+    "Multi-layer row/image padding and producer mutation/recovery",
+    "Full regression, managed package admission and release/rollback"
+  ],
+  "limitations": [
+    "Cached generated headers/system module; not a hermetic rebuild.",
+    "End-to-end recoverable allocation failure is not verified.",
+    "Existing storage/external/render write-dependency restrictions remain."
+  ]
+}

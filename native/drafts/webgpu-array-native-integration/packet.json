@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "selected": false,
+  "browser_integrated": false,
+  "base_candidate": "upstream-156-webgpu-r5",
+  "base_candidate_manifest_sha256": "faa45bce063499c85acd6ef05d6d8f063a552aa77b59f333cd56002958ffd7c3",
+  "repository": "third_party/dawn",
+  "patch": "next.patch",
+  "patch_sha256": "b7b1962a28347f900475c458751a315c00f40212150964aeadee47234c55f4c7",
+  "prerequisites": [
+    {
+      "patch": "native/drafts/webgpu-subresource-capture/next.patch",
+      "patch_sha256": "1e22e3a8f39a66aae4622c10f23c4c2abdc60ce773485a4a37c12a8e8c43eccd",
+      "observations": "native/drafts/webgpu-subresource-capture/observations.json",
+      "observations_sha256": "b96462e9e33549d14e5b300b25538fc8ae3a8a9b1d47be51d5f3929266b034d2"
+    },
+    {
+      "patch": "native/drafts/webgpu-subresource-projection/next.patch",
+      "patch_sha256": "841ef8edbffc96e5c1bf509c59c344d1af0a5f8a8d89b2e63a63a2191f610cf1",
+      "observations": "native/drafts/webgpu-subresource-projection/observations.json",
+      "observations_sha256": "552b2629069e1a955571f036a83894bad4274b6c7ca4aabf74d835174bc1916b"
+    },
+    {
+      "patch": "native/drafts/webgpu-array-projection/next.patch",
+      "patch_sha256": "2ebfbd266670bd80f4dfa8a7c7a723a39fdfaad44792f50ae10914c154872eb1",
+      "observations": "native/drafts/webgpu-array-projection/observations.json",
+      "observations_sha256": "4b84c95ff899de808ba14e5924c275170441a360fdf161d9c0abf529d2ad2fb9"
+    }
+  ],
+  "source_files": {
+    "src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp": {
+      "before_sha256": "d9ef6d175514a6de6300d58448e9c7af4ea9474534cc630e031dc536b3cd3391",
+      "after_sha256": "4fab925a1b349f1528b36d3b30049cc0883a2d64c95eae298920d252f81d0fc6"
+    },
+    "src/dawn/native/d3d12/GlintTextureProjectionD3D12.h": {
+      "before_sha256": "a212cc95a674cf3f72c444cae31070f54998f052691d7089642d4c034141981d",
+      "after_sha256": "2ab6f36f6fd28c12226cbd7a5a8211d2bd8a30d42fd488245ca73abed6e71abf"
+    },
+    "src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp": {
+      "before_sha256": "fb979395bbfdab3cad04d9551196593135272ff5caab9611424c211534c602bc",
+      "after_sha256": "1fb952151e02edbd08dbe48ad68d97ae7c0e6a80328cddda953b7b8cbc7c95b3"
+    },
+    "src/dawn/native/d3d12/GlintTextureReadbackD3D12.h": {
+      "before_sha256": "999c4ea43fdde0592394dbd229650b08dff34db6bcf75243e85e0f4bb01bd568",
+      "after_sha256": "5ebe25487253ec4f185891dc570a4f5b91f1c03740b241b76d9d145285e90a89"
+    },
+    "src/dawn/native/d3d12/BindGroupD3D12.cpp": {
+      "before_sha256": "248f3a9049a4de127b38160884f227af6bc358b54a00cc5225535090770bd082",
+      "after_sha256": "85a61293f795f4ca877a6703361e5139326426418d05ea3c4ba497a98a5ab592"
+    },
+    "src/dawn/native/d3d12/CommandBufferD3D12.cpp": {
+      "before_sha256": "77e493c96bcf0f2abab2556eba5dcb921d8e5fd1cb0576480163df53d63330ff",
+      "after_sha256": "e7806181659c638f7fd8272c9bba560035a2aeeafbafc3ffc673039eb130c52a"
+    }
+  },
+  "scope": "Full-resource projection with paired mip/layer snapshots, sampled-view validation and multi-layer copy notices; not browser admission."
+}
