@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "measurement_complete": true,
+  "compatibility_passed": false,
+  "scope": "Two-profile R8 instrumented Audio difference measurement; unchanged exact-match verdicts",
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "10dad15a0065aa71a7527c099cced71301ab487818ef3740bc0ac52ecad9837d",
+  "raw_report_sha256": "980f121c10e1ba96345e4c85ee0ff27a368805432177934096d54ccb07e0d26b",
+  "differences_sha256": "14f5f7880c9c8a041ef39c7ddb87494542fc6625ebf6863ed8383973b6219f98",
+  "original_runner_failed": true,
+  "original_runner_report_sha256": "b84d937668cc8e05a00ec0077b8b7d9f8cf4d964c001b9ced74ee0e6deac6450",
+  "runner_schema_error": "Expected root phase and exactly three modes; actual multi-profile schema has per-profile phase plus math-restart",
+  "raw_report_rewritten": false,
+  "browser_rerun_for_normalization": false,
+  "profiles": 2,
+  "reference_selectors": [
+    1,
+    1
+  ],
+  "reference_selectors_covered": false,
+  "math_restart_exact": true,
+  "unmodified_math_graphs_exact": true,
+  "legacy_differences": [
+    {
+      "profile_index": 0,
+      "probe": "fidelity",
+      "compared_samples": 43008,
+      "changed_samples": 13536,
+      "maximum_ulp_distance": 1,
+      "maximum_absolute_difference": 2.9802322387695312e-08,
+      "original_failed_rows": 24
+    },
+    {
+      "profile_index": 0,
+      "probe": "analyser",
+      "compared_samples": 3072,
+      "changed_samples": 1198,
+      "maximum_ulp_distance": 1,
+      "maximum_absolute_difference": 2.9802322387695312e-08,
+      "original_failed_rows": 12
+    },
+    {
+      "profile_index": 0,
+      "probe": "worklet",
+      "compared_samples": 24576,
+      "changed_samples": 9140,
+      "maximum_ulp_distance": 1,
+      "maximum_absolute_difference": 2.9802322387695312e-08,
+      "original_failed_rows": 12
+    },
+    {
+      "profile_index": 1,
+      "probe": "fidelity",
+      "compared_samples": 43008,
+      "changed_samples": 11208,
+      "maximum_ulp_distance": 1,
+      "maximum_absolute_difference": 2.9802322387695312e-08,
+      "original_failed_rows": 18
+    },
+    {
+      "profile_index": 1,
+      "probe": "analyser",
+      "compared_samples": 3072,
+      "changed_samples": 1296,
+      "maximum_ulp_distance": 1,
+      "maximum_absolute_difference": 2.9802322387695312e-08,
+      "original_failed_rows": 12
+    },
+    {
+      "profile_index": 1,
+      "probe": "worklet",
+      "compared_samples": 24576,
+      "changed_samples": 10006,
+      "maximum_ulp_distance": 1,
+      "maximum_absolute_difference": 2.9802322387695312e-08,
+      "original_failed_rows": 12
+    }
+  ],
+  "all_other_compared_samples_unchanged": true,
+  "postguards_passed": true,
+  "resources_closed": true,
+  "finding": "Legacy post-render transformation disagrees with linear signals, analyser tails and worklet packets; differences remain exact-match failures",
+  "both_math_backends_verified": false,
+  "internal_backend_observed": false,
+  "legacy_audio_repaired": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

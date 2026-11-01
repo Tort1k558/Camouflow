@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import runpy
 
 import pytest
@@ -41,3 +42,22 @@ def test_audio_difference_summary_rejects_invalid_metrics(field, value):
                       signedZeroDifferences=0, maximumUlpDistance=1, maximumAbsoluteDifference=2**-26)
     with pytest.raises(ValueError):
         validate({**difference, field: value})
+
+
+def test_r8_measured_differences_preserve_failed_compatibility_and_missing_selector():
+    record = json.loads((PACKET / 'r8-observations.json').read_bytes())
+    assert record['measurement_complete'] and record['postguards_passed'] and record['resources_closed']
+    assert record['original_runner_failed'] and record['raw_report_rewritten'] is False
+    assert record['browser_rerun_for_normalization'] is False
+    assert record['profiles'] == 2 and record['reference_selectors'] == [1, 1]
+    assert record['math_restart_exact'] and record['unmodified_math_graphs_exact']
+    assert record['all_other_compared_samples_unchanged']
+    assert [(row['profile_index'], row['probe'], row['changed_samples'])
+            for row in record['legacy_differences']] == [
+        (0, 'fidelity', 13536), (0, 'analyser', 1198), (0, 'worklet', 9140),
+        (1, 'fidelity', 11208), (1, 'analyser', 1296), (1, 'worklet', 10006)]
+    assert all(row['maximum_ulp_distance'] == 1 and row['original_failed_rows'] > 0
+               for row in record['legacy_differences'])
+    for name in ('compatibility_passed', 'reference_selectors_covered', 'both_math_backends_verified',
+                 'internal_backend_observed', 'legacy_audio_repaired', 'privacy_admitted', 'production_admitted'):
+        assert record[name] is False

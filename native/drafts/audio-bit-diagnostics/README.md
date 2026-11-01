@@ -2,6 +2,21 @@
 
 **Unselected diagnostic tooling, not an Audio policy change or a browser result.**
 
+## R8 measurement, November 1
+
+[Separate browser record](r8-observations.json): two profiles completed baseline,
+Legacy, Math and Math restart, with closed resources and unchanged inputs/core.
+Baseline/Math comparisons stayed exact; six Legacy comparison groups changed
+samples by up to **one ULP** and still failed the original equality gates.
+Both profiles selected reference class 1, so coverage of both classes failed.
+There was no retry to obtain a green cohort.
+
+The private runner incorrectly expected a root completion phase and exactly
+three modes. Actual multi-profile reports have per-profile completion phases and
+`math-restart`. Its failure and original report remain intact; normalization of
+the completed measurements does **not** make compatibility or selector coverage
+pass. These browser observations are separate from the earlier tool-only checks.
+
 `difference.js` compares equal-length `Float32Array` views, respecting byte
 offsets. It reports changed bit patterns, finite/nonfinite pair counts, signed
 zero differences, maximum finite absolute difference and maximum finite ULP

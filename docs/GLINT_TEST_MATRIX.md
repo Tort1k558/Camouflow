@@ -1,5 +1,16 @@
 # Glint browser test matrix
 
+## 2026-11-01: R8 Audio sample differences remain failures
+
+[Instrumented record](../native/drafts/audio-bit-diagnostics/r8-observations.json):
+two profiles completed all four modes, including Math restart. Six Legacy
+fidelity/analyser/worklet groups contain changed samples with maximum distance
+**one ULP**; exact-match verdicts remain failed. Other compared samples were
+unchanged. Both reference selectors were 1, so both-selector coverage failed too.
+The private runner's multi-profile schema error is preserved separately from
+the completed measurements. No browser retry, tolerance relaxation, Legacy repair
+or broader Math/backend/device-cohort admission is claimed.
+
 ## 2026-11-01: fresh R8 baseline passed all eight groups
 
 [Measured baseline](../native/drafts/upstream-156-audio-r8/baseline-recheck.json):
