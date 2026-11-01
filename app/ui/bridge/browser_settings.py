@@ -198,6 +198,7 @@ class BrowserSettingsBridge(QObject):
                 **self._native.get("privacy_policy", {}),
                 "surface_policy_version": 1 if mode else 0,
                 "fingerprint_derivation_mode": mode,
+                "audio_pipeline_version": 2 if mode else 0,
             })
         except (ValueError, TypeError) as error:
             self._emit_message(str(error))

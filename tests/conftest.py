@@ -28,7 +28,28 @@ def native_args_before_serial_links(tmp_path):
 
 
 @pytest.fixture
-def host_sources_before_profile_surface(tmp_path, native_args_before_serial_links):
+def host_sources_before_audio_pipeline(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'audio-pipeline-version-host-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-audio-pipeline-version'
+    for row in record['sources']:
+        path = base / row['source']
+        path.parent.mkdir(parents=True, exist_ok=True)
+        value = (root / row['source']).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == row['after_sha256']
+        path.write_bytes(value)
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources = {row['source']: (base / row['source']).read_bytes() for row in record['sources']}
+    assert all(hashlib.sha256(sources[row['source']]).hexdigest() == row['before_sha256'] for row in record['sources'])
+    return sources
+
+
+@pytest.fixture
+def host_sources_before_profile_surface(tmp_path, native_args_before_serial_links, host_sources_before_audio_pipeline):
     """Recover manager and GN bytes used by older browser measurements."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -37,7 +58,7 @@ def host_sources_before_profile_surface(tmp_path, native_args_before_serial_link
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        value = (root / row['source']).read_bytes()
+        value = host_sources_before_audio_pipeline.get(row['source'], (root / row['source']).read_bytes())
         assert hashlib.sha256(value).hexdigest() == row['after_sha256']
         target.write_bytes(value)
     patch = directory / record['patch']

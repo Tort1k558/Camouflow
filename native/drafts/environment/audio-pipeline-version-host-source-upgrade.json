@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "scope": "Reconstruct exact pre-Audio-version host bytes; no historical evidence rewritten",
+  "patch": "audio-pipeline-version-host-source-upgrade.patch",
+  "patch_sha256": "4a4b9408c2205f9784961d4f8e5859c9370254394524f9c9f7d287db0868b817",
+  "sources": [
+    {
+      "source": "app/core/native/privacy.py",
+      "before_sha256": "32ca9a75771679653a93b40e4386a0292e37c7a7a9e666459bb1c42a298c9660",
+      "after_sha256": "14159cb9d71604e5b1f261c0d2332834caf7bcd39b063695d096a47d654045d2"
+    },
+    {
+      "source": "app/ui/bridge/browser_settings.py",
+      "before_sha256": "b5a9b865a56b06fccad79a9afc369fd05b3a42431064765a869a5adca051f3ce",
+      "after_sha256": "b13d317453d6f3008422fd01193151cead50b009333a0082088812840355b979"
+    }
+  ]
+}

@@ -104,6 +104,7 @@ def test_surface_bridge_switch_is_atomic_and_preserves_other_controls(monkeypatc
         policy = NativePrivacyPolicy.from_dict(bridge._native['privacy_policy'])
         assert bridge.nativeSurfacePolicyMode == mode
         assert policy.surface_policy_version == (1 if mode else 0)
+        assert policy.audio_pipeline_version == (2 if mode else 0)
         assert policy.cpu_limit == 4 and policy.restrict_webrtc
     assert len(changes) == 3
     before = bridge._native.copy()

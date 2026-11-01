@@ -108,6 +108,14 @@ WebGPU, future identity mode or third-party acceptance.
 
 ## Audio API compatibility diagnostics
 
+Newly selected profile surface modes explicitly persist `audio_pipeline_version: 2`
+for the existing graph-math path. They require separate `audio-math-v2` runtime
+admission in addition to `surface-policy-v1`; no current reviewed package grants
+either capability. Version zero preserves old serialization/launch behavior and
+is omitted when saved. Merely loading an existing profile never migrates it.
+Unknown/coerced versions and explicit Audio without a surface policy are rejected.
+This host-side pin changes no DSP algorithm and does **not** repair legacy masking.
+
 [Repeatable Audio checks](fixtures/audio/README.md) cover controlled fidelity,
 analyser, worklet and muted realtime paths. The pinned stock156 calibration is
 not a Glint result; selected 0067 still requires its own completed native/runtime

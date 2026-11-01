@@ -1,5 +1,16 @@
 # Glint architecture
 
+## 2026-11-01: explicit host Audio pipeline version
+
+`NativePrivacyPolicy.audio_pipeline_version` accepts zero (unchanged historical
+serialization) or two (explicit existing AudioMath graph path). A new manager
+surface-mode selection pins two; loading old settings does not migrate them.
+The explicit pin requires separate `audio-math-v2` admission and therefore cannot
+borrow a surface capability or self-admit through editable profile metadata.
+No reviewed package is extended, no DSP code changes, and legacy failures remain.
+The reversible two-file host archive composes before the older surface-policy
+archive, preserving historical bytes and measurements without rewriting them.
+
 ## 2026-11-01: R7 runtime readback results
 
 The [completed owned diagnostics](drafts/upstream-156-webgpu-r7/runtime-observations.json)

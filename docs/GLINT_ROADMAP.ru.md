@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## 2026-11-01: explicit Audio pipeline pin prepared
+
+The profile policy now supports an explicit `audio_pipeline_version: 2` pin for
+the existing graph-math path. Selecting a surface mode in the manager stores the
+pin; reading old settings does not migrate them. Version zero retains the prior
+omitted-field serialization and identical launch arguments. Explicit v2 requires
+its own `audio-math-v2` admission, which no current reviewed package grants.
+Unknown versions fail validation; there is no downgrade or raw-output fallback.
+Exact pre-change host bytes are archived for historical test/evidence replay.
+
+This is configuration/versioning groundwork, not a native Audio repair or a new
+device cohort. Legacy post-render mismatch remains open. 710 focused host tests
+passed; a new full run is still required for these host changes. The earlier full
+run passed 5532 tests/one skip on commit `48887fa`, before this pin was added.
+
 ## 2026-11-01: R7 diagnostics complete; Audio work remains
 
 The original retained-buffer failure is now repaired in measured R7 fixtures:

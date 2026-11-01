@@ -28,6 +28,7 @@ class NativePrivacyPolicy:
     text_tuning: str = "native"
     surface_policy_version: int = 0
     fingerprint_derivation_mode: str = ""
+    audio_pipeline_version: int = 0
 
     @classmethod
     def from_dict(cls, value: dict) -> "NativePrivacyPolicy":
@@ -43,6 +44,8 @@ class NativePrivacyPolicy:
     def to_dict(self) -> dict:
         self.validate()
         values = {**asdict(self), "fonts": list(self.fonts)}
+        if self.audio_pipeline_version == 0:
+            del values["audio_pipeline_version"]
         if self.text_tuning == "native":
             del values["text_tuning"]
         if self.surface_policy_version == 0:
@@ -51,6 +54,10 @@ class NativePrivacyPolicy:
         return values
 
     def validate(self) -> None:
+        if type(self.audio_pipeline_version) is not int or self.audio_pipeline_version not in (0, 2):
+            raise ValueError("Unknown Glint Audio pipeline version")
+        if self.audio_pipeline_version and self.surface_policy_version != 1:
+            raise ValueError("Glint Audio pipeline requires an explicit surface policy")
         if type(self.surface_policy_version) is not int or self.surface_policy_version not in (0, 1):
             raise ValueError("Unknown Glint surface policy version")
         if not isinstance(self.fingerprint_derivation_mode, str):
@@ -90,6 +97,7 @@ class NativePrivacyPolicy:
         self.validate()
         return [name for name, requested in (
             ("surface-policy-v1", self.surface_policy_version == 1),
+            ("audio-math-v2", self.audio_pipeline_version == 2),
             ("hardware", bool(self.cpu_limit or self.memory_limit)), ("fonts", bool(self.fonts)),
             ("webrtc", self.restrict_webrtc), ("automation", self.conceal_automation),
             ("identity", self.native_user_agent),
