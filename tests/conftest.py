@@ -8,7 +8,30 @@ import pytest
 
 
 @pytest.fixture
-def host_sources_before_webgpu_r3(tmp_path):
+def host_sources_before_webgpu_r4(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'webgpu-r4-host-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-webgpu-r4'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((root / row['source']).read_bytes())
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources = {}
+    for row in record['sources']:
+        value = (base / row['source']).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == row['before_sha256']
+        sources[row['source']] = value
+    return sources
+
+
+@pytest.fixture
+def host_sources_before_webgpu_r3(tmp_path, host_sources_before_webgpu_r4):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'webgpu-r3-host-source-upgrade.json').read_bytes())
@@ -16,7 +39,7 @@ def host_sources_before_webgpu_r3(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes((root / row['source']).read_bytes())
+        target.write_bytes(host_sources_before_webgpu_r4.get(row['source'], (root / row['source']).read_bytes()))
         assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']

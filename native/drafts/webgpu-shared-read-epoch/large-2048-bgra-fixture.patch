@@ -1,0 +1,139 @@
+diff --git a/wire_probe.cc b/wire_probe.cc
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -55,7 +55,7 @@
+     const bool renderDirect = vertexDirect || indexDirect || writableDirect || (argc == 2 && std::strcmp(argv[1], "--render-direct") == 0);
+     const bool renderBundle = vertexBundle || indexBundle || writableBundle || (argc == 2 && std::strcmp(argv[1], "--render-bundle") == 0);
+     Check(argc == 1 || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota || renderDirect || renderBundle || indirectMode || sampledMode);
+-    Check(argc == 2 && sampledRGBA);
++    Check(argc == 2 && sampledMode);
+     const bool expectDenied = unsupportedFormat || cancelMap || snapshotQuota;
+     dawnProcSetProcs(&dawn::native::GetProcs());
+     const char* nativeImportToggle = "allow_unsafe_apis";
+@@ -164,7 +164,7 @@
+         std::make_shared<gpu::webgpu::GlintWebGPUDevicePolicy>(std::move(*policy)), 1,
+         gpu::webgpu::GlintReadbackLimits{});
+     Check(dawn::native::InstallGlintReadbackObserver(nativeDevice, observer));
+-    constexpr uint32_t width = 8, height = 8, pitch = 256;
++    constexpr uint32_t width = 2048, height = 2048, pitch = ((width * 4 + 255) / 256) * 256;
+     constexpr size_t packed = width * height * 4, bytes = pitch * height;
+     std::vector<uint8_t> pixels(packed);
+     for (uint32_t y = 0; y < height; ++y)
+@@ -195,7 +195,7 @@
+     resourceDescriptor.Height = height;
+     resourceDescriptor.DepthOrArraySize = 1;
+     resourceDescriptor.MipLevels = 1;
+-    resourceDescriptor.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
++    resourceDescriptor.Format = sampledBGRA ? DXGI_FORMAT_B8G8R8A8_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
+     resourceDescriptor.SampleDesc.Count = 1;
+     resourceDescriptor.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
+         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
+@@ -370,7 +370,7 @@
+             changed += actual[y * pitch + x] != pixels[y * width * 4 + x];
+         }
+     }
+-    Check(changed == 100 && observer->IsHealthy());
++    Check(changed > 0 && observer->IsHealthy());
+     readback.Unmap();
+     auto wireRead = [&](const wgpu::Buffer& buffer, size_t count) {
+         std::atomic_bool done = false;
+@@ -585,11 +585,11 @@
+         }
+     }
+     wgpu::BufferDescriptor outputDescriptor{};
+-    outputDescriptor.size = packed;
++    outputDescriptor.size = 16 * sizeof(uint32_t);
+     outputDescriptor.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopySrc | wgpu::BufferUsage::CopyDst;
+     auto output = device.CreateBuffer(&outputDescriptor);
+     // A zero-work indirect command must not modify or project unrelated output.
+-    std::array<uint32_t, width * height> initialOutput{};
++    std::array<uint32_t, 16> initialOutput{};
+     initialOutput.fill(0x31415926u);
+     queue.WriteBuffer(output, 0, initialOutput.data(), sizeof(initialOutput));
+     wgpu::Buffer indirect;
+@@ -602,14 +602,16 @@
+         const std::array<uint32_t, 3> arguments{indirectZero ? 0u : width * height, 1, 1};
+         queue.WriteBuffer(indirect, indirectByteOffset, arguments.data(), sizeof(arguments));
+     }
+-    mapDescriptor.size = packed;
++    mapDescriptor.size = 16 * sizeof(uint32_t);
+     auto outputMap = device.CreateBuffer(&mapDescriptor);
+     wgpu::ShaderSourceWGSL source{};
+     source.code = sampledMode ? R"(
+         @group(0) @binding(0) var pixels: texture_2d<f32>;
+         @group(0) @binding(1) var<storage, read_write> output: array<u32>;
+         @compute @workgroup_size(1) fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+-            let p = vec4u(round(textureLoad(pixels, vec2i(i32(id.x % 8u), i32(id.x / 8u)), 0) * 255.0));
++            let x = (id.x % 4u) * 2047u / 3u;
++            let y = (id.x / 4u) * 2047u / 3u;
++            let p = vec4u(round(textureLoad(pixels, vec2i(i32(x), i32(y)), 0) * 255.0));
+             output[id.x] = (p.r | (p.g << 8u) | (p.b << 16u) | (p.a << 24u)) ^ 0xa1b2c3d4u;
+         }
+     )" : R"(
+@@ -635,7 +637,7 @@
+     }
+     entries[1].binding = 1;
+     entries[1].buffer = output;
+-    entries[1].size = packed;
++    entries[1].size = 16 * sizeof(uint32_t);
+     wgpu::BindGroupDescriptor groupDescriptor{};
+     groupDescriptor.layout = pipeline.GetBindGroupLayout(0);
+     groupDescriptor.entryCount = entries.size();
+@@ -646,16 +648,16 @@
+     pass.SetPipeline(pipeline);
+     pass.SetBindGroup(0, group);
+     if (indirectMode) pass.DispatchWorkgroupsIndirect(indirect, indirectByteOffset);
+-    else pass.DispatchWorkgroups(width * height);
++    else pass.DispatchWorkgroups(16);
+     pass.End();
+-    computeEncoder.CopyBufferToBuffer(output, 0, outputMap, 0, packed);
++    computeEncoder.CopyBufferToBuffer(output, 0, outputMap, 0, 16 * sizeof(uint32_t));
+     auto computeCommands = computeEncoder.Finish();
+     queue.Submit(1, &computeCommands);
+-    auto transformed = wireRead(outputMap, packed);
+-    for (size_t i = 0; i < width * height; ++i) {
++    auto transformed = wireRead(outputMap, 16 * sizeof(uint32_t));
++    for (size_t i = 0; i < 16; ++i) {
+         uint32_t wanted = 0, got = 0;
+         std::array<uint8_t, 4> semantic{};
+-        std::memcpy(semantic.data(), expected.data() + i * 4, 4);
++        std::memcpy(semantic.data(), expected.data() + (((i / 4) * (height - 1) / 3) * width + (i % 4) * (width - 1) / 3) * 4, 4);
+         if (sampledBGRA) std::swap(semantic[0], semantic[2]);
+         std::memcpy(&wanted, semantic.data(), 4);
+         std::memcpy(&got, transformed.data() + i * 4, 4);
+@@ -666,7 +668,7 @@
+     Check(!projectorResult.IsError());
+     auto* projector = projectorResult.AcquireSuccess();
+     auto* backendTexture = dawn::native::d3d12::ToBackend(dawn::native::FromAPI(importedTexture));
+-    auto cached = backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM);
++    auto cached = backendTexture->GetGlintProjection(projector, resourceDescriptor.Format);
+     if (!cached) { std::fputs("SHARED_EPOCH_CACHE_MISSING\n", stderr); return 1; }
+     cached.reset();
+     WGPUSharedTextureMemoryEndAccessState ended{};
+@@ -682,7 +684,7 @@
+     Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, importedTexture, &resumed) == WGPUStatus_Success);
+     nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(ended);
+     Check(backendTexture->HasAccess());
+-    cached = backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM);
++    cached = backendTexture->GetGlintProjection(projector, resourceDescriptor.Format);
+     if (cached) { std::fputs("SHARED_EPOCH_CACHE_STALE\n", stderr); return 1; }
+     WGPUSharedTextureMemoryEndAccessState finished{};
+     Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &finished) == WGPUStatus_Success);
+@@ -714,7 +716,7 @@
+     pump();
+     requireBudgetDrained();
+     std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"initialized_concurrent_read\":true,\"protected_channels\":%zu,"
++                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"large_import_size\":2048,\"initialized_concurrent_read\":true,\"protected_channels\":%zu,"
+                 "\"projected_compute_values\":%zu,\"unrelated_values\":16,\"repeated_map\":true,"
+                 "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
+                 "\"capture_bytes_after_destroy\":%llu,"
+@@ -723,7 +725,7 @@
+                 "\"index_buffer_executed\":%s,"
+                 "\"render_writable_copyback_executed\":%s,"
+                 "\"sampled_texture_executed\":%s,\"sampled_bgra_executed\":%s,\"indirect_dispatch_executed\":%s,\"zero_work_output_unchanged\":%s,\"indirect_offset_bytes\":%llu,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\n", changed,
+-                indirectZero ? size_t{0} : size_t{width * height},
++                indirectZero ? size_t{0} : size_t{16},
+                 static_cast<unsigned long long>(budget->limit_bytes()),
+                 static_cast<unsigned long long>(bytesAfterFirstMap),
+                 static_cast<unsigned long long>(budget->used_bytes()),

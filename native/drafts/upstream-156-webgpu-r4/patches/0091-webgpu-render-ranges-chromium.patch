@@ -1,0 +1,25 @@
+diff --git a/gpu/command_buffer/service/glint_webgpu_readback_observer.h b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -41,6 +41,7 @@
+                      uint64_t size,
+                      dawn::native::GlintBufferWriteKind kind) override;
+   void OnBufferDestroyed(WGPUBuffer buffer) override;
++  void OnExecutionError() override;
+   void OnShaderScope(const dawn::native::GlintShaderScope& scope) override;
+   dawn::native::GlintReadbackMapStatus ClassifyReadMap(
+       dawn::native::GlintBufferIdentity buffer,
+diff --git a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -227,6 +227,10 @@
+   }
+   Collect();
+ }
++void GlintWebGPUReadbackObserver::OnExecutionError() {
++  std::lock_guard lock(mutex_);
++  Fail();
++}
+ void GlintWebGPUReadbackObserver::OnShaderScope(
+     const dawn::native::GlintShaderScope& scope) {
+   const auto uses = scope.buffers;

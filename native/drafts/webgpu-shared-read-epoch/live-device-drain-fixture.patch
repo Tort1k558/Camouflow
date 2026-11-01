@@ -1,0 +1,198 @@
+diff --git a/wire_probe.cc b/wire_probe.cc
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -213,22 +213,22 @@
+     auto sharedMemory = nativeProcs.deviceImportSharedTextureMemory(nativeDevice,
+         reinterpret_cast<const WGPUSharedTextureMemoryDescriptor*>(&memoryDescriptor));
+     Check(sharedMemory != nullptr);
+-    auto producer = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
++    auto initialProducer = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+-    WGPUSharedTextureMemoryBeginAccessDescriptor producerAccess{};
+-    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, producer, &producerAccess) == WGPUStatus_Success);
+-    auto nativeQueue = nativeProcs.deviceGetQueue(nativeDevice);
+-    WGPUTexelCopyTextureInfo producerCopy{};
+-    producerCopy.texture = producer;
+-    producerCopy.aspect = WGPUTextureAspect_All;
+-    WGPUTexelCopyBufferLayout producerLayout{};
+-    producerLayout.bytesPerRow = width * 4;
+-    producerLayout.rowsPerImage = height;
+-    WGPUExtent3D producerExtent{width, height, 1};
+-    nativeProcs.queueWriteTexture(nativeQueue, &producerCopy, pixels.data(), pixels.size(), &producerLayout, &producerExtent);
+-    nativeProcs.queueRelease(nativeQueue);
++    WGPUSharedTextureMemoryBeginAccessDescriptor initialProducerAccess{};
++    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, initialProducer, &initialProducerAccess) == WGPUStatus_Success);
++    auto initialNativeQueue = nativeProcs.deviceGetQueue(nativeDevice);
++    WGPUTexelCopyTextureInfo initialProducerCopy{};
++    initialProducerCopy.texture = initialProducer;
++    initialProducerCopy.aspect = WGPUTextureAspect_All;
++    WGPUTexelCopyBufferLayout initialProducerLayout{};
++    initialProducerLayout.bytesPerRow = width * 4;
++    initialProducerLayout.rowsPerImage = height;
++    WGPUExtent3D initialProducerExtent{width, height, 1};
++    nativeProcs.queueWriteTexture(initialNativeQueue, &initialProducerCopy, pixels.data(), pixels.size(), &initialProducerLayout, &initialProducerExtent);
++    nativeProcs.queueRelease(initialNativeQueue);
+     WGPUSharedTextureMemoryEndAccessState produced{};
+-    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, producer, &produced) == WGPUStatus_Success);
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, initialProducer, &produced) == WGPUStatus_Success);
+     textureDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::TextureBinding;
+     auto importedTexture = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+@@ -242,7 +242,7 @@
+     access.signaledValues = produced.signaledValues;
+     Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, importedTexture, &access) == WGPUStatus_Success);
+     nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(produced);
+-    nativeProcs.textureRelease(producer);
++    nativeProcs.textureRelease(initialProducer);
+     auto importedReservation = client->ReserveTexture(device.Get(),
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+     Check(server->InjectTexture(importedTexture, importedReservation.handle, importedReservation.deviceHandle));
+@@ -254,7 +254,7 @@
+     upload.rowsPerImage = height;
+     wgpu::Extent3D extent{width, height, 1};
+     auto queue = device.GetQueue();
+-    // Contents were initialized by the separate native producer before reader access.
++    // Contents were initialized by the separate native initialProducer before reader access.
+     wgpu::BufferDescriptor mapDescriptor{};
+     mapDescriptor.size = bytes;
+     mapDescriptor.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
+@@ -668,22 +668,98 @@
+     auto* backendTexture = dawn::native::d3d12::ToBackend(dawn::native::FromAPI(importedTexture));
+     auto cached = backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM);
+     if (!cached) { std::fputs("SHARED_EPOCH_CACHE_MISSING\n", stderr); return 1; }
++    backendTexture->SetIsExternalSwapchainTexture(true);
++    Check(!backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM));
++    backendTexture->CacheGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM, cached);
++    Check(!backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM));
++    backendTexture->SetIsExternalSwapchainTexture(false);
++    Check(backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM) == cached);
+     cached.reset();
+     WGPUSharedTextureMemoryEndAccessState ended{};
+     Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &ended) == WGPUStatus_Success);
+     Check(!backendTexture->HasAccess());
++    // A second texture object is the producer; no consumer-side write occurs.
++    auto producerDescriptor = textureDescriptor;
++    producerDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst;
++    auto producer = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
++        reinterpret_cast<const WGPUTextureDescriptor*>(&producerDescriptor));
++    Check(producer != nullptr);
++    WGPUSharedTextureMemoryBeginAccessDescriptor producerAccess{};
++    producerAccess.initialized = ended.initialized;
++    producerAccess.fenceCount = ended.fenceCount;
++    producerAccess.fences = ended.fences;
++    producerAccess.signaledValueCount = ended.signaledValueCount;
++    producerAccess.signaledValues = ended.signaledValues;
++    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, producer, &producerAccess) == WGPUStatus_Success);
++    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(ended);
++    auto updatedPixels = pixels;
++    for (size_t index = 0; index < updatedPixels.size(); ++index)
++        if (index % 4 != 3) updatedPixels[index] ^= 0x5au;
++    auto updatedExpected = updatedPixels;
++    Check(glint::candidate::TransformEdgeCoherentCanvas(updatedExpected, width, height, seed));
++    WGPUQueue nativeQueue = nativeProcs.deviceGetQueue(nativeDevice);
++    WGPUTexelCopyTextureInfo producerCopy{};
++    producerCopy.texture = producer;
++    producerCopy.aspect = WGPUTextureAspect_All;
++    nativeProcs.queueWriteTexture(nativeQueue, &producerCopy, updatedPixels.data(), updatedPixels.size(),
++        reinterpret_cast<const WGPUTexelCopyBufferLayout*>(&upload),
++        reinterpret_cast<const WGPUExtent3D*>(&extent));
++    nativeProcs.queueRelease(nativeQueue);
++    WGPUSharedTextureMemoryEndAccessState producerEnded{};
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, producer, &producerEnded) == WGPUStatus_Success);
+     WGPUSharedTextureMemoryBeginAccessDescriptor resumed{};
+-    resumed.initialized = ended.initialized;
++    resumed.initialized = producerEnded.initialized;
+     resumed.concurrentRead = true;
+-    resumed.fenceCount = ended.fenceCount;
+-    resumed.signaledValueCount = ended.signaledValueCount;
+-    resumed.fences = ended.fences;
+-    resumed.signaledValues = ended.signaledValues;
++    resumed.fenceCount = producerEnded.fenceCount;
++    resumed.signaledValueCount = producerEnded.signaledValueCount;
++    resumed.fences = producerEnded.fences;
++    resumed.signaledValues = producerEnded.signaledValues;
+     Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, importedTexture, &resumed) == WGPUStatus_Success);
+-    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(ended);
++    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(producerEnded);
++    nativeProcs.textureRelease(producer);
+     Check(backendTexture->HasAccess());
+     cached = backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM);
+-    if (cached) { std::fputs("SHARED_EPOCH_CACHE_STALE\n", stderr); return 1; }
++    const bool epochCacheDetached = !cached;
++    cached.reset();
++    auto mutationEncoder = device.CreateCommandEncoder();
++    auto mutationPass = mutationEncoder.BeginComputePass();
++    mutationPass.SetPipeline(pipeline);
++    mutationPass.SetBindGroup(0, group);
++    mutationPass.DispatchWorkgroups(width * height);
++    mutationPass.End();
++    mutationEncoder.CopyBufferToBuffer(output, 0, outputMap, 0, packed);
++    auto mutationCommands = mutationEncoder.Finish();
++    queue.Submit(1, &mutationCommands);
++    auto updatedShader = wireRead(outputMap, packed);
++    for (size_t index = 0; index < width * height; ++index) {
++        uint32_t wanted = 0, got = 0;
++        std::memcpy(&wanted, updatedExpected.data() + index * 4, 4);
++        std::memcpy(&got, updatedShader.data() + index * 4, 4);
++        if (got != (wanted ^ 0xa1b2c3d4u)) {
++            std::fprintf(stderr, "SHARED_EPOCH_STALE_GPU index=%zu actual=%u expected=%u\n",
++                         index, got, wanted ^ 0xa1b2c3d4u);
++            return 1;
++        }
++    }
++    Check(epochCacheDetached);
++    auto retained = wireRead(readback, bytes);
++    for (uint32_t y = 0; y < height; ++y)
++        for (uint32_t x = 0; x < width * 4; ++x)
++            Check(retained[y * pitch + x] == expected[y * width * 4 + x]);
++    wgpu::BufferDescriptor updatedMapDescriptor{};
++    updatedMapDescriptor.size = bytes;
++    updatedMapDescriptor.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
++    auto updatedMap = device.CreateBuffer(&updatedMapDescriptor);
++    auto updatedEncoder = device.CreateCommandEncoder();
++    bufferCopy.buffer = updatedMap;
++    updatedEncoder.CopyTextureToBuffer(&textureCopy, &bufferCopy, &extent);
++    auto updatedCommands = updatedEncoder.Finish();
++    queue.Submit(1, &updatedCommands);
++    auto updatedCPU = wireRead(updatedMap, bytes);
++    for (uint32_t y = 0; y < height; ++y)
++        for (uint32_t x = 0; x < width * 4; ++x)
++            Check(updatedCPU[y * pitch + x] == updatedExpected[y * width * 4 + x]);
++    updatedMap.Destroy();
+     WGPUSharedTextureMemoryEndAccessState finished{};
+     Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &finished) == WGPUStatus_Success);
+     nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(finished);
+@@ -710,11 +786,32 @@
+     plainInput.Destroy();
+     plainMap.Destroy();
+     readback.Destroy();
++    pump();
++    requireBudgetDrained();
++    Check(observer->IsHealthy());
++    wgpu::BufferDescriptor aliveDescriptor{};
++    aliveDescriptor.size = sizeof(uint32_t);
++    aliveDescriptor.usage = wgpu::BufferUsage::CopySrc | wgpu::BufferUsage::CopyDst;
++    auto aliveInput = device.CreateBuffer(&aliveDescriptor);
++    aliveDescriptor.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
++    auto aliveOutput = device.CreateBuffer(&aliveDescriptor);
++    const uint32_t aliveValue = 0x13579bdfu;
++    queue.WriteBuffer(aliveInput, 0, &aliveValue, sizeof(aliveValue));
++    auto aliveEncoder = device.CreateCommandEncoder();
++    aliveEncoder.CopyBufferToBuffer(aliveInput, 0, aliveOutput, 0, sizeof(aliveValue));
++    auto aliveCommands = aliveEncoder.Finish();
++    queue.Submit(1, &aliveCommands);
++    auto aliveBytes = wireRead(aliveOutput, sizeof(aliveValue));
++    Check(std::memcmp(aliveBytes.data(), &aliveValue, sizeof(aliveValue)) == 0);
++    aliveInput.Destroy();
++    aliveOutput.Destroy();
++    pump();
++    requireBudgetDrained();
+     device.Destroy();
+     pump();
+     requireBudgetDrained();
+     std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"initialized_concurrent_read\":true,\"protected_channels\":%zu,"
++                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"producer_epoch_mutation\":true,\"old_cpu_snapshot_immutable\":true,\"live_device_budget_drained\":true,\"device_usable_after_drain\":true,\"swapchain_flag_cache_excluded\":true,\"initialized_concurrent_read\":true,\"protected_channels\":%zu,"
+                 "\"projected_compute_values\":%zu,\"unrelated_values\":16,\"repeated_map\":true,"
+                 "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
+                 "\"capture_bytes_after_destroy\":%llu,"

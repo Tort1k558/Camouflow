@@ -1,0 +1,34 @@
+diff --git a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+index 73abd99..0a204c3 100644
+--- a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
++++ b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+@@ -10,6 +10,7 @@
+ #include "content/browser/renderer_host/navigation_request.h"
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
+ #include "content/common/frame.mojom.h"
++#include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/native_privacy_context.h"
+ #include "content/public/browser/web_contents.h"
+@@ -247,12 +248,19 @@ TEST_P(NativeDocumentNavigationTest, SurfaceConflictingFlagsRejectEvenReadyConte
+   EnablePolicy();
+   ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
+   task_environment()->RunUntilIdle();
+-  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+-  simulator->ReadyToCommit();
++  if (GetParam()) {
++    // Inline about:blank rejection leaves no pending entry for NavigationSimulator.
++    NavigationController::LoadURLParams params(Target());
++    web_contents()->GetController().LoadURLWithParams(params);
++  } else {
++    auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++    simulator->ReadyToCommit();
++  }
+   task_environment()->RunUntilIdle();
+   EXPECT_EQ(finished_, 1);
+   EXPECT_FALSE(committed_);
+   EXPECT_EQ(error_, net::ERR_ABORTED);
++  EXPECT_EQ(web_contents()->GetLastCommittedURL(), GURL("https://canvas.test/baseline"));
+ }
+ 
+ TEST_P(NativeDocumentNavigationTest, SurfaceSelectedFrameRejectsOnlyItsExactPendingToken) {

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "scope": "Reversible explicit candidate registration; historical measured helper bytes remain reconstructible",
+  "patch": "webgpu-r4-host-source-upgrade.patch",
+  "patch_sha256": "422aea57ee669c39c9def97c976c43cbcbe6c63995de695cecefa4500b7c27cc",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "3458d158778cb3ea2efedcf83415c3706ef9385e226404dff6c2cf040bfe2c83",
+      "after_sha256": "ff9e8145f09be173c14d0e5e1d4f314b18869e722f6ca620e5f2c35278bfe627"
+    }
+  ]
+}

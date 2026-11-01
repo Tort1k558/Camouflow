@@ -310,3 +310,7 @@ native/drafts/environment/audio-realtime-worklet/* text eol=lf
 native/drafts/environment/webgpu-r3-runtime-observations.json text eol=lf
 native/drafts/webgpu-external-access-cache/* text eol=lf
 native/drafts/webgpu-shared-read-epoch/* text eol=lf
+native/drafts/upstream-156-webgpu-r4/*.json text eol=lf
+native/drafts/upstream-156-webgpu-r4/patches/*.patch text eol=lf
+native/drafts/environment/webgpu-r4-host-source-upgrade.json text eol=lf
+native/drafts/environment/webgpu-r4-host-source-upgrade.patch text eol=lf

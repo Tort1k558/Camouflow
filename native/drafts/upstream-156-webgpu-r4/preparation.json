@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Unselected 122-patch replay, reversal, detector and native source composition; not Chromium runtime admission",
+  "compiled": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "manifest_sha256": "82a03a1f8344823b9e401af1b43b391dc55237624ea0c4806a86fa8efffdc96b",
+  "forward_patches": 122,
+  "reverse_patches": 122,
+  "upstream_files_restored": 270,
+  "standalone_engine_sources_matched": 7,
+  "engine_sources": {
+    "src/dawn/native/d3d12/GlintEdgeProjectionShader.h": "97663186ee9e057b8502abbc17e410adf09027ea90e50d7d036f868f1317e1e6",
+    "src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp": "d9ef6d175514a6de6300d58448e9c7af4ea9474534cc630e031dc536b3cd3391",
+    "src/dawn/native/d3d12/TextureD3D12.cpp": "afb8de6d1645f1cf74b3336e431184bf11a495ea0a5b4d6f108a41c4b1f8af61",
+    "src/dawn/native/d3d12/TextureD3D12.h": "e0416188ad623af6c7938504260680b7ce6dad38d4589ad590cd4337e5c336e5",
+    "src/dawn/native/d3d12/glint/projected_texture.cc": "3c42a724ce715bab3f22ea3f2d9beb81e0c8983fe8391e742cbe33f2664d643c",
+    "src/dawn/native/d3d12/glint/projected_texture.h": "1151b2dc56e6f04df4d3ef798c6903d800bc8e1696b8912376ee64d6c3ccdb0e",
+    "src/dawn/native/d3d12/glint/texture_capture.h": "c2a02549e8119fbce1658069d3332130c6e81fb1cf8253890821221b62e42be8"
+  },
+  "canonical_source_detector_passed": true,
+  "canonical_source_detector_patches": 122
+}

@@ -28,3 +28,25 @@ controls or large-resource measurements. The sibling's exclusive-mode results
 are not relabeled as this variant's results. Actual Chromium Canvas, external
 device synchronization, live-device drain and resource-exhaustion recovery remain
 open. No browser/privacy/production admission is claimed.
+
+## Subsequent shared-read resource checks
+
+The earlier observation snapshot remains unchanged. Independent later results
+are bound in [`resource-observations.json`](resource-observations.json):
+
+| Shared-read native check | Result |
+| --- | --- |
+| Producer writes between consumer epochs | Three passed; new CPU/all 64 shader values exact, old CPU capture unchanged |
+| Remove only the two epoch invalidation calls | Three expected stale-GPU pixel mismatches, not arbitrary crashes/OOM |
+| Imported 1921/2048-square RGBA/BGRA | Four passed; full CPU image and 16 spatial shader samples each |
+| Live-device resource drain | Three passed; zero capture bytes before device destruction, later GPU copy/map still works |
+| Swap-chain exclusion flag | Cache lookup/insertion excluded while flagged; not an actual OS swap chain |
+
+Resource fixture patches are alternatives against the result of applying
+`single-reader-fixture.patch` to the sibling `wire-import-probe.cc`. The negative
+backend patch applies only after both native cache patches, never in a browser.
+The fixed capture limit remains 64 MiB. No helper calls observer delivery manually.
+
+Separate-device synchronization, unknown external ownership, actual OS swap
+chains and recoverable quota exhaustion remain unverified. Chromium Canvas has
+not yet run with these patches. These measurements do not admit a release.

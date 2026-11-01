@@ -1,5 +1,27 @@
 # Glint: план проверки и развития
 
+## Access-epoch batch R4: source verified, browser not compiled
+
+The [122-patch candidate](../native/drafts/upstream-156-webgpu-r4/README.md)
+preserves the exact R3 prefix. Its full patch replay/reversal restores 270
+upstream files; seven final source files match the compiled native prototype.
+The existing build helper recognizes R4 explicitly; older receipts/tooling
+remain reconstructible and cannot be reused as R4 build admission.
+
+| Shared-read native check | Measured result |
+| --- | --- |
+| Internal Wire controls / reader cases | 54 controls / six single/two-reader runs passed |
+| Producer mutation / deliberate missing invalidation | Three passed / three expected stale-GPU failures |
+| Large imported RGBA/BGRA, 1921 and 2048 square | Four passed; full CPU image, 16 spatial shader samples |
+| Live-device drain | Three passed; capture budget zero before destruction and a later GPU copy/map works |
+
+[Exact resource observations](../native/drafts/webgpu-shared-read-epoch/resource-observations.json)
+are separate from the earlier exclusive-mode results. The 64 MiB limit is
+unchanged. These are standalone Dawn checks, not Chromium Canvas results.
+Next: full host regression, backed-up R3-to-R4 transition, Windows j4 build and
+fresh browser diagnostics. Preserve R3 and its failures below. Legacy Audio,
+recoverable quotas and full manager/release admission remain unresolved.
+
 ## 2026-11-01: R3 compiled and measured; not admitted
 
 | Gate | Result |
