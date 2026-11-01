@@ -1,0 +1,547 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-image-r10",
+  "candidate_manifest_sha256": "3a1472a565328348b1cf4ae0038fbf905d2bd547f594f2cc4664b4143a1d7c48",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "7fb4b5776c989fa462b99821cb6a6f3b9adad0b2499dc3ca5f1fd2ab40437156",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "passed": false,
+  "scope": "R10 diagnostic subdivision only; no repaired binary or external detector verdict",
+  "direct_copy_attempts": 32,
+  "direct_copies_exact": 28,
+  "direct_creation_failures": 4,
+  "direct_rows": [
+    {
+      "api": "webgl",
+      "alpha": false,
+      "copies": [
+        {
+          "name": "drawImage",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "drawImage",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "png",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "png",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "createImageBitmap",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "createImageBitmap",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "transferToImageBitmap",
+          "willReadFrequently": false,
+          "passed": false,
+          "error": "NotReadableError: Failed to execute 'transferToImageBitmap' on 'OffscreenCanvas': Glint GPU image source copy failed.",
+          "creationFailed": true
+        },
+        {
+          "name": "transferToImageBitmap",
+          "willReadFrequently": true,
+          "passed": false,
+          "error": "NotReadableError: Failed to execute 'transferToImageBitmap' on 'OffscreenCanvas': Glint GPU image source copy failed.",
+          "creationFailed": true
+        }
+      ],
+      "passed": false,
+      "attributes": {
+        "alpha": false,
+        "antialias": false,
+        "depth": false,
+        "desynchronized": false,
+        "failIfMajorPerformanceCaveat": false,
+        "powerPreference": "default",
+        "premultipliedAlpha": true,
+        "preserveDrawingBuffer": true,
+        "stencil": false,
+        "xrCompatible": false
+      },
+      "drawingBufferColorSpace": "srgb",
+      "directSha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36",
+      "knownFillChangedChannels": 101
+    },
+    {
+      "api": "webgl",
+      "alpha": true,
+      "copies": [
+        {
+          "name": "drawImage",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "drawImage",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "png",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "png",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "createImageBitmap",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "createImageBitmap",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "transferToImageBitmap",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "transferToImageBitmap",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        }
+      ],
+      "passed": true,
+      "attributes": {
+        "alpha": true,
+        "antialias": false,
+        "depth": false,
+        "desynchronized": false,
+        "failIfMajorPerformanceCaveat": false,
+        "powerPreference": "default",
+        "premultipliedAlpha": true,
+        "preserveDrawingBuffer": true,
+        "stencil": false,
+        "xrCompatible": false
+      },
+      "drawingBufferColorSpace": "srgb",
+      "directSha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36",
+      "knownFillChangedChannels": 101
+    },
+    {
+      "api": "webgl2",
+      "alpha": false,
+      "copies": [
+        {
+          "name": "drawImage",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "drawImage",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "png",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "png",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "createImageBitmap",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "createImageBitmap",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "transferToImageBitmap",
+          "willReadFrequently": false,
+          "passed": false,
+          "error": "NotReadableError: Failed to execute 'transferToImageBitmap' on 'OffscreenCanvas': Glint GPU image source copy failed.",
+          "creationFailed": true
+        },
+        {
+          "name": "transferToImageBitmap",
+          "willReadFrequently": true,
+          "passed": false,
+          "error": "NotReadableError: Failed to execute 'transferToImageBitmap' on 'OffscreenCanvas': Glint GPU image source copy failed.",
+          "creationFailed": true
+        }
+      ],
+      "passed": false,
+      "attributes": {
+        "alpha": false,
+        "antialias": false,
+        "depth": false,
+        "desynchronized": false,
+        "failIfMajorPerformanceCaveat": false,
+        "powerPreference": "default",
+        "premultipliedAlpha": true,
+        "preserveDrawingBuffer": true,
+        "stencil": false,
+        "xrCompatible": false
+      },
+      "drawingBufferColorSpace": "srgb",
+      "directSha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36",
+      "knownFillChangedChannels": 101
+    },
+    {
+      "api": "webgl2",
+      "alpha": true,
+      "copies": [
+        {
+          "name": "drawImage",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "drawImage",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "png",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "png",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "createImageBitmap",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "createImageBitmap",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "transferToImageBitmap",
+          "willReadFrequently": false,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        },
+        {
+          "name": "transferToImageBitmap",
+          "willReadFrequently": true,
+          "passed": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36"
+        }
+      ],
+      "passed": true,
+      "attributes": {
+        "alpha": true,
+        "antialias": false,
+        "depth": false,
+        "desynchronized": false,
+        "failIfMajorPerformanceCaveat": false,
+        "powerPreference": "default",
+        "premultipliedAlpha": true,
+        "preserveDrawingBuffer": true,
+        "stencil": false,
+        "xrCompatible": false
+      },
+      "drawingBufferColorSpace": "srgb",
+      "directSha256": "8097c5ceb12e69398da797ebc58242da901c9d4d308522d4d2acf11ef4969c36",
+      "knownFillChangedChannels": 101
+    }
+  ],
+  "frame_rows": [
+    {
+      "api": "webgl",
+      "alpha": false,
+      "error": "Error: Transferred placeholder frame was not observed; last read error: null",
+      "passed": false
+    },
+    {
+      "api": "webgl",
+      "alpha": true,
+      "readyAttempts": 1,
+      "directSha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5",
+      "knownFillChangedChannels": 101,
+      "copies": [
+        {
+          "name": "drawImage",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "drawImage",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "imageBitmap",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "imageBitmap",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "toDataURL",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "toDataURL",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "toBlob",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "toBlob",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "workerPNG",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "workerPNG",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "api": "webgl2",
+      "alpha": false,
+      "error": "Error: Transferred placeholder frame was not observed; last read error: null",
+      "passed": false
+    },
+    {
+      "api": "webgl2",
+      "alpha": true,
+      "readyAttempts": 1,
+      "directSha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5",
+      "knownFillChangedChannels": 101,
+      "copies": [
+        {
+          "name": "drawImage",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "drawImage",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "imageBitmap",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "imageBitmap",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "toDataURL",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "toDataURL",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "toBlob",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "toBlob",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "workerPNG",
+          "willReadFrequently": false,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        },
+        {
+          "name": "workerPNG",
+          "willReadFrequently": true,
+          "changedChannels": 0,
+          "knownFillChangedChannels": 101,
+          "sha256": "8203f7fb76bfc203a0b6ab2e1cba439b7de093e6635e8dd997123e63240514b5"
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "alpha_enabled_frame_copies_exact": 20,
+  "opaque_frame_variants_unreadable": 2,
+  "source_core_driver_asset_postguards_passed": true,
+  "owned_resources_closed": true,
+  "source_reports_sha256": {
+    "direct": "364e9b25186cf7de8120edf92cf3b5cd7cb019983eeaa67bb3f41ecef7ce1f37",
+    "frame": "93280688d26cf08b61f1a55b522af86a1c5e1d5e148ad45c5a568dabedb99a8b"
+  },
+  "probe_sha256": {
+    "copy-probe.js": "c36fa5a1644235731c6b36000bd90207084a9987e4e8b87d71f5526fbaa30519",
+    "frame-probe.js": "ea81e7fc98726643fa28af386c49544047aef6e8bece81399bc082ae0351b7cb"
+  },
+  "original_failures_preserved": true,
+  "opaque_source_repair_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

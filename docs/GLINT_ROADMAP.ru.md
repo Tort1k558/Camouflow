@@ -1,5 +1,15 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: opaque GPU source failure isolated; normalization repair prepared
+
+[Opaque-source packet](../native/drafts/canvas-opaque-sources/README.md): R10 passes
+28/32 direct copy variants; only opaque transferToImageBitmap creates errors.
+Alpha-enabled worker frames pass all 20 copies; opaque variants stay unreadable.
+Pinned Chromium exposes their RGBX/BGRX images as Skia RGB_888x, rejected by the
+current source filter. A two-file normalization repair and five native cases are
+prepared; apply/reverse and three C++ type checks pass. The active browser is
+unchanged: native execution and real opaque-frame repair remain unverified.
+
 ## 2026-11-02: matched protected GPU consistency checks passed
 
 [Version-2 GPU contract](../native/drafts/protected-gpu-v2/README.md) passed a fresh

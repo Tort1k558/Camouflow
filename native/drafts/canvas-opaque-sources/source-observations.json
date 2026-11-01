@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "candidate_base": "upstream-156-image-r10",
+  "base_manifest_sha256": "3a1472a565328348b1cf4ae0038fbf905d2bd547f594f2cc4664b4143a1d7c48",
+  "patch_sha256": "daab0dafbff3b62a3a28fc510fb24a1ebd9d1403095463fade5b0c722c577769",
+  "source_files": {
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc": {
+      "before": "b78c7f5c8ccae79940179c8281f5d3c2b8344047d21a53833186dad4eea33a60",
+      "after": "26143071c893f121639d726e0901df0e21a087015793c06398911f2be0aaeb65"
+    },
+    "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc": {
+      "before": "bcde22ed0d247030f57e4f9c17c0ed65a444a8262e48343c2f3c8e2780ca1b24",
+      "after": "18d7f65946ddd175d51546d444c1bb6fb8e1c267f4ce41cb2e38446732d9b822"
+    }
+  },
+  "changed_files": 2,
+  "forward_reverse_passed": true,
+  "source_replay_report_sha256": "cc2949724858c451d419265eacb8ebc9fecbf2cc18666646d903ff2a23717fe0",
+  "prepared_native_tests": 5,
+  "native_new_cases": [
+    "NormalizesRGBXToTheExistingRGBAOracle",
+    "KeepsOpaqueAlphaOriginOrientationAndSource",
+    "RetainsTheExactDetachedCopyBudget",
+    "OwnedRGBXStillRequiresNormalization",
+    "DoesNotAdmitUnknownFormatsOrColourSpaces"
+  ],
+  "type_checked_translation_units": 3,
+  "syntax_targets": [
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc",
+      "returncode": 0,
+      "response_sha256": "321f16b47bce1e99af5c1ed8c3fe4344c331ceb7d3deb5abde1d1c718b7983cf",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc",
+      "returncode": 0,
+      "response_sha256": "a8084e17c4ad7483e95c6395b6d98d1836da76cd0c8f1336f1c3b8580c98b418",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc",
+      "returncode": 0,
+      "response_sha256": "3b93d4082f3a745a74172d8d8ec80cead57fa4b54c9bba97e67be37ed4ba2824",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "36fc10e00a6fd803af998cc3803a36d65decaeb3f380b344a371bc7388cd3ee4",
+  "syntax_postimage_bindings_match": true,
+  "private_pixel_buffer_budget_bytes": 67108864,
+  "pixel_transform_algorithm_changed": false,
+  "owned_raster_normalization_requirement_retained": true,
+  "upstream_format_evidence": {
+    "third_party/blink/renderer/platform/graphics/gpu/drawing_buffer.cc": "0649a8fc32623aef3fbbf24779cae4e98deced6dcb43e52664b4bc725189af1e",
+    "third_party/blink/renderer/platform/graphics/mailbox_texture_backing.cc": "ead32e09310ffd97136af476255fd14733c8e35d460c8d3bfc14be6c2029ef1c",
+    "components/viz/common/resources/shared_image_format_utils.cc": "01e33be5c62fb9c20b86ad83621369252cd287345b6f8071a08c826daced581b"
+  },
+  "earlier_fixture_signature_failure_preserved": "d67f73dc502ce1b6f52b52bbd79a22674f908b9f05e48bb8a476bdb4f7cfbd17",
+  "selected": false,
+  "active_checkout_modified": false,
+  "compiled_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
