@@ -17,6 +17,15 @@ three modes. Actual multi-profile reports have per-profile completion phases and
 the completed measurements does **not** make compatibility or selector coverage
 pass. These browser observations are separate from the earlier tool-only checks.
 
+The [separate selected cohort](r8-selected-cohort-observations.json) used the
+existing public selector patch before measurement: reference classes **0 and 1**
+both completed baseline/Math/restart with exact restart and unchanged linear
+graphs. Legacy still failed. The short comparisons had no Math/baseline changes;
+the earlier separate long-buffer control changed 12 compressor/slow-attack rows
+for class 1 and none for class 0. Neither reference selection nor differing
+samples establish actual hardware/device cohorts or direct internal backend
+observation. The original random-cohort failure remains preserved.
+
 `difference.js` compares equal-length `Float32Array` views, respecting byte
 offsets. It reports changed bit patterns, finite/nonfinite pair counts, signed
 zero differences, maximum finite absolute difference and maximum finite ULP

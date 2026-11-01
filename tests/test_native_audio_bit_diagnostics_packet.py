@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import json
 import runpy
 
@@ -60,4 +61,29 @@ def test_r8_measured_differences_preserve_failed_compatibility_and_missing_selec
                for row in record['legacy_differences'])
     for name in ('compatibility_passed', 'reference_selectors_covered', 'both_math_backends_verified',
                  'internal_backend_observed', 'legacy_audio_repaired', 'privacy_admitted', 'production_admitted'):
+        assert record[name] is False
+
+
+def test_r8_selected_reference_classes_do_not_hide_legacy_or_claim_hardware_backends():
+    record = json.loads((PACKET / 'r8-selected-cohort-observations.json').read_bytes())
+    assert record['measurement_complete'] and record['reference_selectors_covered']
+    assert record['reference_selectors'] == [0, 1] and record['profiles'] == 2
+    assert record['selectors_chosen_before_browser_measurement']
+    assert record['source_core_fixture_postguards_passed'] and record['all_mode_resources_closed']
+    assert record['math_restart_exact'] and record['unmodified_math_graphs_exact']
+    assert record['modes_passed'] == dict(baseline=True, legacy=False, math=True, **{'math-restart': True})
+    assert record['math_baseline_different_rows'] == [0, 0]
+    assert record['previous_random_cohort_record_sha256'] == hashlib.sha256(
+        (PACKET / 'r8-observations.json').read_bytes()).hexdigest()
+    patch = PACKET.parent / 'environment/audio-realtime-worklet/selector-coverage.patch'
+    assert record['existing_selector_patch_sha256'] == hashlib.sha256(patch.read_bytes()).hexdigest()
+    long = record['earlier_long_buffer_control']
+    assert long['passed'] and long['reference_selectors_covered']
+    assert long['math_baseline_different_rows'] == [0, 12]
+    assert long['changed_graphs'] == ['compressor', 'compressor-slow-attack']
+    assert long['long_control_is_separate_from_short_comparison']
+    assert long['internal_backend_observed'] is long['device_cohort_verified'] is False
+    for name in ('compatibility_passed', 'native_key_generator_changed', 'tolerance_relaxed',
+                 'internal_backend_observed', 'device_cohort_verified', 'legacy_audio_repaired',
+                 'privacy_admitted', 'production_admitted'):
         assert record[name] is False

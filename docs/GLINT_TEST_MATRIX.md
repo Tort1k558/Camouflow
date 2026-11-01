@@ -1,5 +1,15 @@
 # Glint browser test matrix
 
+## 2026-11-01: explicit Audio reference-class coverage
+
+[Selected cohort](../native/drafts/audio-bit-diagnostics/r8-selected-cohort-observations.json):
+two reference classes selected before measurement, **0 and 1**. Baseline,
+Math and Math restart passed on both; Legacy failed on both. Source/core/fixture
+guards and mode cleanup passed. Short comparisons had no changed Math samples;
+the separately bound earlier long-buffer control changed 12 compressor rows for
+class 1. These are reference-class checks, not hardware cohorts or direct backend
+observations. Previous random-cohort and runner failures remain intact.
+
 ## 2026-11-01: R8 Audio sample differences remain failures
 
 [Instrumented record](../native/drafts/audio-bit-diagnostics/r8-observations.json):
