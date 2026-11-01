@@ -4,6 +4,9 @@
 
 [Exact browser evidence](../native/drafts/upstream-156-webgpu-r5/browser-observations.json)
 binds the measured DLL and preserves failures alongside controlled rechecks.
+[Full host regression](../native/drafts/upstream-156-webgpu-r5/host-regression-observations.json):
+5,481 passed, one skipped, no failures; source postguards passed. This baseline
+precedes the new GPU-draft evidence tests and does not grant browser admission.
 
 | Gate | Actual result |
 | --- | --- |
@@ -22,14 +25,19 @@ binds the measured DLL and preserves failures alongside controlled rechecks.
    [draft](../native/drafts/webgpu-subresource-capture/README.md), 32 cases and 97,072
    assertions in each normal/ASan run. Selected mip footprints, dimensions,
    out-of-range rejection and existing quota/lifetime controls; not integrated.
-2. Carry validated mip/layer selection through Dawn copy execution and paired
+2. **Selected-slice GPU prerequisite:** hardware-tested
+   [projection](../native/drafts/webgpu-subresource-projection/README.md), 32 cases and
+   99,158 assertions in each normal/ASan run. Shader consumption and tight native
+   canonical bytes match the CPU reference; original producer pixels unchanged.
+   This does not assemble complete sampled array views or alter browser routing.
+3. Carry validated mip/layer selection through Dawn copy execution and paired
    CPU/GPU snapshots. Preserve exact provenance, row layout and native errors.
-3. Extend GPU projection and sampled array/mip views as one compatible packet,
+4. Extend GPU projection and sampled array/mip views as one compatible packet,
    with correct transitions, ownership and cache invalidation. Do not just relax
    the existing single-surface eligibility checks or allow raw readback.
-4. Run all-layer/all-mip direct and sampled controls, repeat reads, producer
+5. Run all-layer/all-mip direct and sampled controls, repeat reads, producer
    mutations, restarts and the full document/iframe/worker browser matrix.
-5. Close legacy Audio and recoverable resource limits before manager package
+6. Close legacy Audio and recoverable resource limits before manager package
    admission, actual scenario/Recorder/AI integration and release/rollback gates.
 
 No production admission, CAPTCHA score or external detector PASS is inferred.

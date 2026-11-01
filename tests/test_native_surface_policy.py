@@ -313,3 +313,52 @@ def test_subresource_capture_draft_roundtrips_exact_r5_source_without_admission(
         assert row['result']['hardware_adapter'] and row['result']['passed']
         assert row['result']['cases'] == row['result']['budget_cases'] == 32
         assert row['result']['assertions'] == 97072 and not row['result']['browser_integrated']
+
+
+def test_selected_gpu_subresource_projection_preserves_source_and_hardware_scope(tmp_path):
+    import subprocess
+
+    root = Path(__file__).resolve().parents[1]
+    draft = root / 'native/drafts/webgpu-subresource-projection'
+    record = json.loads((draft / 'observations.json').read_bytes())
+    assert record['hardware_projection_passed'] and record['postguards_passed']
+    assert record['selected'] is record['browser_integrated'] is record['privacy_admitted'] is False
+    assert not record['production_admitted'] and len(record['unresolved']) == 4
+    for name, expected in record['source_sha256'].items():
+        assert hashlib.sha256((draft / name).read_bytes()).hexdigest() == expected
+    capture = root / 'native/drafts/webgpu-subresource-capture/observations.json'
+    assert hashlib.sha256(capture.read_bytes()).hexdigest() == record['capture_observations_sha256']
+    assert hashlib.sha256((draft / 'next.patch').read_bytes()).hexdigest() == record['patch_sha256']
+    for path, hashes in record['source_files'].items():
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((draft / Path(path).name).read_bytes())
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == hashes['after_sha256']
+    for reverse, key in ((True, 'before_sha256'), (False, 'after_sha256')):
+        subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', *(['--reverse'] if reverse else []),
+                        str(draft / 'next.patch')], cwd=tmp_path, check=True, capture_output=True)
+        assert all(hashlib.sha256((tmp_path / path).read_bytes()).hexdigest() == row[key]
+                   for path, row in record['source_files'].items())
+    assert {row['sanitizer'] for row in record['runs']} == {'none', 'address'}
+    for row in record['runs']:
+        assert row['compile_returncode'] == row['test_returncode'] == 0
+        measured = row['result']
+        assert measured['passed'] and measured['hardware_adapter'] and measured['cases'] == 32
+        assert measured['shared_quota_cases'] == 32 and measured['assertions'] == 99158
+        assert measured['typed_texture_consumer_verified'] and measured['original_unchanged']
+        assert not measured['browser_integrated']
+    shader = (draft / 'edge_projection.hlsl').read_text(encoding='utf-8-sig')
+    assert 'Texture2D<float4> InputTexture' in shader and 'InputTexture.Load(' in shader
+    runner = (draft / 'check.py').read_text(encoding='utf-8-sig')
+    assert 'REPO = ROOT.parents[2]' in runner and "'/I' + str(staging)" in runner
+
+
+def test_r5_host_regression_record_does_not_promote_browser_or_foreign_edits():
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / 'native/drafts/upstream-156-webgpu-r5/host-regression-observations.json').read_bytes())
+    assert record['passed'] and record['input_postguards_passed'] and record['current_inputs_reverified']
+    assert record['counts'] == {'passed': 5481, 'failed': 0, 'skipped': 1}
+    assert record['browser_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
+    assert record['git_commit_after_run'] == '45a24a194fb996ceb4c00e02ded51b01c2d1e1d7'
+    assert record['foreign_dirty_file']['path'] == 'docs/HUB.md'
+    assert record['foreign_dirty_file']['included_in_commit'] is False

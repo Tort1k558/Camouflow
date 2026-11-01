@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Full host test suite, not browser or release admission",
+  "counts": {
+    "passed": 5481,
+    "failed": 0,
+    "skipped": 1
+  },
+  "duration_seconds": 566.625,
+  "log_sha256": "20e19d8ce220fca95d29d376cd474038918eb3195c97c843c4dbcf6d620542b8",
+  "report_sha256": "e506b14323ebdd52d58f8c546cd0f620b8a0c3618059529b15a99d2bcba41d52",
+  "input_postguards_passed": true,
+  "current_inputs_reverified": true,
+  "git_commit_after_run": "45a24a194fb996ceb4c00e02ded51b01c2d1e1d7",
+  "candidate_manifest_sha256": "faa45bce063499c85acd6ef05d6d8f063a552aa77b59f333cd56002958ffd7c3",
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "foreign_dirty_file": {
+    "path": "docs/HUB.md",
+    "included_in_commit": false,
+    "sha256": "8d0a8ec86d626f0e9aa187b88b87b1d92a25b9995ebdff7c0496ae1dad7c2206"
+  }
+}

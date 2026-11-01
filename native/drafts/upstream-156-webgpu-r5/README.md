@@ -2,6 +2,10 @@
 
 **Windows candidate compiled and browser-tested; unresolved gates prevent admission.**
 
+[Host regression](host-regression-observations.json): 5,481 passed, one skipped,
+zero failures; all source postguards passed. This is application/test evidence,
+not a browser capability or package-admission result.
+
 [Browser observations](browser-observations.json) retain the complete original
 11-gate outcome: eight passed, three failed. The additional large Canvas/WebGPU
 gate passed all eight baseline/protected RGBA/BGRA measurements at 1921/2048
@@ -12,6 +16,9 @@ after restart. A preserved R4 counterfactual reproduces the same failure: this
 is an existing descriptor-coverage limitation, not evidence of a new R5-only
 regression. [Subresource capture draft](../webgpu-subresource-capture/README.md)
 is hardware-tested but does not yet repair paired GPU projection or the browser.
+The [selected-slice GPU projection](../webgpu-subresource-projection/README.md)
+also passed hardware and ASan checks, including canonical-buffer equality.
+Assembled array views, cache identity and native routing remain unintegrated.
 
 Legacy Audio remains failed. Long-buffer AudioMath passed with both diagnostic
 selectors chosen before measurement; its original random cohort missed one

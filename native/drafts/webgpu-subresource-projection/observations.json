@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "selected": false,
+  "browser_integrated": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Selected 2D array/mip GPU projection with canonical-buffer equality; not assembled sampled array views or Dawn routing.",
+  "base_candidate": "upstream-156-webgpu-r5",
+  "hardware_projection_passed": true,
+  "patch_sha256": "841ef8edbffc96e5c1bf509c59c344d1af0a5f8a8d89b2e63a63a2191f610cf1",
+  "source_files": {
+    "src/dawn/native/d3d12/glint/projected_texture.h": {
+      "before_sha256": "1151b2dc56e6f04df4d3ef798c6903d800bc8e1696b8912376ee64d6c3ccdb0e",
+      "after_sha256": "93baae3b87d5a7c9463d2b442070006102a4b728554cac7c4dd5c4bf1b6b4880"
+    },
+    "src/dawn/native/d3d12/glint/projected_texture.cc": {
+      "before_sha256": "3c42a724ce715bab3f22ea3f2d9beb81e0c8983fe8391e742cbe33f2664d643c",
+      "after_sha256": "10486c809476912ee9c94170957619574ae9def9b13d754b401bc1ba5360975e"
+    }
+  },
+  "source_sha256": {
+    "check.py": "59e81fafffc12eabe309daacbab1d86783b85d1836751d58551860c7c3f1e3e1",
+    "edge_projection.hlsl": "9e9fb57a92303e930984543fe67c44ae5a48abf59740968ffa2fa7da87d7615f",
+    "next.patch": "841ef8edbffc96e5c1bf509c59c344d1af0a5f8a8d89b2e63a63a2191f610cf1",
+    "projected_texture.cc": "10486c809476912ee9c94170957619574ae9def9b13d754b401bc1ba5360975e",
+    "projected_texture.h": "93baae3b87d5a7c9463d2b442070006102a4b728554cac7c4dd5c4bf1b6b4880",
+    "shadow_test.cc": "447dc8c860d2152ae02473e0dd6842279e0d2062cc486461b6297f782c5d15ec",
+    "texture_consumer.hlsl": "638e1ae5186bac218b0d3776db17172b24d585cb96034e5ac75ff26004d37a44"
+  },
+  "earlier_report_sha256": "afd79c108a46db1e63a1283d7ab049fa0fc6ce542850e1bc1ea08600762f4f32",
+  "runs": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 32,
+        "assertions": 99158,
+        "shared_quota_cases": 32,
+        "typed_texture_consumer_verified": true,
+        "original_unchanged": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 32,
+        "assertions": 99158,
+        "shared_quota_cases": 32,
+        "typed_texture_consumer_verified": true,
+        "original_unchanged": true,
+        "browser_integrated": false
+      }
+    }
+  ],
+  "canonical_patch_check_passed": true,
+  "patch_roundtrip_passed": true,
+  "postguards_passed": true,
+  "capture_observations_sha256": "b96462e9e33549d14e5b300b25538fc8ae3a8a9b1d47be51d5f3929266b034d2",
+  "native_shader_header_sha256": "97663186ee9e057b8502abbc17e410adf09027ea90e50d7d036f868f1317e1e6",
+  "unresolved": [
+    "Assembled multi-layer/multi-mip sampled views",
+    "Dawn copy/paired-snapshot propagation",
+    "Subresource-aware cache identity and invalidation",
+    "Actual document/iframe/worker maps and restarts"
+  ],
+  "report_sha256": "a2fff5df850463be65a1c4b47467271d73d2026ee40f815416ec4454e811cba2",
+  "public_runner_verified": true
+}
