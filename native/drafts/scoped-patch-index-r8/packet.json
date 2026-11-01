@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "selected": false,
+  "compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "source": "scripts/native_build.py",
+  "before_sha256": "932ad27bc1947f2213fb1a6afedc9c91bab91264ed1dd3b3f9ea3b1f0152a565",
+  "after_sha256": "592fc255afd87e1b1f5b9d4fb3e269b7d9e6218e4aa2f77acf831cfab6bdb48e",
+  "patch_sha256": "005e0ab80722cf5cb7dd8ad1aad32777c299b5a27566708f45dc422a8be0b5c1",
+  "checker_sha256": "f1d8216ca50c6c46481878dfb41ce7f9e262605279a88029f1b16454ca04fa1e",
+  "base_project_head": "6314e4bffdfdbc8acd92fdc5d594346757d2f9c9",
+  "base_candidate": "upstream-156-audio-r8",
+  "base_candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "test_inputs_sha256": {
+    "tests/test_native_patch_net_paths.py": "7c3e626a9e657f0412e0739b9a610d3261c142a2152086ef66c680a2f1a95b53",
+    "tests/test_release_tools.py": "438b9e7c7e6e5b1b9f62a48ccefb85ee8d64edc079a557afb8e2c561384ac937"
+  },
+  "predecessor_packet_sha256": "90c7224f47c14920e63d0f01e0503c255603014ae6fcffa135dc065019e1cf16",
+  "scope": "Unselected R8 source-pin refresh of the identical scoped/bulk index implementation; active builder and native sources unchanged"
+}

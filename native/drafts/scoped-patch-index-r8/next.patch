@@ -1,0 +1,62 @@
+diff --git a/scripts/native_build.py b/scripts/native_build.py
+--- a/scripts/native_build.py
++++ b/scripts/native_build.py
+@@ -327,6 +327,22 @@
+     return changed
+ 
+ 
++def _seed_patch_index(source: Path, env: dict[str, str], paths: set[str]) -> None:
++    if not paths:
++        raise ValueError("Native patch index requires explicit owned source paths")
++    run(["git", "read-tree", "--empty"], source, env)
++    baseline = run(["git", "ls-tree", "HEAD", "--", *sorted(paths)], source, env, capture=True)
++    for entry in baseline.splitlines():
++        metadata, _ = entry.split("\t", 1)
++        _, kind, _ = metadata.split()
++        if kind != "blob":
++            raise ValueError("Native patches must only change ordinary source files")
++    if baseline:
++        subprocess.run(["git", "update-index", "--index-info"], cwd=source, env=env,
++                       input=(baseline + "\n").encode("utf-8"), check=True)
++
++
++
+ def _source_patches(source: Path, env: dict[str, str], names: tuple[str, ...],
+                     *, index_dir: Path | None = None, patch_directory: Path | None = None,
+                     complete_chain: bool = False) -> list[dict[str, str]]:
+@@ -349,14 +365,7 @@
+         return []
+     with tempfile.TemporaryDirectory(prefix="native-patch-index-", dir=source.parent if index_dir is None else index_dir) as owned:
+         index_env = {**env, "GIT_INDEX_FILE": str(Path(owned) / "index")}
+-        run(["git", "read-tree", "--empty"], source, index_env)
+-        baseline = run(["git", "ls-tree", "HEAD", "--", *sorted(expected)], source, index_env, capture=True)
+-        for entry in baseline.splitlines():
+-            metadata, path = entry.split("\t", 1)
+-            mode, kind, blob = metadata.split()
+-            if kind != "blob":
+-                raise ValueError("Native patches must only change ordinary source files")
+-            run(["git", "update-index", "--add", "--cacheinfo", mode + "," + blob + "," + path], source, index_env)
++        _seed_patch_index(source, index_env, expected)
+         for patch in patches:
+             run(["git", "apply", "--cached", str(patch)], source, index_env)
+         if complete_chain:
+@@ -688,13 +697,17 @@
+             if not names:
+                 continue
+             index_env = {**env, "GIT_INDEX_FILE": str(evidence / f"index-{number}")}
+-            run(["git", "read-tree", "HEAD"], repository, index_env)
++            owned_paths = {line.split(" b/", 1)[1]
++                           for name in names
++                           for line in (candidate["directory"] / "patches" / name).read_text(encoding="utf-8-sig").splitlines()
++                           if line.startswith("diff --git ")}
++            _seed_patch_index(repository, index_env, owned_paths)
+             for name in names:
+                 run(["git", "-c", "core.autocrlf=false", "apply", "--cached",
+                      str(candidate["directory"] / "patches" / name)], repository, index_env)
+             delta = evidence / f"repository-{number}.patch"
+             result = subprocess.run(["git", "diff", "--cached", "--binary", "--full-index",
+-                                     "--no-ext-diff", "--no-textconv", "--no-color", "HEAD"],
++                                     "--no-ext-diff", "--no-textconv", "--no-color", "HEAD", "--", *sorted(owned_paths)],
+                                     cwd=repository, env=index_env, capture_output=True, check=True)
+             if not result.stdout:
+                 raise ValueError("Candidate patch batch produced an empty repository delta")

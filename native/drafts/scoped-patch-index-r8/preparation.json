@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "prepared": true,
+  "patch_apply_reverse_restored": true,
+  "canonical_builder_modified": false,
+  "native_source_modified": false,
+  "checker_executed": false,
+  "before_sha256": "932ad27bc1947f2213fb1a6afedc9c91bab91264ed1dd3b3f9ea3b1f0152a565",
+  "after_sha256": "592fc255afd87e1b1f5b9d4fb3e269b7d9e6218e4aa2f77acf831cfab6bdb48e",
+  "packet_sha256": "1b893884f68928dccb2538b7f7983f61b27df74ad569d81fe358e5b8c4188f1c",
+  "predecessor_patch_identical": true,
+  "scope": "Exact detached R8 apply/reverse and Python syntax only; not Git algorithm regression, elapsed-time benchmark or native build"
+}
