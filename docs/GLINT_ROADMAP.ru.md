@@ -24,9 +24,15 @@ then passed 280 images / 392 PNG exports, both backing requests, exact multicolo
 fills and seven restart pairs. Actual GPU allocation, translucent/P3/float16,
 protected-policy combinations and real-device cohorts are not established.
 
-Next: implement an explicit versioned rendering configuration without silent
-migration; bind actual raster/text settings, expand translucent/colour-space
-and mixed-policy checks, then evaluate replacing readback masking. Review/build
+The [unselected Canvas v2 packet](../native/drafts/canvas-rendering-v2/README.md)
+now implements explicit version/preset settings, matching native switch
+validation and owned profile-identity document/worker/export routing. Its 11-file
+source replay and six translation-unit type checks passed; no v2 browser or
+native test binary is built, and managed-package admission is unchanged.
+
+Next: compile/link and execute the six prepared native tests; verify actual
+Canvas v2 bootstrap/failure/restart, translucent/colour-space and mixed-policy
+behaviour, then evaluate replacing readback masking. Review/build
 the 157 C++ integration and execute queued Audio tests when storage permits,
 then repeat combined/runtime gates. The full build reserve remains 180 GiB.
 Legacy Audio, device cohorts, installed-package/update/rollback and full privacy/

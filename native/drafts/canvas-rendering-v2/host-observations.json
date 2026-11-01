@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "selected": false,
+  "base_sha256": "14159cb9d71604e5b1f261c0d2332834caf7bcd39b063695d096a47d654045d2",
+  "after_sha256": "3fa0b2c30daea6f3a254051097afadb4bd069ea32aed4de2500cd6a7be3494d1",
+  "patch_sha256": "596b6a08f414b6667aa5d975208651dc784075b4177b155af923bb535381c44e",
+  "capability": "canvas-rendering-v2",
+  "admission_changed": false,
+  "production_admitted": false,
+  "focused_tests": {
+    "passed": 96,
+    "full_host_regression": false,
+    "log_sha256": "fd8638b3e9322351c70e97da4dafadb36629d7703efa01a8921d1d5d6754ace8",
+    "test_sources_sha256": {
+      "test_native_canvas_rendering_v2_draft.py": "1ff94634f677748b8a2b123a1cb3d4551569109668af84c226b3f4425df427f9",
+      "test_native_canvas_rendering.py": "3e9eb90a11c3683a89335a0856cee66827421ff92f95882a9a9cb61facf9cd85",
+      "test_native_canvas_roundtrip.py": "9169a13edf10adf8214ef848cb20dab62e64e9578fe584fa6dc1a45fee446ef6",
+      "test_native_audio_r8.py": "436be81ce2e296e39715db5cc8224c1dd98ceaa5d6eb76608fc9b0993e363b4f",
+      "test_native_157_r8_port.py": "ec469b1d21f963eeb2eaccd72af0675859c899d167f401b20a0431e1a6d23b24"
+    }
+  }
+}

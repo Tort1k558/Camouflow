@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "candidate_base": "upstream-156-audio-r8",
+  "base_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "patch_sha256": "27d008e059eb2e9d8721b91418cb3b11b155c87dc39e357a6523ff4fba9a0fb7",
+  "source_files": {
+    "third_party/blink/public/common/native_privacy/glint/canvas_rendering_policy.h": {
+      "before": null,
+      "after": "1fa071bb3fb427b7128abbadc3a21250c01eebe8c6378457698ab90bf6a55a86"
+    },
+    "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h": {
+      "before": null,
+      "after": "1e56f0ced7731644a86e340de3e0544f1c017a9c3b367d1cff9ca5e9a4939682"
+    },
+    "content/browser/camouflow_native/privacy_context.cc": {
+      "before": "08ed3929f01654db38d01664de80e520479a920c3f4e8877ca8713718c64fad0",
+      "after": "668c57f570d559c0f6e0329c40dd8c4b37c09e946ab3603e6de3a82b7d95d608"
+    },
+    "content/browser/renderer_host/render_process_host_impl.cc": {
+      "before": "ec6d022a687e05cc90406da2455249fc1167d2a3e6eb535143b960877317e69e",
+      "after": "895ae478bf1a4ff437e10d1bc6ba82a11edddcceba883ca6f8c5dbf0d761a842"
+    },
+    "content/renderer/render_thread_impl.cc": {
+      "before": "893bccdacd75a50ce464a894e7deb06b61beca7a2e72e72676c711dcb6ce9d0c",
+      "after": "7cde737e425af19c535b6d1f3e8f02f19ec7b398e401ce3389075d154c0de2c6"
+    },
+    "third_party/blink/public/common/BUILD.gn": {
+      "before": "8316f31533516017e1b97f27e10edad901f71d9948e6baee0407461bb84c10ac",
+      "after": "9db1ba98aee6c0abb20ed6b26aa6992c2753bbeef5fefd985dee227c02a23d3f"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc": {
+      "before": "9aa8e3495a95d719a4aa9e3afb5594fd87a4655b6b843732471bf9846ff96223",
+      "after": "a9afd8ec83974e76b72539cdb569650dca02eac2134983b238a68e4d00c049c3"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h": {
+      "before": "2b3278460e0cf365683c2d57058f57c989063258c979d2588cf8987a84c7ed06",
+      "after": "cc2b9c589b2f776a00687e6e4f1c8336ed8b820b8383e3620460192147c1184d"
+    },
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": {
+      "before": "6ba4f689621a60f62363209b4d17d4269ae0229de52dc35fff1d91d7fd37d07d",
+      "after": "4475092d669eb167c37053ea9dcebdd582f7f8a0175441ab0b543e2347e867b1"
+    },
+    "third_party/blink/common/native_privacy/glint/canvas_rendering_policy_unittest.cc": {
+      "before": null,
+      "after": "7d86a9b9751a139a5d1aba9c3c00ac940cd022923f4e11063bcb47664863294c"
+    },
+    "third_party/blink/common/BUILD.gn": {
+      "before": "8c5359a27d543c8f0804f9aff33ef50c661986bc9710cd843d8627878bb95304",
+      "after": "9f8c365036150fb3b009cfb30742f5e82b70fdc3c8190df0c07f650ebf7eb85e"
+    }
+  },
+  "source_forward_and_reverse_passed": true,
+  "added_headers_and_tests_removed_on_reverse": true,
+  "source_files_count": 11,
+  "prepared_native_tests": 6,
+  "selected": false,
+  "active_checkout_modified": false,
+  "host_runtime_modified": false,
+  "compiled_browser": false,
+  "native_tests_executed": false,
+  "linked_canvas_v2_runtime_verified": false,
+  "seed_selected_preset_implemented": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "syntax_checks": [
+    {
+      "report_sha256": "3700c7e17adddf1b86c768592314b93c7370fcf6664e0c910ddb9f3a6e60e9b4",
+      "targets": [
+        {
+          "source": "content/browser/camouflow_native/privacy_context.cc",
+          "returncode": 0,
+          "response_sha256": "e4f1147363a8f033343be0953a0b1bfbe3a641c149b14b353c08e801025e7ac7",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "source": "content/browser/renderer_host/render_process_host_impl.cc",
+          "returncode": 0,
+          "response_sha256": "b3cb0333b2fc9ff67bd9df459aeb195eda4336c9899804d517fe57a52831e720",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "source": "content/renderer/render_thread_impl.cc",
+          "returncode": 0,
+          "response_sha256": "dfc28ea37bccb323b17dc529660b705ba4f2a3bfac1c2de7bfa856928b9315b2",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc",
+          "returncode": 0,
+          "response_sha256": "96e25ed60f0bf20fd5318c158874940e7629dec0ee0e5d27c0b6f493d1542f31",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "source": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+          "returncode": 0,
+          "response_sha256": "130604a979e64c6ca31c68d85ce65c27c18666e2803f06b8cffd2386ca191c62",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "overlay_source_sha256": {
+        "third_party/blink/public/common/native_privacy/glint/canvas_rendering_policy.h": "1fa071bb3fb427b7128abbadc3a21250c01eebe8c6378457698ab90bf6a55a86",
+        "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h": "1e56f0ced7731644a86e340de3e0544f1c017a9c3b367d1cff9ca5e9a4939682",
+        "content/browser/camouflow_native/privacy_context.cc": "668c57f570d559c0f6e0329c40dd8c4b37c09e946ab3603e6de3a82b7d95d608",
+        "content/browser/renderer_host/render_process_host_impl.cc": "895ae478bf1a4ff437e10d1bc6ba82a11edddcceba883ca6f8c5dbf0d761a842",
+        "content/renderer/render_thread_impl.cc": "7cde737e425af19c535b6d1f3e8f02f19ec7b398e401ce3389075d154c0de2c6",
+        "third_party/blink/public/common/BUILD.gn": "9db1ba98aee6c0abb20ed6b26aa6992c2753bbeef5fefd985dee227c02a23d3f",
+        "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc": "a9afd8ec83974e76b72539cdb569650dca02eac2134983b238a68e4d00c049c3",
+        "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h": "cc2b9c589b2f776a00687e6e4f1c8336ed8b820b8383e3620460192147c1184d",
+        "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": "4475092d669eb167c37053ea9dcebdd582f7f8a0175441ab0b543e2347e867b1"
+      },
+      "input_postguards_passed": true,
+      "active_core_unchanged": true
+    },
+    {
+      "report_sha256": "0004b6a13e5c8ffd376aec6394b46ca429edbdfbec7bdf901600450fc66f5e37",
+      "targets": [
+        {
+          "source": "third_party/blink/common/native_privacy/glint/canvas_rendering_policy_unittest.cc",
+          "returncode": 0,
+          "response_sha256": "2df6230f1227c5c80eb0729fea76676dd547b88a8305d1b43c8be67487182820",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "overlay_source_sha256": {
+        "third_party/blink/public/common/native_privacy/glint/canvas_rendering_policy.h": "1fa071bb3fb427b7128abbadc3a21250c01eebe8c6378457698ab90bf6a55a86",
+        "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h": "1e56f0ced7731644a86e340de3e0544f1c017a9c3b367d1cff9ca5e9a4939682",
+        "content/browser/camouflow_native/privacy_context.cc": "668c57f570d559c0f6e0329c40dd8c4b37c09e946ab3603e6de3a82b7d95d608",
+        "content/browser/renderer_host/render_process_host_impl.cc": "895ae478bf1a4ff437e10d1bc6ba82a11edddcceba883ca6f8c5dbf0d761a842",
+        "content/renderer/render_thread_impl.cc": "7cde737e425af19c535b6d1f3e8f02f19ec7b398e401ce3389075d154c0de2c6",
+        "third_party/blink/public/common/BUILD.gn": "9db1ba98aee6c0abb20ed6b26aa6992c2753bbeef5fefd985dee227c02a23d3f",
+        "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc": "a9afd8ec83974e76b72539cdb569650dca02eac2134983b238a68e4d00c049c3",
+        "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h": "cc2b9c589b2f776a00687e6e4f1c8336ed8b820b8383e3620460192147c1184d",
+        "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": "4475092d669eb167c37053ea9dcebdd582f7f8a0175441ab0b543e2347e867b1",
+        "third_party/blink/common/native_privacy/glint/canvas_rendering_policy_unittest.cc": "7d86a9b9751a139a5d1aba9c3c00ac940cd022923f4e11063bcb47664863294c",
+        "third_party/blink/common/BUILD.gn": "9f8c365036150fb3b009cfb30742f5e82b70fdc3c8190df0c07f650ebf7eb85e"
+      },
+      "input_postguards_passed": true,
+      "active_core_unchanged": true
+    }
+  ],
+  "cpp_translation_units_typechecked": 6,
+  "syntax_passed": true,
+  "original_target_lookup_failure_sha256": "4ce8c8013b39229680cdfcc4c070553d235fe04ec2012dda665ae8df7d10429e",
+  "syntax_scope": "Pinned generated target flags and VFS overlays only; no object generation, browser link or native test execution"
+}

@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-11-01: explicit Canvas v2 implementation draft
+
+[Unselected source/host package](../native/drafts/canvas-rendering-v2/README.md):
+11 native files apply/reverse exactly against R8; six translation units passed
+C++ type-checking with generated flags and VFS overlays. This covers browser/
+renderer validation and forwarding, document/worker Canvas routing, export
+selection and the source of six prepared native tests. **No v2 browser binary
+was linked and no prepared native test case executed.**
+
+Host draft roundtrips explicit version/preset and matches actual raster/text
+settings; absent version retains old serialization and launch arguments. New
+capability admission remains closed. V2 requires owned profile-identity policy;
+partitioned mode, inconsistent switches and GPU-export raw fallback are rejected.
+Source replay, host tests and syntax do not establish linked runtime behaviour.
+
 ## 2026-11-01: expanded native Canvas colour and PNG contracts
 
 [Expanded experiment](../native/drafts/canvas-native-rendering/expanded-observations.json):
