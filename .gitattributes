@@ -325,4 +325,5 @@ native/drafts/webgpu-subresource-capture/* text eol=lf
 native/drafts/webgpu-subresource-projection/* text eol=lf
 native/drafts/webgpu-array-projection/* text eol=lf
 native/drafts/webgpu-array-native-integration/* text eol=lf
+native/drafts/webgpu-readback-capacity/* text eol=lf
 native/drafts/environment/webgpu-r6-host-source-upgrade.json text eol=lf

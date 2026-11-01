@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-11-01: readback-capacity source packet prepared
+
+The public [capacity packet](../native/drafts/webgpu-readback-capacity/README.md)
+combines compact sparse-byte padding coverage with an independent bounded snapshot
+pool. Normal/ASan fixtures and three generated-target syntax checks passed; no
+canonical source transition, linked candidate or browser repair is claimed.
+
+Two distinct limits are retained as evidence: captured-byte padding can overflow
+the per-buffer region ledger, while the live retained-buffer R6 probe reaches
+the shared 16-snapshot pool. The same browser geometry passes when completed
+buffers are released. The new metadata pool is derived from buffer/region budgets,
+bounded separately, and preserves the existing data quotas and default common API.
+Next: register the complete candidate, check resources, build max j4 and rerun the
+original retained-buffer and mutation gates without early-release substitutions.
+
 ## 2026-11-01: R6 measured Windows build and runtime results
 
 R6 completed **90 build steps in 17m 27.66s** (24m 13.857s including build-stage

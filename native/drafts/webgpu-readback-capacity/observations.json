@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Owned source replay, standalone CPU normal/ASan fixtures and three generated-target syntax checks; not a linked browser repair.",
+  "checker_sha256": "3e0c1454dbd829821bff7dde1bdc3bc5944283407e53a5636bfbce0c0bab14d9",
+  "packet_sha256": "0ad639719a04a7b3d28d0d75e5924c9a679c5e63264fb3534814b40e0037bb9b",
+  "fixture_sha256": "d9df09894038b04afc92050808d71452a4612502d04128e0f2b3c8ddd2e312d9",
+  "report_sha256": "def31dd04e9fd638605da9fcd74ac0fdfb50dc4ea40854dd67d68fecef49c9a3",
+  "base_candidate_manifest_sha256": "cd63f64a4b05a5d45df7019efa74fc323af65b88bae4dfe6338cb917f5be8ef7",
+  "runs": [
+    {
+      "sanitizer": "normal",
+      "compile_returncode": 0,
+      "returncode": 0,
+      "log_sha256": "79d17203b2862107ef368afeba257df81940340e5822397899bae45ead59e327"
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "returncode": 0,
+      "log_sha256": "79d17203b2862107ef368afeba257df81940340e5822397899bae45ead59e327"
+    }
+  ],
+  "native_syntax": [
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "fb8cb562b99e7c23ac7a11ed316a16340d078f2f0d5310d4ee88735dcb357a6e"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "b1276428ae64cca73387cce65f4507504b7f6a71d52d8753a6fa4af92e7599b0"
+    },
+    {
+      "source": "gpu/command_buffer/service/glint_webgpu_readback_observer.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "9d54600d4b91cfef4c4bf96c0e64fc004d4c6ab52bac5e9bc6c1d4477287b40c"
+    }
+  ],
+  "prepared_source_after_sha256": {
+    "gpu/command_buffer/service/glint_webgpu_readback_observer.cc": "acb40bce4dec8014663a7062353e9ca6bf0ed8aecdc1ec839bb85558d3301f56",
+    "gpu/command_buffer/service/glint_webgpu_readback_observer.h": "49c39317e0d8d1cea2f2cc89f4637f6c72d43d7a9a4a5214f355a5a1ad77bc2e",
+    "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc": "1c6e9b18a7bcf359373ee9eddef33c71dd02fdd54e61b4edce11fe877d89d398",
+    "gpu/command_buffer/common/glint/webgpu_readback_provenance.h": "365f1b9309f3aecd3d9579ecde8816768fa6e277bc7a7106bc39a7ab7b5f2881",
+    "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc": "15dece3ed61defc80c6d3b6d1b224a456f2df5885aa71f87dbd7a4be9024071f",
+    "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h": "67baf4821392076c8e658052f9926c6b321e9e674c78c7ebbca21d1d87cf5ed7"
+  },
+  "postguards_passed": true,
+  "canonical_sources_modified": false,
+  "browser_integrated": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

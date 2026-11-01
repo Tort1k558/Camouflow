@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "selected": false,
+  "browser_integrated": false,
+  "base_candidate": "upstream-156-webgpu-r6",
+  "base_candidate_manifest_sha256": "cd63f64a4b05a5d45df7019efa74fc323af65b88bae4dfe6338cb917f5be8ef7",
+  "repository": ".",
+  "patch": "next.patch",
+  "patch_sha256": "97ca9950388de9dc1988ee3745f877bd3faafcc512efba7504cb3af3d6559640",
+  "fixture_sha256": "d9df09894038b04afc92050808d71452a4612502d04128e0f2b3c8ddd2e312d9",
+  "source_inputs_sha256": {
+    "gpu/command_buffer/common/glint/webgpu_readback_layout.h": "4793cf73301c1bd3c27aca15ad1ad68455859f2ba1a3dff89129f3640de7c495",
+    "gpu/command_buffer/common/glint/webgpu_readback_layout.cc": "9e7fc4b7b4da071339e0946655300f755dc3f445f6337f42df006176660ec8c5",
+    "gpu/command_buffer/common/glint/webgpu_readback_provenance.h": "e12c50bd50404a35819be68becf3916bf514f9a4f6e0bad206127cc478a14c20",
+    "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc": "8e19cda80b847fde7117c0f0f4a0636405d7c0da80c2aa3c02de19fe84ba9a25",
+    "gpu/command_buffer/common/gpu_command_buffer_common_export.h": "f5f3ab408c0445e48accc38cbfd6a4ce34aca43f83f49d8dc8c59119ab34e4b1",
+    "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h": "d2664f82be0fd00167058194f81f733d48340f8855f66b4a2efb39ca0f5a75a5",
+    "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc": "7362492d794a8f09b6f397a747b198bb2f400fd713a3c516074c33c1493f02e5",
+    "gpu/command_buffer/common/glint/canvas_readback_candidate.h": "e0d18ac35699bc32dd8df469b56ddb3e0bdfcbe7d45269bc3b04adeab7f5f0a4",
+    "gpu/command_buffer/common/glint/canvas_readback_candidate.cc": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5",
+    "gpu/command_buffer/service/glint_webgpu_readback_observer.h": "09f6ebaa06081ce21392894dd33868ba94749ce551acef02df87ab5b7b1e30fd",
+    "gpu/command_buffer/service/glint_webgpu_readback_observer.cc": "e251edf61888ae6dcd7106c918df4fc8dcc0ad2c2bc2dfef8dca7e4f9be79512"
+  },
+  "source_files": {
+    "gpu/command_buffer/service/glint_webgpu_readback_observer.cc": {
+      "before_sha256": "e251edf61888ae6dcd7106c918df4fc8dcc0ad2c2bc2dfef8dca7e4f9be79512",
+      "after_sha256": "acb40bce4dec8014663a7062353e9ca6bf0ed8aecdc1ec839bb85558d3301f56"
+    },
+    "gpu/command_buffer/service/glint_webgpu_readback_observer.h": {
+      "before_sha256": "09f6ebaa06081ce21392894dd33868ba94749ce551acef02df87ab5b7b1e30fd",
+      "after_sha256": "49c39317e0d8d1cea2f2cc89f4637f6c72d43d7a9a4a5214f355a5a1ad77bc2e"
+    },
+    "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc": {
+      "before_sha256": "8e19cda80b847fde7117c0f0f4a0636405d7c0da80c2aa3c02de19fe84ba9a25",
+      "after_sha256": "1c6e9b18a7bcf359373ee9eddef33c71dd02fdd54e61b4edce11fe877d89d398"
+    },
+    "gpu/command_buffer/common/glint/webgpu_readback_provenance.h": {
+      "before_sha256": "e12c50bd50404a35819be68becf3916bf514f9a4f6e0bad206127cc478a14c20",
+      "after_sha256": "365f1b9309f3aecd3d9579ecde8816768fa6e277bc7a7106bc39a7ab7b5f2881"
+    },
+    "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc": {
+      "before_sha256": "7362492d794a8f09b6f397a747b198bb2f400fd713a3c516074c33c1493f02e5",
+      "after_sha256": "15dece3ed61defc80c6d3b6d1b224a456f2df5885aa71f87dbd7a4be9024071f"
+    },
+    "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h": {
+      "before_sha256": "d2664f82be0fd00167058194f81f733d48340f8855f66b4a2efb39ca0f5a75a5",
+      "after_sha256": "67baf4821392076c8e658052f9926c6b321e9e674c78c7ebbca21d1d87cf5ed7"
+    }
+  },
+  "per_buffer_region_limit": 16,
+  "snapshot_slot_hard_limit": 4096,
+  "default_buffer_budget": 256,
+  "snapshot_data_budget_bytes": 67108864,
+  "map_shadow_limit_bytes": 67108864,
+  "scope": "Sparse captured-byte coverage and bounded snapshot metadata derived from buffer/region budgets. Existing data quotas remain; not browser/package admission."
+}
