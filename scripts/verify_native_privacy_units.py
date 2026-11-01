@@ -203,7 +203,7 @@ NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-r
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
                      "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics", "screen-widget", "screen-orientation",
-                     "screen-live-main", "screen-dispatch", "screenshot-transaction", "surface-launch", "audio-lifecycle")
+                     "screen-live-main", "screen-dispatch", "screenshot-transaction", "surface-launch", "audio-lifecycle", "canvas-rendering")
 
 SCREENSHOT_TRANSACTION_TESTS = {"GlintScreenshotEmulationTest": {
     "CrossSessionUsesEffectiveParameters", "TemporaryReadbackNeverClaimsPersistentOwnership",
@@ -311,6 +311,12 @@ AUDIO_LIFECYCLE_TESTS = {
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "canvas-rendering":
+        return {"GlintCanvasRenderingPolicyTest": {
+            "LegacyAbsenceDoesNotMigrateSettings", "ExplicitLegacyRejectsRenderingPreset",
+            "AcceptsSevenExactNativeConfigurations", "RejectsOrphanUnknownAndEmptyVersions",
+            "MetadataMustMatchActualRenderingSwitches", "V2RequiresProfileSurfaceBootstrap",
+        }}
     if target == "audio-lifecycle":
         return AUDIO_LIFECYCLE_TESTS
     if target == "surface-launch":
@@ -539,6 +545,8 @@ def require_target_sources(source: Path, patches: list[dict], target: str) -> di
     if target == "screen-widget":
         required_patches.update({"0069-native-logical-screen-inheritance.patch",
                                  "0070-native-logical-screen-lifecycle.patch"})
+    if target == "canvas-rendering":
+        required_patches.update({"0123-profile-surface-launch.patch", "0132-canvas-rendering-v2.patch"})
     if target == "screen-metrics":
         required_patches.add("0069-native-logical-screen-inheritance.patch")
     if target == "audio-lifecycle":
@@ -619,7 +627,7 @@ def unit_binary_target(target: str) -> str:
         return "content_unittests"
     if target in LIVE_SCREEN_TESTS:
         return "blink_unittests" if target == "screen-live-main" else "content_unittests"
-    return ("blink_common_unittests" if target == "screen-metrics" else
+    return ("blink_common_unittests" if target in {"screen-metrics", "canvas-rendering"} else
                     "gfx_unittests" if target == "font-rasterization" else
                     "gpu_unittests" if target == "gpu-metadata" else
                     "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff", "audio-math", "audio-lifecycle", "screen-widget", "screen-orientation"} else
@@ -630,10 +638,12 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
            target: str = "keys", candidate_name: str | None = None,
            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
     required = required_tests(target)
-    if target == "audio-lifecycle" and candidate_name != "upstream-156-audio-r8":
-        raise ValueError("Audio lifecycle units require the exact upstream-156-audio-r8 candidate")
-    if target == "surface-launch" and candidate_name not in {"upstream-156-webgpu-r5", "upstream-156-webgpu-r6", "upstream-156-webgpu-r7", "upstream-156-audio-r8"}:
-        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 or upstream-156-webgpu-r6 or upstream-156-webgpu-r7 or upstream-156-audio-r8 candidate")
+    if target == "canvas-rendering" and candidate_name != "upstream-156-canvas-r9":
+        raise ValueError("Canvas rendering units require the exact upstream-156-canvas-r9 candidate")
+    if target == "audio-lifecycle" and candidate_name not in {"upstream-156-audio-r8", "upstream-156-canvas-r9"}:
+        raise ValueError("Audio lifecycle units require the exact upstream-156-audio-r8 or upstream-156-canvas-r9 candidate")
+    if target == "surface-launch" and candidate_name not in {"upstream-156-webgpu-r5", "upstream-156-webgpu-r6", "upstream-156-webgpu-r7", "upstream-156-audio-r8", "upstream-156-canvas-r9"}:
+        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 or upstream-156-webgpu-r6 or upstream-156-webgpu-r7 or upstream-156-audio-r8 or upstream-156-canvas-r9 candidate")
     if target == "screenshot-transaction" and candidate_name not in CANDIDATES:
         raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
     if target in LIVE_SCREEN_TESTS and candidate_name not in CANDIDATES:
@@ -692,7 +702,9 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("Versioned surface launch and context readiness units; not renderer/worker first-script or browser admission"
+    scope = ("Explicit Canvas rendering version/preset and switch-consistency units; not browser routing or device-cohort admission"
+             if target == "canvas-rendering" else
+             "Versioned surface launch and context readiness units; not renderer/worker first-script or browser admission"
              if target == "surface-launch" else
              "Target-owned screenshot lease/session/document units; not PNG, BFCache or browser admission"
              if target == "screenshot-transaction" else

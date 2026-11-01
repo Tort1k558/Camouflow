@@ -84,7 +84,7 @@ def test_audio_lifecycle_targets_linked_blink_and_exact_seven_cases():
 
 
 def test_audio_lifecycle_registration_keeps_all_historical_target_prefixes(
-        tmp_path, monkeypatch, host_sources_before_audio_r8):
+        tmp_path, monkeypatch, host_sources_before_audio_r8, native_units_before_canvas_r9):
     import runpy
     import sys
 
@@ -92,7 +92,7 @@ def test_audio_lifecycle_registration_keeps_all_historical_target_prefixes(
     path.write_bytes(host_sources_before_audio_r8['scripts/verify_native_privacy_units.py'])
     monkeypatch.setattr(sys, 'path', sys.path.copy())
     previous = runpy.run_path(str(path))
-    assert units.SUPPORTED_TARGETS == (*previous['SUPPORTED_TARGETS'], 'audio-lifecycle')
+    assert native_units_before_canvas_r9['SUPPORTED_TARGETS'] == (*previous['SUPPORTED_TARGETS'], 'audio-lifecycle')
     for target in previous['SUPPORTED_TARGETS']:
         assert units.required_tests(target) == previous['required_tests'](target)
         assert units.unit_binary_target(target) == previous['unit_binary_target'](target)
@@ -126,7 +126,7 @@ def test_audio_r8_windows_build_is_not_native_test_or_browser_admission():
         assert record[flag] is False
 
 
-def test_audio_r8_selected_native_record_binds_exact_cases_without_browser_admission():
+def test_audio_r8_selected_native_record_binds_exact_cases_without_browser_admission(host_sources_before_canvas_r9):
     candidate = build.load_candidate('upstream-156-audio-r8')
     record = json.loads((candidate['directory'] / 'native-selected-observations.json').read_bytes())
     browser = json.loads((candidate['directory'] / 'windows-build.json').read_bytes())
@@ -143,7 +143,7 @@ def test_audio_r8_selected_native_record_binds_exact_cases_without_browser_admis
         assert row['required_cases'] == {suite: sorted(cases)
                                          for suite, cases in units.required_tests(row['target']).items()}
     for name, digest in record['source_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        assert hashlib.sha256(host_sources_before_canvas_r9.get(name, (ROOT / name).read_bytes())).hexdigest() == digest
     assert record['unit_binary_build'] == dict(siso_steps=1034, siso_duration_seconds=4424.78,
                                                configured_jobs=4, build_invocations=1)
     assert record['sampled_controller_resources']['state'] == 'controller-terminal'
@@ -153,7 +153,7 @@ def test_audio_r8_selected_native_record_binds_exact_cases_without_browser_admis
         assert record[flag] is False
 
 
-def test_audio_r8_public_lifecycle_run_is_separate_from_r7_and_full_admission():
+def test_audio_r8_public_lifecycle_run_is_separate_from_r7_and_full_admission(host_sources_before_canvas_r9):
     candidate = build.load_candidate('upstream-156-audio-r8')
     record = json.loads((candidate['directory'] / 'audio-lifecycle-observations.json').read_bytes())
     compiled = json.loads((candidate['directory'] / 'windows-build.json').read_bytes())
@@ -169,7 +169,7 @@ def test_audio_r8_public_lifecycle_run_is_separate_from_r7_and_full_admission():
     assert record['r7_comparison_record_sha256'] == hashlib.sha256(
         (ROOT / 'native/drafts/audio-lifecycle-runtime/r7-observations.json').read_bytes()).hexdigest()
     for name, digest in record['source_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        assert hashlib.sha256(host_sources_before_canvas_r9.get(name, (ROOT / name).read_bytes())).hexdigest() == digest
     for flag in ('postguards_passed', 'driver_postguard_passed', 'runtime_asset_postguards_passed', 'resources_closed'):
         assert record[flag] is True
     for flag in ('native_seed_erasure_proven', 'all_future_scheduling_verified', 'legacy_audio_repaired',
@@ -203,13 +203,13 @@ def test_audio_r8_first_qa_attempt_preserves_failures_and_the_exact_history_fix(
         assert record[flag] is False
 
 
-def test_audio_r8_all_native_groups_distinguish_executions_from_unique_cases():
+def test_audio_r8_all_native_groups_distinguish_executions_from_unique_cases(host_sources_before_canvas_r9, native_units_before_canvas_r9):
     candidate = build.load_candidate('upstream-156-audio-r8')
     record = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
     assert record['passed'] and record['all_supported_native_targets_verified'] and record['postguards_passed']
     assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
     assert record['native_groups'] == 26 and len(record['targets']) == 26
-    assert [row['target'] for row in record['targets']] == list(units.SUPPORTED_TARGETS)
+    assert [row['target'] for row in record['targets']] == list(native_units_before_canvas_r9['SUPPORTED_TARGETS'])
     identities = []
     for row in record['targets']:
         required = units.required_tests(row['target'])
@@ -225,7 +225,7 @@ def test_audio_r8_all_native_groups_distinguish_executions_from_unique_cases():
     assert record['unit_binary_build']['siso_duration_seconds'] == 627.38
     assert len(record['unit_binary_build']['targets']) == 6
     for name, digest in record['source_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        assert hashlib.sha256(host_sources_before_canvas_r9.get(name, (ROOT / name).read_bytes())).hexdigest() == digest
     for flag in ('full_browser_qa_admitted', 'legacy_audio_repaired', 'third_party_antibot_verified',
                  'privacy_admitted', 'production_admitted'):
         assert record[flag] is False

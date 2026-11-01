@@ -1,5 +1,22 @@
 # Glint: план проверки и развития
 
+## 2026-11-01: R9 Windows research recipe registered
+
+- [R9](../native/drafts/upstream-156-canvas-r9/README.md): 132 patches, exact
+  source apply/reverse, 403 final files / 270 restored inputs. Not compiled.
+- Six-case Canvas rendering native group registered; existing 26 R8 groups and
+  their historical source bindings preserved through a reversible host archive.
+- Pre-registration full host suite: **5806 passed / one skipped**, source guards
+  unchanged. The earlier QA-writer failure is retained; this is not full regression
+  evidence for the later registration or a browser/runtime admission.
+- R8 runtime's 269 preserved assets verified; owned source/stage backups and
+  rollback plan prepared. No canonical native source changed during preparation.
+
+Next: guarded R8-to-R9 transition, Windows build at maximum j4, exact six native
+cases, then real versioned Canvas/bootstrap/export and mixed GPU/Audio checks.
+Do not activate the manager capability before the corresponding runtime/package
+gates. Linux/macOS stay deferred; mobile remains Web Emulation.
+
 ## 2026-11-01: verified R8 baseline and complete 157 source application
 
 - [Native batch](../native/drafts/upstream-156-audio-r8/native-all-observations.json):

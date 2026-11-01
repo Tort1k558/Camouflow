@@ -1,0 +1,162 @@
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_unittest_framebuffers.cc b/gpu/command_buffer/service/gles2_cmd_decoder_unittest_framebuffers.cc
+index 57f116f..44afaf6 100644
+--- a/gpu/command_buffer/service/gles2_cmd_decoder_unittest_framebuffers.cc
++++ b/gpu/command_buffer/service/gles2_cmd_decoder_unittest_framebuffers.cc
+@@ -29,6 +29,9 @@
+ #include "gpu/command_buffer/service/mocks.h"
+ #include "gpu/command_buffer/service/program_manager.h"
+ #include "gpu/command_buffer/service/test_helper.h"
++#include "base/test/scoped_feature_list.h"
++#include "gpu/command_buffer/common/glint_readback_metadata.h"
++#include "gpu/config/gpu_finch_features.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
+ #include "ui/gl/gl_implementation.h"
+@@ -4737,5 +4740,147 @@ TEST_P(GLES3DecoderManualInitTest,
+ 
+ // TODO(gman): PixelStorei
+ 
++TEST_P(GLES3DecoderTest, GlintMetadataActualRgba8AttachmentExtents) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndEnableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  DoBindFramebuffer(GL_FRAMEBUFFER, client_framebuffer_id_,
++                    kServiceFramebufferId);
++  DoBindRenderbuffer(GL_RENDERBUFFER, client_renderbuffer_id_,
++                     kServiceRenderbufferId);
++  {
++    DoRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, 9, 3, GL_NO_ERROR);
++    DoFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
++                              GL_RENDERBUFFER, client_renderbuffer_id_,
++                              kServiceRenderbufferId, GL_NO_ERROR);
++    Framebuffer* framebuffer = GetFramebuffer(client_framebuffer_id_);
++    framebuffer->MarkAttachmentAsCleared(group().renderbuffer_manager(),
++                                         nullptr, GL_COLOR_ATTACHMENT0, true);
++    EXPECT_CALL(*gl_, CheckFramebufferStatusEXT(GL_READ_FRAMEBUFFER))
++        .WillOnce(Return(GL_FRAMEBUFFER_COMPLETE))
++        .RetiresOnSaturation();
++    using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++    auto* result = GetSharedMemoryAs<Command::Result*>();
++    result->SetNumResults(0);
++    Command command;
++    command.Init(shared_memory_id_, kSharedMemoryOffset);
++    ASSERT_EQ(error::kNoError, ExecuteCmd(command));
++    ASSERT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
++    const auto metadata = DecodeGlintReadbackMetadata(std::span<const GLint>(
++        result->GetData(), kGlintReadbackMetadataValues));
++    ASSERT_TRUE(metadata.has_value());
++    EXPECT_EQ(metadata->width, 9);
++    EXPECT_EQ(metadata->height, 3);
++    EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
++    EXPECT_EQ(metadata->samples, 0);
++    EXPECT_EQ(metadata->rgba8_compatible, true);
++    EXPECT_EQ(GL_NO_ERROR, GetGLError());
++  }
++}
++
++TEST_P(GLES3DecoderTest, GlintMetadataIntegerFormatIsNotByteCompatible) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndEnableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  DoBindFramebuffer(GL_FRAMEBUFFER, client_framebuffer_id_,
++                    kServiceFramebufferId);
++  DoBindRenderbuffer(GL_RENDERBUFFER, client_renderbuffer_id_,
++                     kServiceRenderbufferId);
++  {
++    DoRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8I, 5, 3, GL_NO_ERROR);
++    DoFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
++                              GL_RENDERBUFFER, client_renderbuffer_id_,
++                              kServiceRenderbufferId, GL_NO_ERROR);
++    Framebuffer* framebuffer = GetFramebuffer(client_framebuffer_id_);
++    framebuffer->MarkAttachmentAsCleared(group().renderbuffer_manager(),
++                                         nullptr, GL_COLOR_ATTACHMENT0, true);
++    EXPECT_CALL(*gl_, CheckFramebufferStatusEXT(GL_READ_FRAMEBUFFER))
++        .WillOnce(Return(GL_FRAMEBUFFER_COMPLETE))
++        .RetiresOnSaturation();
++    using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++    auto* result = GetSharedMemoryAs<Command::Result*>();
++    result->SetNumResults(0);
++    Command command;
++    command.Init(shared_memory_id_, kSharedMemoryOffset);
++    ASSERT_EQ(error::kNoError, ExecuteCmd(command));
++    ASSERT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
++    const auto metadata = DecodeGlintReadbackMetadata(std::span<const GLint>(
++        result->GetData(), kGlintReadbackMetadataValues));
++    ASSERT_TRUE(metadata.has_value());
++    EXPECT_EQ(metadata->width, 5);
++    EXPECT_EQ(metadata->height, 3);
++    EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8I));
++    EXPECT_EQ(metadata->samples, 0);
++    EXPECT_EQ(metadata->rgba8_compatible, false);
++    EXPECT_EQ(GL_NO_ERROR, GetGLError());
++  }
++}
++
++TEST_P(GLES3DecoderTest, GlintMetadataRenderbufferRedefinitionUpdatesExtents) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndEnableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  DoBindFramebuffer(GL_FRAMEBUFFER, client_framebuffer_id_,
++                    kServiceFramebufferId);
++  DoBindRenderbuffer(GL_RENDERBUFFER, client_renderbuffer_id_,
++                     kServiceRenderbufferId);
++  {
++    DoRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, 9, 3, GL_NO_ERROR);
++    DoFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
++                              GL_RENDERBUFFER, client_renderbuffer_id_,
++                              kServiceRenderbufferId, GL_NO_ERROR);
++    Framebuffer* framebuffer = GetFramebuffer(client_framebuffer_id_);
++    framebuffer->MarkAttachmentAsCleared(group().renderbuffer_manager(),
++                                         nullptr, GL_COLOR_ATTACHMENT0, true);
++    EXPECT_CALL(*gl_, CheckFramebufferStatusEXT(GL_READ_FRAMEBUFFER))
++        .WillOnce(Return(GL_FRAMEBUFFER_COMPLETE))
++        .RetiresOnSaturation();
++    using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++    auto* result = GetSharedMemoryAs<Command::Result*>();
++    result->SetNumResults(0);
++    Command command;
++    command.Init(shared_memory_id_, kSharedMemoryOffset);
++    ASSERT_EQ(error::kNoError, ExecuteCmd(command));
++    ASSERT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
++    const auto metadata = DecodeGlintReadbackMetadata(std::span<const GLint>(
++        result->GetData(), kGlintReadbackMetadataValues));
++    ASSERT_TRUE(metadata.has_value());
++    EXPECT_EQ(metadata->width, 9);
++    EXPECT_EQ(metadata->height, 3);
++    EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
++    EXPECT_EQ(metadata->samples, 0);
++    EXPECT_EQ(metadata->rgba8_compatible, true);
++    EXPECT_EQ(GL_NO_ERROR, GetGLError());
++  }
++  {
++    DoRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, 6, 2, GL_NO_ERROR);
++    DoFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
++                              GL_RENDERBUFFER, client_renderbuffer_id_,
++                              kServiceRenderbufferId, GL_NO_ERROR);
++    Framebuffer* framebuffer = GetFramebuffer(client_framebuffer_id_);
++    framebuffer->MarkAttachmentAsCleared(group().renderbuffer_manager(),
++                                         nullptr, GL_COLOR_ATTACHMENT0, true);
++    EXPECT_CALL(*gl_, CheckFramebufferStatusEXT(GL_READ_FRAMEBUFFER))
++        .WillOnce(Return(GL_FRAMEBUFFER_COMPLETE))
++        .RetiresOnSaturation();
++    using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++    auto* result = GetSharedMemoryAs<Command::Result*>();
++    result->SetNumResults(0);
++    Command command;
++    command.Init(shared_memory_id_, kSharedMemoryOffset);
++    ASSERT_EQ(error::kNoError, ExecuteCmd(command));
++    ASSERT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
++    const auto metadata = DecodeGlintReadbackMetadata(std::span<const GLint>(
++        result->GetData(), kGlintReadbackMetadataValues));
++    ASSERT_TRUE(metadata.has_value());
++    EXPECT_EQ(metadata->width, 6);
++    EXPECT_EQ(metadata->height, 2);
++    EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
++    EXPECT_EQ(metadata->samples, 0);
++    EXPECT_EQ(metadata->rgba8_compatible, true);
++    EXPECT_EQ(GL_NO_ERROR, GetGLError());
++  }
++}
++
+ }  // namespace gles2
+ }  // namespace gpu

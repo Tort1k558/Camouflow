@@ -1,5 +1,24 @@
 # Glint browser test matrix
 
+## 2026-11-01: R9 recipe registration and pre-registration full host regression
+
+[R9 recipe](../native/drafts/upstream-156-canvas-r9/README.md) extends exact R8 by
+one packet: full 132-patch replay/reversal matched 403 final files and restored
+270 upstream inputs. Its six-case `canvas-rendering` native target is registered;
+no R9 browser or native test executable has been built yet.
+
+[Full host observation](../native/drafts/canvas-rendering-v2/full-host-observations.json):
+**5806 passed / one skipped**, input postguards passed on pre-registration
+`7574941`. Earlier exit 3 after 5619 passes was a progress-writer interaction with
+a deliberately mocked `Path.open`; its report is retained. A fault reproduction
+and corrected QA writer preceded the successful fresh full run. No test skipped
+or application change was used to avoid that error.
+
+The full run does **not** cover the later R9 registration. Its separate focused
+checks preserve old R8 bytes/26 target definitions and validate exact candidate,
+patch and resource requirements. Six C++ type checks are not six executed native
+cases. Chromium 157 source replay also passed, but remains uncompiled.
+
 ## 2026-11-01: explicit Canvas v2 implementation draft
 
 [Unselected source/host package](../native/drafts/canvas-rendering-v2/README.md):

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "patch": "canvas-r9-host-source-upgrade.patch",
+  "patch_sha256": "5c75a31fceef380581b5b1ae3f3cd7d9aef344b3fbaad18b89c2bab2c22a76b6",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "932ad27bc1947f2213fb1a6afedc9c91bab91264ed1dd3b3f9ea3b1f0152a565",
+      "after_sha256": "5ad16897eeae7c3155dd4c79605ddb687952c0364282ed8ba7abb3d21c6e9cc2"
+    },
+    {
+      "source": "scripts/verify_native_privacy_units.py",
+      "before_sha256": "8cedf6d4f3ae4929d03971e180dcc6130e17bda13298070ac51cdd4b5a4da478",
+      "after_sha256": "8fa9ea3b3a272f92686e2a069a20df738ff54722f9f2164301edd412b4b99681"
+    }
+  ],
+  "scope": "Reversible R9 candidate and exact six-case Canvas unit registration; R8 host sources preserved",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

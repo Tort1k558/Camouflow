@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Full host suite on pre-R9-registration 7574941; not native tests or browser admission",
+  "git_head_at_measurement": "7574941",
+  "counts": {
+    "passed": 5806,
+    "failed": 0,
+    "skipped": 1
+  },
+  "duration_seconds": 642.578,
+  "input_postguards_passed": true,
+  "raw_report_sha256": "5cb682821c57108e5111b012b965527b949f61e7a9f325b6b81f47ba3889fb1c",
+  "log_sha256": "48e637abba6fb1c70cc8ef06072ed0e759088a3250f07b9c3f301a8a314d989d",
+  "first_attempt": {
+    "passed": false,
+    "returncode": 3,
+    "counts": {
+      "passed": 5619,
+      "failed": 0,
+      "skipped": 1
+    },
+    "raw_report_sha256": "00677938f593b49cd5e78adadf958458cce7876e21436438edb3dfa162f99e93",
+    "application_test_failures": 0,
+    "harness_error": "Progress callback called Path.open while a test mocked it"
+  },
+  "harness_correction_sha256": "98e28379be746a9ebd417214b940336015252a7a7ea1be20a4b7bf17c38868a1",
+  "application_changed_for_retry": false,
+  "test_skips_added_for_retry": false,
+  "r9_registration_included": false,
+  "compiled_browser": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

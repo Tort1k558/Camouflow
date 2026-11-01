@@ -1,0 +1,121 @@
+--- a/src/dawn/native/d3d12/glint/projected_texture.h
++++ b/src/dawn/native/d3d12/glint/projected_texture.h
+@@ -22,7 +22,9 @@
+                           ID3D12Fence* fence,
+                           uint64_t completion_value,
+                           const std::shared_ptr<CaptureMemoryBudget>& budget,
+-                          std::unique_ptr<ProjectedTexture>* result);
++                          std::unique_ptr<ProjectedTexture>* result,
++                          uint32_t mip_level = 0,
++                          uint32_t array_layer = 0);
+     // Borrowed pointer: retain the retirement handle for every use of this resource.
+     // Output state is NON_PIXEL_SHADER_RESOURCE | PIXEL_SHADER_RESOURCE.
+     ID3D12Resource* texture() const { return texture_; }
+--- a/src/dawn/native/d3d12/glint/projected_texture.cc
++++ b/src/dawn/native/d3d12/glint/projected_texture.cc
+@@ -1,6 +1,7 @@
+ // Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
+ #include "projected_texture.h"
+ 
++#include <algorithm>
+ #include <array>
+ #include <cstring>
+ #include <limits>
+@@ -103,7 +104,9 @@
+                                  ID3D12Fence* fence,
+                                  uint64_t completion_value,
+                                  const std::shared_ptr<CaptureMemoryBudget>& budget,
+-                                 std::unique_ptr<ProjectedTexture>* result) {
++                                 std::unique_ptr<ProjectedTexture>* result,
++                                 uint32_t mip_level,
++                                 uint32_t array_layer) {
+     if (!result || *result || !device || !commands || !source || !root || !pipeline || !fence ||
+         !budget || !source_initialized || budget->limit_bytes() == 0 || completion_value == 0 ||
+         completion_value == std::numeric_limits<uint64_t>::max()) {
+@@ -122,7 +125,6 @@
+         return E_INVALIDARG;
+     }
+     const auto original_desc = source->GetDesc();
+-    auto shadow_desc = original_desc;
+     const bool rgba = view_format == DXGI_FORMAT_R8G8B8A8_UNORM &&
+                       (original_desc.Format == view_format ||
+                        original_desc.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS);
+@@ -130,12 +132,19 @@
+                       (original_desc.Format == view_format ||
+                        original_desc.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS);
+     if ((!rgba && !bgra) || original_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+-        original_desc.DepthOrArraySize != 1 || original_desc.MipLevels != 1 ||
++        original_desc.DepthOrArraySize == 0 || original_desc.MipLevels == 0 ||
++        mip_level >= original_desc.MipLevels || mip_level >= 32 ||
++        array_layer >= original_desc.DepthOrArraySize ||
+         original_desc.SampleDesc.Count != 1 || original_desc.SampleDesc.Quality != 0 ||
+         original_desc.Width == 0 || original_desc.Height == 0 || original_desc.Width > 8192 ||
+         original_desc.Height > 8192) {
+         return E_INVALIDARG;
+     }
++    const uint32_t subresource = mip_level + array_layer * original_desc.MipLevels;
++    auto shadow_desc = original_desc;
++    shadow_desc.Width = std::max(uint64_t{1}, original_desc.Width >> mip_level);
++    shadow_desc.Height = std::max(uint32_t{1}, original_desc.Height >> mip_level);
++    shadow_desc.DepthOrArraySize = shadow_desc.MipLevels = 1;
+     shadow_desc.Format = view_format;
+     shadow_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+     shadow_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+@@ -144,8 +153,8 @@
+     UINT64 row_size = 0, total = 0;
+     device->GetCopyableFootprints(&shadow_desc, 0, 1, 0, &footprint, &rows, &row_size, &total);
+     const uint64_t raw_bytes =
+-        static_cast<uint64_t>(footprint.Footprint.RowPitch) * original_desc.Height;
+-    if (rows != original_desc.Height || row_size != original_desc.Width * 4 || total == 0 ||
++        static_cast<uint64_t>(footprint.Footprint.RowPitch) * shadow_desc.Height;
++    if (rows != shadow_desc.Height || row_size != shadow_desc.Width * 4 || total == 0 ||
+         total > raw_bytes || raw_bytes > kRawLimit || raw_bytes == 0) {
+         return E_INVALIDARG;
+     }
+@@ -157,9 +166,9 @@
+     raw_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+     auto output_desc = raw_desc;
+     output_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+-    const bool tight_rows = footprint.Footprint.RowPitch == original_desc.Width * 4;
++    const bool tight_rows = footprint.Footprint.RowPitch == shadow_desc.Width * 4;
+     auto canonical_desc = raw_desc;
+-    canonical_desc.Width = original_desc.Width * original_desc.Height * 4;
++    canonical_desc.Width = shadow_desc.Width * shadow_desc.Height * 4;
+     uint64_t charged = kDescriptorCharge;
+     for (const auto* resource_desc : {&output_desc, &shadow_desc, tight_rows ? nullptr : &canonical_desc}) {
+         if (!resource_desc) continue;
+@@ -243,6 +252,7 @@
+     D3D12_TEXTURE_COPY_LOCATION from{}, raw{}, to{};
+     from.pResource = source;
+     from.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
++    from.SubresourceIndex = subresource;
+     raw.pResource = hold->output.Get();
+     raw.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+     raw.PlacedFootprint = footprint;
+@@ -262,20 +272,20 @@
+     commands->SetComputeRootDescriptorTable(1, gpu);
+     Parameters params{};
+     std::memcpy(params.key.data(), key.data(), key.size());
+-    params.width = static_cast<uint32_t>(original_desc.Width);
+-    params.height = original_desc.Height;
++    params.width = static_cast<uint32_t>(shadow_desc.Width);
++    params.height = shadow_desc.Height;
+     params.pitch = footprint.Footprint.RowPitch;
+     params.bgra = bgra ? 1 : 0;
+     commands->SetComputeRoot32BitConstants(2, 16, &params, 0);
+     SecureZeroMemory(&params, sizeof(params));
+-    commands->Dispatch((static_cast<uint32_t>(original_desc.Width) + 3) / 4,
+-                       (original_desc.Height + 3) / 4, 1);
++    commands->Dispatch((static_cast<uint32_t>(shadow_desc.Width) + 3) / 4,
++                       (shadow_desc.Height + 3) / 4, 1);
+     Transition(commands, hold->output.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                D3D12_RESOURCE_STATE_COPY_SOURCE);
+     if (!tight_rows) {
+         // Footprint padding never enters the canonical byte stream.
+-        const uint64_t tight_pitch = original_desc.Width * 4;
+-        for (uint32_t row = 0; row < original_desc.Height; ++row) {
++        const uint64_t tight_pitch = shadow_desc.Width * 4;
++        for (uint32_t row = 0; row < shadow_desc.Height; ++row) {
+             commands->CopyBufferRegion(hold->canonical_pixels.Get(), row * tight_pitch,
+                                        hold->output.Get(), uint64_t{row} * footprint.Footprint.RowPitch,
+                                        tight_pitch);

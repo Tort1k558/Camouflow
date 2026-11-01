@@ -1,0 +1,28 @@
+diff --git a/gpu/command_buffer/service/glint_webgpu_readback_observer.h b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -42,6 +42,7 @@
+                      dawn::native::GlintBufferWriteKind kind) override;
+   void OnBufferDestroyed(WGPUBuffer buffer) override;
+   void OnExecutionError() override;
++  bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) override;
+   void OnShaderScope(const dawn::native::GlintShaderScope& scope) override;
+   dawn::native::GlintReadbackMapStatus ClassifyReadMap(
+       dawn::native::GlintBufferIdentity buffer,
+diff --git a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -227,6 +227,13 @@
+   }
+   Collect();
+ }
++bool GlintWebGPUReadbackObserver::CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) {
++  std::lock_guard lock(mutex_);
++  std::fill(seed.begin(), seed.end(), 0);
++  if (failed_ || !policy_) return false;
++  std::copy(policy_->seed().begin(), policy_->seed().end(), seed.begin());
++  return true;
++}
+ void GlintWebGPUReadbackObserver::OnExecutionError() {
+   std::lock_guard lock(mutex_);
+   Fail();

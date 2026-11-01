@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "passed": true,
+  "input_source_sha256": {
+    "third_party/blink/public/common/native_privacy/glint/canvas_rendering_policy.h": null,
+    "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h": null,
+    "content/browser/camouflow_native/privacy_context.cc": "08ed3929f01654db38d01664de80e520479a920c3f4e8877ca8713718c64fad0",
+    "content/browser/renderer_host/render_process_host_impl.cc": "d7f40a98d86f0748da96ce380a2889d308be87404922a72660ed486e20152cbf",
+    "content/renderer/render_thread_impl.cc": "6a5e9216ca3550624c0583a873b85ea611978ed1adc6f6496eceb746364e11cd",
+    "third_party/blink/public/common/BUILD.gn": "42606cb23c4e5cd8088257c0a0e0b12beef76806496ae80390d7f7ae89021a3a",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc": "9aa8e3495a95d719a4aa9e3afb5594fd87a4655b6b843732471bf9846ff96223",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h": "2b3278460e0cf365683c2d57058f57c989063258c979d2588cf8987a84c7ed06",
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": "6ba4f689621a60f62363209b4d17d4269ae0229de52dc35fff1d91d7fd37d07d",
+    "third_party/blink/common/native_privacy/glint/canvas_rendering_policy_unittest.cc": null,
+    "third_party/blink/common/BUILD.gn": "6b030a6ee5f093b70ed627e1e3ceec8566de0b03ccd6ee54b37b87bd1fe99475"
+  },
+  "patch_sha256": "27d008e059eb2e9d8721b91418cb3b11b155c87dc39e357a6523ff4fba9a0fb7",
+  "chromium_revision": "f9d7b13a569b352a0267234ea5740fdecc83ffa2",
+  "base_manifest_sha256": "be32f76c4d34effc54c7396743e0ba2bde0a9ae834b49fa419ad1a66e249766e",
+  "compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "forward_returncode": 0,
+  "after_source_sha256": {
+    "third_party/blink/public/common/native_privacy/glint/canvas_rendering_policy.h": "1fa071bb3fb427b7128abbadc3a21250c01eebe8c6378457698ab90bf6a55a86",
+    "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h": "1e56f0ced7731644a86e340de3e0544f1c017a9c3b367d1cff9ca5e9a4939682",
+    "content/browser/camouflow_native/privacy_context.cc": "668c57f570d559c0f6e0329c40dd8c4b37c09e946ab3603e6de3a82b7d95d608",
+    "content/browser/renderer_host/render_process_host_impl.cc": "407121fbd392528c98cdd4fdd91b33c511b6755d9946d711c32447275474d415",
+    "content/renderer/render_thread_impl.cc": "a986d7e3677125e24c281c0ceb5d40e4ac4351cc5f2e6f1dfa7c82830c8795ab",
+    "third_party/blink/public/common/BUILD.gn": "e42f66bd21826f54e9db373383988b55a241618002db5f577c0d1cd77f314528",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc": "a9afd8ec83974e76b72539cdb569650dca02eac2134983b238a68e4d00c049c3",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h": "cc2b9c589b2f776a00687e6e4f1c8336ed8b820b8383e3620460192147c1184d",
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": "4475092d669eb167c37053ea9dcebdd582f7f8a0175441ab0b543e2347e867b1",
+    "third_party/blink/common/native_privacy/glint/canvas_rendering_policy_unittest.cc": "7d86a9b9751a139a5d1aba9c3c00ac940cd022923f4e11063bcb47664863294c",
+    "third_party/blink/common/BUILD.gn": "a74847d26cbacfa9a302bb0e6a5039eb377b348bbac3afb4c15de4ecb9976683"
+  },
+  "reverse_returncode": 0,
+  "original_inputs_unchanged": true,
+  "raw_report_sha256": "0ffdf746a68f335864a308bd89cf17593412c2f0a14bc79f85168a0ac48f5872",
+  "selected": false
+}
