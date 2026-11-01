@@ -1,5 +1,19 @@
 # Glint architecture
 
+## 2026-11-02: unselected GPU image-source implementation
+
+The [six-file source-image packet](drafts/canvas-gpu-image-sources/README.md)
+adds explicit Canvas-v2 source-owner resolution at DOM/Offscreen copy and WebGL/
+WebGPU ImageBitmap-transfer boundaries. Detached protection preserves origin
+state/orientation; required-copy failures cannot return raw pixels. Unselected
+transfer-constructor paths retain their original behaviour.
+
+Exact source replay/reversal and five translation-unit type checks passed.
+Seven native cases are prepared, **not executed**. The R9 binary is unchanged
+and its interoperability failure is not yet repaired. Placeholder-frame GPU
+provenance, large-image budgets and broader taint/alpha/colour-space/worker tests
+must be resolved before registering or activating this as source protection.
+
 ## 2026-11-01: R9 compiled boundary and real interoperability failure
 
 [R9 browser](drafts/upstream-156-canvas-r9/windows-build.json) is built; its

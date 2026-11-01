@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "candidate_base": "upstream-156-canvas-r9",
+  "base_manifest_sha256": "cc160614d415bec6c71d8fcd29b57d884e406862dbe633d3e51a7300b7fa4b9f",
+  "patch_sha256": "2b0e1cb74f0c71448041e652353cfeea06d1e569faa81b3857e5dd9138df9891",
+  "source_files": {
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": {
+      "before": "4475092d669eb167c37053ea9dcebdd582f7f8a0175441ab0b543e2347e867b1",
+      "after": "03d1386406e61e1f2bf77a03716b7a567c576c5df9b33b71f10b28c80d89c2a0"
+    },
+    "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc": {
+      "before": "6b67dfb92852544520898d1ee8e4aafdd5f2eec7c0900b4002f83ea7300ff0ac",
+      "after": "28beb464aab590a7c8d157e8a00ba875098f0452bf253bf29b70117a635b0508"
+    },
+    "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc": {
+      "before": "a95075ae8cbfee459110ef9e8a9fa95c85e18b159e6a2e553462a3f271719720",
+      "after": "acaae658be2cb4c5a2b4fe5b4d857b8fd2627b233c953b127150a2d4644a3998"
+    },
+    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc": {
+      "before": "ddc7964c6212af91754ad800d5cc857a44ace50ff3f4f2591317605e46ebb537",
+      "after": "850dfa9a1a46f3510115d8565621cad0221439de7e9588416efd0822cbf08fa6"
+    },
+    "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc": {
+      "before": "70010c2aec7c827ac1bdd7110032d521f3758e2f79680868ffce7ca5b027df0e",
+      "after": "91dd2257d0dcd84cab1ac63aec93e674ca779f6fb24044de1391b7883ce527e1"
+    },
+    "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc": {
+      "before": "03a11de6766e1ac55004556a86b32a8c9f7fea2f6d3ebdb7dff0b171e6b69a44",
+      "after": "699a0653179b887303a27acd782eee4ec4f6e3e77791ca460808e857e57e572a"
+    }
+  },
+  "source_files_count": 6,
+  "base_composition_sha256": "cf6340cdee0d2ab6cd5ef65fef2f6da20e9128984640af529ae26df9bd8310c0",
+  "base_final_files_bound": 403,
+  "base_source_bindings": {
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": {
+      "kind": "verified-r9-owned-composition",
+      "sha256": "4475092d669eb167c37053ea9dcebdd582f7f8a0175441ab0b543e2347e867b1"
+    },
+    "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc": {
+      "kind": "verified-r9-owned-composition",
+      "sha256": "6b67dfb92852544520898d1ee8e4aafdd5f2eec7c0900b4002f83ea7300ff0ac"
+    },
+    "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc": {
+      "kind": "verified-r9-owned-composition",
+      "sha256": "a95075ae8cbfee459110ef9e8a9fa95c85e18b159e6a2e553462a3f271719720"
+    },
+    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc": {
+      "kind": "verified-r9-owned-composition",
+      "sha256": "ddc7964c6212af91754ad800d5cc857a44ace50ff3f4f2591317605e46ebb537"
+    },
+    "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc": {
+      "kind": "untouched-pinned-upstream-blob",
+      "revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+      "git_blob_oid": "bfdccb469768444012147ff347ecb30907d4bada",
+      "sha256": "70010c2aec7c827ac1bdd7110032d521f3758e2f79680868ffce7ca5b027df0e"
+    },
+    "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc": {
+      "kind": "verified-r9-owned-composition",
+      "sha256": "03a11de6766e1ac55004556a86b32a8c9f7fea2f6d3ebdb7dff0b171e6b69a44"
+    }
+  },
+  "source_forward_and_reverse_passed": true,
+  "active_checkout_modified": false,
+  "prepared_native_tests": 7,
+  "prepared_native_cases": [
+    "UnselectedCopyRetainsIdentityWithoutAllocation",
+    "MissingImageIsNotRawFallback",
+    "DetachedCopyBudgetHasExactBoundary",
+    "DetachedImagePreservesBothOriginStates",
+    "RepeatedSnapshotsDoNotMutateTheSource",
+    "ExplicitSeedsDoNotAliasTheFixture",
+    "TranslucentSourceKeepsAlphaAndTaint"
+  ],
+  "syntax_type_checked_translation_units": 5,
+  "syntax_checks": [
+    {
+      "report_sha256": "bb7e89badd58d6cfc286cc78ecebbceedac67f8de968e635189a0b8117908ede",
+      "all_attempted_targets_passed": true,
+      "accepted_targets": [
+        {
+          "source": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+          "returncode": 0,
+          "response_sha256": "f84109a05dbd4733c5559e551a5e68a5b0863f791fd146afe3f19aaf161bdc15",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "source": "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+          "returncode": 0,
+          "response_sha256": "998f3eb3b5e5341b79857ff216a7aa2b254afb7a13a92e61e6a236e5dd932edc",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "source": "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+          "returncode": 0,
+          "response_sha256": "908d6ae0715f0ba06ecec21be58f6bac7102ed642f84fc7efcbc49e4632d6f80",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "source": "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc",
+          "returncode": 0,
+          "response_sha256": "4984159744803ff05aef04b8ef7dbee16d928e947ceac59b2a5f656a479494c2",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "source": "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc",
+          "returncode": 0,
+          "response_sha256": "7a7ae5a25e4db10a1bf329002e01050944e346674e1f1ce2bf49360b8b33a96e",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "scope": "Four production translation units and the native fixture; no browser link or native test execution"
+    }
+  ],
+  "earlier_failures_preserved": true,
+  "earlier_attempts": [
+    {
+      "report_sha256": "92dd253cda5f106f9534a8b42cff5b17cbd27fdc10d0cf31418687fb27b4f45d",
+      "reason": "Strict checker did not decode Ninja escaped literal spaces; no WebGL compile attempted"
+    },
+    {
+      "report_sha256": "e4031554fb3dfe7c376a8fda0692aa5b2d3d6ec375b3761ecd8be974970e17c5",
+      "reason": "Native test fixture used unsafe pointer indexing; replaced with bounded std::array"
+    }
+  ],
+  "known_gaps": [
+    "Transferred Offscreen placeholder-frame provenance requires its own transport boundary",
+    "Large source-image compatibility beyond the existing detached-copy budget is not established",
+    "Taint, alpha, colour spaces, crop/scale and worker-owned sources require combined native/runtime tests"
+  ],
+  "selected": false,
+  "compiled_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "original_r9_failure_repaired": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "unselected_transfer_constructor_path_preserved": true,
+  "syntax_checker_sha256": "2cab70c76166f200171d50754b1931656ba1821e4e1def0df8c0a2c807c39f67",
+  "strict_unknown_ninja_variable_rejection_retained": true
+}

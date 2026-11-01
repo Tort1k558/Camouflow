@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## 2026-11-02: GPU source-image draft, source checks only
+
+[Native draft](../native/drafts/canvas-gpu-image-sources/README.md): six-file
+extension applies/reverses exactly; five translation units pass C++ type checking
+(DOM/Offscreen/WebGL/WebGPU plus native fixture). Seven prepared native cases
+cover detached-copy bounds, origin/alpha, source immutability and deterministic
+seeds, but have not been linked/executed. Earlier strict-flag-decoder and unsafe
+test-buffer errors are preserved, not counted as successful attempts.
+
+The current R9 runtime verdict below is unchanged. This source-only packet is
+unregistered and cannot establish repaired GPU copy consistency. Placeholder
+provenance, large-image compatibility and actual mixed-policy tests remain gates.
+
 ## 2026-11-01: R9 build, all-native pass and combined-runtime failure
 
 | Gate | Measured result |

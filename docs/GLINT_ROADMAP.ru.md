@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: GPU image-source implementation prepared, not activated
+
+[Six-file native draft](../native/drafts/canvas-gpu-image-sources/README.md)
+now handles explicit-v2 GPU source images at DOM/Offscreen and ImageBitmap
+boundaries, preserving source ownership, origin state, orientation and unselected
+transfer behaviour. Exact apply/reverse and all five C++ type checks passed;
+seven native cases are prepared but not executed. R9 remains the last compiled
+browser and its failed interoperability result is unchanged.
+
+Before registration: transport provenance through transferred placeholder
+frames, resolve large-image budget compatibility, add retained/cropped/scaled,
+worker, taint/alpha/colour-space checks, execute the native cases, then rebuild
+and repeat exact GPU-to-2D and mixed-policy tests. Do not substitute a raw fallback
+or a weaker validator. The full roadmap and manager/package/recovery scope remain.
+
 ## 2026-11-01: R9 built; native pass, combined runtime blocked by copy consistency
 
 - [Browser build](../native/drafts/upstream-156-canvas-r9/windows-build.json):
