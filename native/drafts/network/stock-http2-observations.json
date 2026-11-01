@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "scope": "Official stock156 on owned TLS1.3/h2 fixture only; not a Glint runtime result",
+  "browser_version": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/156.0.8078.36",
+    "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "jsVersion": "15.6.75.16"
+  },
+  "fresh_profile_count": 3,
+  "successful_response_profiles": 3,
+  "completed_request_connections": 3,
+  "empty_connections_not_counted_as_requests": 2,
+  "incomplete_application_data_connections": 0,
+  "all_completed_selected_control_shapes_equal": true,
+  "selected_control_shape": [
+    {
+      "type": 4,
+      "flags": 0,
+      "stream": 0,
+      "settings": [
+        {
+          "identifier": 1,
+          "value": 65536
+        },
+        {
+          "identifier": 2,
+          "value": 0
+        },
+        {
+          "identifier": 4,
+          "value": 6291456
+        },
+        {
+          "identifier": 6,
+          "value": 262144
+        }
+      ]
+    },
+    {
+      "type": 8,
+      "flags": 0,
+      "stream": 0,
+      "window_increment": 15663105
+    },
+    {
+      "type": 1,
+      "flags": 37,
+      "stream": 1,
+      "priority": {
+        "exclusive": true,
+        "dependency": 0,
+        "weight": 256
+      },
+      "end_headers": true,
+      "end_stream": true
+    }
+  ],
+  "selected_shape_omits": [
+    "frame payload lengths",
+    "HPACK bytes",
+    "TLS records",
+    "timings"
+  ],
+  "next_hop_protocols": [
+    "h2",
+    "h2",
+    "h2"
+  ],
+  "source_sha256": {
+    "native/drafts/network/http2.py": "45b716351dba2cb05132dd748851b13c037efb2b2a0a41986462fbca1497a561",
+    "native/drafts/network/http2_loopback.py": "42556df755b092d84f204daf9c569ced29e5434c97daebdefa9253aea5d7ff6f",
+    "native/drafts/network/http2_response.py": "206af450d0b10970c8aae1373a49057049a406df2a2daa4298214ace24411f38"
+  },
+  "raw_report_sha256": "fbf72d96911dd042cae4498842635268fcfe29d3c6bde0d90b3d0fb0b9fdc027",
+  "stock_control_file": "native/drafts/upstream-156/stock-control-observations.json",
+  "stock_control_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+  "stock_core_sha256": {
+    "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+    "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+    "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+  },
+  "fixture_tool_versions": {
+    "h2": "4.3.0",
+    "hpack": "4.1.0",
+    "hyperframe": "6.1.0"
+  },
+  "fixture_wheel_sha256": {
+    "h2-4.3.0-py3-none-any.whl": "c438f029a25f7945c69e0ccf0fb951dc3f73a5f6412981daee861431b70e2bdd",
+    "hpack-4.1.0-py3-none-any.whl": "157ac792668d995c657d93111f46b4535ed114f0c9c8d672271bbec7eae1b496",
+    "hyperframe-6.1.0-py3-none-any.whl": "b03380493a519fce58ea5af42e4a42317bf9bd425596f7a0835ffce80f1a42e5"
+  },
+  "retained_failed_attempts": [
+    {
+      "name": "stock-http2-preface-20261101-v1",
+      "report_sha256": "8cd30c49c0ba576739cd00c4f8570d5bdeae22d7ebd0303b4ac5c0f779beeafd",
+      "passed": false,
+      "measurement_complete": false,
+      "postguards_passed": true
+    },
+    {
+      "name": "stock-http2-response-20261101-v2",
+      "report_sha256": "6478e6865a8e61a49b90a4451059979928116c8de6a6fcb14ca280a6644217ef",
+      "passed": false,
+      "measurement_complete": false,
+      "postguards_passed": true
+    }
+  ],
+  "http_response_verified": true,
+  "request_headers_validated_by_h2": true,
+  "initial_parser_decodes_headers": false,
+  "diagnostic_spki_allowlist_used": true,
+  "ordinary_certificate_path_validation_verified": false,
+  "global_ignore_certificate_errors_used": false,
+  "certificate_store_changed": false,
+  "resources_closed": true,
+  "ephemeral_private_key_removed": true,
+  "postguards_passed": true,
+  "glint_r8_measured": false,
+  "http3_verified": false,
+  "session_resumption_verified": false,
+  "ja3_ja4_parity_verified": false,
+  "cross_platform_identity_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

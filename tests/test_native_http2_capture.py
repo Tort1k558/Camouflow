@@ -1,9 +1,12 @@
 import io
 import json
+from types import SimpleNamespace
 
 import pytest
 
 from native.drafts.network import http2
+from native.drafts.network import http2_loopback
+from native.drafts.network import http2_response
 
 
 def frame(kind, payload=b'', *, stream=0, flags=0):
@@ -104,3 +107,175 @@ def test_initial_http2_rejects_wrong_preface_and_propagates_socket_timeout():
 
     with pytest.raises(TimeoutError, match='owned deadline'):
         http2.read_initial_connection(TimedOutSocket())
+
+
+class TLSSocket(FragmentedSocket):
+    session_reused = False
+
+    def __init__(self, data, alpn='h2'):
+        super().__init__(data)
+        self.alpn = alpn
+        self.sent = []
+
+    def version(self):
+        return 'TLSv1.3'
+
+    def selected_alpn_protocol(self):
+        return self.alpn
+
+    def cipher(self):
+        return ('TLS_AES_256_GCM_SHA384', 'TLSv1.3', 256)
+
+    def sendall(self, value):
+        self.sent.append(value)
+
+
+def test_owned_http2_handler_reports_negotiation_and_preface_not_a_response():
+    connection = TLSSocket(http2.PREFACE + frame(4) + frame(1, b'opaque', stream=1, flags=5))
+    server = SimpleNamespace(report={'http2_captures': []})
+    http2_loopback.Handler(connection, ('127.0.0.1', 12345), server)
+    row, = server.report['http2_captures']
+    assert row['passed'] and row['tls_version'] == 'TLSv1.3' and row['alpn'] == 'h2'
+    assert not row['http_response_verified']
+    assert connection.sent == [http2.SERVER_PREFACE]
+    assert row['initial_connection']['frames'][-1]['header_block_bytes'] == 6
+
+
+@pytest.mark.parametrize('alpn', [None, 'http/1.1'])
+def test_owned_http2_handler_never_sends_http2_when_alpn_does_not_match(alpn):
+    connection = TLSSocket(b'', alpn=alpn)
+    server = SimpleNamespace(report={'http2_captures': []})
+    http2_loopback.Handler(connection, ('127.0.0.1', 12345), server)
+    row, = server.report['http2_captures']
+    assert not row['passed'] and row['error_type'] == 'HTTP2CaptureError'
+    assert connection.sent == []
+
+
+def test_owned_http2_handler_retains_truncation_as_failure():
+    connection = TLSSocket(http2.PREFACE + frame(4))
+    server = SimpleNamespace(report={'http2_captures': []})
+    http2_loopback.Handler(connection, ('127.0.0.1', 12345), server)
+    row, = server.report['http2_captures']
+    assert not row['passed'] and 'Truncated' in row['error']
+
+
+def test_owned_http2_server_reuses_explicit_tls_and_canonical_key_guards(monkeypatch):
+    import ssl
+
+    calls = []
+    tls = SimpleNamespace(set_alpn_protocols=lambda values: calls.append(values))
+    server = SimpleNamespace(tls=tls)
+
+    def create(certificate, key, version, label, report):
+        assert (certificate, key, version, label) == ('certificate', 'key', ssl.TLSVersion.TLSv1_3, 'tls13')
+        return server
+
+    monkeypatch.setattr(http2_loopback.negotiation, 'create_server', create)
+    report = {}
+    assert http2_loopback.create_server('certificate', 'key', report) is server
+    assert server.RequestHandlerClass is http2_loopback.Handler
+    assert calls == [['h2']] and report == {'http2_captures': []}
+
+
+class RequestEvent:
+    headers = [(':method', 'GET'), (':path', '/owned'), (':scheme', 'https')]
+    stream_id = 1
+
+
+class Protocol:
+    def __init__(self):
+        self.sent = []
+
+    def initiate_connection(self):
+        pass
+
+    def data_to_send(self):
+        return http2.SERVER_PREFACE
+
+    def receive_data(self, data):
+        assert data.startswith(http2.PREFACE)
+        return [RequestEvent()]
+
+    def send_headers(self, stream, headers):
+        assert stream == 1 and dict(headers)[':status'] == '200'
+        self.sent.append(headers)
+
+    def send_data(self, stream, body, end_stream):
+        assert stream == 1 and end_stream is True and b'Owned h2 response' in body
+        self.sent.append(body)
+
+
+def response_capture(data, alpn='h2', protocol=None):
+    server = SimpleNamespace(report={'http2_captures': []},
+                             protocol_factory=lambda: protocol or Protocol(), request_event_type=RequestEvent)
+    http2_response.Handler(TLSSocket(data, alpn=alpn), ('127.0.0.1', 12345), server)
+    row, = server.report['http2_captures']
+    return row
+
+
+def test_owned_http2_response_validates_request_and_reports_bytes_without_header_contents():
+    data = http2.PREFACE + frame(4) + frame(1, b'opaque', stream=1, flags=5)
+    row = response_capture(data)
+    assert row['passed'] and row['http_response_sent'] and row['request_headers_validated']
+    assert row['outcome'] == 'response-sent' and row['received_application_bytes'] == len(data)
+    assert 'opaque' not in json.dumps(row)
+
+
+def test_owned_http2_empty_connection_is_not_a_successful_request_capture():
+    row = response_capture(b'')
+    assert not row['passed'] and not row['http_response_sent']
+    assert row['outcome'] == 'peer-closed-without-application-data'
+    assert row['received_application_bytes'] == 0
+
+
+@pytest.mark.parametrize('data', [b'x', b'x' * 24, http2.PREFACE, http2.PREFACE + frame(4)])
+def test_owned_http2_partial_or_malformed_application_data_never_becomes_an_empty_connection(data):
+    row = response_capture(data)
+    assert not row['passed'] and row['outcome'] == 'failed'
+    assert row['received_application_bytes'] > 0
+
+
+def test_owned_http2_response_rejects_wrong_alpn_without_claiming_an_empty_connection():
+    row = response_capture(b'', alpn='http/1.1')
+    assert not row['passed'] and row['outcome'] == 'failed'
+
+
+def test_owned_http2_response_rejects_an_unowned_path():
+    class WrongRequest(RequestEvent):
+        headers = [(':method', 'GET'), (':path', '/other'), (':scheme', 'https')]
+
+    class WrongPath(Protocol):
+        def receive_data(self, data):
+            return [WrongRequest()]
+
+    row = response_capture(http2.PREFACE + frame(4) + frame(1, stream=1), protocol=WrongPath())
+    assert not row['passed'] and row['outcome'] == 'failed'
+    assert 'explicit HTTPS GET' in row['error']
+
+
+def test_owned_http2_stock_calibration_is_bound_and_does_not_admit_glint():
+    import hashlib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / 'native/drafts/network/stock-http2-observations.json').read_bytes())
+    for name in ('passed', 'measurement_complete', 'http_response_verified', 'resources_closed',
+                 'postguards_passed', 'ephemeral_private_key_removed', 'request_headers_validated_by_h2'):
+        assert record[name] is True
+    assert record['fresh_profile_count'] == record['successful_response_profiles'] == 3
+    assert record['completed_request_connections'] == 3
+    assert record['empty_connections_not_counted_as_requests'] == 2
+    assert record['incomplete_application_data_connections'] == 0
+    assert record['next_hop_protocols'] == ['h2'] * 3
+    assert record['all_completed_selected_control_shapes_equal'] is True
+    assert [frame['type'] for frame in record['selected_control_shape']] == [4, 8, 1]
+    for name in ('glint_r8_measured', 'initial_parser_decodes_headers', 'http3_verified',
+                 'session_resumption_verified', 'ja3_ja4_parity_verified', 'cross_platform_identity_verified',
+                 'global_ignore_certificate_errors_used', 'certificate_store_changed',
+                 'ordinary_certificate_path_validation_verified', 'privacy_admitted', 'production_admitted'):
+        assert record[name] is False
+    for name, digest in record['source_sha256'].items():
+        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+    assert hashlib.sha256((root / record['stock_control_file']).read_bytes()).hexdigest() == record['stock_control_sha256']
+    assert len(record['retained_failed_attempts']) == 2
+    assert all(row['passed'] is False and row['postguards_passed'] for row in record['retained_failed_attempts'])
