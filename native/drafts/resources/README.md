@@ -1,5 +1,28 @@
 # Windows process resource observer
 
+## Build-action diagnostics
+
+`build_actions.py` streams generated Ninja files with a bounded line buffer.
+It distinguishes executable/DLL link rules from `lld-link /lib` archive rules;
+its argument classifier also separates Clang drivers and frontend processes.
+It never reads response files, logs command lines, changes pools or launches builds.
+
+[R8 configuration inspection](r8-build-rule-observations.json) found executable
+and DLL links assigned to the same depth-one pool, while archives have no such
+pool. The old observer counted executable names only: two `lld-link.exe` processes
+do not necessarily mean two executable/DLL links. Its missing command lines prevent
+retroactive attribution. This is **not** proof that Siso enforced a runtime
+concurrency limit or an explanation of the historical peak.
+
+```powershell
+.venv\Scripts\python.exe -B native/drafts/resources/build_actions.py `
+  --build-directory D:/Glint156Candidate/chromium/src/out/CamouFlowNative `
+  --report D:/GlintManagerQA/fresh-build-rule-inspection.json
+```
+
+The next live build observation must retain creation-bound action roles and
+unknown classifications separately; raw process counts are not scheduling actions.
+
 ## Manager integration package
 
 The application implementation now lives in `app/core/native/process_monitor.py`

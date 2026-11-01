@@ -1,6 +1,23 @@
 # Glint architecture
 
-## 2026-11-01: R8 build and owned transport boundaries
+## 2026-11-01: current verified boundary
+
+R8 now has [all 26 native groups](drafts/upstream-156-audio-r8/native-all-observations.json)
+passed (554 executions / 397 distinct cases) and a fresh
+[eight-group baseline](drafts/upstream-156-audio-r8/baseline-recheck.json) passed
+(160 checks). These are not protected-surface or installed-package admission.
+The [matched HTTP/2 experiment](drafts/network/matched-r8-http2-observations.json)
+covered nine policy-off profiles; selected control frames match, not TLS/platform
+identity. The unregistered [157 source chain](drafts/upstream-157-r8-port/README.md)
+applies/reverses all 131 packets but has not been compiled.
+
+The [build-rule inspection](drafts/resources/r8-build-rule-observations.json)
+distinguishes executable/DLL links from `lld-link /lib` archives. Generated link
+rules share one depth-one pool; historical executable-name counts cannot prove
+which actions overlapped or that the scheduler enforced this limit. No scheduling
+or build settings changed. Legacy Audio and full production admission remain open.
+
+## 2026-11-01: earlier R8 build and owned transport boundaries
 
 The [131-patch R8 browser](drafts/upstream-156-audio-r8/windows-build.json) is
 built. Its [selected linked native batch](drafts/upstream-156-audio-r8/native-selected-observations.json)
