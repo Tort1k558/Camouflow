@@ -1,0 +1,379 @@
+diff --git a/components/services/font_data/dwrite_local_font_matcher.cc b/components/services/font_data/dwrite_local_font_matcher.cc
+index 8571b6f..4c34fdf 100644
+--- a/components/services/font_data/dwrite_local_font_matcher.cc
++++ b/components/services/font_data/dwrite_local_font_matcher.cc
+@@ -6,8 +6,10 @@
+ 
+ #include <string>
+ 
++#include "base/check.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/trace_event/trace_event.h"
++#include "ui/gfx/win/camouflow_font_configuration.h"
+ #include "ui/gfx/win/direct_write.h"
+ 
+ namespace font_data_service {
+@@ -141,6 +143,15 @@ void DWriteLocalFontMatcher::EnsureDirectWriteInitialized() {
+ 
+ void DWriteLocalFontMatcher::GetLocalFontSet(
+     const Microsoft::WRL::ComPtr<IDWriteFactory3>& factory3) {
++  if (camouflow::native::GetFontFamilies()) {
++    Microsoft::WRL::ComPtr<IDWriteFontCollection> collection;
++    CHECK(SUCCEEDED(factory3->GetSystemFontCollection(&collection)));
++    collection = camouflow::native::ApplyFontFamilies(factory3.Get(), collection);
++    Microsoft::WRL::ComPtr<IDWriteFontCollection1> restricted;
++    CHECK(SUCCEEDED(collection.As(&restricted)));
++    CHECK(SUCCEEDED(restricted->GetFontSet(&system_font_set_)));
++    return;
++  }
+   const std::vector<base::FilePath>* sideloaded_fonts =
+       gfx::win::GetSideloadedFontsForTesting();  // IN-TEST
+   if (!sideloaded_fonts) {
+diff --git a/components/services/font_data/font_data_service_impl.cc b/components/services/font_data/font_data_service_impl.cc
+index bc194c4..08cbd97 100644
+--- a/components/services/font_data/font_data_service_impl.cc
++++ b/components/services/font_data/font_data_service_impl.cc
+@@ -29,6 +29,12 @@
+ #include "third_party/skia/include/core/SkString.h"
+ #include "third_party/skia/include/core/SkTypeface.h"
+ 
++#if BUILDFLAG(IS_WIN)
++#include "third_party/skia/include/ports/SkTypeface_win.h"
++#include "ui/gfx/win/camouflow_font_configuration.h"
++#include "ui/gfx/win/direct_write.h"
++#endif
++
+ namespace font_data_service {
+ 
+ BASE_FEATURE(kCacheUnmatchedFontFamilies, base::FEATURE_ENABLED_BY_DEFAULT);
+@@ -105,6 +111,22 @@ FontDataServiceImpl::FontDataServiceImpl()
+     : font_manager_(skia::DefaultFontMgr()),
+       unmatched_families_(kUnmatchedFamilyCacheSize),
+       local_font_matcher_(LocalFontMatcher::Create()) {
++#if BUILDFLAG(IS_WIN)
++  if (camouflow::native::GetFontFamilies()) {
++    Microsoft::WRL::ComPtr<IDWriteFactory> factory;
++    gfx::win::CreateDWriteFactory(&factory);
++    CHECK(factory);
++    Microsoft::WRL::ComPtr<IDWriteFactory3> factory3;
++    CHECK(SUCCEEDED(factory.As(&factory3)));
++    Microsoft::WRL::ComPtr<IDWriteFontCollection> collection;
++    CHECK(SUCCEEDED(factory3->GetSystemFontCollection(&collection)));
++    collection = camouflow::native::ApplyFontFamilies(factory3.Get(), collection);
++    const auto fallback = camouflow::native::GetRestrictedFontFallback(
++        factory3.Get(), collection.Get());
++    font_manager_ = SkFontMgr_New_DirectWrite(factory3.Get(), collection.Get(),
++                                              fallback.Get());
++  }
++#endif
+   CHECK(font_manager_);
+ }
+ 
+diff --git a/content/browser/font_access/font_enumeration_data_source_win.cc b/content/browser/font_access/font_enumeration_data_source_win.cc
+index dbcb693..20f1172 100644
+--- a/content/browser/font_access/font_enumeration_data_source_win.cc
++++ b/content/browser/font_access/font_enumeration_data_source_win.cc
+@@ -18,6 +18,7 @@
+ #include "content/browser/font_access/font_enumeration_cache.h"
+ #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
+ #include "third_party/blink/public/common/font_access/font_enumeration_table.pb.h"
++#include "ui/gfx/win/camouflow_font_configuration.h"
+ #include "ui/gfx/win/direct_write.h"
+ 
+ namespace content {
+@@ -44,6 +45,11 @@ Microsoft::WRL::ComPtr<IDWriteFontCollection> GetSystemFonts() {
+   if (FAILED(hr))
+     collection = nullptr;
+ 
++  if (camouflow::native::GetFontFamilies()) {
++    Microsoft::WRL::ComPtr<IDWriteFactory3> factory3;
++    CHECK(SUCCEEDED(factory.As(&factory3)));
++    collection = camouflow::native::ApplyFontFamilies(factory3.Get(), collection);
++  }
+   return collection;
+ }
+ 
+diff --git a/content/browser/renderer_host/dwrite_font_proxy_impl_win.cc b/content/browser/renderer_host/dwrite_font_proxy_impl_win.cc
+index 6b59bf2..f0e613d 100644
+--- a/content/browser/renderer_host/dwrite_font_proxy_impl_win.cc
++++ b/content/browser/renderer_host/dwrite_font_proxy_impl_win.cc
+@@ -35,6 +35,7 @@
+ #include "mojo/public/cpp/bindings/self_owned_receiver.h"
+ #include "third_party/blink/public/common/font_unique_name_lookup/font_unique_name_table.pb.h"
+ #include "third_party/blink/public/common/font_unique_name_lookup/icu_fold_case_util.h"
++#include "ui/gfx/win/camouflow_font_configuration.h"
+ #include "ui/gfx/win/direct_write.h"
+ #include "ui/gfx/win/text_analysis_source.h"
+ 
+@@ -388,6 +389,10 @@ void DWriteFontProxyImpl::MapCharacters(
+                                              DWRITE_FONT_WEIGHT_NORMAL)));
+   if (factory2_ == nullptr || collection_ == nullptr)
+     return;
++  if (font_fallback_ == nullptr && camouflow::native::GetFontFamilies()) {
++    font_fallback_ = camouflow::native::GetRestrictedFontFallback(
++        factory2_.Get(), collection_.Get());
++  }
+   if (font_fallback_ == nullptr) {
+     if (FAILED(factory2_->GetSystemFontFallback(&font_fallback_))) {
+       return;
+@@ -603,6 +608,8 @@ void DWriteFontProxyImpl::InitializeDirectWrite() {
+   // Normally identical to factory_->GetSystemFontCollection() unless a
+   // sideloaded font has been added using SideLoadFontForTesting().
+   HRESULT hr = GetLocalFontCollection(factory3_, &collection_);
++  if (SUCCEEDED(hr) && collection_)
++    collection_ = camouflow::native::ApplyFontFamilies(factory3_.Get(), collection_);
+   CHECK(SUCCEEDED(hr), base::NotFatalUntil::M152);
+ 
+   if (!collection_) {
+diff --git a/ui/gfx/BUILD.gn b/ui/gfx/BUILD.gn
+index 9da1b20..a8847f1 100644
+--- a/ui/gfx/BUILD.gn
++++ b/ui/gfx/BUILD.gn
+@@ -329,6 +329,9 @@ component("gfx") {
+       "win/d3d_shared_fence.h",
+       "win/direct_write.cc",
+       "win/direct_write.h",
++      "win/camouflow_font_collection.h",
++      "win/camouflow_font_configuration.h",
++      "win/camouflow_font_families.h",
+       "win/gdi_util.cc",
+       "win/gdi_util.h",
+       "win/get_elevation_icon.cc",
+diff --git a/ui/gfx/win/camouflow_font_collection.h b/ui/gfx/win/camouflow_font_collection.h
+new file mode 100644
+index 0000000..d0678a7
+--- /dev/null
++++ b/ui/gfx/win/camouflow_font_collection.h
+@@ -0,0 +1,103 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CAMOUFLOW_NATIVE_WINDOWS_FONT_COLLECTION_H_
++#define CAMOUFLOW_NATIVE_WINDOWS_FONT_COLLECTION_H_
++
++#include <dwrite_3.h>
++#include <wrl/client.h>
++
++#include <string>
++#include <vector>
++
++namespace camouflow::native {
++
++inline HRESULT RestrictFontCollection(
++    IDWriteFactory3* factory,
++    IDWriteFontCollection* source,
++    const std::vector<std::string>& names,
++    IDWriteFontCollection** destination) {
++  if (!destination)
++    return E_INVALIDARG;
++  *destination = nullptr;
++  if (!factory || !source || names.empty())
++    return E_INVALIDARG;
++  Microsoft::WRL::ComPtr<IDWriteFontSetBuilder> builder;
++  HRESULT result = factory->CreateFontSetBuilder(&builder);
++  if (FAILED(result))
++    return result;
++  for (const auto& name : names) {
++    const std::wstring wide(name.begin(), name.end());
++    UINT32 index = 0;
++    BOOL exists = FALSE;
++    result = source->FindFamilyName(wide.c_str(), &index, &exists);
++    if (FAILED(result))
++      return result;
++    if (!exists)
++      return DWRITE_E_NOFONT;
++    Microsoft::WRL::ComPtr<IDWriteFontFamily> family;
++    result = source->GetFontFamily(index, &family);
++    if (FAILED(result))
++      return result;
++    if (!family->GetFontCount())
++      return DWRITE_E_NOFONT;
++    for (UINT32 face_index = 0; face_index < family->GetFontCount(); ++face_index) {
++      Microsoft::WRL::ComPtr<IDWriteFont> font;
++      result = family->GetFont(face_index, &font);
++      if (FAILED(result))
++        return result;
++      Microsoft::WRL::ComPtr<IDWriteFont3> font3;
++      result = font.As(&font3);
++      if (FAILED(result))
++        return result;
++      Microsoft::WRL::ComPtr<IDWriteFontFaceReference> reference;
++      result = font3->GetFontFaceReference(&reference);
++      if (FAILED(result))
++        return result;
++      result = builder->AddFontFaceReference(reference.Get());
++      if (FAILED(result))
++        return result;
++    }
++  }
++  Microsoft::WRL::ComPtr<IDWriteFontSet> set;
++  result = builder->CreateFontSet(&set);
++  if (FAILED(result))
++    return result;
++  Microsoft::WRL::ComPtr<IDWriteFontCollection1> collection;
++  result = factory->CreateFontCollectionFromFontSet(set.Get(), &collection);
++  if (FAILED(result))
++    return result;
++  return collection.CopyTo(destination);
++}
++
++inline HRESULT CreateRestrictedFontFallback(
++    IDWriteFactory2* factory,
++    IDWriteFontCollection* collection,
++    const std::vector<std::string>& names,
++    IDWriteFontFallback** destination) {
++  if (!destination)
++    return E_INVALIDARG;
++  *destination = nullptr;
++  if (!factory || !collection || names.empty())
++    return E_INVALIDARG;
++  Microsoft::WRL::ComPtr<IDWriteFontFallbackBuilder> builder;
++  HRESULT result = factory->CreateFontFallbackBuilder(&builder);
++  if (FAILED(result))
++    return result;
++  std::vector<std::wstring> wide_names;
++  wide_names.reserve(names.size());
++  for (const auto& name : names)
++    wide_names.emplace_back(name.begin(), name.end());
++  std::vector<const wchar_t*> pointers;
++  for (const auto& name : wide_names)
++    pointers.push_back(name.c_str());
++  const DWRITE_UNICODE_RANGE range = {0, 0x10ffff};
++  result = builder->AddMapping(&range, 1, pointers.data(),
++                               static_cast<UINT32>(pointers.size()),
++                               collection, nullptr, nullptr, 1.0f);
++  if (FAILED(result))
++    return result;
++  return builder->CreateFontFallback(destination);
++}
++
++}  // namespace camouflow::native
++#endif  // CAMOUFLOW_NATIVE_WINDOWS_FONT_COLLECTION_H_
+diff --git a/ui/gfx/win/camouflow_font_configuration.h b/ui/gfx/win/camouflow_font_configuration.h
+new file mode 100644
+index 0000000..1de7b15
+--- /dev/null
++++ b/ui/gfx/win/camouflow_font_configuration.h
+@@ -0,0 +1,56 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CAMOUFLOW_NATIVE_WINDOWS_FONT_CONFIGURATION_H_
++#define CAMOUFLOW_NATIVE_WINDOWS_FONT_CONFIGURATION_H_
++
++#include "base/check.h"
++#include "base/command_line.h"
++#include "base/no_destructor.h"
++#include "ui/gfx/win/camouflow_font_collection.h"
++#include "ui/gfx/win/camouflow_font_families.h"
++
++namespace camouflow::native {
++
++inline const std::optional<std::vector<std::string>>& GetFontFamilies() {
++  static const base::NoDestructor<std::optional<std::vector<std::string>>> families(
++      []() -> std::optional<std::vector<std::string>> {
++        const auto* command = base::CommandLine::ForCurrentProcess();
++        constexpr char kSwitch[] = "camouflow-font-families";
++        if (!command->HasSwitch(kSwitch))
++          return std::nullopt;
++        const auto parsed = ParseFontFamilies(command->GetSwitchValueASCII(kSwitch));
++        CHECK(parsed) << "Invalid CamouFlow Native font families";
++        return parsed;
++      }());
++  return *families;
++}
++
++inline Microsoft::WRL::ComPtr<IDWriteFontCollection> ApplyFontFamilies(
++    IDWriteFactory3* factory,
++    Microsoft::WRL::ComPtr<IDWriteFontCollection> source) {
++  const auto& families = GetFontFamilies();
++  if (!families)
++    return source;
++  Microsoft::WRL::ComPtr<IDWriteFontCollection> restricted;
++  const HRESULT result = RestrictFontCollection(factory, source.Get(),
++                                               *families, &restricted);
++  CHECK(SUCCEEDED(result) && restricted)
++      << "Unavailable CamouFlow Native font family collection";
++  return restricted;
++}
++
++inline Microsoft::WRL::ComPtr<IDWriteFontFallback> GetRestrictedFontFallback(
++    IDWriteFactory2* factory,
++    IDWriteFontCollection* collection) {
++  const auto& families = GetFontFamilies();
++  CHECK(families);
++  Microsoft::WRL::ComPtr<IDWriteFontFallback> fallback;
++  const HRESULT result = CreateRestrictedFontFallback(factory, collection,
++                                                      *families, &fallback);
++  CHECK(SUCCEEDED(result) && fallback)
++      << "Unavailable CamouFlow Native font fallback";
++  return fallback;
++}
++
++}  // namespace camouflow::native
++#endif  // CAMOUFLOW_NATIVE_WINDOWS_FONT_CONFIGURATION_H_
+diff --git a/ui/gfx/win/camouflow_font_families.h b/ui/gfx/win/camouflow_font_families.h
+new file mode 100644
+index 0000000..c7842a9
+--- /dev/null
++++ b/ui/gfx/win/camouflow_font_families.h
+@@ -0,0 +1,61 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CAMOUFLOW_NATIVE_CORE_FONT_FAMILIES_H_
++#define CAMOUFLOW_NATIVE_CORE_FONT_FAMILIES_H_
++
++#include <optional>
++#include <string>
++#include <string_view>
++#include <utility>
++#include <vector>
++
++namespace camouflow::native {
++
++inline std::string FontFamilyKey(std::string_view name) {
++  std::string key(name);
++  for (char& character : key) {
++    if (character >= 'A' && character <= 'Z')
++      character = static_cast<char>(character + ('a' - 'A'));
++  }
++  return key;
++}
++
++// This Windows-only pilot accepts exact printable ASCII family names. Arial
++// must be present so Blink can load an actual last-resort font without crashing.
++inline std::optional<std::vector<std::string>> ParseFontFamilies(
++    std::string_view value) {
++  if (value.empty() || value.size() > 4096)
++    return std::nullopt;
++  std::vector<std::string> families;
++  std::vector<std::string> keys;
++  bool has_arial = false;
++  while (!value.empty()) {
++    const auto separator = value.find(',');
++    const auto name = value.substr(0, separator);
++    if (name.empty() || name.size() > 128 || name.front() == ' ' ||
++        name.back() == ' ' || families.size() == 64)
++      return std::nullopt;
++    for (const unsigned char character : name) {
++      if (character < 0x20 || character > 0x7e || character == '"' ||
++          character == '\\' || character == ';')
++        return std::nullopt;
++    }
++    const auto key = FontFamilyKey(name);
++    for (const auto& previous : keys) {
++      if (previous == key)
++        return std::nullopt;
++    }
++    has_arial = has_arial || key == "arial";
++    families.emplace_back(name);
++    keys.push_back(key);
++    if (separator == std::string_view::npos)
++      break;
++    value.remove_prefix(separator + 1);
++    if (value.empty())
++      return std::nullopt;
++  }
++  return has_arial ? std::optional(std::move(families)) : std::nullopt;
++}
++
++}  // namespace camouflow::native
++#endif  // CAMOUFLOW_NATIVE_CORE_FONT_FAMILIES_H_

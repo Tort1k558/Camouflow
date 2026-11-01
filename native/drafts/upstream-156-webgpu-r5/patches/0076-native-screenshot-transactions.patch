@@ -1,0 +1,1448 @@
+diff --git a/content/browser/devtools/devtools_agent_host_impl_unittest.cc b/content/browser/devtools/devtools_agent_host_impl_unittest.cc
+--- a/content/browser/devtools/devtools_agent_host_impl_unittest.cc
++++ b/content/browser/devtools/devtools_agent_host_impl_unittest.cc
+@@ -7,6 +7,12 @@
+ #include <string>
+ #include <utility>
+ 
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "base/memory/ref_counted.h"
++#include "content/browser/devtools/devtools_agent_host_impl.h"
++#include "content/browser/devtools/protocol/emulation_handler.h"
++#include "third_party/blink/public/common/web_preferences/web_preferences.h"
+ #include "base/location.h"
+ #include "base/run_loop.h"
+ #include "base/task/single_thread_task_runner.h"
+@@ -251,4 +257,289 @@
+   client_host.Close();
+ }
+ 
++class GlintScreenshotCaptureClient : public TestDevToolsClientHost {
++ public:
++  bool IsTrusted() override { return true; }
++  void AgentHostClosed(DevToolsAgentHost* agent_host) override {
++    target_closed = true;
++  }
++  bool target_closed = false;
++};
++
++class GlintScreenshotEmulationTest : public DevToolsAgentHostImplTest {
++ protected:
++  using Scope = protocol::ScopedScreenshotEmulation;
++  using Handler = protocol::EmulationHandler;
++  struct Reply {
++    bool called = false;
++    std::unique_ptr<Scope> scope;
++  };
++
++  void SetUp() override {
++    DevToolsAgentHostImplTest::SetUp();
++    contents()->NavigateAndCommit(GURL("https://glint.test/capture"));
++    ASSERT_TRUE(contents()->GetRenderWidgetHostView());
++    contents()->GetRenderWidgetHostView()->SetSize(gfx::Size(800, 600));
++    agent_ = DevToolsAgentHost::GetOrCreateFor(web_contents());
++    client_a_ = std::make_unique<GlintScreenshotCaptureClient>();
++    client_a_->InspectAgentHost(agent_.get());
++    auto handlers = Handler::ForAgentHost(
++        static_cast<DevToolsAgentHostImpl*>(agent_.get()));
++    ASSERT_EQ(handlers.size(), 1u);
++    a_ = handlers.front();
++    client_b_ = std::make_unique<GlintScreenshotCaptureClient>();
++    client_b_->InspectAgentHost(agent_.get());
++    handlers = Handler::ForAgentHost(
++        static_cast<DevToolsAgentHostImpl*>(agent_.get()));
++    ASSERT_EQ(handlers.size(), 2u);
++    b_ = handlers[0] == a_ ? handlers[1] : handlers[0];
++    base::RunLoop().RunUntilIdle();
++  }
++
++  void TearDown() override {
++    DetachB();
++    DetachA();
++    agent_.reset();
++    base::RunLoop().RunUntilIdle();
++    DevToolsAgentHostImplTest::TearDown();
++  }
++
++  void DetachA() {
++    if (client_a_) {
++      a_ = nullptr;
++      client_a_->Close();
++      client_a_.reset();
++    }
++  }
++
++  void DetachB() {
++    if (client_b_) {
++      b_ = nullptr;
++      client_b_->Close();
++      client_b_.reset();
++    }
++  }
++
++  blink::DeviceEmulationParams Metrics(int width = 390,
++                                      int height = 844,
++                                      float dpr = 3) {
++    blink::DeviceEmulationParams params;
++    params.screen_size = gfx::Size(width, height);
++    params.view_size = gfx::Size(width, height);
++    params.device_scale_factor = dpr;
++    params.scale = 1;
++    return params;
++  }
++
++  scoped_refptr<base::RefCountedData<Reply>> Request(Handler* handler) {
++    auto reply = base::MakeRefCounted<base::RefCountedData<Reply>>();
++    handler->AcquireScreenshot(base::BindOnce(
++        [](scoped_refptr<base::RefCountedData<Reply>> reply,
++           std::unique_ptr<Scope> scope) {
++          reply->data.called = true;
++          reply->data.scope = std::move(scope);
++        },
++        reply));
++    return reply;
++  }
++
++  raw_ptr<Handler> a_ = nullptr;
++  raw_ptr<Handler> b_ = nullptr;
++  scoped_refptr<DevToolsAgentHost> agent_;
++  std::unique_ptr<GlintScreenshotCaptureClient> client_a_;
++  std::unique_ptr<GlintScreenshotCaptureClient> client_b_;
++};
++
++TEST_F(GlintScreenshotEmulationTest, CrossSessionUsesEffectiveParameters) {
++  const auto params = Metrics();
++  a_->SetDeviceEmulationParams(params);
++  auto reply = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(reply->data.scope);
++  EXPECT_TRUE(reply->data.scope->IsValid());
++  ASSERT_TRUE(reply->data.scope->original_params());
++  EXPECT_EQ(*reply->data.scope->original_params(), params);
++  EXPECT_FALSE(b_->device_emulation_enabled());
++}
++
++TEST_F(GlintScreenshotEmulationTest, TemporaryReadbackNeverClaimsPersistentOwnership) {
++  const auto params = Metrics();
++  a_->SetDeviceEmulationParams(params);
++  auto reply = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(reply->data.scope);
++  auto transient = Metrics(16, 16, 1);
++  ASSERT_TRUE(reply->data.scope->Apply(transient));
++  EXPECT_EQ(a_->GetDeviceEmulationParams(), params);
++  EXPECT_FALSE(b_->device_emulation_enabled());
++  reply->data.scope->Finish();
++  auto next = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(next->data.scope);
++  EXPECT_EQ(*next->data.scope->original_params(), params);
++}
++
++TEST_F(GlintScreenshotEmulationTest, CapturesAreFifoPerTarget) {
++  auto first = Request(a_);
++  auto second = Request(b_);
++  auto third = Request(a_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(first->data.scope);
++  EXPECT_FALSE(second->data.called);
++  EXPECT_FALSE(third->data.called);
++  first->data.scope->Finish();
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(second->data.scope);
++  EXPECT_FALSE(third->data.called);
++  second->data.scope->Finish();
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(third->data.scope);
++  EXPECT_TRUE(third->data.scope->IsValid());
++}
++
++TEST_F(GlintScreenshotEmulationTest, PermanentUpdateInvalidatesOldLease) {
++  a_->SetDeviceEmulationParams(Metrics());
++  auto first = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(first->data.scope);
++  ASSERT_TRUE(first->data.scope->Apply(Metrics(10, 10, 1)));
++  ASSERT_TRUE(first->data.scope->SetViewSize(gfx::Size(1200, 900)));
++  const auto updated = Metrics(1280, 720, 2);
++  a_->SetDeviceEmulationParams(updated);
++  EXPECT_FALSE(first->data.scope->IsValid());
++  auto next = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(next->data.scope);
++  EXPECT_EQ(*next->data.scope->original_params(), updated);
++  first->data.scope->Finish();
++  EXPECT_TRUE(next->data.scope->IsValid());
++}
++
++TEST_F(GlintScreenshotEmulationTest, SameValueUpdateRestoresOriginalView) {
++  const auto params = Metrics();
++  a_->SetDeviceEmulationParams(params);
++  const auto bounds = contents()->GetRenderWidgetHostView()->GetViewBounds();
++  auto reply = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(reply->data.scope);
++  ASSERT_TRUE(reply->data.scope->SetViewSize(gfx::Size(1600, 1200)));
++  a_->SetDeviceEmulationParams(params);
++  EXPECT_FALSE(reply->data.scope->IsValid());
++  EXPECT_EQ(contents()->GetRenderWidgetHostView()->GetViewBounds(), bounds);
++  EXPECT_EQ(a_->GetDeviceEmulationParams(), params);
++}
++
++TEST_F(GlintScreenshotEmulationTest, StaleOwnerClearKeepsCurrentOverride) {
++  a_->SetDeviceEmulationParams(Metrics(800, 600, 1));
++  const auto current = Metrics();
++  b_->SetDeviceEmulationParams(current);
++  a_->ClearDeviceMetricsOverride();
++  auto reply = Request(a_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(reply->data.scope);
++  EXPECT_EQ(*reply->data.scope->original_params(), current);
++  EXPECT_TRUE(b_->device_emulation_enabled());
++}
++
++TEST_F(GlintScreenshotEmulationTest, CapturerDetachRestoresWithoutClearingOwner) {
++  const auto params = Metrics();
++  a_->SetDeviceEmulationParams(params);
++  auto reply = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(reply->data.scope);
++  ASSERT_TRUE(reply->data.scope->Apply(Metrics(8, 8, 1)));
++  DetachB();
++  EXPECT_FALSE(reply->data.scope->IsValid());
++  auto next = Request(a_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(next->data.scope);
++  EXPECT_EQ(*next->data.scope->original_params(), params);
++}
++
++TEST_F(GlintScreenshotEmulationTest, OwnerDetachCancelsForeignCaptureAndClearsOverride) {
++  a_->SetDeviceEmulationParams(Metrics());
++  auto reply = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(reply->data.scope);
++  ASSERT_TRUE(reply->data.scope->Apply(Metrics(8, 8, 1)));
++  DetachA();
++  EXPECT_FALSE(reply->data.scope->IsValid());
++  auto next = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(next->data.scope);
++  EXPECT_FALSE(next->data.scope->original_params().has_value());
++}
++
++TEST_F(GlintScreenshotEmulationTest, NavigationDropsOldDocumentLeaseAndQueue) {
++  const auto params = Metrics();
++  a_->SetDeviceEmulationParams(params);
++  auto first = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(first->data.scope);
++  auto queued = Request(a_);
++  contents()->NavigateAndCommit(GURL("https://other.glint.test/capture"));
++  base::RunLoop().RunUntilIdle();
++  EXPECT_FALSE(first->data.scope->IsValid());
++  EXPECT_TRUE(queued->data.called);
++  EXPECT_FALSE(queued->data.scope);
++  auto next = Request(b_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(next->data.scope);
++  EXPECT_EQ(*next->data.scope->original_params(), params);
++}
++
++TEST_F(GlintScreenshotEmulationTest, FullPageRestoresOnlyItsPreferenceFields) {
++  auto* view = test_rvh();
++  const auto initial = view->GetDelegate()->GetOrCreateWebPreferences(view);
++  auto reply = Request(a_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(reply->data.scope);
++  ASSERT_TRUE(reply->data.scope->UseFullPagePreferences());
++  auto prefs = view->GetDelegate()->GetOrCreateWebPreferences(view);
++  EXPECT_TRUE(prefs.hide_scrollbars);
++  EXPECT_TRUE(prefs.record_whole_document);
++  prefs.default_font_size = initial.default_font_size + 3;
++  view->GetDelegate()->SetWebPreferences(prefs);
++  reply->data.scope->Finish();
++  const auto after = view->GetDelegate()->GetOrCreateWebPreferences(view);
++  EXPECT_EQ(after.default_font_size, initial.default_font_size + 3);
++  EXPECT_EQ(after.hide_scrollbars, initial.hide_scrollbars);
++  EXPECT_EQ(after.record_whole_document, initial.record_whole_document);
++}
++
++TEST_F(GlintScreenshotEmulationTest, IndependentTargetsDoNotShareLeases) {
++  auto first = Request(a_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(first->data.scope);
++  auto other_contents = TestWebContents::Create(browser_context(), nullptr);
++  other_contents->NavigateAndCommit(GURL("https://isolated.glint.test/capture"));
++  auto other_agent = DevToolsAgentHost::GetOrCreateFor(other_contents.get());
++  GlintScreenshotCaptureClient client;
++  client.InspectAgentHost(other_agent.get());
++  base::ScopedClosureRunner close(base::BindOnce(
++      &GlintScreenshotCaptureClient::Close, base::Unretained(&client)));
++  auto handlers = Handler::ForAgentHost(
++      static_cast<DevToolsAgentHostImpl*>(other_agent.get()));
++  ASSERT_EQ(handlers.size(), 1u);
++  auto other = Request(handlers.front());
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(other->data.scope);
++  EXPECT_TRUE(other->data.scope->IsValid());
++  EXPECT_TRUE(first->data.scope->IsValid());
++}
++
++TEST_F(GlintScreenshotEmulationTest, DestroyedTargetCancelsSafely) {
++  auto first = Request(a_);
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(first->data.scope);
++  ASSERT_TRUE(first->data.scope->Apply(Metrics()));
++  a_ = nullptr;
++  b_ = nullptr;
++  DeleteContents();
++  base::RunLoop().RunUntilIdle();
++  EXPECT_FALSE(first->data.scope->IsValid());
++  first->data.scope->Finish();
++}
++
++
+ }  // namespace content
+diff --git a/content/browser/devtools/protocol/emulation_handler.cc b/content/browser/devtools/protocol/emulation_handler.cc
+--- a/content/browser/devtools/protocol/emulation_handler.cc
++++ b/content/browser/devtools/protocol/emulation_handler.cc
+@@ -5,8 +5,13 @@
+ #include "content/browser/devtools/protocol/emulation_handler.h"
+ 
+ #include <utility>
++#include <vector>
+ 
+ #include "base/check_deref.h"
++#include "base/containers/circular_deque.h"
++#include "base/memory/ref_counted.h"
++#include "base/supports_user_data.h"
++#include "base/task/single_thread_task_runner.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/notreached.h"
+@@ -30,6 +35,10 @@
+ #include "content/browser/renderer_host/render_widget_host_impl.h"
+ #include "content/browser/screen_orientation/screen_orientation_provider.h"
+ #include "content/browser/web_contents/web_contents_impl.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
+ #include "content/public/common/content_client.h"
+ #include "content/public/common/url_constants.h"
+ #include "net/http/http_util.h"
+@@ -41,6 +50,7 @@
+ #include "services/device/public/mojom/pressure_update.mojom.h"
+ #include "services/device/public/mojom/sensor.mojom-shared.h"
+ #include "services/network/public/cpp/client_hints.h"
++#include "third_party/blink/public/common/web_preferences/web_preferences.h"
+ #include "third_party/blink/public/mojom/device_posture/device_posture_provider.mojom.h"
+ #include "third_party/blink/public/mojom/page/widget.mojom-shared.h"
+ #include "ui/display/mojom/screen_orientation.mojom.h"
+@@ -125,6 +135,500 @@
+ 
+ }  // namespace
+ 
++namespace {
++
++constexpr char kScreenshotEmulationTargetStateKey[] =
++    "glint-screenshot-emulation-target-state";
++
++void ApplyTargetEmulation(
++    RenderFrameHostImpl* frame,
++    const std::optional<blink::DeviceEmulationParams>& render_params,
++    const std::optional<blink::DeviceEmulationParams>& logical_params,
++    blink::mojom::DeviceEmulationCacheBehavior cache_behavior) {
++  frame->ForEachRenderFrameHostImplIncludingSpeculative(
++      [&render_params, &logical_params, cache_behavior](RenderFrameHostImpl* host) {
++        if (!host->is_main_frame()) {
++          return;
++        }
++        auto* widget = host->GetRenderWidgetHost();
++        widget->SetGlintLogicalScreenEmulation(logical_params);
++        auto& remote = widget->GetAssociatedFrameWidget();
++        if (remote) {
++          if (render_params) {
++            remote->EnableDeviceEmulation(*render_params, cache_behavior);
++          } else {
++            remote->DisableDeviceEmulation();
++          }
++        }
++      });
++  frame->ForEachRenderFrameHostImplIncludingSpeculative(
++      [](RenderFrameHostImpl* host) {
++        host->GetRenderWidgetHost()->SynchronizeVisualProperties();
++      });
++}
++
++}  // namespace
++
++class ScreenshotEmulationTargetState
++    : public base::RefCounted<ScreenshotEmulationTargetState>,
++      public WebContentsObserver {
++ public:
++  using Ready =
++      base::OnceCallback<void(std::unique_ptr<ScopedScreenshotEmulation>)>;
++
++  static scoped_refptr<ScreenshotEmulationTargetState> For(
++      WebContentsImpl& contents,
++      const std::string& target_id,
++      scoped_refptr<ScreenshotEmulationTargetState> previous);
++  static bool BeforeContentsMutation(WebContentsImpl& contents);
++
++  ScreenshotEmulationTargetState(base::WeakPtr<WebContents> contents,
++                                  std::string target_id)
++      : WebContentsObserver(contents.get()),
++        contents_(std::move(contents)),
++        target_id_(std::move(target_id)) {}
++
++  void Bind(WebContentsImpl& contents, RenderFrameHostImpl* frame) {
++    if (bound_frame_.get() != frame || contents_.get() != &contents) {
++      if (bound_frame_) {
++        InvalidateFrame(bound_frame_.get());
++      }
++      Observe(&contents);
++      contents_ = contents.GetWeakPtr();
++      bound_frame_ = frame->GetWeakPtr();
++    }
++  }
++
++  WebContentsImpl* contents() const {
++    return contents_ && !contents_->IsBeingDestroyed()
++               ? static_cast<WebContentsImpl*>(contents_.get())
++               : nullptr;
++  }
++
++  bool Owns(const base::UnguessableToken& owner) const {
++    return !owner_.is_empty() && owner_ == owner;
++  }
++
++  bool HasOwner() const { return !owner_.is_empty(); }
++
++  bool SetOwner(const base::UnguessableToken& owner,
++                std::optional<blink::DeviceEmulationParams> params) {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    auto weak = weak_factory_.GetWeakPtr();
++    CancelActive();
++    if (!weak || (!contents() && params)) {
++      return false;
++    }
++    owner_ = params ? owner : base::UnguessableToken();
++    params_ = std::move(params);
++    return true;
++  }
++
++  const std::optional<blink::DeviceEmulationParams>& params() const {
++    return params_;
++  }
++
++  void ApplyPersistent(
++      RenderFrameHostImpl* frame,
++      blink::mojom::DeviceEmulationCacheBehavior cache_behavior) {
++    if (contents() && frame && !frame->GetParentOrOuterDocument()) {
++      ApplyTargetEmulation(frame, params_, params_, cache_behavior);
++    }
++  }
++
++  bool BeforeMutation() {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    auto weak = weak_factory_.GetWeakPtr();
++    CancelActive();
++    return weak && contents();
++  }
++
++  void Acquire(base::WeakPtr<RenderFrameHostImpl> frame,
++               const base::UnguessableToken& requester,
++               Ready ready) {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    if (!frame) {
++      std::move(ready).Run(nullptr);
++      return;
++    }
++    const auto document_token = frame->GetDocumentToken();
++    requests_.push_back(
++        {std::move(frame), document_token, requester, std::move(ready)});
++    Schedule();
++  }
++
++  void CancelClient(const base::UnguessableToken& requester) {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    auto weak = weak_factory_.GetWeakPtr();
++    if (active_ && active_->requester == requester) {
++      CancelActive();
++    }
++    if (!weak) {
++      return;
++    }
++    CancelQueued([&requester](const Request& request) {
++      return request.requester == requester;
++    });
++  }
++
++  void InvalidateFrame(RenderFrameHostImpl* frame) {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    auto weak = weak_factory_.GetWeakPtr();
++    if (active_ && active_->frame.get() == frame) {
++      CancelActive();
++    }
++    if (!weak) {
++      return;
++    }
++    CancelQueued([frame](const Request& request) {
++      return !request.frame || request.frame.get() == frame;
++    });
++  }
++
++  bool IsValid(uint64_t id) const {
++    return active_ && active_->id == id && !active_->cancelled &&
++           !active_->restored && CanTouch(active_->frame.get()) &&
++           active_->frame->GetDocumentToken() == active_->document_token;
++  }
++
++  bool ApplyCapture(uint64_t id,
++                    const blink::DeviceEmulationParams& params) {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    if (!IsValid(id)) {
++      return false;
++    }
++    active_->mutated = true;
++    auto weak = weak_factory_.GetWeakPtr();
++    ApplyTargetEmulation(active_->frame.get(), params, params_,
++                        blink::mojom::DeviceEmulationCacheBehavior::kClearCache);
++    return weak && weak->IsValid(id);
++  }
++
++  bool SetViewSize(uint64_t id, const gfx::Size& size) {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    if (!IsValid(id)) {
++      return false;
++    }
++    active_->resized = true;
++    auto weak = weak_factory_.GetWeakPtr();
++    active_->frame->GetRenderWidgetHost()->GetView()->SetSize(size);
++    return weak && weak->IsValid(id);
++  }
++
++  bool UseFullPagePreferences(uint64_t id) {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    if (!IsValid(id)) {
++      return false;
++    }
++    auto* view = active_->frame->render_view_host();
++    auto prefs = view->GetDelegate()->GetOrCreateWebPreferences(view);
++    active_->preferences = std::make_pair(
++        prefs.hide_scrollbars, prefs.record_whole_document);
++    prefs.hide_scrollbars = true;
++    prefs.record_whole_document = true;
++    auto weak = weak_factory_.GetWeakPtr();
++    view->GetDelegate()->SetWebPreferences(prefs);
++    return weak && weak->IsValid(id);
++  }
++
++  void Finish(uint64_t id) {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    if (!active_ || active_->id != id) {
++      return;
++    }
++    auto weak = weak_factory_.GetWeakPtr();
++    RestoreEffects();
++    if (!weak || !active_ || active_->id != id) {
++      return;
++    }
++    active_.reset();
++    Schedule();
++  }
++
++ private:
++  friend class base::RefCounted<ScreenshotEmulationTargetState>;
++  ~ScreenshotEmulationTargetState() override = default;
++
++  void DidStartNavigation(NavigationHandle* navigation) override {
++    if (navigation->IsInPrimaryMainFrame() &&
++        !navigation->IsSameDocument() && bound_frame_) {
++      InvalidateFrame(bound_frame_.get());
++    }
++  }
++
++  void ReadyToCommitNavigation(NavigationHandle* navigation) override {
++    if (navigation->IsInPrimaryMainFrame() && bound_frame_) {
++      InvalidateFrame(bound_frame_.get());
++    }
++  }
++
++  void WebContentsDestroyed() override {
++    if (bound_frame_) {
++      InvalidateFrame(bound_frame_.get());
++    }
++    bound_frame_.reset();
++    contents_.reset();
++  }
++
++  struct Request {
++    base::WeakPtr<RenderFrameHostImpl> frame;
++    blink::DocumentToken document_token;
++    base::UnguessableToken requester;
++    Ready ready;
++  };
++
++  struct Active {
++    uint64_t id;
++    base::WeakPtr<RenderFrameHostImpl> frame;
++    blink::DocumentToken document_token;
++    base::UnguessableToken requester;
++    gfx::Size original_view_size;
++    bool mutated = false;
++    bool resized = false;
++    bool restored = false;
++    bool cancelled = false;
++    std::optional<std::pair<bool, bool>> preferences = std::nullopt;
++  };
++
++  bool CanTouch(RenderFrameHostImpl* frame) const {
++    return contents_ && !contents_->IsBeingDestroyed() && frame &&
++           frame == bound_frame_.get() && frame->IsActive() &&
++           contents_->GetPrimaryMainFrame() == frame &&
++           frame->GetRenderWidgetHost() &&
++           frame->GetRenderWidgetHost()->GetView();
++  }
++
++  void Schedule() {
++    if (scheduled_ || active_ || requests_.empty()) {
++      return;
++    }
++    scheduled_ = true;
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&ScreenshotEmulationTargetState::Pump,
++                                 weak_factory_.GetWeakPtr()));
++  }
++
++  void Pump() {
++    DCHECK_CURRENTLY_ON(BrowserThread::UI);
++    scheduled_ = false;
++    if (active_ || requests_.empty()) {
++      return;
++    }
++    Request request = std::move(requests_.front());
++    requests_.pop_front();
++    if (!CanTouch(request.frame.get()) ||
++        request.frame->GetDocumentToken() != request.document_token) {
++      Schedule();
++      std::move(request.ready).Run(nullptr);
++      return;
++    }
++    CHECK_NE(++next_id_, 0u);
++    const uint64_t id = next_id_;
++    active_ = std::make_unique<Active>(Active{
++        .id = id,
++        .frame = request.frame,
++        .document_token = request.document_token,
++        .requester = request.requester,
++        .original_view_size = request.frame->GetRenderWidgetHost()
++                                  ->GetView()
++                                  ->GetViewBounds()
++                                  .size()});
++    auto scope = std::unique_ptr<ScopedScreenshotEmulation>(
++        new ScopedScreenshotEmulation(weak_factory_.GetWeakPtr(), id, params_));
++    std::move(request.ready).Run(std::move(scope));
++  }
++
++  template <typename Predicate>
++  void CancelQueued(Predicate predicate) {
++    base::circular_deque<Request> retained;
++    while (!requests_.empty()) {
++      Request request = std::move(requests_.front());
++      requests_.pop_front();
++      if (predicate(request)) {
++        base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++            FROM_HERE, base::BindOnce(
++                           [](Ready ready) { std::move(ready).Run(nullptr); },
++                           std::move(request.ready)));
++      } else {
++        retained.push_back(std::move(request));
++      }
++    }
++    requests_.swap(retained);
++    Schedule();
++  }
++
++  void CancelActive() {
++    if (!active_) {
++      return;
++    }
++    const uint64_t id = active_->id;
++    active_->cancelled = true;
++    Finish(id);
++  }
++
++  void RestoreEffects() {
++    if (!active_ || active_->restored) {
++      return;
++    }
++    active_->restored = true;
++    const auto frame = active_->frame;
++    const auto document_token = active_->document_token;
++    if (!CanTouch(frame.get()) ||
++        frame->GetDocumentToken() != document_token) {
++      return;
++    }
++    auto weak = weak_factory_.GetWeakPtr();
++    const bool mutated = active_->mutated;
++    const bool resized = active_->resized;
++    const gfx::Size size = active_->original_view_size;
++    const auto preferences = active_->preferences;
++    if (resized) {
++      frame->GetRenderWidgetHost()->GetView()->SetSize(size);
++    }
++    if (!weak || !CanTouch(frame.get()) ||
++        frame->GetDocumentToken() != document_token) {
++      return;
++    }
++    if (mutated) {
++      ApplyTargetEmulation(frame.get(), params_, params_,
++                          blink::mojom::DeviceEmulationCacheBehavior::kClearCache);
++    }
++    if (!weak || !CanTouch(frame.get()) ||
++        frame->GetDocumentToken() != document_token) {
++      return;
++    }
++    if (preferences) {
++      auto* view = frame->render_view_host();
++      auto prefs = view->GetDelegate()->GetOrCreateWebPreferences(view);
++      // Only undo the two capture-owned fields, not unrelated preference updates.
++      if (prefs.hide_scrollbars) {
++        prefs.hide_scrollbars = preferences->first;
++      }
++      if (prefs.record_whole_document) {
++        prefs.record_whole_document = preferences->second;
++      }
++      view->GetDelegate()->SetWebPreferences(prefs);
++    }
++  }
++
++  base::WeakPtr<WebContents> contents_;
++  base::WeakPtr<RenderFrameHostImpl> bound_frame_;
++  const std::string target_id_;
++  base::UnguessableToken owner_;
++  std::optional<blink::DeviceEmulationParams> params_;
++  base::circular_deque<Request> requests_;
++  std::unique_ptr<Active> active_;
++  uint64_t next_id_ = 0;
++  bool scheduled_ = false;
++  base::WeakPtrFactory<ScreenshotEmulationTargetState> weak_factory_{this};
++};
++
++namespace {
++
++class ScreenshotEmulationTargetRegistry : public base::SupportsUserData::Data {
++ public:
++  base::flat_map<std::string, base::WeakPtr<ScreenshotEmulationTargetState>> targets;
++};
++
++ScreenshotEmulationTargetRegistry& ScreenshotRegistry(WebContentsImpl& contents) {
++  auto* registry = static_cast<ScreenshotEmulationTargetRegistry*>(
++      contents.GetUserData(kScreenshotEmulationTargetStateKey));
++  if (!registry) {
++    auto owned = std::make_unique<ScreenshotEmulationTargetRegistry>();
++    registry = owned.get();
++    contents.SetUserData(kScreenshotEmulationTargetStateKey, std::move(owned));
++  }
++  return *registry;
++}
++
++}  // namespace
++
++scoped_refptr<ScreenshotEmulationTargetState>
++ScreenshotEmulationTargetState::For(
++    WebContentsImpl& contents,
++    const std::string& target_id,
++    scoped_refptr<ScreenshotEmulationTargetState> previous) {
++  auto& targets = ScreenshotRegistry(contents).targets;
++  for (auto it = targets.begin(); it != targets.end();) {
++    if (!it->second || it->second->contents() != &contents) {
++      it = targets.erase(it);
++    } else {
++      ++it;
++    }
++  }
++  auto found = targets.find(target_id);
++  if (found != targets.end()) {
++    return base::WrapRefCounted(found->second.get());
++  }
++  auto state = previous && previous->target_id_ == target_id
++                   ? std::move(previous)
++                   : base::MakeRefCounted<ScreenshotEmulationTargetState>(
++                         contents.GetWeakPtr(), target_id);
++  targets.emplace(target_id, state->weak_factory_.GetWeakPtr());
++  return state;
++}
++
++bool ScreenshotEmulationTargetState::BeforeContentsMutation(
++    WebContentsImpl& contents) {
++  auto alive = contents.GetWeakPtr();
++  std::vector<base::WeakPtr<ScreenshotEmulationTargetState>> states;
++  for (const auto& entry : ScreenshotRegistry(contents).targets) {
++    if (entry.second && entry.second->contents() == &contents) {
++      states.push_back(entry.second);
++    }
++  }
++  for (auto state : states) {
++    if (state) {
++      state->BeforeMutation();
++    }
++    if (!alive || alive->IsBeingDestroyed()) {
++      return false;
++    }
++  }
++  return true;
++}
++
++ScopedScreenshotEmulation::ScopedScreenshotEmulation(
++    base::WeakPtr<ScreenshotEmulationTargetState> state,
++    uint64_t capture_id,
++    std::optional<blink::DeviceEmulationParams> original_params)
++    : state_(std::move(state)),
++      capture_id_(capture_id),
++      original_params_(std::move(original_params)) {}
++
++ScopedScreenshotEmulation::~ScopedScreenshotEmulation() {
++  Finish();
++}
++
++bool ScopedScreenshotEmulation::IsValid() const {
++  return state_ && state_->IsValid(capture_id_);
++}
++
++const std::optional<blink::DeviceEmulationParams>&
++ScopedScreenshotEmulation::original_params() const {
++  return original_params_;
++}
++
++bool ScopedScreenshotEmulation::Apply(const blink::DeviceEmulationParams& params) {
++  return state_ && state_->ApplyCapture(capture_id_, params);
++}
++
++bool ScopedScreenshotEmulation::SetViewSize(const gfx::Size& size) {
++  return state_ && state_->SetViewSize(capture_id_, size);
++}
++
++bool ScopedScreenshotEmulation::UseFullPagePreferences() {
++  return state_ && state_->UseFullPagePreferences(capture_id_);
++}
++
++void ScopedScreenshotEmulation::Finish() {
++  if (state_) {
++    state_->Finish(capture_id_);
++    state_.reset();
++  }
++}
++
++
+ EmulationHandler::EmulationHandler()
+     : DevToolsDomainHandler(Emulation::Metainfo::domainName),
+       touch_emulation_enabled_(false),
+@@ -145,6 +649,9 @@
+                                    RenderFrameHostImpl* frame_host) {
+   if (host_ == frame_host)
+     return;
++  if (screenshot_state_ && host_) {
++    screenshot_state_->InvalidateFrame(host_);
++  }
+   RenderWidgetHostImpl* old_render_widget_host =
+       host_ ? host_->render_view_host()->GetWidget() : nullptr;
+   RenderWidgetHostImpl* new_render_widget_host =
+@@ -172,11 +679,20 @@
+     }
+   }
+   host_ = frame_host;
++  if (host_) {
++    auto* contents = GetWebContents();
++    if (contents) {
++      screenshot_state_ = ScreenshotEmulationTargetState::For(
++          *contents, session()->GetAgentHost()->GetId(), screenshot_state_);
++      screenshot_state_->Bind(*contents, host_);
++    }
++  }
+   if (touch_emulation_enabled_)
+     UpdateTouchEventEmulationState();
+-  if (device_emulation_enabled_)
++  if (host_ && !host_->GetParentOrOuterDocument()) {
+     UpdateDeviceEmulationState(
+         blink::mojom::DeviceEmulationCacheBehavior::kKeepCache);
++  }
+ }
+ 
+ void EmulationHandler::Wire(UberDispatcher* dispatcher) {
+@@ -185,6 +701,19 @@
+ }
+ 
+ Response EmulationHandler::Disable() {
++  auto screenshot_state = screenshot_state_;
++  if (screenshot_state) {
++    screenshot_state->CancelClient(screenshot_owner_token_);
++    if (screenshot_state->Owns(screenshot_owner_token_)) {
++      auto* contents = screenshot_state->contents();
++      if (contents &&
++          ScreenshotEmulationTargetState::BeforeContentsMutation(*contents)) {
++        contents->ClearDeviceEmulationSize();
++      }
++      screenshot_state->SetOwner(screenshot_owner_token_, std::nullopt);
++    }
++  }
++
+   if (touch_emulation_enabled_) {
+     touch_emulation_enabled_ = false;
+     UpdateTouchEventEmulationState();
+@@ -192,16 +721,6 @@
+   user_agent_ = std::string();
+   if (device_emulation_enabled_) {
+     device_emulation_enabled_ = false;
+-    // Restore the view size changed by SetDeviceMetricsOverride(), as
+-    // ClearDeviceMetricsOverride() does. Otherwise a client that disconnects
+-    // without clearing its override leaves the view at the emulated size, and
+-    // WebContentsImpl::GetSizeForMainFrame() keeps applying it.
+-    if (host_) {
+-      WebContentsImpl* web_contents = GetWebContents();
+-      if (web_contents && !web_contents->IsBeingDestroyed()) {
+-        web_contents->ClearDeviceEmulationSize();
+-      }
+-    }
+     if (screen_orientation_lock_emulation_enabled_) {
+       screen_orientation_lock_emulation_enabled_ = false;
+       UpdateScreenOrientationEmulation(false);
+@@ -778,6 +1297,15 @@
+     }
+   }
+ 
++  auto screenshot_state = screenshot_state_;
++  auto* screenshot_contents = GetWebContents();
++  if (!screenshot_state || !screenshot_contents ||
++      !ScreenshotEmulationTargetState::BeforeContentsMutation(
++          *screenshot_contents)) {
++    return Response::ServerError("The emulation target is no longer available");
++  }
++  const bool owned_metrics = screenshot_state->Owns(screenshot_owner_token_);
++
+   blink::DeviceEmulationParams params;
+   params.screen_type = mobile ? blink::mojom::EmulatedScreenType::kMobile
+                               : blink::mojom::EmulatedScreenType::kDesktop;
+@@ -859,7 +1387,8 @@
+     UpdateScreenOrientationEmulation(enable_orientation_lock);
+   }
+ 
+-  if (device_emulation_enabled_ && params == device_emulation_params_) {
++  if (device_emulation_enabled_ && owned_metrics &&
++      params == device_emulation_params_) {
+     // Renderer should answer after size was changed, so that the response is
+     // only sent to the client once updates were applied.
+     if (size_changed)
+@@ -869,7 +1398,9 @@
+ 
+   device_emulation_enabled_ = true;
+   device_emulation_params_ = params;
+-  UpdateDeviceEmulationState();
++  if (screenshot_state->SetOwner(screenshot_owner_token_, params)) {
++    UpdateDeviceEmulationState();
++  }
+ 
+   // Renderer should answer after emulation params were updated, so that the
+   // response is only sent to the client once updates were applied.
+@@ -887,6 +1418,23 @@
+   if (!device_emulation_enabled_)
+     return Response::Success();
+ 
++  auto screenshot_state = screenshot_state_;
++  if (!screenshot_state || !screenshot_state->Owns(screenshot_owner_token_)) {
++    ClearDevicePostureOverride();
++    if (screen_orientation_lock_emulation_enabled_) {
++      screen_orientation_lock_emulation_enabled_ = false;
++      UpdateScreenOrientationEmulation(false);
++    }
++    device_emulation_enabled_ = false;
++    device_emulation_params_ = blink::DeviceEmulationParams();
++    return Response::Success();
++  }
++  auto* contents = screenshot_state->contents();
++  if (!contents ||
++      !ScreenshotEmulationTargetState::BeforeContentsMutation(*contents)) {
++    return Response::ServerError("The emulation target is no longer available");
++  }
++  screenshot_state->SetOwner(screenshot_owner_token_, std::nullopt);
+   GetWebContents()->ClearDeviceEmulationSize();
+   ClearDevicePostureOverride();
+   device_emulation_enabled_ = false;
+@@ -910,6 +1458,9 @@
+ 
+   if (!host_)
+     return Response::ServerError("Can't find the associated web contents");
++  if (!ScreenshotEmulationTargetState::BeforeContentsMutation(*GetWebContents())) {
++    return Response::ServerError("The emulation target is no longer available");
++  }
+   GetWebContents()->SetDeviceEmulationSize(gfx::Size(width, height));
+   return Response::Success();
+ }
+@@ -1093,22 +1644,41 @@
+   return device_emulation_params_;
+ }
+ 
++void EmulationHandler::AcquireScreenshot(
++    base::OnceCallback<void(std::unique_ptr<ScopedScreenshotEmulation>)> ready) {
++  if (!host_ || !screenshot_state_) {
++    std::move(ready).Run(nullptr);
++    return;
++  }
++  screenshot_state_->Acquire(host_->GetWeakPtr(), screenshot_owner_token_,
++                             std::move(ready));
++}
++
+ void EmulationHandler::SetDeviceEmulationParams(
+     const blink::DeviceEmulationParams& params) {
+   CHECK(host_, base::NotFatalUntil::M159);
+-  // Device emulation only happens on the outermost main frame.
+   CHECK(!host_->GetParentOrOuterDocument(), base::NotFatalUntil::M159);
+-
+-  bool enabled = params != blink::DeviceEmulationParams();
+-  bool enable_changed = enabled != device_emulation_enabled_;
+-  bool params_changed = params != device_emulation_params_;
+-  if (!device_emulation_enabled_ && !enable_changed)
+-    return;  // Still disabled.
+-  if (!enable_changed && !params_changed)
+-    return;  // Nothing changed.
++  auto state = screenshot_state_;
++  if (!state) {
++    return;
++  }
++  const bool enabled = params != blink::DeviceEmulationParams();
++  if (!enabled && !state->Owns(screenshot_owner_token_)) {
++    device_emulation_enabled_ = false;
++    device_emulation_params_ = params;
++    return;
++  }
++  auto* contents = state->contents();
++  if (!contents ||
++      !ScreenshotEmulationTargetState::BeforeContentsMutation(*contents)) {
++    return;
++  }
+   device_emulation_enabled_ = enabled;
+   device_emulation_params_ = params;
+-  UpdateDeviceEmulationState();
++  if (state->SetOwner(screenshot_owner_token_,
++                      enabled ? std::make_optional(params) : std::nullopt)) {
++    UpdateDeviceEmulationState();
++  }
+ }
+ 
+ WebContentsImpl* EmulationHandler::GetWebContents() {
+@@ -1147,46 +1717,9 @@
+   if (!host_)
+     return;
+ 
+-  // Device emulation only happens on the outermost main frame.
+   CHECK(!host_->GetParentOrOuterDocument(), base::NotFatalUntil::M159);
+-
+-  // TODO(eseckler): Once we change this to mojo, we should wait for an ack to
+-  // these messages from the renderer. The renderer should send the ack once the
+-  // emulation params were applied. That way, we can avoid having to handle
+-  // Set/ClearDeviceMetricsOverride in the renderer. With the old IPC system,
+-  // this is tricky since we'd have to track the DevTools message id with the
+-  // WidgetMsg and acknowledgment, as well as plump the acknowledgment back to
+-  // the EmulationHandler somehow. Mojo callbacks should make this much simpler.
+-  host_->ForEachRenderFrameHostImplIncludingSpeculative(
+-      [this, &cache_behavior](RenderFrameHostImpl* host) {
+-        // The main frame of nested subpages (ex. fenced frames) inside this
+-        // page are updated as well.
+-        if (host->is_main_frame()) {
+-          host->GetRenderWidgetHost()->SetGlintLogicalScreenEmulation(
+-              device_emulation_enabled_
+-                  ? std::make_optional(device_emulation_params_)
+-                  : std::nullopt);
+-          UpdateDeviceEmulationStateForHost(host->GetRenderWidgetHost(),
+-                                            cache_behavior);
+-        }
+-      });
+-  host_->ForEachRenderFrameHostImplIncludingSpeculative(
+-      [](RenderFrameHostImpl* host) {
+-        host->GetRenderWidgetHost()->SynchronizeVisualProperties();
+-      });
+-}
+-
+-void EmulationHandler::UpdateDeviceEmulationStateForHost(
+-    RenderWidgetHostImpl* render_widget_host,
+-    const blink::mojom::DeviceEmulationCacheBehavior& cache_behavior) {
+-  auto& frame_widget = render_widget_host->GetAssociatedFrameWidget();
+-  if (!frame_widget)
+-    return;
+-  if (device_emulation_enabled_) {
+-    frame_widget->EnableDeviceEmulation(device_emulation_params_,
+-                                        cache_behavior);
+-  } else {
+-    frame_widget->DisableDeviceEmulation();
++  if (screenshot_state_) {
++    screenshot_state_->ApplyPersistent(host_, cache_behavior);
+   }
+ }
+ 
+@@ -1347,7 +1880,7 @@
+   provider->SetDevToolsEmulationEnabled(enabled);
+   if (enabled) {
+     provider->SetOrientationLockChangedCallback(base::BindRepeating(
+-        &EmulationHandler::OnOrientationLockChanged, base::Unretained(this)));
++        &EmulationHandler::OnOrientationLockChanged, weak_factory_.GetWeakPtr()));
+   } else {
+     provider->SetOrientationLockChangedCallback(
+         ScreenOrientationProvider::OrientationLockChangedCallback());
+diff --git a/content/browser/devtools/protocol/emulation_handler.h b/content/browser/devtools/protocol/emulation_handler.h
+--- a/content/browser/devtools/protocol/emulation_handler.h
++++ b/content/browser/devtools/protocol/emulation_handler.h
+@@ -5,12 +5,16 @@
+ #ifndef CONTENT_BROWSER_DEVTOOLS_PROTOCOL_EMULATION_HANDLER_H_
+ #define CONTENT_BROWSER_DEVTOOLS_PROTOCOL_EMULATION_HANDLER_H_
+ 
++#include <stdint.h>
+ #include <memory>
+ #include <optional>
+ 
+ #include "base/containers/flat_map.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/unguessable_token.h"
+ #include "content/browser/devtools/protocol/devtools_domain_handler.h"
+ #include "content/browser/devtools/protocol/emulation.h"
+ #include "content/browser/devtools/protocol/protocol.h"
+@@ -22,6 +26,7 @@
+ #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+ #include "third_party/blink/public/common/widget/device_emulation_params.h"
+ #include "third_party/blink/public/mojom/page/widget.mojom-shared.h"
++#include "ui/gfx/geometry/size.h"
+ 
+ namespace net {
+ class HttpRequestHeaders;
+@@ -41,6 +46,36 @@
+ class WebContentsImpl;
+ 
+ namespace protocol {
++
++class ScreenshotEmulationTargetState;
++
++// A target-owned screenshot transaction. Temporary capture state never becomes
++// an Emulation domain override and cannot outlive its originating document.
++class ScopedScreenshotEmulation {
++ public:
++  ScopedScreenshotEmulation(const ScopedScreenshotEmulation&) = delete;
++  ScopedScreenshotEmulation& operator=(const ScopedScreenshotEmulation&) = delete;
++  ~ScopedScreenshotEmulation();
++
++  bool IsValid() const;
++  const std::optional<blink::DeviceEmulationParams>& original_params() const;
++  bool Apply(const blink::DeviceEmulationParams& params);
++  bool SetViewSize(const gfx::Size& size);
++  bool UseFullPagePreferences();
++  void Finish();
++
++ private:
++  friend class ScreenshotEmulationTargetState;
++  ScopedScreenshotEmulation(
++      base::WeakPtr<ScreenshotEmulationTargetState> state,
++      uint64_t capture_id,
++      std::optional<blink::DeviceEmulationParams> original_params);
++
++  base::WeakPtr<ScreenshotEmulationTargetState> state_;
++  const uint64_t capture_id_;
++  const std::optional<blink::DeviceEmulationParams> original_params_;
++};
++
+ 
+ class EmulationHandler : public DevToolsDomainHandler,
+                          public Emulation::Backend {
+@@ -129,6 +164,9 @@
+       std::unique_ptr<protocol::Array<protocol::Emulation::MediaFeature>>
+           features) override;
+ 
++  void AcquireScreenshot(
++      base::OnceCallback<void(std::unique_ptr<ScopedScreenshotEmulation>)> ready);
++
+   blink::DeviceEmulationParams GetDeviceEmulationParams();
+   void SetDeviceEmulationParams(const blink::DeviceEmulationParams& params);
+ 
+@@ -153,10 +191,7 @@
+   void UpdateDeviceEmulationState(
+       const blink::mojom::DeviceEmulationCacheBehavior& cache_behavior =
+           blink::mojom::DeviceEmulationCacheBehavior::kClearCache);
+-  void UpdateDeviceEmulationStateForHost(
+-      RenderWidgetHostImpl* render_widget_host,
+-      const blink::mojom::DeviceEmulationCacheBehavior& cache_behavior =
+-          blink::mojom::DeviceEmulationCacheBehavior::kClearCache);
++
+ 
+   Response SetDevicePostureOverride(
+       std::unique_ptr<protocol::Emulation::DevicePosture> posture) override;
+@@ -226,10 +261,14 @@
+   bool geolocation_overridden_ = false;
+ 
+   raw_ptr<RenderFrameHostImpl> host_;
++  const base::UnguessableToken screenshot_owner_token_ =
++      base::UnguessableToken::Create();
++  scoped_refptr<ScreenshotEmulationTargetState> screenshot_state_;
+ 
+   std::unique_ptr<Emulation::Frontend> frontend_;
+ 
+   base::ScopedClosureRunner capture_handle_;
++  base::WeakPtrFactory<EmulationHandler> weak_factory_{this};
+ };
+ 
+ }  // namespace protocol
+diff --git a/content/browser/devtools/protocol/page_handler.cc b/content/browser/devtools/protocol/page_handler.cc
+--- a/content/browser/devtools/protocol/page_handler.cc
++++ b/content/browser/devtools/protocol/page_handler.cc
+@@ -493,17 +493,17 @@
+ struct PageHandler::PendingScreenshotRequest {
+   PendingScreenshotRequest(base::ScopedClosureRunner capturer_handle,
+                            PageHandler::BitmapEncoder encoder,
+-                           std::unique_ptr<CaptureScreenshotCallback> callback)
++                           std::unique_ptr<CaptureScreenshotCallback> callback,
++                           std::unique_ptr<ScopedScreenshotEmulation> emulation)
+       : capturer_handle(std::move(capturer_handle)),
+         encoder(std::move(encoder)),
+-        callback(std::move(callback)) {}
++        callback(std::move(callback)),
++        emulation(std::move(emulation)) {}
+ 
+   base::ScopedClosureRunner capturer_handle;
+   PageHandler::BitmapEncoder encoder;
+   std::unique_ptr<CaptureScreenshotCallback> callback;
+-  blink::DeviceEmulationParams original_emulation_params;
+-  std::optional<blink::web_pref::WebPreferences> original_web_prefs;
+-  gfx::Size original_view_size;
++  std::unique_ptr<ScopedScreenshotEmulation> emulation;
+   gfx::Size requested_image_size;
+ };
+ 
+@@ -1395,7 +1395,12 @@
+     std::optional<int> quality,
+     std::optional<bool> optimize_for_speed,
+     std::unique_ptr<CaptureScreenshotCallback> callback,
++    std::unique_ptr<ScopedScreenshotEmulation> emulation,
+     const gfx::Size& full_page_size) {
++  if (!emulation || !emulation->IsValid()) {
++    callback->sendFailure(Response::ServerError("The screenshot target changed"));
++    return;
++  }
+   // check width and height for validity
+   // max_size is needed to respect the limit of 16K of the headless mode
+   const int kMaxDimension = 128 * 1024;
+@@ -1412,9 +1417,10 @@
+                   .SetHeight(full_page_size.height())
+                   .SetScale(1)
+                   .Build();
+-  CaptureScreenshot(std::move(format), std::move(quality), std::move(clip),
+-                    /*from_surface=*/true, /*capture_beyond_viewport=*/true,
+-                    std::move(optimize_for_speed), std::move(callback));
++  StartCaptureScreenshot(std::move(format), std::move(quality), std::move(clip),
++                         /*from_surface=*/true, /*capture_beyond_viewport=*/true,
++                         std::move(optimize_for_speed), std::move(callback),
++                         std::move(emulation));
+ }
+ 
+ void PageHandler::CaptureScreenshot(
+@@ -1434,6 +1440,25 @@
+     return;
+   }
+ 
++  emulation_handler_->AcquireScreenshot(base::BindOnce(
++      &PageHandler::StartCaptureScreenshot, weak_factory_.GetWeakPtr(),
++      std::move(format), std::move(quality), std::move(clip), from_surface,
++      capture_beyond_viewport, optimize_for_speed, std::move(callback)));
++}
++
++void PageHandler::StartCaptureScreenshot(
++    std::optional<std::string> format,
++    std::optional<int> quality,
++    std::unique_ptr<Page::Viewport> clip,
++    std::optional<bool> from_surface,
++    std::optional<bool> capture_beyond_viewport,
++    std::optional<bool> optimize_for_speed,
++    std::unique_ptr<CaptureScreenshotCallback> callback,
++    std::unique_ptr<ScopedScreenshotEmulation> emulation) {
++  if (!emulation || !emulation->IsValid()) {
++    callback->sendFailure(Response::ServerError("The screenshot target changed"));
++    return;
++  }
+   // Check if full page screenshot is expected and get dimensions accordingly.
+   if (from_surface.value_or(true) && capture_beyond_viewport.value_or(false) &&
+       !clip) {
+@@ -1442,7 +1467,7 @@
+     main_frame->GetFullPageSize(base::BindOnce(
+         &PageHandler::CaptureFullPageScreenshot, weak_factory_.GetWeakPtr(),
+         std::move(format), std::move(quality), std::move(optimize_for_speed),
+-        std::move(callback)));
++        std::move(callback), std::move(emulation)));
+     return;
+   }
+   if (clip) {
+@@ -1479,7 +1504,7 @@
+ 
+   auto pending_request = std::make_unique<PendingScreenshotRequest>(
+       std::move(capturer_handle), std::move(std::get<BitmapEncoder>(encoder)),
+-      std::move(callback));
++      std::move(callback), std::move(emulation));
+ 
+   // We don't support clip/emulation when capturing from window, bail out.
+   if (!from_surface.value_or(true)) {
+@@ -1497,11 +1522,10 @@
+ 
+   // Welcome to the neural net of capturing screenshot while emulating device
+   // metrics!
+-  bool emulation_enabled = emulation_handler_->device_emulation_enabled();
+-  pending_request->original_emulation_params =
+-      emulation_handler_->GetDeviceEmulationParams();
+-  const blink::DeviceEmulationParams& original_params =
+-      pending_request->original_emulation_params;
++  auto* capture = pending_request->emulation.get();
++  const bool emulation_enabled = capture->original_params().has_value();
++  const blink::DeviceEmulationParams original_params =
++      capture->original_params().value_or(blink::DeviceEmulationParams());
+   blink::DeviceEmulationParams modified_params = original_params;
+ 
+   // Capture original view size if we know we are going to destroy it. We use
+@@ -1509,7 +1533,6 @@
+   const gfx::Size original_view_size =
+       emulation_enabled || clip ? widget_host->GetView()->GetViewBounds().size()
+                                 : gfx::Size();
+-  pending_request->original_view_size = original_view_size;
+   gfx::Size emulated_view_size = modified_params.view_size;
+ 
+   double dpfactor = 1;
+@@ -1553,19 +1576,11 @@
+   }
+ 
+   if (capture_beyond_viewport.value_or(false)) {
+-    pending_request->original_web_prefs =
+-        host_->render_view_host()->GetDelegate()->GetOrCreateWebPreferences(
+-            host_->render_view_host());
+-    const blink::web_pref::WebPreferences& original_web_prefs =
+-        *pending_request->original_web_prefs;
+-    blink::web_pref::WebPreferences modified_web_prefs = original_web_prefs;
+-
+-    // Hiding scrollbar is needed to avoid scrollbar artefacts on the
+-    // screenshot. Details: https://crbug.com/1003629.
+-    modified_web_prefs.hide_scrollbars = true;
+-    modified_web_prefs.record_whole_document = true;
+-    host_->render_view_host()->GetDelegate()->SetWebPreferences(
+-        modified_web_prefs);
++    if (!capture->UseFullPagePreferences()) {
++      pending_request->callback->sendFailure(
++          Response::ServerError("The screenshot target changed"));
++      return;
++    }
+ 
+     {
+       // TODO(crbug.com/40727379): Remove the bug is fixed.
+@@ -1573,12 +1588,20 @@
+       // otherwise the scrollbar will be on the screenshot present.
+       blink::DeviceEmulationParams tmp_params = modified_params;
+       tmp_params.view_size = gfx::Size(1, 1);
+-      emulation_handler_->SetDeviceEmulationParams(tmp_params);
++      if (!capture->Apply(tmp_params)) {
++        pending_request->callback->sendFailure(
++            Response::ServerError("The screenshot target changed"));
++        return;
++      }
+     }
+   }
+ 
+   // We use DeviceEmulationParams to either emulate, set viewport or both.
+-  emulation_handler_->SetDeviceEmulationParams(modified_params);
++  if ((emulation_enabled || clip) && !capture->Apply(modified_params)) {
++    pending_request->callback->sendFailure(
++        Response::ServerError("The screenshot target changed"));
++    return;
++  }
+ 
+   // Set view size for the screenshot right after emulating.
+   if (clip) {
+@@ -1586,12 +1609,20 @@
+     // Round the temporary view outward so resizable platforms provide enough
+     // source pixels after the widget's device scale factor is applied. This
+     // prevents double rounding from leaving the source too small.
+-    widget_host->GetView()->SetSize(
+-        gfx::Size(base::ClampCeil(clip->GetWidth() * scale),
+-                  base::ClampCeil(clip->GetHeight() * scale)));
++    if (!capture->SetViewSize(
++            gfx::Size(base::ClampCeil(clip->GetWidth() * scale),
++                      base::ClampCeil(clip->GetHeight() * scale)))) {
++      pending_request->callback->sendFailure(
++          Response::ServerError("The screenshot target changed"));
++      return;
++    }
+   } else if (emulation_enabled) {
+-    widget_host->GetView()->SetSize(
+-        gfx::ScaleToFlooredSize(emulated_view_size, dpfactor));
++    if (!capture->SetViewSize(
++            gfx::ScaleToFlooredSize(emulated_view_size, dpfactor))) {
++      pending_request->callback->sendFailure(
++          Response::ServerError("The screenshot target changed"));
++      return;
++    }
+   }
+   if (emulation_enabled || clip) {
+     double scale = widget_host_device_scale_factor * dpfactor;
+@@ -1993,17 +2024,13 @@
+ void PageHandler::ScreenshotCaptured(
+     std::unique_ptr<PendingScreenshotRequest> request,
+     const gfx::Image& image) {
+-  if (request->original_view_size.width()) {
+-    RenderWidgetHostImpl* widget_host = host_->GetRenderWidgetHost();
+-    widget_host->GetView()->SetSize(request->original_view_size);
+-    emulation_handler_->SetDeviceEmulationParams(
+-        request->original_emulation_params);
+-  }
+-
+-  if (request->original_web_prefs) {
+-    host_->render_view_host()->GetDelegate()->SetWebPreferences(
+-        *request->original_web_prefs);
+-  }
++  if (!request->emulation || !request->emulation->IsValid()) {
++    request->callback->sendFailure(
++        Response::ServerError("The screenshot target changed during capture"));
++    return;
++  }
++  request->emulation->Finish();
++  request->emulation.reset();
+ 
+   if (image.IsEmpty()) {
+     request->callback->sendFailure(
+diff --git a/content/browser/devtools/protocol/page_handler.h b/content/browser/devtools/protocol/page_handler.h
+--- a/content/browser/devtools/protocol/page_handler.h
++++ b/content/browser/devtools/protocol/page_handler.h
+@@ -58,6 +58,7 @@
+ 
+ class BrowserHandler;
+ class EmulationHandler;
++class ScopedScreenshotEmulation;
+ class MediaRecorder;
+ 
+ class PageHandler : public DevToolsDomainHandler,
+@@ -235,11 +236,21 @@
+       base::RepeatingCallback<std::optional<std::vector<uint8_t>>(
+           const SkBitmap& bitmap)>;
+ 
++  void StartCaptureScreenshot(
++      std::optional<std::string> format,
++      std::optional<int> quality,
++      std::unique_ptr<Page::Viewport> clip,
++      std::optional<bool> from_surface,
++      std::optional<bool> capture_beyond_viewport,
++      std::optional<bool> optimize_for_speed,
++      std::unique_ptr<CaptureScreenshotCallback> callback,
++      std::unique_ptr<ScopedScreenshotEmulation> emulation);
+   void CaptureFullPageScreenshot(
+       std::optional<std::string> format,
+       std::optional<int> quality,
+       std::optional<bool> optimize_for_speed,
+       std::unique_ptr<CaptureScreenshotCallback> callback,
++      std::unique_ptr<ScopedScreenshotEmulation> emulation,
+       const gfx::Size& full_page_size);
+   bool EnoughScreencastFramesInFlight();
+   void NotifyScreencastVisibility(bool visible);

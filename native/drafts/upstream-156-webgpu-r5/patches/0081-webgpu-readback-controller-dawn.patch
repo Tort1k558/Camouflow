@@ -1,0 +1,123 @@
+diff --git a/include/dawn/native/DawnNative.h b/include/dawn/native/DawnNative.h
+--- a/include/dawn/native/DawnNative.h
++++ b/include/dawn/native/DawnNative.h
+@@ -65,8 +65,20 @@
+     virtual GlintReadbackFormat GetFormat() const = 0;
+ };
+ 
++struct GlintBufferIdentity {
++    WGPUBuffer handle = nullptr;
++    uint64_t size = 0;
++};
++
++enum class GlintReadbackMapStatus { Denied, Unrelated, Protected };
++struct GlintReadbackMap {
++    GlintReadbackMapStatus status = GlintReadbackMapStatus::Denied;
++    std::unique_ptr<uint8_t[]> bytes;
++    size_t size = 0;
++};
++
+ struct GlintTextureToBufferCopy {
+-    WGPUBuffer destination = nullptr;
++    GlintBufferIdentity destination;
+     uint64_t destinationOffset = 0;
+     uint64_t destinationRowPitch = 0;
+     uint32_t width = 0;
+@@ -83,16 +95,22 @@
+     // buffer references. A null snapshot means uncertain data, never raw-read permission.
+     virtual void OnTextureToBufferCopy(const GlintTextureToBufferCopy& copy,
+                                        std::unique_ptr<GlintReadbackSnapshot> snapshot) = 0;
+-    virtual void OnBufferToBufferCopy(WGPUBuffer source,
++    virtual void OnBufferToBufferCopy(GlintBufferIdentity source,
+                                       uint64_t sourceOffset,
+-                                      WGPUBuffer destination,
++                                      GlintBufferIdentity destination,
+                                       uint64_t destinationOffset,
+                                       uint64_t size) = 0;
+-    virtual void OnBufferWrite(WGPUBuffer buffer,
++    virtual void OnBufferWrite(GlintBufferIdentity buffer,
+                                uint64_t offset,
+                                uint64_t size,
+                                GlintBufferWriteKind kind) = 0;
+     virtual void OnBufferDestroyed(WGPUBuffer buffer) = 0;
++    virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
++                                                   uint64_t offset,
++                                                   uint64_t size) = 0;
++    virtual GlintReadbackMap PrepareReadMap(GlintBufferIdentity buffer,
++                                            uint64_t offset,
++                                            std::span<const uint8_t> original) = 0;
+ };
+ 
+ // Trusted embedder API, installed once before exposing a device to script.
+diff --git a/src/dawn/native/Buffer.cpp b/src/dawn/native/Buffer.cpp
+--- a/src/dawn/native/Buffer.cpp
++++ b/src/dawn/native/Buffer.cpp
+@@ -962,7 +962,7 @@
+     auto notifyUncertainWrite = [&] {
+         if (!forDestroy && mMapSize != 0) {
+             if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-                observer->OnBufferWrite(ToAPI(this), mMapOffset, mMapSize,
++                observer->OnBufferWrite({ToAPI(this), GetSize()}, mMapOffset, mMapSize,
+                                         GlintBufferWriteKind::Uncertain);
+             }
+         }
+diff --git a/src/dawn/native/Queue.cpp b/src/dawn/native/Queue.cpp
+--- a/src/dawn/native/Queue.cpp
++++ b/src/dawn/native/Queue.cpp
+@@ -336,7 +336,7 @@
+     DAWN_TRY(WriteBufferImpl(buffer, bufferOffset, data));
+     if (!data.empty()) {
+         if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-            observer->OnBufferWrite(ToAPI(buffer), bufferOffset, data.size(),
++            observer->OnBufferWrite({ToAPI(buffer), buffer->GetSize()}, bufferOffset, data.size(),
+                                     GlintBufferWriteKind::KnownBytes);
+         }
+     }
+diff --git a/src/dawn/native/d3d12/CommandBufferD3D12.cpp b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+--- a/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -1080,9 +1080,10 @@
+                         srcBuffer->GetD3D12Resource(), copy->sourceOffset, copy->size);
+                 }
+                 if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-                    observer->OnBufferToBufferCopy(ToAPI(copy->source.Get()), copy->sourceOffset,
+-                                                   ToAPI(copy->destination.Get()),
+-                                                   copy->destinationOffset, copy->size);
++                    observer->OnBufferToBufferCopy(
++                        {ToAPI(copy->source.Get()), copy->source->GetSize()}, copy->sourceOffset,
++                        {ToAPI(copy->destination.Get()), copy->destination->GetSize()},
++                        copy->destinationOffset, copy->size);
+                 }
+                 break;
+             }
+@@ -1153,7 +1154,8 @@
+                 std::unique_ptr<GlintReadbackSnapshot> snapshot;
+                 GlintTextureToBufferCopy notification;
+                 if (observer) {
+-                    notification.destination = ToAPI(copy->destination.buffer.Get());
++                    notification.destination = {ToAPI(copy->destination.buffer.Get()),
++                                                copy->destination.buffer->GetSize()};
+                     notification.destinationOffset = copy->destination.offset;
+                     notification.destinationRowPitch =
+                         uint64_t{blockInfo.ToBytes(copy->destination.blocksPerRow)};
+@@ -1357,7 +1359,8 @@
+                 }
+ 
+                 if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-                    observer->OnBufferWrite(ToAPI(cmd->buffer.Get()), cmd->offset, cmd->size,
++                    observer->OnBufferWrite({ToAPI(cmd->buffer.Get()), cmd->buffer->GetSize()},
++                                            cmd->offset, cmd->size,
+                                             GlintBufferWriteKind::KnownBytes);
+                 }
+                 break;
+@@ -1474,8 +1477,8 @@
+                         return {};
+                     }));
+                 if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
+-                    observer->OnBufferWrite(ToAPI(write->buffer.Get()), offset, data.size(),
+-                                            GlintBufferWriteKind::KnownBytes);
++                    observer->OnBufferWrite({ToAPI(write->buffer.Get()), write->buffer->GetSize()},
++                                            offset, data.size(), GlintBufferWriteKind::KnownBytes);
+                 }
+                 break;
+             }

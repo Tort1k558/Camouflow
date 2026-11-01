@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
 WEBGPU_CANDIDATES = (
-    "upstream-156-webgpu", "upstream-156-webgpu-r2", "upstream-156-webgpu-r3", "upstream-156-webgpu-r4",
+    "upstream-156-webgpu", "upstream-156-webgpu-r2", "upstream-156-webgpu-r3", "upstream-156-webgpu-r4", "upstream-156-webgpu-r5",
 )
 CANDIDATES = ("upstream-156", *WEBGPU_CANDIDATES)
 WINDOWS_DIA_FILES = ("include/dia2.h", "include/cvconst.h", "include/diacreate.h", "lib/diaguids.lib",

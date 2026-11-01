@@ -1,5 +1,25 @@
 # Glint browser test matrix
 
+## 2026-11-01: R5 registered; browser build and runtime checks still required
+
+The [124-patch Windows candidate](../native/drafts/upstream-156-webgpu-r5/README.md)
+preserves the exact R4 prefix and upstream/resource pins. It adds explicit
+normal-profile policy activation and the shared-memory swapchain epoch fix.
+Repository-aware replay applies/reverses all 124 patches and restores 270
+upstream files; this is source evidence, not a repaired browser result.
+
+| Next gate | Required evidence |
+| --- | --- |
+| Windows build | Fresh R5 receipt and independent preserved runtime; maximum j4 |
+| Native launch/context tests | All 41 cases executed, including the four new launch tests |
+| Normal-profile delivery | Documents/iframe/workers and restarts without diagnostic bootstrap flags |
+| Large Canvas/WebGPU | Repeat the retained failed R4 gate with the actual new binary |
+
+The manager package allowlist is unchanged. Native tests, registration and
+standalone GPU controls do not admit the policy or guarantee CAPTCHA results.
+Full host regression is checked separately from browser/runtime admission.
+
+
 ## 2026-11-01: R4 measured; resource and legacy Audio gates remain failed
 
 | Gate | Measured Windows result |

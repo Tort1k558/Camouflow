@@ -32,11 +32,12 @@ def test_selected_76_is_an_exact_75_prefix_append_with_unchanged_settings():
 
 def test_capture_gate_adds_all_twelve_cases_without_replacing_existing_494(native_units_before_screenshot):
     historical = native_units_before_screenshot['namespace']
-    assert units.SUPPORTED_TARGETS == (*historical['SUPPORTED_TARGETS'], 'screenshot-transaction')
-    assert len(units.SUPPORTED_TARGETS) == 24
+    screenshot_targets = (*historical['SUPPORTED_TARGETS'], 'screenshot-transaction')
+    assert units.SUPPORTED_TARGETS == (*screenshot_targets, 'surface-launch')
+    assert len(screenshot_targets) == 24
     for target in historical['SUPPORTED_TARGETS']:
         assert units.required_tests(target) == historical['required_tests'](target)
-    assert sum(len(names) for target in units.SUPPORTED_TARGETS
+    assert sum(len(names) for target in screenshot_targets
                for names in units.required_tests(target).values()) == 506
     required = units.required_tests('screenshot-transaction')
     assert len(required['GlintScreenshotEmulationTest']) == 12

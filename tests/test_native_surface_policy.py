@@ -1,5 +1,7 @@
 from dataclasses import replace
+import json
 from pathlib import Path
+import re
 
 import pytest
 
@@ -118,3 +120,65 @@ def test_surface_policy_retains_legacy_controls_when_replaced(mode):
     assert set(upgraded.required_capabilities()) == {'surface-policy-v1', 'hardware', 'identity'}
     assert set(policy.prepared_arguments()).issubset(upgraded.prepared_arguments())
     assert replace(upgraded, surface_policy_version=0, fingerprint_derivation_mode='') == policy
+
+
+def test_surface_r5_candidate_preserves_r4_prefix_and_repository_ownership():
+    from scripts import native_build as build
+
+    before = build.load_candidate('upstream-156-webgpu-r4')
+    candidate = build.load_candidate('upstream-156-webgpu-r5')
+    manifest = candidate['manifest']
+    assert manifest['patches'][:122] == before['manifest']['patches']
+    assert len(manifest['patches']) == 124
+    assert manifest['target_revision'] == before['manifest']['target_revision']
+    assert manifest['dependencies'] == before['manifest']['dependencies']
+    assert manifest['build'] == before['manifest']['build']
+    assert manifest['compiled'] is manifest['runtime_verified'] is manifest['production_admitted'] is False
+    receipt = build.expected_candidate_patches(manifest)
+    dawn = next(row for row in receipt if row['name'].startswith('0124-'))
+    assert dawn['repository'] == 'third_party/dawn'
+    root = Path(__file__).resolve().parents[1]
+    assert (candidate['directory'] / 'patches' / dawn['name']).read_bytes() == (
+        root / 'native/drafts/webgpu-shared-swapchain-epoch/dawn-owned.patch').read_bytes()
+
+
+def test_surface_launch_unit_target_requires_exact_new_and_existing_test_names():
+    from scripts import verify_native_privacy_units as units
+
+    root = Path(__file__).resolve().parents[1]
+    patch = (root / 'native/drafts/profile-surface-launch/next.patch').read_text(encoding='utf-8-sig')
+    required = units.required_tests('surface-launch')
+    assert 'surface-launch' in units.SUPPORTED_TARGETS
+    assert units.unit_binary_target('surface-launch') == 'content_unittests'
+    assert required['NativeSurfaceLaunchTest'] == set(re.findall(r'\+TEST\(NativeSurfaceLaunchTest, (\w+)\)', patch))
+    assert len(required['NativeSurfaceLaunchTest']) == 4
+    assert required['NativePrivacyBrowserContextTest'] == units.required_tests('identity-contexts')['NativePrivacyBrowserContextTest']
+    report = {'tests': sum(map(len, required.values())), 'failures': 0, 'disabled': 0,
+              'testsuites': [{'name': suite, 'testsuite': [
+                  {'name': case, 'status': 'RUN', 'result': 'COMPLETED'} for case in sorted(cases)
+              ]} for suite, cases in required.items()]}
+    assert report['tests'] == 41
+    units.validate_results(report, target='surface-launch')
+    for mutation in ('missing', 'duplicate', 'failed', 'disabled', 'extra'):
+        invalid = json.loads(json.dumps(report))
+        cases = invalid['testsuites'][-1]['testsuite']
+        if mutation == 'missing':
+            cases.pop()
+        elif mutation == 'duplicate':
+            cases[-1] = dict(cases[0])
+        elif mutation == 'failed':
+            cases[0]['failures'] = [{'failure': 'deliberate'}]
+        elif mutation == 'disabled':
+            cases[0]['status'] = 'NOTRUN'
+        else:
+            cases.append({'name': 'Unexpected', 'status': 'RUN', 'result': 'COMPLETED'})
+        with pytest.raises(ValueError, match='Native privacy'):
+            units.validate_results(invalid, target='surface-launch')
+
+
+@pytest.mark.parametrize('candidate', [None, 'upstream-156', 'upstream-156-webgpu-r4'])
+def test_surface_launch_units_reject_a_candidate_without_the_launch_patch(tmp_path, candidate):
+    from scripts import verify_native_privacy_units as units
+
+    with pytest.raises(ValueError, match='exact upstream-156-webgpu-r5'):
+        units.verify(tmp_path, tmp_path / 'report.json', target='surface-launch', candidate_name=candidate)

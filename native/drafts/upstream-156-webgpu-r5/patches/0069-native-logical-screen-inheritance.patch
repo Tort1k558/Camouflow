@@ -1,0 +1,722 @@
+diff --git a/content/browser/devtools/protocol/emulation_handler.cc b/content/browser/devtools/protocol/emulation_handler.cc
+index 460a755..7dc2346 100644
+--- a/content/browser/devtools/protocol/emulation_handler.cc
++++ b/content/browser/devtools/protocol/emulation_handler.cc
+@@ -1161,9 +1161,18 @@ void EmulationHandler::UpdateDeviceEmulationState(
+       [this, &cache_behavior](RenderFrameHostImpl* host) {
+         // The main frame of nested subpages (ex. fenced frames) inside this
+         // page are updated as well.
+-        if (host->is_main_frame())
++        if (host->is_main_frame()) {
++          host->GetRenderWidgetHost()->SetGlintLogicalScreenEmulation(
++              device_emulation_enabled_
++                  ? std::make_optional(device_emulation_params_)
++                  : std::nullopt);
+           UpdateDeviceEmulationStateForHost(host->GetRenderWidgetHost(),
+                                             cache_behavior);
++        }
++      });
++  host_->ForEachRenderFrameHostImplIncludingSpeculative(
++      [](RenderFrameHostImpl* host) {
++        host->GetRenderWidgetHost()->SynchronizeVisualProperties();
+       });
+ }
+ 
+diff --git a/content/browser/renderer_host/render_widget_host_impl.cc b/content/browser/renderer_host/render_widget_host_impl.cc
+index a5b440d..031ea2b 100644
+--- a/content/browser/renderer_host/render_widget_host_impl.cc
++++ b/content/browser/renderer_host/render_widget_host_impl.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "content/browser/renderer_host/render_widget_host_impl.h"
+ 
++#include "third_party/blink/public/common/widget/glint_logical_screen.h"
++
+ #include <math.h>
+ 
+ #include <algorithm>
+@@ -1106,6 +1108,24 @@ blink::VisualProperties RenderWidgetHostImpl::GetInitialVisualProperties() {
+   return initial_props;
+ }
+ 
++void RenderWidgetHostImpl::SetGlintLogicalScreenEmulation(
++    std::optional<blink::DeviceEmulationParams> params) {
++  glint_logical_screen_emulation_ = std::move(params);
++}
++
++std::optional<display::ScreenInfos>
++RenderWidgetHostImpl::GetGlintLogicalScreenInfos() const {
++  if (!frame_tree_ || !frame_tree_->GetMainFrame())
++    return std::nullopt;
++  auto* root = frame_tree_->GetMainFrame()->GetRenderWidgetHost();
++  if (!root || !root->view_ || !root->glint_logical_screen_emulation_)
++    return std::nullopt;
++  const auto& params = *root->glint_logical_screen_emulation_;
++  const auto size = blink::GlintEmulatedWidgetSize(
++      root->view_->GetViewBounds().size(), params);
++  return blink::GlintEmulatedScreenInfos(root->GetScreenInfos(), params, size);
++}
++
+ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
+   // This is only called while the RenderWidgetHost is attached to a delegate
+   // still.
+@@ -1122,27 +1142,24 @@ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
+ 
+   blink::VisualProperties visual_properties;
+   visual_properties.screen_infos = GetScreenInfos();
++  visual_properties.glint_logical_screen_infos = GetGlintLogicalScreenInfos();
+   auto& current_screen_info = visual_properties.screen_infos.mutable_current();
+ 
+-  // If hardware acceleration is disabled then do not report the display as
+-  // HDR or high bit depth because it is too resource intensive to run on the
+-  // CPU.
+-  if (!GpuDataManager::GetInstance()->HardwareAccelerationEnabled()) {
+-    for (auto& screen_info : visual_properties.screen_infos.screen_infos) {
+-      display::DisplayUtil::DisableHdrAndHighBitDepth(&screen_info);
+-    }
+-  }
+-
+-  // For testing, override the raster color profile.
+-  // Note: this needs to be done here and not earlier in the pipeline because
+-  // Mac uses the display color space to update an NSSurface and this setting
+-  // is only for "raster" color space.
+-  if (display::Display::HasForceRasterColorProfile()) {
+-    for (auto& screen_info : visual_properties.screen_infos.screen_infos) {
+-      screen_info.display_color_spaces = gfx::DisplayColorSpaces(
+-          display::Display::GetForcedRasterColorProfile());
++  auto adjust_display = [](display::ScreenInfos& infos) {
++    // Logical metadata must retain the same GPU/raster restrictions as the
++    // original display. Neither set changes compositor geometry here.
++    for (auto& info : infos.screen_infos) {
++      if (!GpuDataManager::GetInstance()->HardwareAccelerationEnabled())
++        display::DisplayUtil::DisableHdrAndHighBitDepth(&info);
++      if (display::Display::HasForceRasterColorProfile()) {
++        info.display_color_spaces = gfx::DisplayColorSpaces(
++            display::Display::GetForcedRasterColorProfile());
++      }
+     }
+-  }
++  };
++  adjust_display(visual_properties.screen_infos);
++  if (visual_properties.glint_logical_screen_infos)
++    adjust_display(*visual_properties.glint_logical_screen_infos);
+ 
+   UpdateFullscreenGrantCount();
+   visual_properties.is_fullscreen_granted = delegate_->IsFullscreen();
+diff --git a/content/browser/renderer_host/render_widget_host_impl.h b/content/browser/renderer_host/render_widget_host_impl.h
+index 47e44b2..4f7e1f7 100644
+--- a/content/browser/renderer_host/render_widget_host_impl.h
++++ b/content/browser/renderer_host/render_widget_host_impl.h
+@@ -64,6 +64,7 @@
+ #include "mojo/public/cpp/bindings/remote.h"
+ #include "services/viz/public/mojom/compositing/compositor_frame_sink.mojom-forward.h"
+ #include "third_party/blink/public/common/page/content_to_visible_time_request.h"
++#include "third_party/blink/public/common/widget/device_emulation_params.h"
+ #include "third_party/blink/public/mojom/input/input_event_result.mojom-shared.h"
+ #include "third_party/blink/public/mojom/input/input_handler.mojom.h"
+ #include "third_party/blink/public/mojom/input/pointer_lock_context.mojom.h"
+@@ -800,6 +801,11 @@ class CONTENT_EXPORT RenderWidgetHostImpl
+   // properties of this widget.
+   blink::VisualProperties GetVisualProperties();
+ 
++  // Set only on main-frame widgets by the browser's emulation owner.
++  void SetGlintLogicalScreenEmulation(
++      std::optional<blink::DeviceEmulationParams> params);
++  std::optional<display::ScreenInfos> GetGlintLogicalScreenInfos() const;
++
+   // Returns the result of GetVisualProperties(), resetting and storing that
+   // value as what has been sent to the renderer. This should be called when
+   // getting VisualProperties that will be sent in order to create a
+@@ -1141,6 +1147,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl
+   std::unique_ptr<input::FlingSchedulerBase> MakeFlingScheduler();
+ 
+  private:
++  std::optional<blink::DeviceEmulationParams> glint_logical_screen_emulation_;
+   FRIEND_TEST_ALL_PREFIXES(FullscreenDetectionTest,
+                            EncompassingDivNotFullscreen);
+   FRIEND_TEST_ALL_PREFIXES(NavigationControllerTest,
+diff --git a/third_party/blink/common/BUILD.gn b/third_party/blink/common/BUILD.gn
+index 8e635b0..ab322da 100644
+--- a/third_party/blink/common/BUILD.gn
++++ b/third_party/blink/common/BUILD.gn
+@@ -433,6 +433,7 @@ source_set("common_unittests_sources") {
+     "user_agent/user_agent_metadata_unittest.cc",
+     "web_package/web_package_request_matcher_unittest.cc",
+     "webid/federated_auth_request_mojom_traits_unittest.cc",
++    "widget/glint_logical_screen_unittest.cc",
+   ]
+ 
+   deps = [
+diff --git a/third_party/blink/common/widget/glint_logical_screen_unittest.cc b/third_party/blink/common/widget/glint_logical_screen_unittest.cc
+new file mode 100644
+index 0000000..fabc416
+--- /dev/null
++++ b/third_party/blink/common/widget/glint_logical_screen_unittest.cc
+@@ -0,0 +1,153 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "third_party/blink/public/common/widget/glint_logical_screen.h"
++
++#include <limits>
++
++#include "mojo/public/cpp/test_support/test_utils.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/widget/visual_properties.h"
++#include "third_party/blink/public/common/widget/visual_properties_mojom_traits.h"
++#include "third_party/blink/public/mojom/widget/visual_properties.mojom.h"
++
++namespace blink {
++namespace {
++
++display::ScreenInfos OriginalScreens() {
++  display::ScreenInfo info;
++  info.display_id = 7;
++  info.rect = gfx::Rect(100, 50, 1920, 1080);
++  info.available_rect = gfx::Rect(100, 50, 1920, 1040);
++  info.device_scale_factor = 1.25f;
++  return display::ScreenInfos(info);
++}
++
++TEST(GlintLogicalScreenTest, DesktopExplicitScreenDoesNotMutatePhysicalState) {
++  const auto original = OriginalScreens();
++  DeviceEmulationParams params;
++  params.screen_size = gfx::Size(1366, 768);
++  params.device_scale_factor = 2;
++  const auto logical =
++      GlintEmulatedScreenInfos(original, params, gfx::Size(800, 600));
++  EXPECT_EQ(logical.current().rect, gfx::Rect(1366, 768));
++  EXPECT_EQ(logical.current().available_rect, logical.current().rect);
++  EXPECT_EQ(logical.current().device_scale_factor, 2);
++  EXPECT_EQ(original, OriginalScreens());
++  EXPECT_EQ(original.current().device_scale_factor, 1.25f);
++}
++
++TEST(GlintLogicalScreenTest, DesktopDefaultRetainsOriginalScreenAndDsf) {
++  const auto original = OriginalScreens();
++  const auto logical = GlintEmulatedScreenInfos(
++      original, DeviceEmulationParams(), gfx::Size(320, 240));
++  EXPECT_EQ(logical.current().rect, original.current().rect);
++  EXPECT_EQ(logical.current().device_scale_factor, 1.25f);
++}
++
++TEST(GlintLogicalScreenTest, MobileDefaultUsesTopLevelViewportNotChildSize) {
++  DeviceEmulationParams params;
++  params.screen_type = mojom::EmulatedScreenType::kMobile;
++  params.view_size = gfx::Size(390, 844);
++  params.device_scale_factor = 3;
++  const auto size = GlintEmulatedWidgetSize(gfx::Size(800, 600), params);
++  const auto logical =
++      GlintEmulatedScreenInfos(OriginalScreens(), params, size);
++  EXPECT_EQ(logical.current().rect, gfx::Rect(390, 844));
++  EXPECT_EQ(logical.current().device_scale_factor, 3);
++}
++
++TEST(GlintLogicalScreenTest, MobilePositionAndExplicitScreenAreDistinct) {
++  DeviceEmulationParams params;
++  params.screen_type = mojom::EmulatedScreenType::kMobile;
++  params.view_position = gfx::Point(10, 20);
++  auto logical =
++      GlintEmulatedScreenInfos(OriginalScreens(), params, gfx::Size(390, 844));
++  EXPECT_EQ(logical.current().rect, gfx::Rect(10, 20, 390, 844));
++  params.screen_size = gfx::Size(1080, 1920);
++  logical =
++      GlintEmulatedScreenInfos(OriginalScreens(), params, gfx::Size(390, 844));
++  EXPECT_EQ(logical.current().rect, gfx::Rect(1080, 1920));
++}
++
++TEST(GlintLogicalScreenTest, PartialViewportAndScaleUseExistingRoundingRules) {
++  DeviceEmulationParams params;
++  params.scale = 2;
++  params.view_size.set_width(390);
++  EXPECT_EQ(GlintEmulatedWidgetSize(gfx::Size(801, 601), params),
++            gfx::Size(390, 301));
++  params.view_size = gfx::Size();
++  EXPECT_EQ(GlintEmulatedWidgetSize(gfx::Size(801, 601), params),
++            gfx::Size(401, 301));
++}
++
++TEST(GlintLogicalScreenTest, OrientationDoesNotRewritePhysicalOrOtherDisplays) {
++  auto original = OriginalScreens();
++  auto other = original.current();
++  other.display_id = 8;
++  other.rect = gfx::Rect(2020, 50, 1280, 720);
++  original.screen_infos.push_back(other);
++  DeviceEmulationParams params;
++  params.screen_orientation_type =
++      display::mojom::ScreenOrientation::kPortraitPrimary;
++  params.screen_orientation_angle = 90;
++  const auto logical =
++      GlintEmulatedScreenInfos(original, params, gfx::Size(390, 844));
++  EXPECT_EQ(logical.current().orientation_type, params.screen_orientation_type);
++  EXPECT_EQ(logical.current().orientation_angle, 90);
++  EXPECT_EQ(logical.screen_infos[1], other);
++  EXPECT_EQ(original.current().rect, OriginalScreens().current().rect);
++}
++
++TEST(GlintLogicalScreenTest,
++     OptionalOverrideRoundTripsWithoutChangingPhysical) {
++  VisualProperties input;
++  input.screen_infos = OriginalScreens();
++  DeviceEmulationParams params;
++  params.screen_size = gfx::Size(390, 844);
++  params.device_scale_factor = 3;
++  input.glint_logical_screen_infos =
++      GlintEmulatedScreenInfos(input.screen_infos, params, gfx::Size(390, 844));
++  VisualProperties output;
++  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<mojom::VisualProperties>(
++      input, output));
++  EXPECT_EQ(input, output);
++  EXPECT_EQ(output.screen_infos.current().device_scale_factor, 1.25f);
++  ASSERT_TRUE(output.glint_logical_screen_infos);
++  EXPECT_EQ(output.glint_logical_screen_infos->current().device_scale_factor,
++            3);
++  input.glint_logical_screen_infos.reset();
++  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<mojom::VisualProperties>(
++      input, output));
++  EXPECT_FALSE(output.glint_logical_screen_infos);
++}
++
++TEST(GlintLogicalScreenTest, InvalidLogicalScaleIsRejectedByIpc) {
++  for (float scale : {0.f, -1.f, std::numeric_limits<float>::infinity(),
++                      std::numeric_limits<float>::quiet_NaN()}) {
++    VisualProperties input;
++    input.screen_infos = OriginalScreens();
++    input.glint_logical_screen_infos = OriginalScreens();
++    input.glint_logical_screen_infos->mutable_current().device_scale_factor =
++        scale;
++    VisualProperties output;
++    EXPECT_FALSE(mojo::test::SerializeAndDeserialize<mojom::VisualProperties>(
++        input, output));
++  }
++}
++
++TEST(GlintLogicalScreenTest, IndependentValuesAndDisableCompareDifferently) {
++  VisualProperties a;
++  a.screen_infos = OriginalScreens();
++  VisualProperties b = a;
++  b.glint_logical_screen_infos = OriginalScreens();
++  EXPECT_NE(a, b);
++  VisualProperties c = b;
++  c.glint_logical_screen_infos->mutable_current().rect = gfx::Rect(390, 844);
++  EXPECT_NE(b, c);
++  EXPECT_EQ(b.screen_infos, c.screen_infos);
++  c.glint_logical_screen_infos.reset();
++  EXPECT_EQ(a, c);
++}
++
++}  // namespace
++}  // namespace blink
+diff --git a/third_party/blink/common/widget/visual_properties.cc b/third_party/blink/common/widget/visual_properties.cc
+index 8b7a398..90014fe 100644
+--- a/third_party/blink/common/widget/visual_properties.cc
++++ b/third_party/blink/common/widget/visual_properties.cc
+@@ -16,6 +16,7 @@ VisualProperties& VisualProperties::operator=(const VisualProperties& other) =
+ 
+ bool VisualProperties::operator==(const VisualProperties& other) const {
+   return screen_infos == other.screen_infos &&
++         glint_logical_screen_infos == other.glint_logical_screen_infos &&
+          auto_resize_enabled == other.auto_resize_enabled &&
+          min_size_for_auto_resize == other.min_size_for_auto_resize &&
+          max_size_for_auto_resize == other.max_size_for_auto_resize &&
+diff --git a/third_party/blink/common/widget/visual_properties_mojom_traits.cc b/third_party/blink/common/widget/visual_properties_mojom_traits.cc
+index 3c0a415..0f0c879 100644
+--- a/third_party/blink/common/widget/visual_properties_mojom_traits.cc
++++ b/third_party/blink/common/widget/visual_properties_mojom_traits.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "third_party/blink/public/common/widget/visual_properties_mojom_traits.h"
+ 
++#include <cmath>
++
+ #include "cc/mojom/browser_controls_params.mojom.h"
+ #include "services/viz/public/mojom/compositing/local_surface_id.mojom.h"
+ #include "ui/base/mojom/ui_base_types.mojom.h"
+@@ -16,6 +18,7 @@ bool StructTraits<
+     blink::VisualProperties>::Read(blink::mojom::VisualPropertiesDataView data,
+                                    blink::VisualProperties* out) {
+   if (!data.ReadScreenInfos(&out->screen_infos) ||
++      !data.ReadGlintLogicalScreenInfos(&out->glint_logical_screen_infos) ||
+       !data.ReadMinSizeForAutoResize(&out->min_size_for_auto_resize) ||
+       !data.ReadMaxSizeForAutoResize(&out->max_size_for_auto_resize) ||
+       !data.ReadNewSizeDevicePx(&out->new_size_device_px) ||
+@@ -33,6 +36,14 @@ bool StructTraits<
+       data.cursor_accessibility_scale_factor() < 1) {
+     return false;
+   }
++  if (out->glint_logical_screen_infos) {
++    for (const auto& info : out->glint_logical_screen_infos->screen_infos) {
++      if (!std::isfinite(info.device_scale_factor) ||
++          info.device_scale_factor <= 0) {
++        return false;
++      }
++    }
++  }
+   out->auto_resize_enabled = data.auto_resize_enabled();
+   out->resizable = data.resizable();
+   out->always_on_top = data.always_on_top();
+diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
+index 9794a11..9eb5d55 100644
+--- a/third_party/blink/public/common/BUILD.gn
++++ b/third_party/blink/public/common/BUILD.gn
+@@ -315,6 +315,7 @@ source_set("headers") {
+     "webrtc/rtc_logging_utils.h",
+     "widget/constants.h",
+     "widget/device_emulation_params.h",
++    "widget/glint_logical_screen.h",
+     "widget/visual_properties.h",
+   ]
+ 
+diff --git a/third_party/blink/public/common/widget/glint_logical_screen.h b/third_party/blink/public/common/widget/glint_logical_screen.h
+new file mode 100644
+index 0000000..59129da
+--- /dev/null
++++ b/third_party/blink/public/common/widget/glint_logical_screen.h
+@@ -0,0 +1,50 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_WIDGET_GLINT_LOGICAL_SCREEN_H_
++#define THIRD_PARTY_BLINK_PUBLIC_COMMON_WIDGET_GLINT_LOGICAL_SCREEN_H_
++
++#include "base/numerics/safe_conversions.h"
++#include "third_party/blink/public/common/widget/device_emulation_params.h"
++#include "ui/display/screen_infos.h"
++
++namespace blink {
++
++inline gfx::Size GlintEmulatedWidgetSize(const gfx::Size& original,
++                                         const DeviceEmulationParams& params) {
++  return gfx::Size(params.view_size.width()
++                       ? params.view_size.width()
++                       : base::ClampRound(original.width() / params.scale),
++                   params.view_size.height()
++                       ? params.view_size.height()
++                       : base::ClampRound(original.height() / params.scale));
++}
++
++// Logical DOM/CSS data only. Never use this as compositor or input geometry.
++inline display::ScreenInfos GlintEmulatedScreenInfos(
++    const display::ScreenInfos& original,
++    const DeviceEmulationParams& params,
++    const gfx::Size& emulated_widget_size) {
++  display::ScreenInfos result = original;
++  auto& screen = result.mutable_current();
++  const bool mobile = params.screen_type == mojom::EmulatedScreenType::kMobile;
++  if (!params.screen_size.IsEmpty()) {
++    screen.rect = gfx::Rect(params.screen_size);
++  } else if (mobile) {
++    screen.rect = gfx::Rect(params.view_position.value_or(gfx::Point()),
++                            emulated_widget_size);
++  }
++  screen.available_rect = screen.rect;
++  if (params.device_scale_factor)
++    screen.device_scale_factor = params.device_scale_factor;
++  if (params.screen_orientation_type !=
++      display::mojom::ScreenOrientation::kUndefined) {
++    screen.orientation_type = params.screen_orientation_type;
++    screen.orientation_angle = params.screen_orientation_angle;
++  }
++  return result;
++}
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_WIDGET_GLINT_LOGICAL_SCREEN_H_
+diff --git a/third_party/blink/public/common/widget/visual_properties.h b/third_party/blink/public/common/widget/visual_properties.h
+index 272a7a9..daa82f7 100644
+--- a/third_party/blink/public/common/widget/visual_properties.h
++++ b/third_party/blink/public/common/widget/visual_properties.h
+@@ -56,6 +56,10 @@ struct BLINK_COMMON_EXPORT VisualProperties {
+   // Info about all screens, including the one currently showing the widget.
+   display::ScreenInfos screen_infos;
+ 
++  // Browser-owned top-level emulation, separate from physical compositor data.
++  // Absent means no logical override, including after explicit disable.
++  std::optional<display::ScreenInfos> glint_logical_screen_infos;
++
+   // Whether or not blink should be in auto-resize mode.
+   bool auto_resize_enabled = false;
+ 
+diff --git a/third_party/blink/public/common/widget/visual_properties_mojom_traits.h b/third_party/blink/public/common/widget/visual_properties_mojom_traits.h
+index 9b1fd5f..2d89dfd 100644
+--- a/third_party/blink/public/common/widget/visual_properties_mojom_traits.h
++++ b/third_party/blink/public/common/widget/visual_properties_mojom_traits.h
+@@ -23,6 +23,11 @@ struct BLINK_COMMON_EXPORT StructTraits<blink::mojom::VisualPropertiesDataView,
+     return r.screen_infos;
+   }
+ 
++  static const std::optional<display::ScreenInfos>& glint_logical_screen_infos(
++      const blink::VisualProperties& r) {
++    return r.glint_logical_screen_infos;
++  }
++
+   static bool auto_resize_enabled(const blink::VisualProperties& r) {
+     return r.auto_resize_enabled;
+   }
+diff --git a/third_party/blink/public/mojom/widget/visual_properties.mojom b/third_party/blink/public/mojom/widget/visual_properties.mojom
+index b8b739d..d1f198f 100644
+--- a/third_party/blink/public/mojom/widget/visual_properties.mojom
++++ b/third_party/blink/public/mojom/widget/visual_properties.mojom
+@@ -17,6 +17,9 @@ struct VisualProperties {
+   // Info about all screens, including the one currently showing the widget.
+   display.mojom.ScreenInfos screen_infos;
+ 
++  // Not compositor geometry; inherited from this widget's browser-owned tree.
++  display.mojom.ScreenInfos? glint_logical_screen_infos;
++
+   // Whether or not blink should be in auto-resize mode.
+   bool auto_resize_enabled = false;
+ 
+diff --git a/third_party/blink/renderer/core/frame/local_frame.cc b/third_party/blink/renderer/core/frame/local_frame.cc
+index 432a2d4..976992b 100644
+--- a/third_party/blink/renderer/core/frame/local_frame.cc
++++ b/third_party/blink/renderer/core/frame/local_frame.cc
+@@ -1952,6 +1952,10 @@ double LocalFrame::DevicePixelRatio() const {
+     return 0;
+   }
+ 
++  if (auto* widget = GetWidgetForLocalRoot()) {
++    if (auto logical = widget->GlintLogicalRootDevicePixelRatio())
++      return *logical * CssZoomFactor();
++  }
+   double ratio = page_->InspectorDeviceScaleFactorOverride();
+   ratio *= LayoutZoomFactor();
+   return ratio;
+@@ -2464,6 +2468,10 @@ LocalFrameClient* LocalFrame::Client() const {
+   return static_cast<LocalFrameClient*>(Frame::Client());
+ }
+ 
++const FrameWidget* LocalFrame::GetWidgetForLocalRoot() const {
++  return const_cast<LocalFrame*>(this)->GetWidgetForLocalRoot();
++}
++
+ FrameWidget* LocalFrame::GetWidgetForLocalRoot() {
+   WebLocalFrameImpl* web_frame = WebLocalFrameImpl::FromFrame(this);
+   if (!web_frame) {
+diff --git a/third_party/blink/renderer/core/frame/local_frame.h b/third_party/blink/renderer/core/frame/local_frame.h
+index c9f63ea..1086221 100644
+--- a/third_party/blink/renderer/core/frame/local_frame.h
++++ b/third_party/blink/renderer/core/frame/local_frame.h
+@@ -537,6 +537,7 @@ class CORE_EXPORT LocalFrame final
+   // in a non-ordinary Page (without a WebView, such as in unit tests, popups,
+   // devtools), it will always be null.
+   FrameWidget* GetWidgetForLocalRoot();
++  const FrameWidget* GetWidgetForLocalRoot() const;
+ 
+   WebContentSettingsClient* GetContentSettingsClient();
+   const mojom::RendererContentSettingsPtr& GetContentSettings() const;
+diff --git a/third_party/blink/renderer/core/frame/screen_metrics_emulator.cc b/third_party/blink/renderer/core/frame/screen_metrics_emulator.cc
+index 034fb7e..fd4102d 100644
+--- a/third_party/blink/renderer/core/frame/screen_metrics_emulator.cc
++++ b/third_party/blink/renderer/core/frame/screen_metrics_emulator.cc
+@@ -5,6 +5,7 @@
+ #include "third_party/blink/renderer/core/frame/screen_metrics_emulator.h"
+ 
+ #include "base/numerics/safe_conversions.h"
++#include "third_party/blink/public/common/widget/glint_logical_screen.h"
+ #include "third_party/blink/public/common/widget/visual_properties.h"
+ #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
+ 
+@@ -68,20 +69,7 @@ void ScreenMetricsEmulator::Apply(
+   // though.
+   gfx::Size window_size = original_window_rect().size();
+ 
+-  // If either the width or height are specified by the emulator, then we use
+-  // that size, and assume that they have the scale pre-applied to them.
+-  if (emulation_params_.view_size.width()) {
+-    widget_size.set_width(emulation_params_.view_size.width());
+-  } else {
+-    widget_size.set_width(
+-        base::ClampRound(widget_size.width() / emulation_params_.scale));
+-  }
+-  if (emulation_params_.view_size.height()) {
+-    widget_size.set_height(emulation_params_.view_size.height());
+-  } else {
+-    widget_size.set_height(
+-        base::ClampRound(widget_size.height() / emulation_params_.scale));
+-  }
++  widget_size = GlintEmulatedWidgetSize(widget_size, emulation_params_);
+ 
+   // For mobile emulation, the window size is changed to match the widget size,
+   // as there are no window decorations around the widget.
+@@ -104,32 +92,6 @@ void ScreenMetricsEmulator::Apply(
+ 
+   const display::ScreenInfo& original_screen_info =
+       original_screen_infos_.current();
+-  gfx::Rect screen_rect = original_screen_info.rect;
+-
+-  if (!emulation_params_.screen_size.IsEmpty()) {
+-    // The emulated screen size overrides the real one, and moves the screen's
+-    // origin to 0,0.
+-    screen_rect = gfx::Rect(gfx::Size(emulation_params_.screen_size));
+-  } else if (!emulating_desktop()) {
+-    // For mobile emulation, the screen is adjusted to match the position and
+-    // size of the widget rect, if not explicitly specified.
+-    screen_rect = gfx::Rect(widget_pos, widget_size);
+-  }
+-
+-  float device_scale_factor = original_screen_info.device_scale_factor;
+-
+-  if (emulation_params_.device_scale_factor)
+-    device_scale_factor = emulation_params_.device_scale_factor;
+-
+-  display::mojom::blink::ScreenOrientation orientation_type =
+-      original_screen_info.orientation_type;
+-  uint16_t orientation_angle = original_screen_info.orientation_angle;
+-  if (emulation_params_.screen_orientation_type !=
+-      display::mojom::blink::ScreenOrientation::kUndefined) {
+-    orientation_type = emulation_params_.screen_orientation_type;
+-    orientation_angle = emulation_params_.screen_orientation_angle;
+-  }
+-
+   // Pass three emulation parameters to the blink side:
+   // - we keep the real device scale factor in compositor to produce sharp image
+   //   even when emulating different scale factor;
+@@ -154,14 +116,8 @@ void ScreenMetricsEmulator::Apply(
+     frame_widget_->SetViewportSegments(emulated_segments);
+   }
+ 
+-  display::ScreenInfos emulated_screen_infos = original_screen_infos_;
+-  display::ScreenInfo& emulated_screen_info =
+-      emulated_screen_infos.mutable_current();
+-  emulated_screen_info.device_scale_factor = device_scale_factor;
+-  emulated_screen_info.rect = screen_rect;
+-  emulated_screen_info.available_rect = screen_rect;
+-  emulated_screen_info.orientation_type = orientation_type;
+-  emulated_screen_info.orientation_angle = orientation_angle;
++  display::ScreenInfos emulated_screen_infos = GlintEmulatedScreenInfos(
++      original_screen_infos_, emulation_params_, widget_size);
+   frame_widget_->SetScreenInfoAndSize(emulated_screen_infos,
+                                       /*widget_size=*/widget_size,
+                                       /*visible_viewport_size=*/widget_size);
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+index dd94769..6b0f1f2 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+@@ -1944,6 +1944,8 @@ bool WebFrameWidgetImpl::ShouldAckSyntheticInputImmediately() {
+ 
+ void WebFrameWidgetImpl::UpdateVisualProperties(
+     const VisualProperties& properties) {
++  const display::ScreenInfos previous_logical = GlintWebExposedScreenInfos();
++  glint_logical_screen_infos_ = properties.glint_logical_screen_infos;
+   VisualProperties visual_properties(properties);
+   if (browser_controls_top_height_override_) {
+     visual_properties.browser_controls_params.top_controls_height =
+@@ -2079,6 +2081,28 @@ void WebFrameWidgetImpl::UpdateVisualProperties(
+   if (visual_properties.scroll_focused_node_into_view)
+     ScrollFocusedEditableElementIntoView();
+ 
++  const display::ScreenInfos logical = GlintWebExposedScreenInfos();
++  if (ForSubframe() && previous_logical != logical) {
++    ForEachLocalFrameControlledByWidget(
++        LocalRootImpl()->GetFrame(),
++        [&logical](WebLocalFrameImpl* local_frame) {
++          auto* frame = local_frame->GetFrame();
++          frame->DomWindow()->screen()->UpdateDisplayId(
++              logical.current().display_id);
++          CoreInitializer::GetInstance().DidUpdateScreens(*frame, logical);
++          frame->GetDocument()->MediaQueryAffectingValueChanged(
++              MediaValueChange::kOther);
++          frame->DomWindow()->screen()->DispatchEvent(
++              *Event::Create(event_type_names::kChange));
++        });
++    if (previous_logical.current().orientation_type !=
++            logical.current().orientation_type ||
++        previous_logical.current().orientation_angle !=
++            logical.current().orientation_angle) {
++      OrientationChanged();
++    }
++  }
++
+   if (properties_changed && unbounded_surface_state_ &&
+       unbounded_surface_state_->host_.is_bound()) {
+     CHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
+@@ -3740,6 +3764,20 @@ const display::ScreenInfo& WebFrameWidgetImpl::GetScreenInfo() {
+   return widget_base_->GetScreenInfo();
+ }
+ 
++const display::ScreenInfos& WebFrameWidgetImpl::GlintWebExposedScreenInfos() {
++  if (ForSubframe() && glint_logical_screen_infos_)
++    return *glint_logical_screen_infos_;
++  return GetScreenInfos();
++}
++
++std::optional<double> WebFrameWidgetImpl::GlintLogicalRootDevicePixelRatio()
++    const {
++  if (!ForSubframe() || !glint_logical_screen_infos_)
++    return std::nullopt;
++  return glint_logical_screen_infos_->current().device_scale_factor *
++         View()->ZoomLevelToZoomFactor(zoom_level_);
++}
++
+ const display::ScreenInfos& WebFrameWidgetImpl::GetScreenInfos() {
+   return widget_base_->screen_infos();
+ }
+@@ -5558,8 +5596,9 @@ void WebFrameWidgetImpl::DidUpdateSurfaceAndScreen(
+   // window.screen events are fired as well.
+   ForEachLocalFrameControlledByWidget(
+       LocalRootImpl()->GetFrame(),
+-      [&original_screen_infos, window_screen_has_changed,
++      [this, window_screen_has_changed,
+        color_gamut_changed](WebLocalFrameImpl* local_frame) {
++        const auto& original_screen_infos = GlintWebExposedScreenInfos();
+         auto* screen = local_frame->GetFrame()->DomWindow()->screen();
+         screen->UpdateDisplayId(original_screen_infos.current().display_id);
+         CoreInitializer::GetInstance().DidUpdateScreens(
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.h b/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
+index abb1bf2..b7fe85e 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
+@@ -497,6 +497,8 @@ class CORE_EXPORT WebFrameWidgetImpl
+   float PageScaleInMainFrame() override;
+   const display::ScreenInfo& GetScreenInfo() override;
+   const display::ScreenInfos& GetScreenInfos() override;
++  const display::ScreenInfos& GlintWebExposedScreenInfos() override;
++  std::optional<double> GlintLogicalRootDevicePixelRatio() const override;
+   const display::ScreenInfo& GetOriginalScreenInfo() override;
+   const display::ScreenInfos& GetOriginalScreenInfos() override;
+   gfx::Rect WindowRect() override;
+@@ -888,6 +890,7 @@ class CORE_EXPORT WebFrameWidgetImpl
+   bool doing_drag_and_drop_ = false;
+ 
+  private:
++  std::optional<display::ScreenInfos> glint_logical_screen_infos_;
+   friend class WebFrameWidgetSimTest;
+   friend class WebViewImpl;
+   friend class ReportTimeSwapPromise;
+diff --git a/third_party/blink/renderer/core/page/chrome_client_impl.cc b/third_party/blink/renderer/core/page/chrome_client_impl.cc
+index 8a9acc6..ee1872b 100644
+--- a/third_party/blink/renderer/core/page/chrome_client_impl.cc
++++ b/third_party/blink/renderer/core/page/chrome_client_impl.cc
+@@ -653,12 +653,12 @@ float ChromeClientImpl::WindowToViewportScalar(LocalFrame* frame,
+ 
+ const display::ScreenInfo& ChromeClientImpl::GetScreenInfo(
+     LocalFrame& frame) const {
+-  return frame.GetWidgetForLocalRoot()->GetScreenInfo();
++  return frame.GetWidgetForLocalRoot()->GlintWebExposedScreenInfos().current();
+ }
+ 
+ const display::ScreenInfos& ChromeClientImpl::GetScreenInfos(
+     LocalFrame& frame) const {
+-  return frame.GetWidgetForLocalRoot()->GetScreenInfos();
++  return frame.GetWidgetForLocalRoot()->GlintWebExposedScreenInfos();
+ }
+ 
+ const display::ScreenInfo& ChromeClientImpl::GetOriginalScreenInfo(
+diff --git a/third_party/blink/renderer/platform/widget/frame_widget.h b/third_party/blink/renderer/platform/widget/frame_widget.h
+index b75564d..3fbe770 100644
+--- a/third_party/blink/renderer/platform/widget/frame_widget.h
++++ b/third_party/blink/renderer/platform/widget/frame_widget.h
+@@ -245,6 +245,12 @@ class PLATFORM_EXPORT FrameWidget {
+ 
+   // Returns information about available screens and the current screen.
+   virtual const display::ScreenInfos& GetScreenInfos() = 0;
++  virtual const display::ScreenInfos& GlintWebExposedScreenInfos() {
++    return GetScreenInfos();
++  }
++  virtual std::optional<double> GlintLogicalRootDevicePixelRatio() const {
++    return std::nullopt;
++  }
+ 
+   // Returns information about the screen that would be showing the widget
+   // without DevTools emulation applied.

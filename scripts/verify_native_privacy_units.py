@@ -203,7 +203,7 @@ NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-r
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
                      "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics", "screen-widget", "screen-orientation",
-                     "screen-live-main", "screen-dispatch", "screenshot-transaction")
+                     "screen-live-main", "screen-dispatch", "screenshot-transaction", "surface-launch")
 
 SCREENSHOT_TRANSACTION_TESTS = {"GlintScreenshotEmulationTest": {
     "CrossSessionUsesEffectiveParameters", "TemporaryReadbackNeverClaimsPersistentOwnership",
@@ -296,6 +296,11 @@ def snapshot_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "surface-launch":
+        return {**required_tests("identity-contexts"), "NativeSurfaceLaunchTest": {
+            "ExplicitModesUseProductionBootstrap", "RejectsEveryMissingEffectiveFeature",
+            "RejectsVersionKeyModeAndDiagnosticConflicts", "AbsentVersionRetainsOrdinaryStartup",
+        }}
     if target == "screenshot-transaction":
         return SCREENSHOT_TRANSACTION_TESTS
     if target in LIVE_SCREEN_TESTS:
@@ -524,7 +529,9 @@ def require_target_sources(source: Path, patches: list[dict], target: str) -> di
                                  "0068-native-audio-math-fixture-readiness.patch"})
     if target == "font-rasterization":
         required_patches.add("0062-native-windows-font-rasterization.patch")
-    if target in IDENTITY_TARGETS:
+    if target == "surface-launch":
+        required_patches.add("0123-profile-surface-launch.patch")
+    if target in {*IDENTITY_TARGETS, "surface-launch"}:
         required_patches.update({"0049-native-profile-identity-derivation.patch",
                                  "0050-native-immutable-fingerprint-mode.patch",
                                  "0051-native-identity-context-tests.patch",
@@ -586,6 +593,8 @@ def require_target_sources(source: Path, patches: list[dict], target: str) -> di
 
 
 def unit_binary_target(target: str) -> str:
+    if target == "surface-launch":
+        return "content_unittests"
     if target == "screenshot-transaction":
         return "content_unittests"
     if target in LIVE_SCREEN_TESTS:
@@ -601,6 +610,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
            target: str = "keys", candidate_name: str | None = None,
            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
     required = required_tests(target)
+    if target == "surface-launch" and candidate_name != "upstream-156-webgpu-r5":
+        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 candidate")
     if target == "screenshot-transaction" and candidate_name not in CANDIDATES:
         raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
     if target in LIVE_SCREEN_TESTS and candidate_name not in CANDIDATES:
@@ -659,7 +670,9 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("Target-owned screenshot lease/session/document units; not PNG, BFCache or browser admission"
+    scope = ("Versioned surface launch and context readiness units; not renderer/worker first-script or browser admission"
+             if target == "surface-launch" else
+             "Target-owned screenshot lease/session/document units; not PNG, BFCache or browser admission"
              if target == "screenshot-transaction" else
              "Live main-emulation precedence and browser logical-screen invalidation units; not screenshot, BFCache or browser admission"
              if target in LIVE_SCREEN_TESTS else

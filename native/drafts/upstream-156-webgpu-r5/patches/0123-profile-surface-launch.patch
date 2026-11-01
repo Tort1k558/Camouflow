@@ -1,0 +1,444 @@
+diff --git a/third_party/blink/public/common/native_privacy/glint/profile_surface_launch.h b/third_party/blink/public/common/native_privacy/glint/profile_surface_launch.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/profile_surface_launch.h
+@@ -0,0 +1,44 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_PROFILE_SURFACE_LAUNCH_DRAFT_H_
++#define GLINT_PROFILE_SURFACE_LAUNCH_DRAFT_H_
++
++#include <optional>
++#include <string_view>
++
++namespace glint::candidate {
++
++enum class ProfileSurfaceLaunchStatus { kAbsent, kValidated, kInvalid };
++
++struct ProfileSurfaceLaunchInput {
++  std::optional<std::string_view> policy_version;
++  std::optional<std::string_view> key_service_version;
++  std::string_view derivation_mode;
++  bool diagnostic_bootstrap_present = false;
++  bool third_party_storage_partitioning = false;
++  bool audio_math = false;
++  bool webgl_readback = false;
++  bool readback_metadata = false;
++  bool webgpu_transport = false;
++};
++
++// Validates launch intent only. BrowserContext key readiness, IPC partition
++// authorization and reviewed-package admission remain mandatory later gates.
++constexpr ProfileSurfaceLaunchStatus ValidateProfileSurfaceLaunch(
++    const ProfileSurfaceLaunchInput& input) {
++  if (!input.policy_version.has_value()) {
++    return ProfileSurfaceLaunchStatus::kAbsent;
++  }
++  if (*input.policy_version != "1" || !input.key_service_version.has_value() ||
++      *input.key_service_version != "1" || input.diagnostic_bootstrap_present ||
++      !input.third_party_storage_partitioning || !input.audio_math ||
++      !input.webgl_readback || !input.readback_metadata || !input.webgpu_transport ||
++      (input.derivation_mode != "profile-identity" &&
++       input.derivation_mode != "partitioned-privacy")) {
++    return ProfileSurfaceLaunchStatus::kInvalid;
++  }
++  return ProfileSurfaceLaunchStatus::kValidated;
++}
++
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h b/third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h
+@@ -0,0 +1,28 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_GLINT_PROFILE_SURFACE_ACTIVATION_H_
++#define THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_GLINT_PROFILE_SURFACE_ACTIVATION_H_
++
++#include "base/command_line.h"
++
++namespace glint::candidate {
++inline constexpr char kProfileSurfacePolicySwitch[] = "glint-profile-surface-policy";
++
++// Browser launch validation must run before forwarding this version to children.
++// These predicates select IPC bootstrap paths; they never authorize a policy.
++inline bool HasProfileSurfacePolicy(const base::CommandLine& command) {
++  return command.HasSwitch(kProfileSurfacePolicySwitch) &&
++         command.GetSwitchValueASCII(kProfileSurfacePolicySwitch) == "1";
++}
++
++inline bool HasDocumentSurfacePolicy(const base::CommandLine& command) {
++  return HasProfileSurfacePolicy(command) ||
++         command.HasSwitch("glint-document-surface-bootstrap-test");
++}
++
++inline bool HasWorkerSurfacePolicy(const base::CommandLine& command) {
++  return HasProfileSurfacePolicy(command) ||
++         command.HasSwitch("glint-worker-surface-bootstrap-test");
++}
++}  // namespace glint::candidate
++#endif
+diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/profile_impl.cc
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "chrome/browser/profiles/profile_impl.h"
+ #include "content/public/browser/native_privacy_context.h"
+ 
+@@ -742,7 +743,7 @@
+     CHECK_EQ(native_command->GetSwitchValueASCII(content::kNativePrivacyKeyServiceSwitch), "1");
+     base::FilePath native_owned_root;
+     CHECK(base::PathService::Get(chrome::DIR_USER_DATA, &native_owned_root));
+-    if (native_command->HasSwitch("glint-document-surface-bootstrap-test") &&
++    if (glint::candidate::HasDocumentSurfacePolicy(*native_command) &&
+         !native_command->HasSwitch("glint-document-canvas-bootstrap-test")) {
+       // Profile creation is synchronous for some callers. Settle the existing
+       // small, read-only identity file before publishing a profile or creating
+diff --git a/content/browser/camouflow_native/privacy_context.cc b/content/browser/camouflow_native/privacy_context.cc
+--- a/content/browser/camouflow_native/privacy_context.cc
++++ b/content/browser/camouflow_native/privacy_context.cc
+@@ -1,5 +1,12 @@
+ // Copyright 2026 CamouFlow contributors.
+ // SPDX-License-Identifier: MIT
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_launch.h"
++#include "gpu/command_buffer/common/glint/webgpu_readback_features.h"
++#include "gpu/config/gpu_finch_features.h"
++#include "third_party/blink/public/common/features.h"
++#include "net/base/features.h"
++#include "base/feature_list.h"
+ #include "content/public/browser/native_privacy_context.h"
+ 
+ #include "base/command_line.h"
+@@ -18,6 +25,33 @@
+ std::optional<NativeFingerprintDerivationMode>
+ ResolveNativeFingerprintDerivationModeForLaunch(
+     const base::CommandLine& command) {
++  if (command.HasSwitch(glint::candidate::kProfileSurfacePolicySwitch)) {
++    const auto version = command.GetSwitchValueASCII(
++        glint::candidate::kProfileSurfacePolicySwitch);
++    const auto key_version = command.GetSwitchValueASCII(kNativePrivacyKeyServiceSwitch);
++    const auto mode = command.GetSwitchValueASCII(kNativeFingerprintDerivationModeSwitch);
++    const glint::candidate::ProfileSurfaceLaunchInput input{
++        version,
++        command.HasSwitch(kNativePrivacyKeyServiceSwitch)
++            ? std::optional<std::string_view>(key_version) : std::nullopt,
++        mode,
++        command.HasSwitch("glint-document-surface-bootstrap-test") ||
++            command.HasSwitch("glint-worker-surface-bootstrap-test") ||
++            command.HasSwitch("glint-document-canvas-bootstrap-test") ||
++            command.HasSwitch("glint-worker-canvas-bootstrap-test"),
++        base::FeatureList::IsEnabled(net::features::kThirdPartyStoragePartitioning),
++        base::FeatureList::IsEnabled(blink::features::kGlintAudioMathCandidate),
++        base::FeatureList::IsEnabled(blink::features::kGlintWebGLReadbackCandidate),
++        base::FeatureList::IsEnabled(::features::kGlintReadbackMetadataCandidate),
++        base::FeatureList::IsEnabled(gpu::webgpu::kGlintWebGPUPolicyTransportCandidate)};
++    if (glint::candidate::ValidateProfileSurfaceLaunch(input) !=
++        glint::candidate::ProfileSurfaceLaunchStatus::kValidated) {
++      return std::nullopt;
++    }
++    return mode == "profile-identity"
++               ? NativeFingerprintDerivationMode::kProfileIdentity
++               : NativeFingerprintDerivationMode::kPartitionedPrivacy;
++  }
+   if (!command.HasSwitch(kNativeFingerprintDerivationModeSwitch)) {
+     return NativeFingerprintDerivationMode::kPartitionedPrivacy;
+   }
+diff --git a/content/browser/camouflow_native/privacy_navigation_throttle.cc b/content/browser/camouflow_native/privacy_navigation_throttle.cc
+--- a/content/browser/camouflow_native/privacy_navigation_throttle.cc
++++ b/content/browser/camouflow_native/privacy_navigation_throttle.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 CamouFlow contributors.
+ // SPDX-License-Identifier: MIT
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "content/browser/camouflow_native/privacy_navigation_throttle.h"
+ 
+ #include "base/check.h"
+@@ -19,7 +20,7 @@
+   const auto* command = base::CommandLine::ForCurrentProcess();
+   return glint::candidate::SelectDocumentPrivacyBootstrapMode(
+       command->HasSwitch(kGlintDocumentPrivacyBootstrapSwitch),
+-      command->HasSwitch(kGlintDocumentSurfaceBootstrapSwitch));
++      glint::candidate::HasDocumentSurfacePolicy(*command));
+ }
+ 
+ PrivacyNavigationThrottle::PrivacyNavigationThrottle(
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
+ #include "content/browser/camouflow_native/glint/document_surface_commit_producer.h"
+ #include "content/browser/camouflow_native/glint/window_privacy_readiness.h"
+@@ -5387,7 +5388,7 @@
+     ukm::SourceId document_ukm_source_id,
+     CreateChildFrameWithGlintPolicyCallback callback) {
+   const auto* command = base::CommandLine::ForCurrentProcess();
+-  if (!command->HasSwitch("glint-document-surface-bootstrap-test")) {
++  if (!glint::candidate::HasDocumentSurfacePolicy(*command)) {
+     std::move(callback).Run(false, nullptr);
+     return;
+   }
+@@ -10733,7 +10734,7 @@
+   }
+ 
+   const auto* privacy_command = base::CommandLine::ForCurrentProcess();
+-  if (privacy_command->HasSwitch("glint-document-surface-bootstrap-test") &&
++  if (glint::candidate::HasDocumentSurfacePolicy(*privacy_command) &&
+       !privacy_command->HasSwitch("glint-document-canvas-bootstrap-test") &&
+       !IsNativePrivacyContextReady(GetBrowserContext())) {
+     if (glint_window_privacy_readiness_) {
+@@ -10970,7 +10971,7 @@
+       /*glint_initial_surface_commit=*/nullptr);
+   const auto* command = base::CommandLine::ForCurrentProcess();
+   reply->glint_initial_surface_policy_required =
+-      command->HasSwitch("glint-document-surface-bootstrap-test");
++      glint::candidate::HasDocumentSurfacePolicy(*command);
+   if (reply->glint_initial_surface_policy_required &&
+       !command->HasSwitch("glint-document-canvas-bootstrap-test")) {
+     reply->glint_initial_surface_commit =
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -5,6 +5,7 @@
+ // Represents the browser side of the browser <--> renderer communication
+ // channel. There will be one RenderProcessHost per renderer process.
+ 
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "content/browser/renderer_host/render_process_host_impl.h"
+ 
+ #include "content/browser/renderer_host/camouflow_hardware_limits.h"
+@@ -4063,7 +4064,8 @@
+       "glint-worker-canvas-bootstrap-test",
+       "glint-worker-surface-bootstrap-test",
+       "glint-document-canvas-bootstrap-test",
+-      "glint-document-surface-bootstrap-test"};
++      "glint-document-surface-bootstrap-test",
++      glint::candidate::kProfileSurfacePolicySwitch};
+   renderer_cmd->CopySwitchesFrom(browser_cmd, glint_bootstrap_test_switches);
+ 
+   // Propagate WebNN switches needed by backends that run in the renderer.
+diff --git a/content/browser/renderer_host/render_view_host_impl.cc b/content/browser/renderer_host/render_view_host_impl.cc
+--- a/content/browser/renderer_host/render_view_host_impl.cc
++++ b/content/browser/renderer_host/render_view_host_impl.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "content/browser/renderer_host/render_view_host_impl.h"
+ #include "content/browser/camouflow_native/glint/document_surface_commit_producer.h"
+ 
+@@ -477,7 +478,7 @@
+     auto local_frame_params = mojom::CreateLocalMainFrameParams::New();
+     const auto* command = base::CommandLine::ForCurrentProcess();
+     local_frame_params->glint_initial_surface_policy_required =
+-        command->HasSwitch("glint-document-surface-bootstrap-test");
++        glint::candidate::HasDocumentSurfacePolicy(*command);
+     if (local_frame_params->glint_initial_surface_policy_required &&
+         !command->HasSwitch("glint-document-canvas-bootstrap-test") &&
+         main_rfh->frame_tree_node()->is_on_initial_empty_document()) {
+diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
+--- a/content/renderer/render_frame_impl.cc
++++ b/content/renderer/render_frame_impl.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "content/renderer/render_frame_impl.h"
+ 
+ #include <algorithm>
+@@ -1738,7 +1739,7 @@
+ 
+   const auto* command = base::CommandLine::ForCurrentProcess();
+   const bool surfaces_requested =
+-      command->HasSwitch("glint-document-surface-bootstrap-test");
++      glint::candidate::HasDocumentSurfacePolicy(*command);
+   render_frame->glint_initial_surface_required_ = surfaces_requested ||
+       params->glint_initial_surface_policy_required ||
+       params->glint_initial_surface_commit;
+@@ -3928,7 +3929,7 @@
+ 
+   const auto* command = base::CommandLine::ForCurrentProcess();
+   const bool glint_child_required =
+-      command->HasSwitch("glint-document-surface-bootstrap-test");
++      glint::candidate::HasDocumentSurfacePolicy(*command);
+   blink::mojom::GlintSurfacePolicyCommitPtr glint_child_policy;
+   if (glint_child_required) {
+     // The local child initial document is synchronous. Obtain the actual
+diff --git a/content/renderer/worker/privacy_worker_bootstrap.cc b/content/renderer/worker/privacy_worker_bootstrap.cc
+--- a/content/renderer/worker/privacy_worker_bootstrap.cc
++++ b/content/renderer/worker/privacy_worker_bootstrap.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 CamouFlow contributors.
+ // SPDX-License-Identifier: MIT
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "content/renderer/worker/privacy_worker_bootstrap.h"
+ 
+ #include <algorithm>
+@@ -23,7 +24,7 @@
+   const auto* command = base::CommandLine::ForCurrentProcess();
+   return SelectWorkerPrivacyBootstrapMode(
+       command->HasSwitch("glint-worker-canvas-bootstrap-test"),
+-      command->HasSwitch("glint-worker-surface-bootstrap-test"));
++      glint::candidate::HasWorkerSurfacePolicy(*command));
+ }
+ 
+ PrivacyWorkerBootstrap::PrivacyWorkerBootstrap(
+diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
+--- a/third_party/blink/renderer/core/loader/document_loader.cc
++++ b/third_party/blink/renderer/core/loader/document_loader.cc
+@@ -27,6 +27,7 @@
+  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "third_party/blink/renderer/core/loader/document_loader.h"
+ 
+ #include <algorithm>
+@@ -602,7 +603,7 @@
+       glint_document_surface_payload_required_(params_->glint_document_surface_policy_required),
+       glint_document_surface_policy_required_(
+           params_->glint_document_surface_policy_required ||
+-          base::CommandLine::ForCurrentProcess()->HasSwitch("glint-document-surface-bootstrap-test")),
++          glint::candidate::HasDocumentSurfacePolicy(*base::CommandLine::ForCurrentProcess())),
+       glint_document_surface_policy_(std::move(params_->glint_document_surface_policy)),
+       navigation_type_(navigation_type),
+       document_load_timing_(*this),
+diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
+--- a/third_party/blink/public/common/BUILD.gn
++++ b/third_party/blink/public/common/BUILD.gn
+@@ -292,6 +292,8 @@
+     "native_privacy/document_canvas_policy_validation.h",
+     "native_privacy/document_commit_preflight.h",
+     "native_privacy/document_storage_key_resolution.h",
++    "native_privacy/glint/profile_surface_activation.h",
++    "native_privacy/glint/profile_surface_launch.h",
+     "storage_key/storage_key.h",
+     "subresource_load_metrics.h",
+     "switches.h",
+diff --git a/content/browser/camouflow_native/privacy_context_unittest.cc b/content/browser/camouflow_native/privacy_context_unittest.cc
+--- a/content/browser/camouflow_native/privacy_context_unittest.cc
++++ b/content/browser/camouflow_native/privacy_context_unittest.cc
+@@ -5,6 +5,9 @@
+ #include <memory>
+ #include <optional>
+ #include <string>
++#include <string_view>
++#include "base/test/scoped_feature_list.h"
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ 
+ #include "base/command_line.h"
+ #include "base/files/file_util.h"
+@@ -690,5 +693,100 @@
+   }
+ }
+ 
++constexpr char kSurfaceFeatureNames[] =
++    "ThirdPartyStoragePartitioning,GlintAudioMathCandidate,"
++    "GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,"
++    "GlintWebGPUPolicyTransportCandidate";
++
++base::CommandLine SurfacePolicyCommand(const char* mode) {
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  command.AppendSwitchASCII(glint::candidate::kProfileSurfacePolicySwitch, "1");
++  command.AppendSwitchASCII(kNativePrivacyKeyServiceSwitch, "1");
++  command.AppendSwitchASCII(kNativeFingerprintDerivationModeSwitch, mode);
++  return command;
++}
++
++TEST(NativeSurfaceLaunchTest, ExplicitModesUseProductionBootstrap) {
++  base::test::ScopedFeatureList features;
++  features.InitFromCommandLine(kSurfaceFeatureNames, "");
++  for (const auto* mode : {"profile-identity", "partitioned-privacy"}) {
++    auto command = SurfacePolicyCommand(mode);
++    EXPECT_EQ(ResolveNativeFingerprintDerivationModeForLaunch(command),
++              std::string_view(mode) == "profile-identity"
++                  ? NativeFingerprintDerivationMode::kProfileIdentity
++                  : NativeFingerprintDerivationMode::kPartitionedPrivacy);
++    EXPECT_TRUE(glint::candidate::HasDocumentSurfacePolicy(command));
++    EXPECT_TRUE(glint::candidate::HasWorkerSurfacePolicy(command));
++    EXPECT_FALSE(command.HasSwitch("glint-document-surface-bootstrap-test"));
++    EXPECT_FALSE(command.HasSwitch("glint-worker-surface-bootstrap-test"));
++  }
++}
++
++TEST(NativeSurfaceLaunchTest, RejectsEveryMissingEffectiveFeature) {
++  const char* names[] = {"ThirdPartyStoragePartitioning", "GlintAudioMathCandidate",
++                         "GlintWebGLReadbackCandidate", "GlintReadbackMetadataCandidate",
++                         "GlintWebGPUPolicyTransportCandidate"};
++  for (const auto* disabled : names) {
++    SCOPED_TRACE(disabled);
++    std::string enabled;
++    for (const auto* name : names) {
++      if (std::string_view(name) != disabled) {
++        if (!enabled.empty()) {
++          enabled += ',';
++        }
++        enabled += name;
++      }
++    }
++    base::test::ScopedFeatureList features;
++    features.InitFromCommandLine(enabled, disabled);
++    for (const auto* mode : {"profile-identity", "partitioned-privacy"}) {
++      EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(
++          SurfacePolicyCommand(mode)));
++    }
++  }
++}
++
++TEST(NativeSurfaceLaunchTest, RejectsVersionKeyModeAndDiagnosticConflicts) {
++  base::test::ScopedFeatureList features;
++  features.InitFromCommandLine(kSurfaceFeatureNames, "");
++  for (const auto* mode : {"profile-identity", "partitioned-privacy"}) {
++    for (const auto* version : {"", "0", "2", "01", " 1", "1 "}) {
++      auto command = SurfacePolicyCommand(mode);
++      command.RemoveSwitch(glint::candidate::kProfileSurfacePolicySwitch);
++      command.AppendSwitchASCII(glint::candidate::kProfileSurfacePolicySwitch,
++                                version);
++      EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++    }
++    for (const auto* version : {"", "0", "2", "01"}) {
++      auto command = SurfacePolicyCommand(mode);
++      command.RemoveSwitch(kNativePrivacyKeyServiceSwitch);
++      command.AppendSwitchASCII(kNativePrivacyKeyServiceSwitch, version);
++      EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++    }
++    for (const auto* missing : {kNativePrivacyKeyServiceSwitch,
++                                kNativeFingerprintDerivationModeSwitch}) {
++      auto command = SurfacePolicyCommand(mode);
++      command.RemoveSwitch(missing);
++      EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++    }
++    for (const auto* diagnostic : {"glint-document-surface-bootstrap-test",
++                                   "glint-worker-surface-bootstrap-test",
++                                   "glint-document-canvas-bootstrap-test",
++                                   "glint-worker-canvas-bootstrap-test"}) {
++      auto command = SurfacePolicyCommand(mode);
++      command.AppendSwitch(diagnostic);
++      EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++    }
++  }
++}
++
++TEST(NativeSurfaceLaunchTest, AbsentVersionRetainsOrdinaryStartup) {
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  EXPECT_EQ(ResolveNativeFingerprintDerivationModeForLaunch(command),
++            NativeFingerprintDerivationMode::kPartitionedPrivacy);
++  EXPECT_FALSE(glint::candidate::HasDocumentSurfacePolicy(command));
++  EXPECT_FALSE(glint::candidate::HasWorkerSurfacePolicy(command));
++}
++
+ }  // namespace
+ }  // namespace content

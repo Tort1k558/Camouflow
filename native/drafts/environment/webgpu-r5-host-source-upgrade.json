@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "scope": "Reversible R5 candidate and native launch test registration; not browser admission",
+  "patch": "webgpu-r5-host-source-upgrade.patch",
+  "patch_sha256": "29fb80103455927e2f34cf72a20d189a6592b6e37bf49fa0147c0b8570d1f027",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "ff9e8145f09be173c14d0e5e1d4f314b18869e722f6ca620e5f2c35278bfe627",
+      "after_sha256": "33ac4a1608f8dc4179f62bf833f1eaade9f0ed3b8dd6d0e1fa25f3321230ca48"
+    },
+    {
+      "source": "scripts/verify_native_privacy_units.py",
+      "before_sha256": "c10847389c99e0a723a0a6bec3bff849705b128e240bebfb8d54c34faddc0dc9",
+      "after_sha256": "a4de84dbd5b3fbb7a7845834818aba0f3063d142348ec46575a824941fce6439"
+    }
+  ]
+}
