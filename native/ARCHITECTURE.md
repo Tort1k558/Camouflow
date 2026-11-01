@@ -1,5 +1,19 @@
 # Glint architecture
 
+## 2026-11-01: R8 build and owned transport boundaries
+
+The [131-patch R8 browser](drafts/upstream-156-audio-r8/windows-build.json) is
+built. Its native test executables and independent browser checks are separate
+pending gates; the R7 results below must not be assigned to R8. Neither lifetime
+patch changes the Audio sample algorithm or resolves legacy compatibility.
+
+The [HTTP/2 diagnostics](drafts/network/HTTP2.md) keep initial framing separate
+from a full owned response fixture. Only the latter uses an explicit external
+hyper-h2 tool stage for HPACK/protocol handling. Three official stock profiles
+passed TLS 1.3/h2 response calibration; Glint transport remains unmeasured.
+No BoringSSL override, application dependency, trust-store change or platform
+identity is introduced. Matching selected control frames is not TLS/JA4 parity.
+
 ## 2026-11-01: explicit host Audio pipeline version
 
 `NativePrivacyPolicy.audio_pipeline_version` accepts zero (unchanged historical

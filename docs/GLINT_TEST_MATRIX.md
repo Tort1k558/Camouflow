@@ -1,5 +1,23 @@
 # Glint browser test matrix
 
+## 2026-11-01: owned HTTP/2 stock calibration, not Glint
+
+[Bound stock record](../native/drafts/network/stock-http2-observations.json)
+and [fixture/reproduction boundaries](../native/drafts/network/HTTP2.md).
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Official stock156 TLS 1.3 / ALPN h2 | **3/3 fresh profiles** received status 200 and the expected page | One owned loopback endpoint and ephemeral SPKI exception; not ordinary CA validation |
+| Initial control-frame comparison | **3 completed request connections match** | Selected SETTINGS/order/window/priority only; omits payload lengths, HPACK bytes, TLS records and timing |
+| Empty TLS connections | **2 retained, not request passes** | Zero received application bytes; partial/malformed application data still fails |
+| Core/driver/source/resource guards | **Passed**, key removed and resources closed | Exact stock core; no Glint claim |
+| Framing, fixture and existing TLS host tests | **103 passed** | Not the full host suite or browser admission |
+
+Both earlier fixture attempts remain failed in the record. The responding fixture
+uses hyper-h2 from an explicit D: tool stage, without new application dependencies.
+Glint R8 transport comparison, HTTP/3, resumption, cross-platform identity and
+privacy/production admission remain unverified.
+
 ## 2026-11-01: R8 Windows browser built; verification pending
 
 [Build-only evidence](../native/drafts/upstream-156-audio-r8/windows-build.json):

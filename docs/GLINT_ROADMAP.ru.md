@@ -1,5 +1,23 @@
 # Glint: план проверки и развития
 
+## 2026-11-01: current R8 boundary and transport calibration
+
+The [R8 Windows browser build](../native/drafts/upstream-156-audio-r8/windows-build.json)
+has completed; building the native test executables is a separate pending stage,
+not a restarted browser build. The immutable 131-patch recipe includes both Audio
+lifetime packets. Earlier preparation entries below describe historical states.
+Selected native execution, independent R8 runtime checks and package admission
+remain pending. Legacy Audio is not repaired by the lifetime changes.
+
+The owned [HTTP/2 fixture](../native/drafts/network/HTTP2.md) is now calibrated
+against three fresh official stock156 profiles: TLS 1.3/h2, status 200, matching
+selected initial control shapes and closed resources. Two empty TLS connections
+are retained separately, not counted as request passes; prior failed attempts
+remain failed. The fixture tool is staged only on D:, not added to application
+dependencies. Next transport gate: matched verified Glint R8/stock measurement.
+This stock result does not establish Glint, JA3/JA4, resumption, another OS or
+ordinary certificate-path validation.
+
 ## 2026-11-01: explicit Audio pipeline pin; host regression passed
 
 The coupled [R8 source recipe](../native/drafts/upstream-156-audio-r8/README.md)
