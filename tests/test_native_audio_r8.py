@@ -107,3 +107,20 @@ def test_audio_r8_full_host_record_preserves_failures_and_later_tooling_boundary
     assert record['interrupted_retry']['interrupted'] and not record['interrupted_retry']['passed']
     assert record['later_public_lifecycle_cli_included'] is False
     assert record['native_runtime_verified'] is record['production_admitted'] is False
+
+
+def test_audio_r8_windows_build_is_not_native_test_or_browser_admission():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'windows-build.json').read_bytes())
+    assert record['compiled'] and record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['build']['jobs'] == 4 and record['build']['configured_link_pool_depth'] == 1
+    assert record['build']['siso_steps'] == 60 and record['build']['siso_duration_seconds'] == 965.31
+    assert record['build']['stage_duration_seconds'] == 1295.009
+    assert len(record['build']['completed_cpp_objects']) == 8
+    assert record['build']['changed_owned_files'] == 6
+    assert all(stage['returncode'] == 0 for stage in record['build']['stages'])
+    assert record['sampled_resources']['observer_still_running']
+    assert record['sampled_resources']['max_observed_linkers'] == 2
+    for flag in ('native_tests_verified_in_this_record', 'browser_runtime_verified',
+                 'legacy_audio_repaired', 'third_party_antibot_verified', 'production_admitted'):
+        assert record[flag] is False

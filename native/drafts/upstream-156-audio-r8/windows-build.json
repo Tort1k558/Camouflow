@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "compiled": true,
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "source_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "build_report_sha256": "68313c3b82f316179b379468cae31b14d2c7001de8d6212cfc1c62fd0d7cf51b",
+  "build_log_sha256": "3db0011173d5a0b4cbe8a4d79df5d07b5ecefaefd0dd24ad6eeee3943a3439c3",
+  "receipt_sha256": "10dad15a0065aa71a7527c099cced71301ab487818ef3740bc0ac52ecad9837d",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build": {
+    "kind": "Incremental build after exact R7 to R8 source transition; not a clean checkout/build",
+    "jobs": 4,
+    "configured_link_pool_depth": 1,
+    "siso_steps": 60,
+    "siso_duration_seconds": 965.31,
+    "stage_duration_seconds": 1295.009,
+    "stages": [
+      {
+        "action": "sync",
+        "returncode": 0,
+        "duration_seconds": 150.326
+      },
+      {
+        "action": "hooks",
+        "returncode": 0,
+        "duration_seconds": 58.537
+      },
+      {
+        "action": "patch",
+        "returncode": 0,
+        "duration_seconds": 84.335
+      },
+      {
+        "action": "build",
+        "returncode": 0,
+        "duration_seconds": 1295.009
+      }
+    ],
+    "completed_cpp_objects": [
+      "obj/third_party/blink/renderer/modules/webaudio/webaudio/offline_audio_candidate.obj",
+      "obj/third_party/blink/renderer/modules/webaudio/webaudio/offline_audio_buffer.obj",
+      "obj/third_party/blink/renderer/bindings/modules/v8/v8/v8_offline_audio_context.obj",
+      "obj/third_party/blink/renderer/modules/webaudio/webaudio/deferred_task_handler.obj",
+      "obj/third_party/blink/renderer/modules/webaudio/webaudio/offline_audio_destination_node.obj",
+      "obj/third_party/blink/renderer/modules/webaudio/webaudio/offline_audio_context.obj",
+      "obj/third_party/blink/renderer/modules/webaudio/webaudio/offline_audio_destination_handler.obj",
+      "obj/third_party/blink/renderer/modules/webaudio/webaudio/base_audio_context.obj"
+    ],
+    "unchanged_owned_source_timestamps_restored": 371,
+    "changed_owned_files": 6
+  },
+  "sampled_resources": {
+    "report_sha256": "6edc7c32815207ac0a4d1d4c6a221443ddd6d49cebcd09df21c486ddeeb62914",
+    "observer_still_running": true,
+    "max_observed_compilers": 5,
+    "max_observed_linkers": 2,
+    "minimum_available_commit_bytes": 14049996800,
+    "scope": "Partial creation-bound controller sampling, including native-unit preparation; two linker processes were sampled despite the configured depth one. Exact cause and final maxima not established; do not claim guaranteed single-link execution.",
+    "immutable_source_snapshot": true,
+    "sampled_until_unix": 1793541138.8126314
+  },
+  "native_tests_verified_in_this_record": false,
+  "browser_runtime_verified": false,
+  "legacy_audio_repaired": false,
+  "third_party_antibot_verified": false,
+  "production_admitted": false,
+  "scope": "Completed Windows browser build only; selected native tests and independent browser QA are separate required gates"
+}

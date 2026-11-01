@@ -1,6 +1,13 @@
 # Glint Chromium 156 R8: coupled Audio lifetime cleanup
 
-**Source recipe only. Not built, runtime-verified or admitted for production.**
+**Windows browser built. Selected native tests and browser admission pending.**
+
+The [completed build](windows-build.json) executed **60 Siso steps in 16m 05.31s**;
+the build stage including guards/GN took **21m 35.009s**. This was an incremental
+R7-to-R8 transition, not a clean rebuild. All four official stages passed; the
+receipt and measured runtime core are bound separately from the immutable recipe.
+The selected native tests and independent browser QA are separate gates, not
+proved by this build record.
 
 Preserves all 129 R7 patches byte-for-byte and appends two Chromium-owned patches:
 
@@ -27,7 +34,10 @@ execution of the linked browser or its new lifecycle tests.
 The native verifier exposes `--target audio-lifecycle` for this exact candidate:
 seven required cases, including six new tests and the strengthened allocation
 budget test. `audio-math` remains a separate regression gate. Build Windows with
-at most j4, one heavy link and the unchanged 180 GiB free-space reserve. Execute
+at most j4 and the unchanged 180 GiB free-space reserve. GN link-pool depth is one,
+but partial controller sampling observed two linker processes; the cause and
+final maxima are not established, so single-link execution is not guaranteed by
+this record. The active build was not restarted to change scheduling. Execute
 both native groups, affected browser event/promise/teardown checks and the unchanged
 Audio compatibility/combined suites before considering integrated repair.
 

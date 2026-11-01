@@ -18,8 +18,9 @@ patch chain; they do not transfer automatically to newer binaries.
 **November 1 checkpoint:** R7 is compiled and its scoped runtime coverage is
 15/16 named groups; Legacy Audio compatibility still fails. The next
 [R8 Audio lifetime recipe](drafts/upstream-156-audio-r8/README.md) passed 5581 host
-tests/one skip before the later lifecycle CLI addition. It is not yet a verified
-R8 browser. The new [Audio lifecycle verifier](drafts/audio-lifecycle-runtime/README.md)
+tests/one skip before the later lifecycle CLI addition. Its [Windows build](drafts/upstream-156-audio-r8/windows-build.json)
+completed 60 Siso steps in 16m 05.31s; native/runtime admission remains pending.
+The new [Audio lifecycle verifier](drafts/audio-lifecycle-runtime/README.md)
 has a measured R7 fixture baseline of 74 cases/346 checks, separate from the
 failing Legacy DSP compatibility gate. Historical rows below retain their own
 patch-chain scopes.

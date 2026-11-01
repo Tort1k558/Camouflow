@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-01: R8 Windows browser built; verification pending
+
+[Build-only evidence](../native/drafts/upstream-156-audio-r8/windows-build.json):
+all sync/hooks/patch/build stages passed, with 131 patches. Siso completed **60
+steps / 16m 05.31s**; the build stage including guards/GN took **21m 35.009s**.
+Eight C++ object completions are listed; six owned source files changed and 371
+unchanged owned timestamps were restored. No clean/reset or borrowed R7 binary.
+
+The new core/receipt are measured, but selected native tests and independent
+R8 browser QA remain separate pending gates. GN link-pool depth is one; partial
+controller sampling nevertheless observed two linker processes. This is not a
+guaranteed single-link result or a completed resource audit. Legacy Audio, external
+anti-bot checks and production admission remain open.
+
 ## 2026-11-01: Audio lifecycle baseline and public verifier
 
 The [new lifecycle fixture](../native/drafts/audio-lifecycle-runtime/README.md)
