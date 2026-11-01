@@ -1,6 +1,23 @@
 # Glint: план проверки и развития
 
-## 2026-11-01: current R8 boundary and transport calibration
+## 2026-11-01: verified R8 baseline and complete 157 source application
+
+- [Native batch](../native/drafts/upstream-156-audio-r8/native-all-observations.json):
+  all 26 groups, 554 executions / 397 distinct cases passed.
+- [Fresh baseline](../native/drafts/upstream-156-audio-r8/baseline-recheck.json):
+  all eight groups / 160 checks passed; host regression on `7cce1f3` passed
+  5708 tests / one skip. Earlier teardown failure remains preserved, root cause unknown.
+- [Matched HTTP/2](../native/drafts/network/matched-r8-http2-observations.json):
+  nine policy-off profiles; selected controls match, not TLS/platform parity.
+- [157 source chain](../native/drafts/upstream-157-r8-port/full-source-observations.json):
+  all 131 packets apply/reverse; 270 immutable inputs restored. Not compiled.
+
+Next: finish two-profile Audio difference diagnostics, review/build the 157 C++
+integration and execute queued Audio tests, then repeat combined/runtime gates.
+Legacy Audio, device cohorts, installed-package/update/rollback and full privacy/
+production admission remain open. Earlier checkpoints below retain their scopes.
+
+## 2026-11-01: earlier R8 boundary and transport calibration
 
 The [R8 Windows browser build](../native/drafts/upstream-156-audio-r8/windows-build.json)
 has completed; the separate linked native batch now passed **135 cases / five

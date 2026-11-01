@@ -276,3 +276,29 @@ def test_audio_r8_full_host_recheck_does_not_cover_later_publications_or_admit_b
     for name in ('later_157_full_source_packet_included', 'later_http2_public_record_tests_included',
                  'native_runtime_admitted', 'legacy_audio_repaired', 'production_admitted'):
         assert record[name] is False
+
+
+def test_audio_r8_fresh_baseline_binds_all_eight_groups_without_protected_admission():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'baseline-recheck.json').read_bytes())
+    compiled = json.loads((candidate['directory'] / 'windows-build.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['full_baseline_suite']
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['runtime_core_sha256_measured'] == compiled['runtime_core_sha256_measured']
+    assert record['receipt_sha256'] == compiled['receipt_sha256']
+    assert [(row['name'], row['checks']) for row in record['groups']] == [
+        ('runtime', 18), ('hardware', 9), ('webrtc', 7), ('automation', 55),
+        ('fonts', 42), ('identity', 18), ('cdp', 6), ('combined', 5)]
+    assert all(row['passed'] and row['returncode'] == 0 for row in record['groups'])
+    assert sum(row['checks'] for row in record['groups']) == record['checks'] == 160
+    assert record['postguards_passed'] and record['runtime_assets_unchanged']
+    assert record['owned_runtime_processes_remaining'] == 0
+    assert record['hardware_close_timeout_seconds'] == 10
+    assert record['original_hardware_timeout_preserved']
+    assert record['full_host']['measured_commit'] == '7cce1f3'
+    assert record['full_host']['counts'] == dict(passed=5708, failed=0, skipped=1)
+    assert record['full_host']['later_baseline_record_test_included'] is False
+    for name in ('hardware_deadline_relaxed', 'hardware_root_cause_confirmed',
+                 'protected_surface_admitted', 'legacy_audio_repaired', 'third_party_antibot_verified',
+                 'package_admitted', 'production_admitted'):
+        assert record[name] is False

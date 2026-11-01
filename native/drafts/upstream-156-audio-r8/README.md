@@ -2,6 +2,13 @@
 
 **Windows browser built; all 26 native groups passed. Full browser admission pending.**
 
+The [fresh eight-group baseline](baseline-recheck.json) passed **160 checks**,
+including hardware, with source/core/receipt/driver and runtime-asset guards;
+zero owned processes remained. Its prerequisite host repeat on `7cce1f3` passed
+**5708 tests / one skip**. The original hardware timeout remains unexplained and
+preserved; its ten-second deadline was not relaxed. Protected surface, Legacy
+Audio and installed-package admission remain separate open gates.
+
 The [fresh full host repeat](full-host-recheck.json) passed **5704 tests / one
 skip** in 583.89 seconds on `7197573`, with unchanged inputs. Both historical
 GPU snapshot-reconstruction failures are fixed without changing their measured

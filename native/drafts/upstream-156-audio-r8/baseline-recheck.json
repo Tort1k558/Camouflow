@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "scope": "Fresh eight-group R8 policy-off runtime baseline; not privacy, installed package or release admission",
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "10dad15a0065aa71a7527c099cced71301ab487818ef3740bc0ac52ecad9837d",
+  "full_baseline_suite": true,
+  "checks": 160,
+  "groups": [
+    {
+      "name": "runtime",
+      "passed": true,
+      "returncode": 0,
+      "report": "runtime.json",
+      "log": "runtime.log",
+      "checks": 18,
+      "report_sha256": "89174c0d3d3572b6938b9ce3ddb2408af7562a2219c8eb8130d7ec1cbf104cdd"
+    },
+    {
+      "name": "hardware",
+      "passed": true,
+      "returncode": 0,
+      "report": "hardware.json",
+      "log": "hardware.log",
+      "checks": 9,
+      "report_sha256": "6484a148c09732e4bb7dccac33bb0cd044436fe938ace18acb5d72fb5f5623b6"
+    },
+    {
+      "name": "webrtc",
+      "passed": true,
+      "returncode": 0,
+      "report": "webrtc.json",
+      "log": "webrtc.log",
+      "checks": 7,
+      "report_sha256": "fa864b259d664032d2a60f8fe2ce437df2283cbbcd1d5f3dfdf1e722c9b05880"
+    },
+    {
+      "name": "automation",
+      "passed": true,
+      "returncode": 0,
+      "report": "automation.json",
+      "log": "automation.log",
+      "checks": 55,
+      "report_sha256": "c4066e979b32a9c7c590fd50593d947841332853c9cdff61ed4baf6ef793d8d8"
+    },
+    {
+      "name": "fonts",
+      "passed": true,
+      "returncode": 0,
+      "report": "fonts.json",
+      "log": "fonts.log",
+      "checks": 42,
+      "report_sha256": "ddd3fe711bfcb468d663c29a79b9d233a3a3c6163bff95e9766b7cf9d2e2ef35"
+    },
+    {
+      "name": "identity",
+      "passed": true,
+      "returncode": 0,
+      "report": "identity.json",
+      "log": "identity.log",
+      "checks": 18,
+      "report_sha256": "555e2643f3d188ffd62e9290215f95d52b3b6ad0162d67afb8d4dfde5c826c72"
+    },
+    {
+      "name": "cdp",
+      "passed": true,
+      "returncode": 0,
+      "report": "cdp.json",
+      "log": "cdp.log",
+      "checks": 6,
+      "report_sha256": "077b4e66c6d2746abee8f0fbcdb28200dc010a7e73ec87785370252ffef8dce1"
+    },
+    {
+      "name": "combined",
+      "passed": true,
+      "returncode": 0,
+      "report": "combined.json",
+      "log": "combined.log",
+      "checks": 5,
+      "report_sha256": "6969ef50f03b425cb1cb078d55647118bcedbe8834c2f76bd54a65096f62e7d9"
+    }
+  ],
+  "controller_report_sha256": "f51c13d7f15845eb2db6082288c9b764bd8b4574c45c51f09795ed086b25055e",
+  "suite_report_sha256": "9f912db58d57bb5d8da4c5f36a5ae446a74f75ee7b85a2be0a28bb66193fc155",
+  "postguards_passed": true,
+  "runtime_assets_unchanged": true,
+  "owned_runtime_processes_remaining": 0,
+  "hardware_close_timeout_seconds": 10,
+  "hardware_deadline_relaxed": false,
+  "original_hardware_timeout_preserved": true,
+  "hardware_root_cause_confirmed": false,
+  "full_host": {
+    "measured_commit": "7cce1f3",
+    "counts": {
+      "passed": 5708,
+      "failed": 0,
+      "skipped": 1
+    },
+    "duration_seconds": 581.688,
+    "report_sha256": "a81425aabc132c2858f8f004aab978291ce3b0aa9d8c23393cda2dc211f246df",
+    "log_sha256": "7336ebc816de90ef533caca29d2a169871143ba723eee76782e8e5e40673125d",
+    "input_postguards_passed": true,
+    "later_baseline_record_test_included": false
+  },
+  "protected_surface_admitted": false,
+  "legacy_audio_repaired": false,
+  "third_party_antibot_verified": false,
+  "package_admitted": false,
+  "production_admitted": false
+}

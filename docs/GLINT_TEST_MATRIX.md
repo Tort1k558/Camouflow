@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-01: fresh R8 baseline passed all eight groups
+
+[Measured baseline](../native/drafts/upstream-156-audio-r8/baseline-recheck.json):
+runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6,
+combined 5 — **160 checks / 8 groups passed**. Source/core/receipt/driver and
+all runtime-asset postguards passed; zero owned processes remained.
+The hardware close deadline stayed at ten seconds. Its original timeout remains
+unexplained, not retroactively repaired by this successful full repeat.
+
+The full host run on `7cce1f3`, including the complete 157 source-packet tests,
+passed **5708 tests / one skip**, with unchanged inputs. The later baseline-record
+test is outside that snapshot. This is policy-off baseline coverage, not protected
+surface, Legacy Audio, installed-package or production admission.
+
 ## 2026-11-01: full host repeat and Chromium 157 source application
 
 | Gate | Result | Boundary |
