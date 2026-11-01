@@ -3,11 +3,13 @@
 ## 2026-11-01: current R8 boundary and transport calibration
 
 The [R8 Windows browser build](../native/drafts/upstream-156-audio-r8/windows-build.json)
-has completed; building the native test executables is a separate pending stage,
-not a restarted browser build. The immutable 131-patch recipe includes both Audio
+has completed; the separate linked native batch now passed **135 cases / five
+groups**, including all seven Audio lifecycle cases, with final postguards.
+Building the test executables took 1h 13m 44.78s, not a restarted browser build.
+The immutable 131-patch recipe includes both Audio
 lifetime packets. Earlier preparation entries below describe historical states.
-Selected native execution, independent R8 runtime checks and package admission
-remain pending. Legacy Audio is not repaired by the lifetime changes.
+Broader native-target execution, independent R8 runtime checks and package
+admission remain pending. Legacy Audio is not repaired by the lifetime changes.
 
 The owned [HTTP/2 fixture](../native/drafts/network/HTTP2.md) is now calibrated
 against three fresh official stock156 profiles: TLS 1.3/h2, status 200, matching

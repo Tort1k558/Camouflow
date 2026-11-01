@@ -124,3 +124,30 @@ def test_audio_r8_windows_build_is_not_native_test_or_browser_admission():
     for flag in ('native_tests_verified_in_this_record', 'browser_runtime_verified',
                  'legacy_audio_repaired', 'third_party_antibot_verified', 'production_admitted'):
         assert record[flag] is False
+
+
+def test_audio_r8_selected_native_record_binds_exact_cases_without_browser_admission():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'native-selected-observations.json').read_bytes())
+    browser = json.loads((candidate['directory'] / 'windows-build.json').read_bytes())
+    assert record['passed'] and record['native_postguards_passed']
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['runtime_core_sha256_measured'] == browser['runtime_core_sha256_measured']
+    assert record['build_receipt_sha256'] == browser['receipt_sha256']
+    assert record['native_cases'] == 135
+    assert [row['target'] for row in record['targets']] == [
+        'audio-lifecycle', 'audio-math', 'surface-launch', 'identity-transport', 'worker-surfaces']
+    assert [row['tests'] for row in record['targets']] == [7, 12, 41, 20, 55]
+    for row in record['targets']:
+        assert row['passed']
+        assert row['required_cases'] == {suite: sorted(cases)
+                                         for suite, cases in units.required_tests(row['target']).items()}
+    for name, digest in record['source_sha256'].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    assert record['unit_binary_build'] == dict(siso_steps=1034, siso_duration_seconds=4424.78,
+                                               configured_jobs=4, build_invocations=1)
+    assert record['sampled_controller_resources']['state'] == 'controller-terminal'
+    for flag in ('all_native_targets_verified', 'independent_browser_runtime_verified',
+                 'native_seed_erasure_proved_for_all_future_scheduling', 'legacy_audio_repaired',
+                 'privacy_admitted', 'production_admitted'):
+        assert record[flag] is False

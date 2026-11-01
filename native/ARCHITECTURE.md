@@ -3,8 +3,10 @@
 ## 2026-11-01: R8 build and owned transport boundaries
 
 The [131-patch R8 browser](drafts/upstream-156-audio-r8/windows-build.json) is
-built. Its native test executables and independent browser checks are separate
-pending gates; the R7 results below must not be assigned to R8. Neither lifetime
+built. Its [selected linked native batch](drafts/upstream-156-audio-r8/native-selected-observations.json)
+passed 135 cases with final source/core/toolchain guards. Broader native and
+independent browser checks remain separate pending gates; the R7 results below
+must not be assigned to R8. Neither lifetime
 patch changes the Audio sample algorithm or resolves legacy compatibility.
 
 The [HTTP/2 diagnostics](drafts/network/HTTP2.md) keep initial framing separate

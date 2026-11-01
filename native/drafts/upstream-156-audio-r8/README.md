@@ -1,13 +1,23 @@
 # Glint Chromium 156 R8: coupled Audio lifetime cleanup
 
-**Windows browser built. Selected native tests and browser admission pending.**
+**Windows browser built; 135 selected native cases passed. Independent browser admission pending.**
 
 The [completed build](windows-build.json) executed **60 Siso steps in 16m 05.31s**;
 the build stage including guards/GN took **21m 35.009s**. This was an incremental
 R7-to-R8 transition, not a clean rebuild. All four official stages passed; the
 receipt and measured runtime core are bound separately from the immutable recipe.
-The selected native tests and independent browser QA are separate gates, not
-proved by this build record.
+The [selected native batch](native-selected-observations.json) subsequently
+passed all five groups: Audio lifecycle 7, AudioMath 12, surface launch 41,
+identity transport 20 and worker surfaces 55. Final source/core/receipt/GN/SDK and
+test-binary guards passed. Building the two test executables took 1034 Siso steps
+in **1h 13m 44.78s**; this is not the browser build time. All-target native and
+independent browser QA remain separate gates, not proved by these selected cases.
+
+The terminal whole-controller observer sampled up to five compiler processes and
+two linkers despite configured j4 and link-pool depth one. It does not establish
+action attribution or an instantaneous scheduling guarantee; no limit was raised.
+Keep the immutable partial browser-build resource record separate from this
+completed controller observation.
 
 Preserves all 129 R7 patches byte-for-byte and appends two Chromium-owned patches:
 
@@ -33,7 +43,8 @@ execution of the linked browser or its new lifecycle tests.
 
 The native verifier exposes `--target audio-lifecycle` for this exact candidate:
 seven required cases, including six new tests and the strengthened allocation
-budget test. `audio-math` remains a separate regression gate. Build Windows with
+budget test; all seven now passed in the linked test executable. `audio-math`
+passed its separate 12-case regression gate. Build Windows with
 at most j4 and the unchanged 180 GiB free-space reserve. GN link-pool depth is one,
 but partial controller sampling observed two linker processes; the cause and
 final maxima are not established, so single-link execution is not guaranteed by

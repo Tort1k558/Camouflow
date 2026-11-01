@@ -1,5 +1,29 @@
 # Glint browser test matrix
 
+## 2026-11-01: R8 selected linked native cases passed
+
+[Exact native evidence](../native/drafts/upstream-156-audio-r8/native-selected-observations.json),
+bound to the R8 browser core/receipt and actual test executables.
+
+| Native group | Passed cases |
+| --- | ---: |
+| Audio lifecycle / seed cleanup / late completion | 7 |
+| AudioMath regression | 12 |
+| Surface launch | 41 |
+| Identity transport | 20 |
+| Worker surfaces | 55 |
+| **Total** | **135** |
+
+Source/core/receipt/GN/SDK and test-binary postguards passed. The separate test
+binary build completed **1034 Siso steps / 1h 13m 44.78s**, configured j4; the
+browser's own build time remains 16m 05.31s. The terminal whole-controller
+resource observer sampled up to five compiler processes and two linkers; process
+counts do not establish action attribution or guaranteed scheduling limits.
+
+This does not prove every future teardown schedule, every native target,
+independent browser behavior, Legacy Audio repair or production/package admission.
+Earlier entries retain their historical preparation/build-only boundaries.
+
 ## 2026-11-01: owned HTTP/2 stock calibration, not Glint
 
 [Bound stock record](../native/drafts/network/stock-http2-observations.json)
