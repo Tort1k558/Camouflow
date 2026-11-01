@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "measurement_complete": true,
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "scope": "One observation per site/profile; headless/direct network and experimental flags, not release admission",
+  "headless": true,
+  "proxy_used": false,
+  "observations": [
+    {
+      "mode": "baseline",
+      "raw_report_sha256": "1e50290f53a36e7317878aa83d304928be8eec0616c3f7adadeca8534f0f6524",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+        "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+        "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+      },
+      "sannysoft": {
+        "url": "https://bot.sannysoft.com/",
+        "status": 200,
+        "webdriver": "present (failed)",
+        "webdriver_advanced": "passed",
+        "chrome": "present (passed)",
+        "plugins": "5",
+        "scanner_failures": [
+          "HEADCHR_UA",
+          "CHR_MEMORY"
+        ],
+        "scanner_warnings": [],
+        "body_sha256": "c1f9b0cdbd86455b6eaa27bb3566d6bd7c713073c37aa51a119e80067f43d1f0",
+        "screenshot_sha256": "eeb20c63422afe639a3f64a54755c9f15f549dcac1a624c5004b392678b4ea71"
+      },
+      "creepjs": {
+        "url": "https://abrahamjuliot.github.io/creepjs/",
+        "status": 200,
+        "reported_percentages": {
+          "like_headless": 44,
+          "headless": 100,
+          "stealth": 0
+        },
+        "rgba_noise_percent": null,
+        "rgba_noise_reported": false,
+        "body_sha256": "e834f55b5bd6cccb0a3e4c34ba34af671ea14d8de83b628f5b2ce93bc1df4182",
+        "screenshot_sha256": "8e20e40df8bcd34dd27cde68213e6dc436bb2d314bf90a238cb36b7b677d8165"
+      },
+      "resources_closed": true
+    },
+    {
+      "mode": "experimental",
+      "raw_report_sha256": "1e50290f53a36e7317878aa83d304928be8eec0616c3f7adadeca8534f0f6524",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+        "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+        "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+      },
+      "sannysoft": {
+        "url": "https://bot.sannysoft.com/",
+        "status": 200,
+        "webdriver": "missing (passed)",
+        "webdriver_advanced": "passed",
+        "chrome": "present (passed)",
+        "plugins": "5",
+        "scanner_failures": [],
+        "scanner_warnings": [
+          "VIDEO_CODECS"
+        ],
+        "body_sha256": "9f665748288b4cebd4706e80d7ddd4820cfc629271819ed6c5ad83419b177356",
+        "screenshot_sha256": "5b3be7a74130598c4a5644c53e311c153176040d3e17a6b183f41d8271288b57"
+      },
+      "creepjs": {
+        "url": "https://abrahamjuliot.github.io/creepjs/",
+        "status": 200,
+        "reported_percentages": {
+          "like_headless": 44,
+          "headless": 0,
+          "stealth": 0
+        },
+        "rgba_noise_percent": 14,
+        "rgba_noise_reported": true,
+        "body_sha256": "3c1c402cfd31b7dd49fec6087c4e6fa53f18ea61b782ca1097ea97d9f863920e",
+        "screenshot_sha256": "f2b5d66a54f199801a7cab2e32c42dd4bbdb1d950e5598eb47e2ce91f4f5bf46"
+      },
+      "resources_closed": true
+    },
+    {
+      "mode": "stock",
+      "raw_report_sha256": "6c32d347a1f64a8af578be449b60e9f9453d9343eb7a1ab780cfda6b448e1ba8",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+        "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+        "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+      },
+      "sannysoft": {
+        "url": "https://bot.sannysoft.com/",
+        "status": 200,
+        "webdriver": "present (failed)",
+        "webdriver_advanced": "passed",
+        "chrome": "present (passed)",
+        "plugins": "5",
+        "scanner_failures": [
+          "HEADCHR_UA",
+          "CHR_MEMORY"
+        ],
+        "scanner_warnings": [],
+        "body_sha256": "50810f314c97541267fca515184c529d78bdca221a432e157263bce3da76a750",
+        "screenshot_sha256": "7e5f6f48cff372a133a97285a8b44684c24b8f43c28723b0ce87bf0574f978e8"
+      },
+      "creepjs": {
+        "url": "https://abrahamjuliot.github.io/creepjs/",
+        "status": 200,
+        "reported_percentages": {
+          "like_headless": 44,
+          "headless": 100,
+          "stealth": 0
+        },
+        "rgba_noise_percent": null,
+        "rgba_noise_reported": false,
+        "body_sha256": "a8dc9f64ae668a41e233dbf3cd77aa3db40717306481cd2e75748a2c32c6303c",
+        "screenshot_sha256": "f6941f30d6674b6a2645ed408f64ee2caafb127bb42168982eab4922b42a3c8b"
+      },
+      "resources_closed": true
+    }
+  ],
+  "local_canvas_contract_record_sha256": "6f65469bc60646e7a62d70612b0809195835f823ca710b2f4c729e2911e612a1",
+  "reported_ui_metrics_checked": true,
+  "full_detector_pass": false,
+  "repeated_campaign_verified": false,
+  "captcha_interacted": false,
+  "recaptcha_server_score_verified": false,
+  "turnstile_verified": false,
+  "manager_admission_changed": false,
+  "canvas_policy_repaired": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

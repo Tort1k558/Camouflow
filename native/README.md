@@ -15,6 +15,12 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 **Development engine, not a signed release.** Results belong to the stated
 patch chain; they do not transfer automatically to newer binaries.
 
+**External checkpoint:** [R8 observations](drafts/upstream-156-audio-r8/public-sites-observations.json)
+show Sannysoft WebDriver missing and CreepJS 0% headless in the experimental
+profile, but **44% like-headless and 14% Canvas RGBA noise remain**. An owned
+[pixel-colour test](drafts/canvas-roundtrip/README.md) confirms changed known colours
+in five contexts. These are not all-PASS results or production admission.
+
 **November 1 checkpoint:** R7 is compiled and its scoped runtime coverage is
 15/16 named groups; Legacy Audio compatibility still fails. The next
 [R8 Audio lifetime recipe](drafts/upstream-156-audio-r8/README.md) passed 5581 host

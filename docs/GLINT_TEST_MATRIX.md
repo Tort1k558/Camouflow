@@ -1,5 +1,30 @@
 # Glint browser test matrix
 
+## 2026-11-01: first bound external R8 observations — not all PASS
+
+[Measured record](../native/drafts/upstream-156-audio-r8/public-sites-observations.json).
+One headless/direct-network sample per site/profile, no accounts or CAPTCHA
+interaction. The official stock control is the same Chromium 156.0.8078.36.
+
+| Reported UI metric | R8 baseline | R8 experimental | Stock156 baseline |
+| --- | --- | --- | --- |
+| Sannysoft WebDriver | Present / failed | Missing / passed | Present / failed |
+| Sannysoft scanner FAIL rows | HEADCHR_UA, CHR_MEMORY | None; **VIDEO_CODECS WARN** remains | HEADCHR_UA, CHR_MEMORY |
+| CreepJS headless | 100% | 0% | 100% |
+| CreepJS like headless | **44%** | **44%** | **44%** |
+| CreepJS RGBA noise | Not reported | **14%** | Not reported |
+
+These are site labels, not human probabilities or general anti-bot admission.
+BrowserScan, FingerprintJS, Turnstile and server-verified reCAPTCHA remain unverified.
+Raw screenshots/text stay on D:; public records contain selected metrics and hashes,
+not network addresses or profile keys. No production allowlist changed.
+
+The independent [owned pixel contract](../native/drafts/canvas-roundtrip/README.md)
+passed baseline in five contexts. Experimental readback changed **101/256 channels**
+of a known multicolour fill in each context. Immediate copy, disjoint-write stability
+and uniform fill stayed exact. This identifies a fidelity/detectability limitation,
+not an idempotence failure; Canvas masking is **not repaired** by the automation scores.
+
 ## 2026-11-01: explicit Audio reference-class coverage
 
 [Selected cohort](../native/drafts/audio-bit-diagnostics/r8-selected-cohort-observations.json):

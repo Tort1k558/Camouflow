@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "measurement_complete": true,
+  "compatibility_passed": false,
+  "scope": "Owned 8x8 opaque CSS fill/copy/disjoint-write contracts, five contexts per mode",
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "10dad15a0065aa71a7527c099cced71301ab487818ef3740bc0ac52ecad9837d",
+  "raw_report_sha256": "74a2efce6a92d3efe792be9edb290ea13f859e389ecd26574e86e6c7127278c8",
+  "probe_sha256": "1fe15a7223eaa4d5d11db4ecb8fe39df7426c4ecfb77e2fdc1fa0745d4976139",
+  "validator_sha256": "e2d5dc33038ded9e7206151da5d816d96c3e2de2bfcd5915812124fd005025f3",
+  "phases": [
+    {
+      "name": "baseline",
+      "passed": true,
+      "contexts": [
+        {
+          "name": "document-html",
+          "pixels": 64,
+          "sourceFillChangedChannels": 0,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": true
+        },
+        {
+          "name": "document-offscreen",
+          "pixels": 64,
+          "sourceFillChangedChannels": 0,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": true
+        },
+        {
+          "name": "same-origin-frame",
+          "pixels": 64,
+          "sourceFillChangedChannels": 0,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": true
+        },
+        {
+          "name": "worker-classic",
+          "pixels": 64,
+          "sourceFillChangedChannels": 0,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": true
+        },
+        {
+          "name": "worker-module",
+          "pixels": 64,
+          "sourceFillChangedChannels": 0,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "name": "experimental",
+      "passed": false,
+      "contexts": [
+        {
+          "name": "document-html",
+          "pixels": 64,
+          "sourceFillChangedChannels": 101,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": false
+        },
+        {
+          "name": "document-offscreen",
+          "pixels": 64,
+          "sourceFillChangedChannels": 101,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": false
+        },
+        {
+          "name": "same-origin-frame",
+          "pixels": 64,
+          "sourceFillChangedChannels": 101,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": false
+        },
+        {
+          "name": "worker-classic",
+          "pixels": 64,
+          "sourceFillChangedChannels": 101,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": false
+        },
+        {
+          "name": "worker-module",
+          "pixels": 64,
+          "sourceFillChangedChannels": 101,
+          "immediateCopyChangedChannels": 0,
+          "disjointWriteChangedChannels": 0,
+          "uniformFillChangedChannels": 0,
+          "passed": false
+        }
+      ]
+    }
+  ],
+  "source_core_driver_asset_postguards_passed": true,
+  "resources_closed": true,
+  "fixture_thread_closed": true,
+  "known_multicolour_fill_exact_in_experimental": false,
+  "immediate_copy_exact": true,
+  "disjoint_writes_stable": true,
+  "uniform_fill_exact": true,
+  "tolerance_relaxed": false,
+  "canvas_policy_repaired": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
