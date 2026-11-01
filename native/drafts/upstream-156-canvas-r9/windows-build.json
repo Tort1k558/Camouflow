@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "compiled": true,
+  "candidate": "upstream-156-canvas-r9",
+  "candidate_manifest_sha256": "cc160614d415bec6c71d8fcd29b57d884e406862dbe633d3e51a7300b7fa4b9f",
+  "source_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "build_report_sha256": "b1ee35b5537031c3ce211187f655db0e287dade3c8044762b799fdf0e6594ef1",
+  "build_log_sha256": "c41bf47c657f2a38fc1febda3c76912b5cf413ccade3d599bd6fe8055a4350a8",
+  "receipt_sha256": "1e0cf4f9579fc9620439cc5eaedc6dd33ab5f232fa79add8b7aee5766c18cb31",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "6e05fbeb872a0ff4a12fc7387268bbdff6e47f7814d28cb68b8432e2d450f8da",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build": {
+    "kind": "Incremental R8-to-R9 build, not a clean Chromium build",
+    "jobs": 4,
+    "configured_link_pool_depth": 1,
+    "stage_duration_seconds": 2180.261,
+    "siso_steps": 68,
+    "siso_duration_seconds": 1687.12
+  },
+  "source_postguards_passed": true,
+  "native_source_postguards_passed": true,
+  "earlier_storage_preflight_failure_preserved": true,
+  "browser_runtime_verified": false,
+  "third_party_antibot_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

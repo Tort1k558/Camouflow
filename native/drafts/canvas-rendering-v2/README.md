@@ -1,6 +1,13 @@
 # Canvas rendering v2 — unselected source package
 
-**Implementation draft, not a built or admitted replacement.**
+**Built in the R9 research recipe; not an admitted replacement.**
+
+[R9 measurements](../upstream-156-canvas-r9/runtime-observations.json): all six
+new native tests pass. Fourteen browser phases pass the measured Canvas/context,
+security, native rendering/PNG, first-script and restart checks. **Combined
+admission fails:** WebGL drawImage/ImageBitmap copies disagree with direct
+readback/PNG. No manager capability has been enabled. Preparation history below
+describes the earlier source-only stage.
 
 The [rendering experiments](../canvas-native-rendering/) measured native font/text
 controls with readback masking off. This packet makes the requested pipeline
@@ -21,9 +28,10 @@ explicit rather than silently replacing the historical readback algorithm.
 11 files including two headers and six prepared native unit tests. Source replay
 applied and reversed exactly, including removal of newly added files.
 `host-policy.patch` extends the hash-bound current `app/core/native/privacy.py`.
-Apply only to independent disposable trees; neither patch is registered as an
-active candidate. Canonical source, manager runtime and existing profile settings
-remain unchanged.
+The engine extension is now registered in the explicit 132-patch R9 research
+candidate. The host-policy patch remains unselected: canonical manager policy and
+existing profile settings are unchanged. Apply the host draft only to independent
+disposable trees.
 
 Six translation units passed C++ parsing/type-checking using pinned generated
 target flags and VFS overlays: browser privacy context, renderer launch, renderer
@@ -58,9 +66,10 @@ Non-Windows v2 intent is rejected, not silently emulated.
 
 ## Required before activation
 
-- Compile/link the complete browser and execute the six native tests.
-- Exercise actual v2 policy bootstrap, iframe/workers, restart, teardown and
-  missing/stale policy failures; baseline controls alone do not prove v2 routing.
+- Resolve the measured GPU-to-2D copy inconsistency; browser/native compilation
+  and six Canvas native tests have passed in R9.
+- Extend the passed document/iframe/worker, restart and 11 invalid-launch cases
+  to stale-policy/lifecycle and additional feature-disable combinations.
 - Test 2D/readback/PNG and GPU/Audio together, including disabled-feature rejection,
   translucent pixels, colour spaces, fonts and text metrics/layout.
 - Bind profile configuration changes and restore/clone semantics explicitly.

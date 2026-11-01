@@ -1,0 +1,1455 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-canvas-r9",
+  "candidate_manifest_sha256": "cc160614d415bec6c71d8fcd29b57d884e406862dbe633d3e51a7300b7fa4b9f",
+  "measurement_complete": true,
+  "passed": false,
+  "scope": "Owned loopback Windows research launches, seven explicit Canvas presets, initial and restart; not manager/package admission",
+  "headless": true,
+  "external_sites_tested": false,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "6e05fbeb872a0ff4a12fc7387268bbdff6e47f7814d28cb68b8432e2d450f8da",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "1e0cf4f9579fc9620439cc5eaedc6dd33ab5f232fa79add8b7aee5766c18cb31",
+  "native_batch_sha256": "5f5b7b6363c3ced223c214c2f49173e8a589f5e4bfa24556c18b3a4bb33c3d34",
+  "measured_runtime_assets": 269,
+  "rendering_presets": [
+    "native",
+    "aliased",
+    "grayscale",
+    "cleartype-rgb",
+    "cleartype-bgr",
+    "gamma-1400-contrast-300",
+    "gamma-2200-contrast-500"
+  ],
+  "phases": [
+    {
+      "preset": "native",
+      "restart": false,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": null,
+      "gpu_observed_restart_equal": null,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 98,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 98
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 98
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 98
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 98
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 98,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 98
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 98
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 98
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 98
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "native",
+      "restart": true,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": true,
+      "gpu_observed_restart_equal": true,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 98,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 98
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 98
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 98
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 98
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 98,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 98
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 98
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 98
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 98
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "aliased",
+      "restart": false,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": null,
+      "gpu_observed_restart_equal": null,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 95,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 95
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 95
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 95
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 95
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 95,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 95
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 95
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 95
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "aliased",
+      "restart": true,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": true,
+      "gpu_observed_restart_equal": true,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 95,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 95
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 95
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 95
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 95
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 95,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 95
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 95
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 95
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "grayscale",
+      "restart": false,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": null,
+      "gpu_observed_restart_equal": null,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 90,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 90
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 90
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 90
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 90
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 90,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 90
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 90
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 90
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 90
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "grayscale",
+      "restart": true,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": true,
+      "gpu_observed_restart_equal": true,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 90,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 90
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 90
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 90
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 90
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 90,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 90
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 90
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 90
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 90
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "cleartype-rgb",
+      "restart": false,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": null,
+      "gpu_observed_restart_equal": null,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 105,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 105
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 105
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 105
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 105
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 105,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 105
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 105
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 105
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 105
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "cleartype-rgb",
+      "restart": true,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": true,
+      "gpu_observed_restart_equal": true,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 105,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 105
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 105
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 105
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 105
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 105,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 105
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 105
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 105
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 105
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "cleartype-bgr",
+      "restart": false,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": null,
+      "gpu_observed_restart_equal": null,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 97,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 97
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 97
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 97
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 97
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 97,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 97
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 97
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 97
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 97
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "cleartype-bgr",
+      "restart": true,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": true,
+      "gpu_observed_restart_equal": true,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 97,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 97
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 97
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 97
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 97
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 97,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 97
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 97
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 97
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 97
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "gamma-1400-contrast-300",
+      "restart": false,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": null,
+      "gpu_observed_restart_equal": null,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 100,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 100
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 100
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 100
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 100
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 100,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 100
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 100
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 100
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "gamma-1400-contrast-300",
+      "restart": true,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": true,
+      "gpu_observed_restart_equal": true,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 100,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 100
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 100
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 100
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 100
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 100,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 100
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 100
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 100
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "gamma-2200-contrast-500",
+      "restart": false,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": null,
+      "gpu_observed_restart_equal": null,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 88,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 88
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 88
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 88
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 88
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 88,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 88
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 88
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 88
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 88
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "gamma-2200-contrast-500",
+      "restart": true,
+      "measured_contexts": 11,
+      "security_contexts": 3,
+      "canvas_contexts_passed": true,
+      "combined_canvas_audio_passed": true,
+      "first_script_passed": true,
+      "expanded_rendering_passed": true,
+      "private_identity_unchanged": true,
+      "gpu_observed_restart_equal": true,
+      "passed": false,
+      "validation_errors": [
+        {
+          "stage": "gpu-existing-validator",
+          "error_type": "ValueError",
+          "error": "WebGPU texture/mip/layer pixels or untouched padding disagree"
+        },
+        {
+          "stage": "interop",
+          "error_type": "ValueError",
+          "error": "WebGL-to-Canvas copy consistency failed"
+        }
+      ],
+      "interop": [
+        {
+          "api": "webgl",
+          "known_fill_changed_channels": 88,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 88
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 88
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 88
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 88
+            }
+          ]
+        },
+        {
+          "api": "webgl2",
+          "known_fill_changed_channels": 88,
+          "copies": [
+            {
+              "path": "drawImage",
+              "will_read_frequently": false,
+              "changed_channels": 88
+            },
+            {
+              "path": "drawImage",
+              "will_read_frequently": true,
+              "changed_channels": 88
+            },
+            {
+              "path": "png",
+              "will_read_frequently": false,
+              "changed_channels": 0
+            },
+            {
+              "path": "png",
+              "will_read_frequently": true,
+              "changed_channels": 0
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": false,
+              "changed_channels": 88
+            },
+            {
+              "path": "imageBitmap",
+              "will_read_frequently": true,
+              "changed_channels": 88
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "canvas_document_worker_observations": 154,
+  "canvas_security_observations": 42,
+  "combined_canvas_audio_context_observations": 112,
+  "expanded_images": 280,
+  "decoded_png_exports": 392,
+  "verified_same_profile_restart_pairs": 7,
+  "native_invalid_launches_rejected": 11,
+  "invalid_launch_positive_control_passed": true,
+  "invalid_launch_postguards_passed": true,
+  "source_core_driver_asset_postguards_passed": true,
+  "owned_resources_closed": true,
+  "interpretation": {
+    "webgl_copy_interoperability": "Failed: drawImage and transferToImageBitmap expose raw pixels while direct readback and PNG agree",
+    "existing_webgpu_validator": "Expects exact unprotected texture baseline; not a protected WebGPU module acceptance gate",
+    "captured_webgpu_analysis": "336 texture/context observations preserve padding/alpha/upper bits and repeat/sampled equality; no complete protected WebGPU admission"
+  },
+  "reports_sha256": {
+    "runtime": "92f63b3e14099330d6ceffcb98e27e74dfa545f953e45831efc16917e7803e9a",
+    "invalid_launch": "ef3517cebe950a74373684be87e3d5a215990236eff2e68c33550e8e453c0424",
+    "earlier_driver_discovery_failure": "db693b80c8ba65946f810d85ecf957bfc0cf1efb8edc74d32decb50f68f0e0e1",
+    "earlier_short_circuit_run": "3e6df84519f042467909eb97a805b90a96a9abeb760a84c4511564c6dcb6a460",
+    "captured_webgpu_analysis": "5802a74a9fb81de383dc8e81cdb8fd33aa73afb16449639626061da9f3e5a829"
+  },
+  "diagnostic_sources_sha256": {
+    "measure-canvas-r9-runtime-20261101-v3.py": "a0a7870b49908cbcb6db200cb743c8fb632ac56902845571d87f97ae236bc50f",
+    "canvas-r9-context-fixtures-20261101-v2.py": "424d1e0841b672cd23fbe34a2008a15c89c09d408aeb7ca3ac3bc52387ab0c75",
+    "canvas-r9-runtime-configuration-20261101-v1.py": "f02b72fe80d00e9ffd9b5975a26caad0f85304b4a1327b45d50c0e0bf1a372b0",
+    "canvas-r9-webgl-copy-contract-20261101-v1.js": "6e3eb687ed48b0068fe5e0d43dc554a4cfc3d4700f2aebbb1849adab2335d544",
+    "validate-canvas-r9-webgl-copy-20261101-v1.py": "72728177b5c4bf308ba4ba5d0e33dbc931ba472a56d6b8f7558f1cf49789c80f",
+    "canvas-r9-invalid-launch-contract-20261101-v1.py": "2c36b911e6590ab6358ddebc757f35eaa984705b2f264b774b7f3cc38923a737",
+    "measure-canvas-r9-invalid-launch-20261101-v2.py": "680b5f6f9e2c5dfd77ba32f5ddfdc083c9ac0938e182d179e979a3c6a84aac0a"
+  },
+  "earlier_failures_preserved": true,
+  "real_device_cohorts_verified": false,
+  "cross_profile_uniqueness_verified": false,
+  "manager_admission_changed": false,
+  "legacy_audio_repaired": false,
+  "third_party_antibot_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

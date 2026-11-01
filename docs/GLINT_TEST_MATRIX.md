@@ -1,5 +1,30 @@
 # Glint browser test matrix
 
+## 2026-11-01: R9 build, all-native pass and combined-runtime failure
+
+| Gate | Measured result |
+| --- | --- |
+| [Windows browser build](../native/drafts/upstream-156-canvas-r9/windows-build.json) | 68 incremental steps / 28m 07.12s; final source guards pass |
+| [Native batch](../native/drafts/upstream-156-canvas-r9/native-all-observations.json) | All 27 groups pass; 560 executions / 403 distinct cases |
+| Canvas documents / workers | 154 observations pass, including first reads in classic/module workers |
+| Canvas security | 42 observations pass; taint/error/reset contracts retained |
+| Native rendering / PNG | 280 images / 392 decoded exports pass across seven explicit presets |
+| Restart / invalid policy | Seven identity-stable restart pairs; 11 native rejections and valid positive control |
+| GPU-to-2D interoperability | **FAIL:** raw drawImage/ImageBitmap differ from protected direct readback; PNG agrees |
+| Protected WebGPU gate | Not admitted; old WebGL verifier expects raw texture bytes |
+| Overall runtime / manager package | **FAIL / not activated** |
+
+[Runtime evidence](../native/drafts/upstream-156-canvas-r9/runtime-observations.json)
+retains all 14 phases and both earlier harness failures. Independent checks now
+continue after a failed contract, so GPU failure does not suppress Canvas, PNG,
+first-script, restart or copy measurements. Source/core/driver/269-asset guards
+pass; owned resources close. No external detector or CAPTCHA verdict is claimed.
+
+Captured WebGPU analysis covers 336 texture/context observations from the earlier
+seven initial phases: repeat/sampled copies agree and padding/alpha/upper bits
+remain unchanged. This is bounded evidence, not full WebGPU acceptance or a
+reason to relabel the overall failed run as passed. Historical checkpoints follow.
+
 ## 2026-11-01: R9 recipe registration and pre-registration full host regression
 
 [R9 recipe](../native/drafts/upstream-156-canvas-r9/README.md) extends exact R8 by

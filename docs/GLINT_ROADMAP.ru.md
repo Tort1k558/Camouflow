@@ -1,5 +1,27 @@
 # Glint: план проверки и развития
 
+## 2026-11-01: R9 built; native pass, combined runtime blocked by copy consistency
+
+- [Browser build](../native/drafts/upstream-156-canvas-r9/windows-build.json):
+  68 incremental steps / 28m 07.12s, unchanged source/native postguards.
+- [All native groups](../native/drafts/upstream-156-canvas-r9/native-all-observations.json):
+  27 passed, 560 executions / 403 distinct cases, including all six Canvas cases.
+- [Actual runtime](../native/drafts/upstream-156-canvas-r9/runtime-observations.json):
+  all 14 phases measured; 154 Canvas contexts, 42 security observations, 280 images /
+  392 PNG exports, seven persistent-identity restart pairs and 11 invalid launches.
+- Combined verdict remains **failed**: WebGL drawImage/ImageBitmap copies expose
+  raw pixels while direct readback and PNG agree. The existing WebGL validator's
+  raw WebGPU texture expectation needs a separately scoped protected WebGPU gate.
+
+Next package: repair native GPU source-image boundaries together (DOM/Offscreen,
+ImageBitmap, worker ownership, taint/alpha/colour-space/budget handling), calibrate
+the protected WebGPU validator without relaxing copy equality, then repeat full
+mixed/runtime and manager/package/recovery gates. Do not disable protection or
+replace these fixes with a compatible-looking raw fallback. Host policy remains
+unselected; Legacy Audio, real-device cohorts and the full objective stay open.
+
+Earlier checkpoints below retain their original measurement scopes.
+
 ## 2026-11-01: R9 Windows research recipe registered
 
 - [R9](../native/drafts/upstream-156-canvas-r9/README.md): 132 patches, exact

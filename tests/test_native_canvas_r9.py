@@ -101,3 +101,89 @@ def test_canvas_r9_host_archive_binds_both_registration_sources(host_sources_bef
         assert hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest() == row['after_sha256']
         assert hashlib.sha256(host_sources_before_canvas_r9[row['source']]).hexdigest() == row['before_sha256']
         assert b'upstream-156-canvas-r9' not in host_sources_before_canvas_r9[row['source']]
+
+
+def test_canvas_r9_measured_build_and_native_batch_bind_the_same_binary():
+    candidate = build.load_candidate(CANDIDATE)
+    browser = json.loads((candidate['directory'] / 'windows-build.json').read_bytes())
+    native = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
+    assert browser['compiled'] and native['passed'] and native['postguards_passed']
+    for record in (browser, native):
+        assert record['candidate'] == CANDIDATE
+        assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+        assert record['privacy_admitted'] is record['production_admitted'] is False
+        assert record['third_party_antibot_verified'] is False
+    assert browser['receipt_sha256'] == native['receipt_sha256']
+    assert browser['runtime_core_sha256_measured'] == native['runtime_core_sha256_measured']
+    assert browser['build']['jobs'] == native['unit_binary_build']['configured_jobs'] == 4
+    assert browser['build']['configured_link_pool_depth'] == 1
+    assert browser['build']['siso_steps'] == 68
+    assert browser['build']['siso_duration_seconds'] == 1687.12
+    assert native['unit_binary_build']['siso_steps'] == 8
+    assert native['unit_binary_build']['siso_duration_seconds'] == 1029.43
+    assert browser['source_postguards_passed'] and browser['native_source_postguards_passed']
+
+
+@pytest.mark.parametrize('target', units.SUPPORTED_TARGETS)
+def test_canvas_r9_measured_native_groups_keep_exact_registered_cases(target):
+    candidate = build.load_candidate(CANDIDATE)
+    record = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
+    rows = [row for row in record['targets'] if row['target'] == target]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row['passed'] and row['build_target'] == units.unit_binary_target(target)
+    assert {suite: set(cases) for suite, cases in row['required_cases'].items()} == units.required_tests(target)
+    assert row['case_executions'] == sum(map(len, row['required_cases'].values()))
+    for field in ('test_binary_sha256', 'result_sha256', 'log_sha256'):
+        assert re.fullmatch('[0-9a-f]{64}', row[field])
+
+
+def test_canvas_r9_native_execution_counts_do_not_inflate_distinct_coverage():
+    candidate = build.load_candidate(CANDIDATE)
+    record = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
+    assert [row['target'] for row in record['targets']] == list(units.SUPPORTED_TARGETS)
+    distinct = {(row['build_target'], suite, case) for row in record['targets']
+                for suite, cases in row['required_cases'].items() for case in cases}
+    assert record['native_groups'] == len(record['targets']) == 27
+    assert record['native_case_executions'] == sum(row['case_executions'] for row in record['targets']) == 560
+    assert record['distinct_binary_suite_cases'] == len(distinct) == 403
+    assert record['shared_case_reexecutions'] == 560 - 403
+    for name, digest in record['source_sha256'].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+
+
+def test_canvas_r9_real_runtime_retains_failed_interop_and_closed_admission():
+    candidate = build.load_candidate(CANDIDATE)
+    record = json.loads((candidate['directory'] / 'runtime-observations.json').read_bytes())
+    native = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['runtime_core_sha256_measured'] == native['runtime_core_sha256_measured']
+    assert record['receipt_sha256'] == native['receipt_sha256']
+    assert record['native_batch_sha256'] == native['batch_report_sha256']
+    assert record['measurement_complete'] and record['passed'] is False
+    assert record['source_core_driver_asset_postguards_passed'] and record['owned_resources_closed']
+    assert len(record['phases']) == 14 and record['measured_runtime_assets'] == 269
+    assert [(row['preset'], row['restart']) for row in record['phases']] == [
+        (preset, restart) for preset in record['rendering_presets'] for restart in (False, True)]
+    assert record['canvas_document_worker_observations'] == 154
+    assert record['canvas_security_observations'] == 42
+    assert record['expanded_images'] == 280 and record['decoded_png_exports'] == 392
+    assert record['verified_same_profile_restart_pairs'] == 7
+    assert record['native_invalid_launches_rejected'] == 11
+    assert record['invalid_launch_positive_control_passed'] and record['invalid_launch_postguards_passed']
+    for row in record['phases']:
+        assert row['passed'] is False and row['canvas_contexts_passed'] and row['expanded_rendering_passed']
+        assert row['combined_canvas_audio_passed'] and row['first_script_passed']
+        assert {error['stage'] for error in row['validation_errors']} == {'gpu-existing-validator', 'interop'}
+        if row['restart']:
+            assert row['private_identity_unchanged'] and row['gpu_observed_restart_equal']
+        for api in row['interop']:
+            assert api['known_fill_changed_channels'] > 0
+            assert len(api['copies']) == 6
+            for copy in api['copies']:
+                assert (copy['changed_channels'] == 0) == (copy['path'] == 'png')
+    for field in ('external_sites_tested', 'real_device_cohorts_verified', 'cross_profile_uniqueness_verified',
+                  'manager_admission_changed', 'legacy_audio_repaired', 'third_party_antibot_verified',
+                  'privacy_admitted', 'production_admitted'):
+        assert record[field] is False
+    assert record['earlier_failures_preserved']

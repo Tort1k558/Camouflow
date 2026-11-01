@@ -1,6 +1,23 @@
 # Glint architecture
 
-## 2026-11-01: current verified boundary
+## 2026-11-01: R9 compiled boundary and real interoperability failure
+
+[R9 browser](drafts/upstream-156-canvas-r9/windows-build.json) is built; its
+[27 native groups](drafts/upstream-156-canvas-r9/native-all-observations.json)
+passed 560 executions / 403 distinct cases with final postguards. The
+[owned runtime experiment](drafts/upstream-156-canvas-r9/runtime-observations.json)
+completed all 14 phases: 154 Canvas document/worker observations, 42 security
+observations, 280 images / 392 PNG exports, seven persistent-identity restart
+pairs and 11 native-invalid-launch rejections with a working positive control.
+
+The overall runtime verdict is **failed**. Protected WebGL direct readback and
+PNG agree, but drawImage/transferToImageBitmap expose the raw source pixels.
+Fix source-image boundaries coherently; do not hide the mismatch by weakening
+tests or disabling GPU protection. The existing WebGL verifier's raw WebGPU
+texture expectation is also not a protected WebGPU gate. Native passes and
+bounded captured-copy consistency are not installed-package/production admission.
+
+## 2026-11-01: earlier R8 verified boundary
 
 R8 now has [all 26 native groups](drafts/upstream-156-audio-r8/native-all-observations.json)
 passed (554 executions / 397 distinct cases) and a fresh

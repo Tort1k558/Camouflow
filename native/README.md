@@ -15,6 +15,14 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 **Development engine, not a signed release.** Results belong to the stated
 patch chain; they do not transfer automatically to newer binaries.
 
+**Latest R9 checkpoint:** [Windows build](drafts/upstream-156-canvas-r9/windows-build.json)
+and [all 27 native groups](drafts/upstream-156-canvas-r9/native-all-observations.json)
+passed: **560 executions / 403 distinct tests**. The
+[14-phase browser run](drafts/upstream-156-canvas-r9/runtime-observations.json)
+measured working Canvas/context/export/restart contracts and 11 rejected invalid
+launches, but **failed WebGL-to-2D copy consistency**. R9 is not an admitted
+package or a verified external-detector result. Earlier checkpoints follow.
+
 **External checkpoint:** [R8 observations](drafts/upstream-156-audio-r8/public-sites-observations.json)
 show Sannysoft WebDriver missing and CreepJS 0% headless in the experimental
 profile, but **44% like-headless and 14% Canvas RGBA noise remain**. An owned
