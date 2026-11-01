@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measured_commit": "fe5eb7a78037e52fc62ff64cbc7568ffbfa9b3d5",
+  "counts": {
+    "passed": 5581,
+    "failed": 0,
+    "skipped": 1
+  },
+  "duration_seconds": 570.766,
+  "input_postguards_passed": true,
+  "report_sha256": "44fc1418e5ef861a436dbc46d53f3c390c510ce051b7ee571c1d0682e60d5177",
+  "log_sha256": "77f052b753d73a48212e2fd18a3fa05aabb9ba04caf8918b97d2f961cc5b60bc",
+  "original_failed_run": {
+    "counts": {
+      "passed": 5576,
+      "failed": 4,
+      "skipped": 1
+    },
+    "report_sha256": "29bfed3f18d337ac1b38e07bc1e48f87aefc3a43cf35ea256d708788a2e85318",
+    "failures": "Four historical target-list assertions after inserting Audio lifecycle into the middle; corrected by append-only registration and explicit new group expectation"
+  },
+  "interrupted_retry": {
+    "report_sha256": "a6ea17326c401567c062ec64fbb7cec7c8790580c4d5bd8d7f84890026be1830",
+    "passed": false,
+    "interrupted": true
+  },
+  "later_public_lifecycle_cli_included": false,
+  "native_runtime_verified": false,
+  "production_admitted": false,
+  "scope": "Complete host suite before public Audio lifecycle CLI/fixture addition; no R8 compilation or native test execution implied"
+}

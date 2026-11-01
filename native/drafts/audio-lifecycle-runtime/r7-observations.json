@@ -1,0 +1,1048 @@
+{
+  "schema": 1,
+  "passed": true,
+  "candidate": "upstream-156-webgpu-r7",
+  "candidate_manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "57bdabaf11f6ad9f37f1b00c6e687df8c2f5ae3587fb06dcd334cf4cea82bdd5",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "8de67c1e805bf9a8abec4b603a02c4edc47a3533c01ad1f3279202a508bd1b76",
+  "original_report_sha256": "78847b12c8e9318b1922fb2a4f9b5d54f04dc448c37da5efe7048831def2f7fb",
+  "isolated_collector_sha256": "14973a704d802a3cbdf6075773ad4a14830e7935141a020eb93e4ae1ff3bba97",
+  "fixture_sha256": "a4087e34a7581f92f1eef5fe59b21645c1987131822d08a864aa49306645162f",
+  "postguards_passed": true,
+  "cleanup_errors": [],
+  "modes": {
+    "baseline": {
+      "observed": {
+        "schema": 1,
+        "mode": "baseline",
+        "passed": true,
+        "rows": [
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 128,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 128,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 4096,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 4096,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 65536,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 65536,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 0,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 0,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 1,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 1,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 2,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 2,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 128,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 128,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 4096,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 4096,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 65536,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 65536,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 0,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 0,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 1,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 1,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 2,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 2,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          }
+        ],
+        "scope": "Owned Audio lifecycle only; pending-detach observation window 150ms, not proof of all future scheduling or private-key erasure"
+      },
+      "coverage": {
+        "cases": 24,
+        "checks": 114,
+        "pending_detach_window_ms": 150
+      },
+      "resources_closed": true
+    },
+    "legacy": {
+      "observed": {
+        "schema": 1,
+        "mode": "legacy",
+        "passed": true,
+        "rows": [
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 128,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 128,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 4096,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 4096,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 65536,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 65536,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 0,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 0,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 1,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 1,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 2,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 2,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "budget-retry",
+            "rate": 44100,
+            "checks": {
+              "allRejectBeforeRendering": true,
+              "contextStillSuspended": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 128,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 128,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 4096,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 4096,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 65536,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 65536,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 0,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 0,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 1,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 1,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 2,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 2,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "budget-retry",
+            "rate": 48000,
+            "checks": {
+              "allRejectBeforeRendering": true,
+              "contextStillSuspended": true
+            },
+            "passed": true
+          }
+        ],
+        "scope": "Owned Audio lifecycle only; pending-detach observation window 150ms, not proof of all future scheduling or private-key erasure"
+      },
+      "coverage": {
+        "cases": 26,
+        "checks": 118,
+        "pending_detach_window_ms": 150
+      },
+      "resources_closed": true
+    },
+    "math": {
+      "observed": {
+        "schema": 1,
+        "mode": "math",
+        "passed": true,
+        "rows": [
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 128,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 128,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 4096,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 4096,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 65536,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 44100,
+            "frames": 65536,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 0,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 0,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 1,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 1,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 44100,
+            "repetition": 2,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 44100,
+            "repetition": 2,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 128,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 128,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 4096,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 4096,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 65536,
+            "reenter": false,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "event-promise",
+            "rate": 48000,
+            "frames": 65536,
+            "reenter": true,
+            "checks": {
+              "oneEvent": true,
+              "sameMutableBuffer": true,
+              "closed": true,
+              "format": true,
+              "sourceUnchanged": true,
+              "repeatRejected": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 0,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 0,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 1,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 1,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-pending",
+            "rate": 48000,
+            "repetition": 2,
+            "checks": {
+              "noEventInObservationWindow": true,
+              "noFulfillmentInObservationWindow": true,
+              "frameRemoved": true
+            },
+            "passed": true
+          },
+          {
+            "kind": "detach-in-completion",
+            "rate": 48000,
+            "repetition": 2,
+            "checks": {
+              "oneEvent": true,
+              "frameRemoved": true,
+              "retainedMutation": true,
+              "fulfilledBufferAgreesIfDelivered": true
+            },
+            "passed": true
+          }
+        ],
+        "scope": "Owned Audio lifecycle only; pending-detach observation window 150ms, not proof of all future scheduling or private-key erasure"
+      },
+      "coverage": {
+        "cases": 24,
+        "checks": 114,
+        "pending_detach_window_ms": 150
+      },
+      "resources_closed": true
+    }
+  },
+  "cases": 74,
+  "checks": 346,
+  "public_validator_revalidated": true,
+  "public_cli_executed": false,
+  "r8_measured": false,
+  "native_seed_erasure_proven": false,
+  "legacy_audio_repaired": false,
+  "production_admitted": false,
+  "scope": "Owned Audio completion/iframe teardown lifecycle only; not the original fidelity/analyser/worklet/realtime suite, private-key erasure or production admission"
+}

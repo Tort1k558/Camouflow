@@ -10,8 +10,14 @@ Preserves all 129 R7 patches byte-for-byte and appends two Chromium-owned patche
 | 0131 | Single-owner completion resolver; erase captured seeds on completion, failure and teardown; reject late publication |
 
 The full recipe passed 131 forward and reverse applications in disposable copies:
-400 composed files matched; 270 upstream files were restored. Canonical checkout
-and R7 runtime remain unchanged. See [preparation](preparation.json).
+400 composed files matched; 270 upstream files were restored. The replay itself
+did not modify the canonical checkout or preserved R7 runtime. Live transition
+and build evidence remain separate. See [preparation](preparation.json).
+
+The [full host regression](host-regression.json) passed **5581 tests / one skip**
+on `fe5eb7a`, with unchanged inputs. It retains the earlier four target-order
+failures and interrupted premature retry. This predates the public Audio lifecycle
+CLI addition and is not native build/runtime evidence.
 
 The two [source packets](../audio-context-ownership/README.md) also passed a combined
 four-translation-unit syntax check with actual GN flags. Masker helpers passed

@@ -15,6 +15,15 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 **Development engine, not a signed release.** Results belong to the stated
 patch chain; they do not transfer automatically to newer binaries.
 
+**November 1 checkpoint:** R7 is compiled and its scoped runtime coverage is
+15/16 named groups; Legacy Audio compatibility still fails. The next
+[R8 Audio lifetime recipe](drafts/upstream-156-audio-r8/README.md) passed 5581 host
+tests/one skip before the later lifecycle CLI addition. It is not yet a verified
+R8 browser. The new [Audio lifecycle verifier](drafts/audio-lifecycle-runtime/README.md)
+has a measured R7 fixture baseline of 74 cases/346 checks, separate from the
+failing Legacy DSP compatibility gate. Historical rows below retain their own
+patch-chain scopes.
+
 **Upstream release blocker (October 18, 2026):** the fork is pinned to Chromium
 148.0.7778.96. Official Windows Stable metadata includes 156.0.8078.36; the
 upstream audit reports `behind-stable`. Runtime success is not security

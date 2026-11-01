@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## 2026-11-01: Audio lifecycle baseline and public verifier
+
+The [new lifecycle fixture](../native/drafts/audio-lifecycle-runtime/README.md)
+passed **74 cases / 346 checks** on an isolated R7 collector: ordinary/reentrant
+completion, shared mutable event/Promise output, pending iframe removal, removal
+inside completion and Legacy budget retries. Core/receipt/source postguards and
+owned-runtime cleanup passed. The public validator revalidated the saved rows;
+the public JS is byte-identical. The new public CLI itself has not yet executed.
+Its focused host regression passed 179 tests, including existing compatibility
+and R8 registration checks. These results do not prove native key erasure, all
+future scheduling or a Legacy fidelity/analyser/worklet repair.
+
+The preceding [full host run](../native/drafts/upstream-156-audio-r8/host-regression.json)
+passed **5581 tests / one skip** on `fe5eb7a`, before this public CLI addition.
+Original target-order failures and the interrupted premature retry are preserved.
+R8 build/native/runtime results remain separate and unverified here.
+
 ## 2026-11-01: R8 coupled Audio source recipe
 
 [R8](../native/drafts/upstream-156-audio-r8/README.md) preserves the exact R7

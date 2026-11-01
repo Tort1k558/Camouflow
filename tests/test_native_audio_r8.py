@@ -96,3 +96,14 @@ def test_audio_lifecycle_registration_keeps_all_historical_target_prefixes(
     for target in previous['SUPPORTED_TARGETS']:
         assert units.required_tests(target) == previous['required_tests'](target)
         assert units.unit_binary_target(target) == previous['unit_binary_target'](target)
+
+
+def test_audio_r8_full_host_record_preserves_failures_and_later_tooling_boundary():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'host-regression.json').read_bytes())
+    assert record['passed'] and record['input_postguards_passed']
+    assert record['counts'] == dict(passed=5581, failed=0, skipped=1)
+    assert record['original_failed_run']['counts']['failed'] == 4
+    assert record['interrupted_retry']['interrupted'] and not record['interrupted_retry']['passed']
+    assert record['later_public_lifecycle_cli_included'] is False
+    assert record['native_runtime_verified'] is record['production_admitted'] is False
