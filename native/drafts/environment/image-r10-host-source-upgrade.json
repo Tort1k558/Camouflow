@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "patch": "image-r10-host-source-upgrade.patch",
+  "patch_sha256": "0c6e1044754af7e90f6bdb2d771853bd501d9dd0a3388552cdc0d4afb126a620",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "5ad16897eeae7c3155dd4c79605ddb687952c0364282ed8ba7abb3d21c6e9cc2",
+      "after_sha256": "5554d2bb847d9a1bfeaa7d9c232179fcca32e7fb492a7e6beb805501793b9917"
+    },
+    {
+      "source": "scripts/verify_native_privacy_units.py",
+      "before_sha256": "8fa9ea3b3a272f92686e2a069a20df738ff54722f9f2164301edd412b4b99681",
+      "after_sha256": "a489cff24a12f40bca9530ec5b400be77033397ad3a63e1f677e72211b831f3a"
+    }
+  ],
+  "scope": "Reversible R10 candidate and exact 21-case GPU image-source unit registration; exact R9 host sources preserved",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

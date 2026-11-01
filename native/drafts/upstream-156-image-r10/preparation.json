@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "passed": true,
+  "compiled": false,
+  "native_tests_executed": false,
+  "production_admitted": false,
+  "forward_patches": 135,
+  "reverse_patches": 135,
+  "manifest_sha256": "3a1472a565328348b1cf4ae0038fbf905d2bd547f594f2cc4664b4143a1d7c48",
+  "canonical_sources_modified": false,
+  "final_owned_files_matched": 406,
+  "upstream_files_restored": 273
+}

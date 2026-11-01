@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: complete R10 research recipe registered
+
+[R10](../native/drafts/upstream-156-image-r10/README.md) is registered with all
+135 patches and the exact 21-case image-source native group. The existing 27 R9
+groups/mappings are preserved; the two changed host scripts have reversible,
+hash-bound R9 snapshots so historical results retain their original sources.
+The candidate uses the same 156 workspace/build pins, maximum j4 and 180 GiB
+preflight. Registration does not activate manager/privacy admission.
+
+Next: complete current host regression, bind R9 rollback/source state, transition
+only the verified owned delta, build Windows and execute all native groups.
+Then verify the independent R10 runtime, direct/frame copies, large images,
+ownership/lifecycle/formats/resources and protected WebGPU/mixed/package gates.
+No R10 browser or native-case result exists yet; the full objective stays open.
+
 ## 2026-11-02: owned-raster source implementation and complete R10 preparation
 
 [Owned-raster packet](../native/drafts/canvas-owned-raster/README.md) now removes

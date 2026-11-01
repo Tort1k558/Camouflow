@@ -1,5 +1,17 @@
 # Glint browser test matrix
 
+## 2026-11-02: R10 registered, not built/executed
+
+[R10](../native/drafts/upstream-156-image-r10/README.md) now registers the complete
+135-patch source recipe and exact 21-case `gpu-image-sources` native group.
+All 27 historical R9 groups and binary mappings are retained. The new candidate
+keeps j4/180 GiB limits; registration does not waive build/runtime/package gates.
+
+Exact R9 source bytes remain available through a reversible host archive; older
+native observations are checked against their measured group lists and archived
+sources. The pre-registration source replay remains a historical source-only
+record. No R10 native or browser pass is claimed; R9 failures stay visible.
+
 ## 2026-11-02: single private raster and full source-chain replay
 
 [Owned-raster draft](../native/drafts/canvas-owned-raster/README.md): eight

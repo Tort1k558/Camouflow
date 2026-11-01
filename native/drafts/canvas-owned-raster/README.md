@@ -25,8 +25,9 @@ the composed draft to **21 prepared native cases, zero executed**.
 
 The complete [pre-registration source replay](full-composition-observations.json)
 also passed **135 forward / 135 reverse patches**, matched 406 final files and
-restored 273 upstream inputs. The prepared R10 recipe remains unregistered and
-unbuilt; this source result is not native-case execution.
+restored 273 upstream inputs. That record describes the earlier pre-registration
+stage. The [R10 recipe](../upstream-156-image-r10/README.md) is now registered but
+still unbuilt; neither source result is native-case execution.
 
 The fixture includes an exact 4096×4096 RGBA8 image at the unchanged 64 MiB
 boundary, plus alias/immutable/subset/padding/format rejection and a pixel oracle.

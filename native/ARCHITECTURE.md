@@ -1,5 +1,19 @@
 # Glint architecture
 
+## 2026-11-02: R10 research registration, native execution pending
+
+The [135-patch R10 recipe](drafts/upstream-156-image-r10/README.md) is registered
+for the existing 156 workspace family. It binds all three image/frame/raster
+packets and three additional immutable upstream inputs, with unchanged build/
+dependency pins. Source replay matches 406 final files and restores 273 inputs.
+
+The new `gpu-image-sources` group selects all 21 prepared native cases in
+blink_unittests and rejects other candidates before workspace access. All 27 R9
+groups/mappings remain unchanged. Reversible two-script host snapshots preserve
+the exact R9/R8 historical bindings rather than assigning current bytes to old
+results. No manager capability, native source tree or binary has been activated
+by registration; transition, build, native/runtime and package gates remain.
+
 ## 2026-11-02: private-raster ownership and complete 135-patch preparation
 
 The [owned-raster extension](drafts/canvas-owned-raster/README.md) reuses the

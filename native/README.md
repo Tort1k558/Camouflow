@@ -15,6 +15,11 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 **Development engine, not a signed release.** Results belong to the stated
 patch chain; they do not transfer automatically to newer binaries.
 
+**R10 source recipe:** [135 patches](drafts/upstream-156-image-r10/README.md)
+are registered with a 21-case GPU image-source native group. Complete source
+apply/reverse passes; the browser/native cases are **not built/executed** yet.
+Existing R9 results below are not R10 results.
+
 **Latest R9 checkpoint:** [Windows build](drafts/upstream-156-canvas-r9/windows-build.json)
 and [all 27 native groups](drafts/upstream-156-canvas-r9/native-all-observations.json)
 passed: **560 executions / 403 distinct tests**. The

@@ -11,6 +11,8 @@ from scripts import verify_native_privacy_units as units
 
 ROOT = Path(__file__).resolve().parents[1]
 CANDIDATE = 'upstream-156-canvas-r9'
+R9_MEASURED_TARGETS = tuple(row['target'] for row in json.loads(
+    (ROOT / 'native/drafts/upstream-156-canvas-r9/native-all-observations.json').read_bytes())['targets'])
 
 
 def test_canvas_r9_extends_exact_r8_recipe_and_retains_resource_limits():
@@ -51,9 +53,11 @@ def test_canvas_r9_unit_registration_matches_all_six_actual_native_test_names():
     assert units.unit_binary_target('canvas-rendering') == 'blink_common_unittests'
 
 
-def test_canvas_r9_preserves_all_r8_unit_groups_and_their_exact_archived_source(native_units_before_canvas_r9):
+def test_canvas_r9_preserves_all_r8_unit_groups_and_their_exact_archived_source(
+        native_units_before_canvas_r9, native_units_before_image_r10):
     previous = native_units_before_canvas_r9
-    assert units.SUPPORTED_TARGETS == (*previous['SUPPORTED_TARGETS'], 'canvas-rendering')
+    assert native_units_before_image_r10['SUPPORTED_TARGETS'] == (*previous['SUPPORTED_TARGETS'], 'canvas-rendering')
+    assert units.SUPPORTED_TARGETS[:len(R9_MEASURED_TARGETS)] == R9_MEASURED_TARGETS
     assert len(previous['SUPPORTED_TARGETS']) == 26
     for target in previous['SUPPORTED_TARGETS']:
         assert units.required_tests(target) == previous['required_tests'](target)
@@ -93,12 +97,13 @@ def test_canvas_r9_requires_the_actual_canvas_and_bootstrap_patches(tmp_path):
             units.require_target_sources(tmp_path, [{'name': name} for name in required - {missing}], 'canvas-rendering')
 
 
-def test_canvas_r9_host_archive_binds_both_registration_sources(host_sources_before_canvas_r9):
+def test_canvas_r9_host_archive_binds_both_registration_sources(
+        host_sources_before_canvas_r9, host_sources_before_image_r10):
     packet = ROOT / 'native/drafts/environment/canvas-r9-host-source-upgrade.json'
     record = json.loads(packet.read_bytes())
     assert set(host_sources_before_canvas_r9) == {row['source'] for row in record['sources']}
     for row in record['sources']:
-        assert hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest() == row['after_sha256']
+        assert hashlib.sha256(host_sources_before_image_r10[row['source']]).hexdigest() == row['after_sha256']
         assert hashlib.sha256(host_sources_before_canvas_r9[row['source']]).hexdigest() == row['before_sha256']
         assert b'upstream-156-canvas-r9' not in host_sources_before_canvas_r9[row['source']]
 
@@ -124,7 +129,7 @@ def test_canvas_r9_measured_build_and_native_batch_bind_the_same_binary():
     assert browser['source_postguards_passed'] and browser['native_source_postguards_passed']
 
 
-@pytest.mark.parametrize('target', units.SUPPORTED_TARGETS)
+@pytest.mark.parametrize('target', R9_MEASURED_TARGETS)
 def test_canvas_r9_measured_native_groups_keep_exact_registered_cases(target):
     candidate = build.load_candidate(CANDIDATE)
     record = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
@@ -138,10 +143,10 @@ def test_canvas_r9_measured_native_groups_keep_exact_registered_cases(target):
         assert re.fullmatch('[0-9a-f]{64}', row[field])
 
 
-def test_canvas_r9_native_execution_counts_do_not_inflate_distinct_coverage():
+def test_canvas_r9_native_execution_counts_do_not_inflate_distinct_coverage(host_sources_before_image_r10):
     candidate = build.load_candidate(CANDIDATE)
     record = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
-    assert [row['target'] for row in record['targets']] == list(units.SUPPORTED_TARGETS)
+    assert [row['target'] for row in record['targets']] == list(R9_MEASURED_TARGETS)
     distinct = {(row['build_target'], suite, case) for row in record['targets']
                 for suite, cases in row['required_cases'].items() for case in cases}
     assert record['native_groups'] == len(record['targets']) == 27
@@ -149,7 +154,8 @@ def test_canvas_r9_native_execution_counts_do_not_inflate_distinct_coverage():
     assert record['distinct_binary_suite_cases'] == len(distinct) == 403
     assert record['shared_case_reexecutions'] == 560 - 403
     for name, digest in record['source_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        value = host_sources_before_image_r10[name] if name in host_sources_before_image_r10 else (ROOT / name).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == digest
 
 
 def test_canvas_r9_real_runtime_retains_failed_interop_and_closed_admission():
