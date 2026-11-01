@@ -1,6 +1,10 @@
 # Shared-memory Canvas swapchain epoch prototype
 
-**Compiled standalone; not in the measured Chromium browser.**
+**Selected in R5; the actual browser large-Canvas recheck passed.**
+
+[R5 browser measurements](../upstream-156-webgpu-r5/browser-observations.json)
+record eight successful baseline/protected large-texture measurements. The
+standalone measurements below are retained as their original, narrower evidence.
 
 `next.patch` retains the original Chromium-root-relative prototype. For an
 actual candidate, apply `dawn-owned.patch` inside `third_party/dawn`, not the
@@ -36,6 +40,6 @@ includes reversible fixture patches and preserves the original observations.
 
 An extra original-library large-input attempt observed device loss, but did not
 capture its exact out-of-memory cause; it is retained as inconclusive, not PASS.
-Recoverable quotas and the real Chromium Canvas gate remain required.
-R4's large Canvas E_OUTOFMEMORY is still a failed browser result; do not report
-this prototype as its verified browser repair. [Exact observations](observations.json).
+Recoverable quotas remain required. R4's original large Canvas E_OUTOFMEMORY
+remains a failed historical result; R5's actual recheck is recorded separately,
+not inferred from these standalone controls. [Exact observations](observations.json).

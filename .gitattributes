@@ -320,3 +320,4 @@ native/drafts/webgpu-shared-swapchain-epoch/* text eol=lf
 native/drafts/environment/profile-surface-host-source-upgrade.json text eol=lf
 native/drafts/environment/webgpu-r4-runtime-observations.json text eol=lf
 app/core/native/surface_driver.py text eol=lf
+native/drafts/webgpu-subresource-capture/* text eol=lf

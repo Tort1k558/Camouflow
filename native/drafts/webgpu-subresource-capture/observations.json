@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "selected": false,
+  "browser_integrated": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "hardware_capture_passed": true,
+  "scope": "Selected 2D array/mip CPU capture; not paired GPU projection, automatic native interception or browser repair.",
+  "base_candidate": "upstream-156-webgpu-r5",
+  "patch_sha256": "1e22e3a8f39a66aae4622c10f23c4c2abdc60ce773485a4a37c12a8e8c43eccd",
+  "source_files": {
+    "src/dawn/native/d3d12/glint/texture_capture.h": {
+      "before_sha256": "c2a02549e8119fbce1658069d3332130c6e81fb1cf8253890821221b62e42be8",
+      "after_sha256": "1c812f47698160e800f7aefb38be08e75c8615afe00bd84f118292ef89527eb3"
+    },
+    "src/dawn/native/d3d12/glint/texture_capture.cc": {
+      "before_sha256": "d826f317c1d72a81dec2dc9aaee355449b92b0e80120f33ff4bbb7fda7390edc",
+      "after_sha256": "e9bb295b4f3c72aba6340531a21c50c80853a518d43abd55e6d92893785d8cde"
+    }
+  },
+  "fixture_sha256": "198546656436997767659cd14773cfc62283223343838b168897ce7c4e955353",
+  "runner_sha256": "abd81f9a4b3323096d2ad79919c6bbaa3a13f5777d2fd3f52fefbe558aba4612",
+  "report_sha256": "509fc683ec354f07a57a41e5cf4e648beb55686ec5a824fd09b917d72c65b32f",
+  "runs": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 32,
+        "assertions": 97072,
+        "budget_cases": 32,
+        "contention_threads_tested": 8,
+        "browser_integrated": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 32,
+        "assertions": 97072,
+        "budget_cases": 32,
+        "contention_threads_tested": 8,
+        "browser_integrated": false
+      }
+    }
+  ],
+  "report_source_sha256": {
+    "texture_capture.h": "1c812f47698160e800f7aefb38be08e75c8615afe00bd84f118292ef89527eb3",
+    "capture_test.cc": "198546656436997767659cd14773cfc62283223343838b168897ce7c4e955353",
+    "texture_capture.cc": "e9bb295b4f3c72aba6340531a21c50c80853a518d43abd55e6d92893785d8cde",
+    "check.py": "abd81f9a4b3323096d2ad79919c6bbaa3a13f5777d2fd3f52fefbe558aba4612"
+  },
+  "postguards_passed": true,
+  "patch_roundtrip_passed": true,
+  "canonical_patch_check_passed": true,
+  "formats": [
+    "rgba8unorm",
+    "bgra8unorm",
+    "rgba8typeless",
+    "bgra8typeless"
+  ],
+  "new_subresources_per_format": 6,
+  "unchanged_single_surface_cases": 8,
+  "unresolved": [
+    "Dawn copy notification mip/layer propagation",
+    "Paired native GPU texture projection",
+    "Sampled 2D array views and mip selection",
+    "Actual protected browser map/restart gates"
+  ],
+  "earlier_report_sha256": "73e1b47dfd14707de29c1882342d2dca86484f3e5fe8f009ab2188bb66e79880"
+}

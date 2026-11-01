@@ -1,8 +1,8 @@
-from dataclasses import replace
 import hashlib
 import json
-from pathlib import Path
 import re
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -237,3 +237,79 @@ def test_surface_launch_units_reject_a_candidate_without_the_launch_patch(tmp_pa
 
     with pytest.raises(ValueError, match='exact upstream-156-webgpu-r5'):
         units.verify(tmp_path, tmp_path / 'report.json', target='surface-launch', candidate_name=candidate)
+
+
+def test_r5_browser_evidence_keeps_failures_separate_from_controlled_rechecks():
+    from scripts import native_build as build
+
+    candidate = build.load_candidate('upstream-156-webgpu-r5')
+    record = json.loads((candidate['directory'] / 'browser-observations.json').read_bytes())
+    compiled = json.loads((candidate['directory'] / 'windows-build-observations.json').read_bytes())
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['runtime_assets_sha256'] == compiled['runtime_core_sha256_measured']
+    assert record['browser_executed'] and not record['all_browser_gates_passed']
+    assert record['privacy_admitted'] is record['production_admitted'] is False
+    gates = record['original_batch']['gates']
+    assert len(gates) == 11 and sum(row['passed'] for row in gates) == 8
+    assert {row['name'] for row in gates if not row['passed']} == {
+        'normal-profile-surfaces', 'audio-compatibility', 'audio-math-long-buffer'}
+    assert all(row['runtime_postguard_passed'] and not row['remaining_owned_processes'] for row in gates)
+    assert len(record['large_canvas_webgpu']['cases']) == 8
+    assert all(row['full_png_direct_equal'] and row['shader_edge_samples_equal'] and row['padding_zero']
+               for row in record['large_canvas_webgpu']['cases'])
+    assert all(row['passed'] and row['source_postguard_passed'] and row['immutable_runtime_passed']
+               for row in record['gpu_crash_recovery']['gates'])
+    maps = record['array_mip_map_counterfactual']['runs']
+    assert {row['candidate'] for row in maps} == {'r4', 'r5'}
+    assert len({row['javascript_sha256'] for row in maps}) == 1
+    for row in maps:
+        assert row['baseline_contexts_passed'] == 8 and len(row['map_failures']) == 16
+        assert len({error['context'] for error in row['map_failures']}) == 8
+        assert {error['phase'] for error in row['map_failures']} == {'protected-initial', 'protected-restart'}
+        assert all(error['error'].startswith('MAP_TEXTURE mip=0 layer=0 sampled=false:')
+                   for error in row['map_failures'])
+    audio = record['audio']
+    assert not audio['long_buffer_first_attempt']['passed']
+    recheck = audio['long_buffer_preselected_recheck']
+    assert recheck['passed'] and recheck['selection_before_measurement']
+    assert recheck['profile_summary']['reference_selectors_covered']
+    assert all(row['restart_exact'] and row['unmodified_graphs_exact']
+               for row in recheck['profile_summary']['comparisons'])
+    assert all(not row['modes']['legacy'] for row in audio['legacy_modes'])
+    screenshots = record['driver_screenshots']
+    assert not screenshots['first_attempt']['passed'] and not screenshots['root_driver_modified']
+    assert screenshots['explicit_automation_recheck']['passed']
+    assert all(row['exact_rgba_pixels'] and row['resources_released']
+               for row in screenshots['explicit_automation_recheck']['checks'])
+
+
+def test_subresource_capture_draft_roundtrips_exact_r5_source_without_admission(tmp_path):
+    import subprocess
+
+    root = Path(__file__).resolve().parents[1]
+    draft = root / 'native/drafts/webgpu-subresource-capture'
+    record = json.loads((draft / 'observations.json').read_bytes())
+    assert record['hardware_capture_passed'] and record['postguards_passed']
+    assert record['selected'] is record['browser_integrated'] is record['production_admitted'] is False
+    assert hashlib.sha256((draft / 'next.patch').read_bytes()).hexdigest() == record['patch_sha256']
+    assert hashlib.sha256((draft / 'capture_test.cc').read_bytes()).hexdigest() == record['fixture_sha256']
+    assert hashlib.sha256((draft / 'check.py').read_bytes()).hexdigest() == record['runner_sha256']
+    for path, hashes in record['source_files'].items():
+        after = (draft / Path(path).name).read_bytes()
+        assert hashlib.sha256(after).hexdigest() == hashes['after_sha256']
+        assert record['report_source_sha256'][Path(path).name] == hashes['after_sha256']
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(after)
+    patch = str(draft / 'next.patch')
+    for reverse, expected in ((True, 'before_sha256'), (False, 'after_sha256')):
+        subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', *(['--reverse'] if reverse else []), patch],
+                       cwd=tmp_path, check=True, capture_output=True)
+        for path, hashes in record['source_files'].items():
+            assert hashlib.sha256((tmp_path / path).read_bytes()).hexdigest() == hashes[expected]
+    assert {row['sanitizer'] for row in record['runs']} == {'none', 'address'}
+    for row in record['runs']:
+        assert row['compile_returncode'] == row['test_returncode'] == 0
+        assert row['result']['hardware_adapter'] and row['result']['passed']
+        assert row['result']['cases'] == row['result']['budget_cases'] == 32
+        assert row['result']['assertions'] == 97072 and not row['result']['browser_integrated']

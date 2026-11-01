@@ -1,0 +1,563 @@
+{
+  "schema": 1,
+  "browser_executed": true,
+  "all_browser_gates_passed": false,
+  "scope": "Actual owned Windows R5 browser fixtures; not external detection-site scores or production admission.",
+  "candidate_manifest_sha256": "faa45bce063499c85acd6ef05d6d8f063a552aa77b59f333cd56002958ffd7c3",
+  "runtime_assets_sha256": {
+    "chrome.dll": "3e5214db27be949c9df23331c3a0876bb888ffe24eb85ba014f5e98d64a27298",
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "original_batch": {
+    "passed": false,
+    "gates": [
+      {
+        "name": "runtime-suite",
+        "passed": true,
+        "returncode": 0,
+        "duration_seconds": 448.025,
+        "report_sha256": "fcd6aa0e674ad47b62690ebe75f63ef931f3a53509f2145af9f30d134d98e27e",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "normal-profile-surfaces",
+        "passed": false,
+        "returncode": 1,
+        "duration_seconds": 68.845,
+        "report_sha256": "12ed8fea167181cc88b2bc8e3d01fc24f834e24f25b5bd7c0c6683d349ec22d9",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "normal-profile-webgpu",
+        "passed": true,
+        "returncode": 0,
+        "duration_seconds": 22.753,
+        "report_sha256": "55fec639d9e6ceb5d490ff0b0913b228edacf459a529fa57a7993e5cb1b77908",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "worker-startup",
+        "passed": true,
+        "returncode": 0,
+        "duration_seconds": 40.431,
+        "report_sha256": "d47a0cde06e947d44a6aba3dafd7375b8b15dbd7acd8755213d8d4c3676c147b",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "surfaces",
+        "passed": true,
+        "returncode": 0,
+        "duration_seconds": 161.676,
+        "report_sha256": "4efd99f1eab14fb277da69b184a9bd9b0ad92933e8323ec36339ae36685f0e49",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "gpu-contexts",
+        "passed": true,
+        "returncode": 0,
+        "duration_seconds": 34.239,
+        "report_sha256": "88cd462d85ca8c0b7635ef2c3e118ee3770bc4e362d80932e11dcc8336c0233c",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "webgpu-consistency",
+        "passed": true,
+        "returncode": 0,
+        "duration_seconds": 21.413,
+        "report_sha256": "2d0c29fab20589665727447a5026f8215f6e833db1829559d503e94b98630d4b",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "combined-math",
+        "passed": true,
+        "returncode": 0,
+        "duration_seconds": 381.415,
+        "report_sha256": "641ed3b4cd4fadc15dab36fabf51d116a41d6bf05888af11454318188ff06877",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "audio-compatibility",
+        "passed": false,
+        "returncode": 1,
+        "duration_seconds": 49.741,
+        "report_sha256": "4c8c72249e65408ddb73756bb516d034526fc68c0dd4a65607bf8780325a8e6c",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "webgpu-context-consistency",
+        "passed": true,
+        "returncode": 0,
+        "duration_seconds": 23.263,
+        "report_sha256": "472129853479affa26d86b9a880bb3d7a246910c179a8bdd4b95f3013bdd6d6a",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      },
+      {
+        "name": "audio-math-long-buffer",
+        "passed": false,
+        "returncode": 1,
+        "duration_seconds": 49.497,
+        "report_sha256": "30f1ec586b121d6193028e078166dfb5eff46e4ebb1ef7622cae9eddcff7fb99",
+        "runtime_postguard_passed": true,
+        "remaining_owned_processes": []
+      }
+    ]
+  },
+  "large_canvas_webgpu": {
+    "passed": true,
+    "cases": [
+      {
+        "mode": "baseline",
+        "size": 1921,
+        "format": "rgba8unorm",
+        "rgba_sha256": "3996b80974a1630923d999eabe9864559fdbc9814da00a841f4a28e5b823ad74",
+        "changed_channels": 0,
+        "maximum_delta": 0,
+        "full_png_direct_equal": true,
+        "shader_edge_samples_equal": true,
+        "padding_zero": true
+      },
+      {
+        "mode": "baseline",
+        "size": 1921,
+        "format": "bgra8unorm",
+        "rgba_sha256": "3996b80974a1630923d999eabe9864559fdbc9814da00a841f4a28e5b823ad74",
+        "changed_channels": 0,
+        "maximum_delta": 0,
+        "full_png_direct_equal": true,
+        "shader_edge_samples_equal": true,
+        "padding_zero": true
+      },
+      {
+        "mode": "baseline",
+        "size": 2048,
+        "format": "rgba8unorm",
+        "rgba_sha256": "feac9c8b6f74dd7ccf10ef456d940d05e1df5e5bf31293b64f422d24b91bfcef",
+        "changed_channels": 0,
+        "maximum_delta": 0,
+        "full_png_direct_equal": true,
+        "shader_edge_samples_equal": true,
+        "padding_zero": true
+      },
+      {
+        "mode": "baseline",
+        "size": 2048,
+        "format": "bgra8unorm",
+        "rgba_sha256": "feac9c8b6f74dd7ccf10ef456d940d05e1df5e5bf31293b64f422d24b91bfcef",
+        "changed_channels": 0,
+        "maximum_delta": 0,
+        "full_png_direct_equal": true,
+        "shader_edge_samples_equal": true,
+        "padding_zero": true
+      },
+      {
+        "mode": "ready",
+        "size": 1921,
+        "format": "rgba8unorm",
+        "rgba_sha256": "fec5807eed6376259803c4730050f6c958ac2d28360f0bf9c0af457bc87d4e34",
+        "changed_channels": 7684,
+        "maximum_delta": 1,
+        "full_png_direct_equal": true,
+        "shader_edge_samples_equal": true,
+        "padding_zero": true
+      },
+      {
+        "mode": "ready",
+        "size": 1921,
+        "format": "bgra8unorm",
+        "rgba_sha256": "fec5807eed6376259803c4730050f6c958ac2d28360f0bf9c0af457bc87d4e34",
+        "changed_channels": 7684,
+        "maximum_delta": 1,
+        "full_png_direct_equal": true,
+        "shader_edge_samples_equal": true,
+        "padding_zero": true
+      },
+      {
+        "mode": "ready",
+        "size": 2048,
+        "format": "rgba8unorm",
+        "rgba_sha256": "66a2f394106794b5b483c17e0a810c1c17d3d5b4faa63217a4a4674c0ab24851",
+        "changed_channels": 8192,
+        "maximum_delta": 1,
+        "full_png_direct_equal": true,
+        "shader_edge_samples_equal": true,
+        "padding_zero": true
+      },
+      {
+        "mode": "ready",
+        "size": 2048,
+        "format": "bgra8unorm",
+        "rgba_sha256": "66a2f394106794b5b483c17e0a810c1c17d3d5b4faa63217a4a4674c0ab24851",
+        "changed_channels": 8192,
+        "maximum_delta": 1,
+        "full_png_direct_equal": true,
+        "shader_edge_samples_equal": true,
+        "padding_zero": true
+      }
+    ],
+    "scope": "Four large document textures, full direct/PNG equality and 16 real shader samples each; not recovery or privacy admission",
+    "same_collector_as_failed_r4": true
+  },
+  "gpu_crash_recovery": {
+    "passed": true,
+    "gates": [
+      {
+        "mode": "baseline",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "57d4f5628d333cc35577b882e6e514747dd6ec3c26885c7b98f44c0397c6b7cf",
+        "runtime_resource_free": true,
+        "source_postguard_passed": true,
+        "immutable_runtime_passed": true
+      },
+      {
+        "mode": "ready",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "5b73a0d92ee91426dc91b370cc4ec9b30e5782ed7cd8ca5a565732397ff92741",
+        "runtime_resource_free": true,
+        "source_postguard_passed": true,
+        "immutable_runtime_passed": true
+      }
+    ],
+    "scope": "Selected baseline/ready recovery; not all contexts or every allocation-failure path."
+  },
+  "array_mip_map_counterfactual": {
+    "failure_reproduced_in_both": true,
+    "runs": [
+      {
+        "candidate": "r4",
+        "javascript_sha256": "20184d81b99151be4274a406ea7a3e7cb2f8afdc3bbbe315c90b2c123ee7411b",
+        "baseline_contexts_passed": 8,
+        "map_failures": [
+          {
+            "phase": "protected-initial",
+            "context": "document",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "same_origin_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "cross_origin_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "about_blank_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "srcdoc_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "dedicated",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "shared",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "service",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "document",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "same_origin_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "cross_origin_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "about_blank_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "srcdoc_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "dedicated",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "shared",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "service",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          }
+        ],
+        "postguards_passed": true
+      },
+      {
+        "candidate": "r5",
+        "javascript_sha256": "20184d81b99151be4274a406ea7a3e7cb2f8afdc3bbbe315c90b2c123ee7411b",
+        "baseline_contexts_passed": 8,
+        "map_failures": [
+          {
+            "phase": "protected-initial",
+            "context": "document",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "same_origin_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "cross_origin_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "about_blank_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "srcdoc_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "dedicated",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "shared",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-initial",
+            "context": "service",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "document",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "same_origin_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "cross_origin_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "about_blank_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "srcdoc_frame",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "dedicated",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "shared",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          },
+          {
+            "phase": "protected-restart",
+            "context": "service",
+            "error": "MAP_TEXTURE mip=0 layer=0 sampled=false: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+          }
+        ],
+        "postguards_passed": true
+      }
+    ],
+    "scope": "2D array depth 2, three mip levels; first mip/layer read fails in both protected versions."
+  },
+  "audio": {
+    "legacy_modes": [
+      {
+        "index": 0,
+        "modes": {
+          "baseline": true,
+          "legacy": false,
+          "math": true,
+          "math-restart": true
+        }
+      },
+      {
+        "index": 1,
+        "modes": {
+          "baseline": true,
+          "legacy": false,
+          "math": true,
+          "math-restart": true
+        }
+      }
+    ],
+    "long_buffer_first_attempt": {
+      "passed": false,
+      "profile_summary": {
+        "reference_selectors_covered": false,
+        "comparisons": [
+          {
+            "index": 0,
+            "reference_selector": 1,
+            "restart_exact": true,
+            "unmodified_graphs_exact": true,
+            "math_baseline_different_rows": 12
+          },
+          {
+            "index": 1,
+            "reference_selector": 1,
+            "restart_exact": true,
+            "unmodified_graphs_exact": true,
+            "math_baseline_different_rows": 12
+          }
+        ],
+        "internal_backend_observed": false,
+        "device_cohort_verified": false,
+        "passed": false
+      }
+    },
+    "long_buffer_preselected_recheck": {
+      "passed": true,
+      "profile_summary": {
+        "reference_selectors_covered": true,
+        "comparisons": [
+          {
+            "index": 0,
+            "reference_selector": 0,
+            "restart_exact": true,
+            "unmodified_graphs_exact": true,
+            "math_baseline_different_rows": 0
+          },
+          {
+            "index": 1,
+            "reference_selector": 1,
+            "restart_exact": true,
+            "unmodified_graphs_exact": true,
+            "math_baseline_different_rows": 12
+          }
+        ],
+        "internal_backend_observed": false,
+        "device_cohort_verified": false,
+        "passed": true
+      },
+      "selection_before_measurement": true,
+      "selector_patch_sha256": "c79173e2cffb67d3227e5a9e5906104a7726e997221ce4f8c335e68bcc646cb3"
+    }
+  },
+  "driver_screenshots": {
+    "prototype_only": true,
+    "root_driver_modified": false,
+    "first_attempt": {
+      "passed": false,
+      "error": "CDPSession.send: Protocol error (Browser.getBrowserCommandLine): Command line not returned because --enable-automation not set."
+    },
+    "explicit_automation_recheck": {
+      "passed": true,
+      "checks": [
+        {
+          "legacy_screenshot": false,
+          "passed": true,
+          "enabled_features": [
+            "ThirdPartyStoragePartitioning",
+            "GlintAudioMathCandidate",
+            "GlintWebGLReadbackCandidate",
+            "GlintReadbackMetadataCandidate",
+            "GlintWebGPUPolicyTransportCandidate",
+            "CDPScreenshotNewSurface"
+          ],
+          "png_sha256": "3518fef38f0bb46e5a5ccc50f8de46a927ffb07bf14016f774d4058c98de21ac",
+          "exact_rgba_pixels": true,
+          "png_dimensions": [
+            4,
+            4
+          ],
+          "resources_released": true
+        },
+        {
+          "legacy_screenshot": true,
+          "passed": true,
+          "enabled_features": [
+            "ThirdPartyStoragePartitioning",
+            "GlintAudioMathCandidate",
+            "GlintWebGLReadbackCandidate",
+            "GlintReadbackMetadataCandidate",
+            "GlintWebGPUPolicyTransportCandidate"
+          ],
+          "png_sha256": "3518fef38f0bb46e5a5ccc50f8de46a927ffb07bf14016f774d4058c98de21ac",
+          "exact_rgba_pixels": true,
+          "png_dimensions": [
+            4,
+            4
+          ],
+          "resources_released": true
+        }
+      ]
+    }
+  },
+  "original_reports_sha256": {
+    "full-r5-runtime-qa-20261101-v1/queue-report.json": "6c83eea239cdc800f6a1fac5e973718a5b1bc5b35a1d9e6bc8416414be87b4c9",
+    "webgpu-large-resource-r5-queue-20261101-v1/measurement/report.json": "cae08f02b9b9caa6dbedebadd7c5fe3f91864938a7fe3d7df789c0b1e6a651e9",
+    "full-r5-gpu-recovery-20261101-v1/queue-report.json": "3f5e15b7fcd6f4423e1066cb28aafa597495719ccbf77903848157e85826ca6a",
+    "generic-webgpu-map-r4-counterfactual-20261101-v1/report.json": "e8ef59abdbeb82ab1744749314c0acdcd1363c8c7b834123dcec8b05d905a943",
+    "generic-webgpu-map-r5-diagnostic-20261101-v1/report.json": "fd8d7d1ba2cabf44024dc0e459d71902efe4241b046f4a570b531fc2d3f6c4d2",
+    "full-r5-runtime-qa-20261101-v1/audio-math-long-buffer/report.json": "30f1ec586b121d6193028e078166dfb5eff46e4ebb1ef7622cae9eddcff7fb99",
+    "r5-audio-selector-recheck-20261101-v1/report.json": "1a1b58496160e4bed253e74081bb7de5cd23097d0c025c873fdcde3db45b1817",
+    "full-r5-runtime-qa-20261101-v1/audio-compatibility/report.json": "4c8c72249e65408ddb73756bb516d034526fc68c0dd4a65607bf8780325a8e6c",
+    "surface-driver-screenshot-r5-20261101-v1/report.json": "63353ed7ddbed232d0f997df28f2668b02ec7abc9e0c4802b73ccc05c36d6d6a",
+    "surface-driver-screenshot-r5-20261101-v2/report.json": "a5ca6e2dfa0c706b2a45875d10695685c75570e50e5abb02cbfdddae04911b48",
+    "r5-full-host-regression-20261101-v2/report.json": "ce5215c5956bf0841c9d265fc31d0859f631d7ac1a03c7e027e215980ada7095",
+    "full-r5-runtime-qa-20261101-v1/runtime-preservation.json": "e360760d3d16f577443e958adcc9876f7cabd278e9088a238194b04784c6802a"
+  },
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "unresolved": [
+    "Protected WebGPU array/mip CPU and sampled readback",
+    "Legacy Audio graph compatibility",
+    "Recoverable allocation quota exhaustion across GPU contexts",
+    "Managed package admission and end-to-end application delivery"
+  ]
+}

@@ -1,6 +1,41 @@
 # Glint browser test matrix
 
-## 2026-11-01: R5 compiled; runtime admission remains unverified
+## 2026-11-01: R5 browser measurements and subresource follow-up
+
+[Exact browser evidence](../native/drafts/upstream-156-webgpu-r5/browser-observations.json)
+binds the measured DLL and preserves failures alongside controlled rechecks.
+
+| Gate | Actual result |
+| --- | --- |
+| Original browser batch | Eight of 11 gates passed; three failed, not a release pass |
+| Large Canvas / WebGPU | Eight baseline/protected RGBA/BGRA measurements passed at 1921/2048 pixels; CPU PNG/direct and GPU samples agree |
+| GPU-process recovery | Selected baseline/protected recovery passed; not exhaustive allocation-failure recovery |
+| Normal-profile surfaces | Failed protected WebGPU array/mip maps; reproduced in all eight contexts and restarts |
+| Preserved R4 counterfactual | Same map rejection, with the same diagnostic JavaScript; not an R5-only regression |
+| Long-buffer AudioMath | Both preselected reference variants passed, including restart equality; first random cohort's missing coverage retained |
+| Legacy Audio | Both profiles still failed; not silently substituted with AudioMath |
+| Driver-merge prototype screenshots | Exact pixels in both modes; original omitted-automation harness failure retained |
+
+### Next coherent native packet
+
+1. **CPU subresource capture prerequisite:** hardware-tested
+   [draft](../native/drafts/webgpu-subresource-capture/README.md), 32 cases and 97,072
+   assertions in each normal/ASan run. Selected mip footprints, dimensions,
+   out-of-range rejection and existing quota/lifetime controls; not integrated.
+2. Carry validated mip/layer selection through Dawn copy execution and paired
+   CPU/GPU snapshots. Preserve exact provenance, row layout and native errors.
+3. Extend GPU projection and sampled array/mip views as one compatible packet,
+   with correct transitions, ownership and cache invalidation. Do not just relax
+   the existing single-surface eligibility checks or allow raw readback.
+4. Run all-layer/all-mip direct and sampled controls, repeat reads, producer
+   mutations, restarts and the full document/iframe/worker browser matrix.
+5. Close legacy Audio and recoverable resource limits before manager package
+   admission, actual scenario/Recorder/AI integration and release/rollback gates.
+
+No production admission, CAPTCHA score or external detector PASS is inferred.
+Windows remains the only active platform; Linux/macOS are still deferred.
+
+## 2026-11-01: earlier R5 build/unit checkpoint
 
 The [124-patch Windows candidate](../native/drafts/upstream-156-webgpu-r5/README.md)
 preserves the exact R4 prefix and upstream/resource pins. It adds explicit
