@@ -1,0 +1,30 @@
+diff --git a/content/browser/renderer_host/render_widget_host_unittest.cc b/content/browser/renderer_host/render_widget_host_unittest.cc
+--- a/content/browser/renderer_host/render_widget_host_unittest.cc
++++ b/content/browser/renderer_host/render_widget_host_unittest.cc
+@@ -1258,6 +1258,8 @@
+ 
+ TEST_F(RenderWidgetHostTest, GlintLogicalScreenAdditionRequiresVisualUpdate) {
+   auto old = std::make_unique<blink::VisualProperties>();
++  old->screen_infos = view_->GetScreenInfos();
++  ASSERT_FALSE(old->screen_infos.screen_infos.empty());
+   auto next = *old;
+   EXPECT_FALSE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
+   next.glint_logical_screen_infos = next.screen_infos;
+@@ -1268,6 +1270,8 @@
+ 
+ TEST_F(RenderWidgetHostTest, GlintLogicalScreenOnlyChangesRequireVisualUpdate) {
+   auto old = std::make_unique<blink::VisualProperties>();
++  old->screen_infos = view_->GetScreenInfos();
++  ASSERT_FALSE(old->screen_infos.screen_infos.empty());
+   old->glint_logical_screen_infos = old->screen_infos;
+   auto next = *old;
+   EXPECT_FALSE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
+@@ -1287,6 +1291,8 @@
+ 
+ TEST_F(RenderWidgetHostTest, GlintLogicalScreenClearRequiresVisualUpdate) {
+   auto old = std::make_unique<blink::VisualProperties>();
++  old->screen_infos = view_->GetScreenInfos();
++  ASSERT_FALSE(old->screen_infos.screen_infos.empty());
+   old->glint_logical_screen_infos = old->screen_infos;
+   auto next = *old;
+   next.glint_logical_screen_infos.reset();

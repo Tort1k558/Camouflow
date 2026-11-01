@@ -1,0 +1,24 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc
+--- a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc
+@@ -2,8 +2,9 @@
+ // SPDX-License-Identifier: MIT
+ #include "offline_audio_candidate.h"
+ 
++#include <algorithm>
+ #include <bit>
+-#include <cstring>
++#include <span>
+ 
+ #include "third_party/boringssl/src/include/openssl/hmac.h"
+ 
+@@ -29,7 +30,8 @@
+   auto& entry = cache_[(normalized * 0x9e3779b9u) >> 24];
+   if (entry.normalized != normalized) {
+     std::array<uint8_t, sizeof(kDomain) - 1 + 4> message{};
+-    std::memcpy(message.data(), kDomain, sizeof(kDomain) - 1);
++    std::ranges::copy(std::span(kDomain).first<sizeof(kDomain) - 1>(),
++                      message.begin());
+     for (size_t index = 0; index < 4; ++index) {
+       message[sizeof(kDomain) - 1 + index] =
+           static_cast<uint8_t>(normalized >> (24 - index * 8));

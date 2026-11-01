@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-11-01: R6 registered, full replay passed; no new binary yet
+
+[R6 recipe](../native/drafts/upstream-156-webgpu-r6/README.md) preserves R5's exact 124-patch
+prefix and appends four Dawn-owned packets. Repository-aware replay applied and
+reversed all **128 patches**, matched **400 final files** and restored **270
+upstream files**. Upstream/SDK resource policy remains unchanged: Windows, max j4.
+
+The source/unit tools recognize R6; a reversible archive preserves the exact
+R5 and earlier host bytes used by historical measurements. Native package
+admission and application defaults are unchanged.
+
+Next: full host regression, guarded source backup/transition, official build
+stages, then actual array/mip and context/restart verification. Registration,
+replay and syntax are not evidence of a linked or repaired browser binary.
+
 ## 2026-11-01: Dawn array source packet composed; runtime still pending
 
 [Integration packet](../native/drafts/webgpu-array-native-integration/README.md) composes

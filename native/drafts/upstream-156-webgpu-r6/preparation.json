@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "passed": true,
+  "forward_patches": 128,
+  "reverse_patches": 128,
+  "compiled": false,
+  "canonical_dependency_detector_verified": false,
+  "scope": "Registered immutable recipe: repository-aware forward/reverse replay only; not native source transition or compilation.",
+  "manifest_sha256": "cd63f64a4b05a5d45df7019efa74fc323af65b88bae4dfe6338cb917f5be8ef7",
+  "final_owned_files_matched": 400,
+  "upstream_files_restored": 270,
+  "registered": true,
+  "report_sha256": "65c5fe20b2ffae41f4e6ad0e09088c2d47b42c16e485311707cf0cbc09641e9f",
+  "source_transitioned": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

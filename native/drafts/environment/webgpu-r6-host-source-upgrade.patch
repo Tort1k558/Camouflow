@@ -1,0 +1,26 @@
+diff --git a/scripts/native_build.py b/scripts/native_build.py
+--- a/scripts/native_build.py
++++ b/scripts/native_build.py
+@@ -18,7 +18,7 @@
+ sys.path.insert(0, str(ROOT))
+ LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
+ WEBGPU_CANDIDATES = (
+-    "upstream-156-webgpu", "upstream-156-webgpu-r2", "upstream-156-webgpu-r3", "upstream-156-webgpu-r4", "upstream-156-webgpu-r5",
++    "upstream-156-webgpu", "upstream-156-webgpu-r2", "upstream-156-webgpu-r3", "upstream-156-webgpu-r4", "upstream-156-webgpu-r5", "upstream-156-webgpu-r6",
+ )
+ CANDIDATES = ("upstream-156", *WEBGPU_CANDIDATES)
+ WINDOWS_DIA_FILES = ("include/dia2.h", "include/cvconst.h", "include/diacreate.h", "lib/diaguids.lib",
+diff --git a/scripts/verify_native_privacy_units.py b/scripts/verify_native_privacy_units.py
+--- a/scripts/verify_native_privacy_units.py
++++ b/scripts/verify_native_privacy_units.py
+@@ -610,8 +610,8 @@
+            target: str = "keys", candidate_name: str | None = None,
+            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
+     required = required_tests(target)
+-    if target == "surface-launch" and candidate_name != "upstream-156-webgpu-r5":
+-        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 candidate")
++    if target == "surface-launch" and candidate_name not in {"upstream-156-webgpu-r5", "upstream-156-webgpu-r6"}:
++        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 or upstream-156-webgpu-r6 candidate")
+     if target == "screenshot-transaction" and candidate_name not in CANDIDATES:
+         raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
+     if target in LIVE_SCREEN_TESTS and candidate_name not in CANDIDATES:

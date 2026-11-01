@@ -610,8 +610,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
            target: str = "keys", candidate_name: str | None = None,
            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
     required = required_tests(target)
-    if target == "surface-launch" and candidate_name != "upstream-156-webgpu-r5":
-        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 candidate")
+    if target == "surface-launch" and candidate_name not in {"upstream-156-webgpu-r5", "upstream-156-webgpu-r6"}:
+        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 or upstream-156-webgpu-r6 candidate")
     if target == "screenshot-transaction" and candidate_name not in CANDIDATES:
         raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
     if target in LIVE_SCREEN_TESTS and candidate_name not in CANDIDATES:
