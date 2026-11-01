@@ -1,5 +1,19 @@
 # Glint: план проверки и развития
 
+## 2026-11-01: R7 compiled; baseline passed, full diagnostics in progress
+
+The R7 Windows retry completed; **116 native cases and 160 baseline browser
+checks passed** on the measured core. See the [matrix](GLINT_TEST_MATRIX.md#2026-11-01-r7-windows-build-and-baseline-verified)
+and [bound evidence](../native/drafts/upstream-156-webgpu-r7/windows-build-baseline.json).
+Keep the full objective open: original retained-buffer/mutation gates, wider
+GPU/Audio compatibility, delivery and manager admission are not proved by this
+baseline. Legacy Audio remains unresolved; no production deployment is granted.
+
+One queued normal-profile WebGPU launch still selected an R6-only diagnostic
+script and exited before opening a browser. Preserve that failed launch; rerun
+an exact R7-selector copy with unchanged validators after the current queue.
+Do not classify a runner rejection as measured browser failure or success.
+
 ## 2026-11-01: R7 link-memory recovery
 
 The [first R7 attempt](../native/drafts/upstream-156-webgpu-r7/windows-build-attempt1.json) passed sync, hooks and all 129 patches.

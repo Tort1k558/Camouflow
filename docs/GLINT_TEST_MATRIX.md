@@ -1,5 +1,25 @@
 # Glint browser test matrix
 
+## 2026-11-01: R7 Windows build and baseline verified
+
+Evidence: [R7 build/baseline](../native/drafts/upstream-156-webgpu-r7/windows-build-baseline.json).
+The first out-of-memory attempt remains recorded below; this is a completed
+build-only retry, not a clean rebuild or a production release.
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Windows browser build | 50 Siso steps, 16m 21.87s | Build stage including checks: 21m 58.219s |
+| Parallelism | Max j4, link pool 1; sampled maximum one linker | System memory headroom also improved |
+| Native launch/context/worker cases | 41 + 20 + 55 = **116 passed** | Same test binary; input/core postguards passed |
+| Eight-gate baseline browser suite | **160 passed** | Runtime, hardware, WebRTC, automation, fonts, identity, local CDP, combined |
+| Retained buffers and wider GPU/Audio | Separate R7 queue in progress | No complete repair or compatibility claim yet |
+| Production / external anti-bot tests | Not admitted / not verified | No CAPTCHA-score or invisibility guarantee |
+
+Host evidence is separate: 5523 passed / one skipped before the new diagnostic
+tool packet; its seven focused host tests passed afterward, not a new full run.
+The [Audio metric tools](../native/drafts/audio-bit-diagnostics/README.md) add no
+tolerance and do not turn original exact-match failures into passes.
+
 ## 2026-11-01: R7 link-memory recovery
 
 The [first R7 attempt](../native/drafts/upstream-156-webgpu-r7/windows-build-attempt1.json) passed sync, hooks and all 129 patches.

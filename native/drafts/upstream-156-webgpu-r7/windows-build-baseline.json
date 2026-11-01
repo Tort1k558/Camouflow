@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "passed": true,
+  "candidate": "upstream-156-webgpu-r7",
+  "scope": "Completed Windows build, selected native units and eight-gate baseline only; wider R7 diagnostics remain in progress",
+  "candidate_manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "source_owned_files_verified": 400,
+  "build": {
+    "report_sha256": "5b35f754f3a1de89cb62041b67b6f21135ee9318d1eeda9e8c44449451d2d528",
+    "compiled": true,
+    "compile_jobs": 4,
+    "link_pool_depth": 1,
+    "siso_steps": 50,
+    "siso_duration_seconds": 981.87,
+    "build_stage_duration_seconds": 1318.219,
+    "build_log_sha256": "ff544bc78931ff02a2bd570f5e287ba90fbffad0508d82632c32b0cd5e8caa6a",
+    "reused_stages": [
+      "sync",
+      "hooks",
+      "patch"
+    ],
+    "gn_template_sha256": "a42675f3f4d7f64f04950f7599f81e60423cca499e7ed1a4c860b3c6075d29f8"
+  },
+  "resources": {
+    "report_sha256": "fe225cf9232c29ba0c84eecd0986949207183a370e3c104abc24412de5de4f6d",
+    "max_observed_linkers": 1,
+    "minimum_available_commit_bytes": 15850360832,
+    "attribution": "System memory headroom also improved; completion is not attributed solely to link serialization"
+  },
+  "native": {
+    "report_sha256": "d31ed31847692f335e97d18a67383b201027c69cd7aa7767fc4be3ebf6de9306",
+    "cases": 116,
+    "postguards_passed": true,
+    "groups": [
+      {
+        "target": "surface-launch",
+        "tests": 41,
+        "native_cases_passed": true,
+        "result_sha256": "094b89a3ce863856662ad1e539f00b96d71d2615a0384891440e1e505f816c22",
+        "test_binary_sha256": "e11683290c4583f01bbf4735bd05d6f02501fd21969719b750183520973249d3"
+      },
+      {
+        "target": "identity-transport",
+        "tests": 20,
+        "native_cases_passed": true,
+        "result_sha256": "5b6a49b3f97451a9ec38b2513faee31672429f5601db9552fb0253c5dc6814ad",
+        "test_binary_sha256": "e11683290c4583f01bbf4735bd05d6f02501fd21969719b750183520973249d3"
+      },
+      {
+        "target": "worker-surfaces",
+        "tests": 55,
+        "native_cases_passed": true,
+        "result_sha256": "135cb72c82966f6de6db9219c7be3580c691e3b3c3a70e881dd326dc4c87ad3e",
+        "test_binary_sha256": "e11683290c4583f01bbf4735bd05d6f02501fd21969719b750183520973249d3"
+      }
+    ]
+  },
+  "runtime": {
+    "report_sha256": "a3beb4e5bf04c72f9f31a1d66776b82c90bd6117f3eec12ab31750c6864454c2",
+    "cases": 160,
+    "groups": [
+      {
+        "name": "runtime",
+        "checks": 18,
+        "passed": true,
+        "report_sha256": "8823bac619089d7ceafa774f34d33f99c09cdfe5eb1073c4f2a999287f2fa4aa"
+      },
+      {
+        "name": "hardware",
+        "checks": 9,
+        "passed": true,
+        "report_sha256": "6484a148c09732e4bb7dccac33bb0cd044436fe938ace18acb5d72fb5f5623b6"
+      },
+      {
+        "name": "webrtc",
+        "checks": 7,
+        "passed": true,
+        "report_sha256": "fa864b259d664032d2a60f8fe2ce437df2283cbbcd1d5f3dfdf1e722c9b05880"
+      },
+      {
+        "name": "automation",
+        "checks": 55,
+        "passed": true,
+        "report_sha256": "c4066e979b32a9c7c590fd50593d947841332853c9cdff61ed4baf6ef793d8d8"
+      },
+      {
+        "name": "fonts",
+        "checks": 42,
+        "passed": true,
+        "report_sha256": "ccfe9cf821137478810900a399f55b7e2c52e8426120b07447086dcff8908ce7"
+      },
+      {
+        "name": "identity",
+        "checks": 18,
+        "passed": true,
+        "report_sha256": "e12f389d6fb89d0991654e8a7027aee186f169511e3e04c1f5047ab2061eee43"
+      },
+      {
+        "name": "cdp",
+        "checks": 6,
+        "passed": true,
+        "report_sha256": "077b4e66c6d2746abee8f0fbcdb28200dc010a7e73ec87785370252ffef8dce1"
+      },
+      {
+        "name": "combined",
+        "checks": 5,
+        "passed": true,
+        "report_sha256": "4f0db62cdaa1da32da5184dbc74ef80d2aa5f0087e7c0769769b936a94057de8"
+      }
+    ],
+    "runtime_core_sha256_measured": {
+      "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+      "chrome.dll": "57bdabaf11f6ad9f37f1b00c6e687df8c2f5ae3587fb06dcd334cf4cea82bdd5",
+      "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+    },
+    "build_receipt_sha256": "8de67c1e805bf9a8abec4b603a02c4edc47a3533c01ad1f3279202a508bd1b76"
+  },
+  "complete_r7_diagnostics_passed": false,
+  "retained_buffer_repair_verified": false,
+  "legacy_audio_repaired": false,
+  "third_party_antibot_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

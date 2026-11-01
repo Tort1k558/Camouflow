@@ -49,6 +49,23 @@ def test_r7_host_registration_restores_exact_r6_tooling(host_sources_before_webg
         assert hashlib.sha256(host_sources_before_webgpu_r7[row['source']]).hexdigest() == row['after_sha256']
 
 
+def test_r7_build_baseline_record_keeps_wider_admission_closed():
+    candidate = build.load_candidate('upstream-156-webgpu-r7')
+    record = json.loads((candidate['directory'] / 'windows-build-baseline.json').read_bytes())
+    assert record['passed'] and record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['build']['compiled'] and record['build']['compile_jobs'] == 4
+    assert record['build']['link_pool_depth'] == record['resources']['max_observed_linkers'] == 1
+    assert record['build']['reused_stages'] == ['sync', 'hooks', 'patch']
+    assert record['native']['postguards_passed']
+    assert sum(row['tests'] for row in record['native']['groups']) == record['native']['cases'] == 116
+    assert all(row['native_cases_passed'] for row in record['native']['groups'])
+    assert sum(row['checks'] for row in record['runtime']['groups']) == record['runtime']['cases'] == 160
+    assert len(record['runtime']['groups']) == 8 and all(row['passed'] for row in record['runtime']['groups'])
+    for name in ('complete_r7_diagnostics_passed', 'retained_buffer_repair_verified', 'legacy_audio_repaired',
+                 'third_party_antibot_verified', 'privacy_admitted', 'production_admitted'):
+        assert record[name] is False
+
+
 def test_surface_launch_accepts_r7_before_requiring_a_real_workspace(monkeypatch, tmp_path):
     from scripts import verify_native_privacy_units as units
 

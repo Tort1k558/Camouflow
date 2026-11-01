@@ -1,5 +1,14 @@
 # Glint architecture
 
+## 2026-11-01: measured R7 Windows baseline
+
+R7 is now compiled. The [bound build/baseline evidence](drafts/upstream-156-webgpu-r7/windows-build-baseline.json)
+records 116 native cases and 160 baseline browser checks passed on one measured
+core. Compile parallelism remains max j4; the generated heavy-link pool is one.
+The first failed link is preserved, and improved system memory headroom prevents
+attributing retry success solely to serialization. Wider retained-readback and
+Audio gates remain separate; baseline success grants no production admission.
+
 ## 2026-11-01: R7 link-memory recovery
 
 The [first R7 attempt](drafts/upstream-156-webgpu-r7/windows-build-attempt1.json) passed sync, hooks and all 129 patches.

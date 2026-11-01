@@ -1,6 +1,11 @@
 # Glint Chromium 156 R7: bounded sparse readback
 
-**Registered source recipe; not built or browser-admitted.**
+**Windows build and baseline verified; full R7 compatibility not admitted.**
+
+The [measured build/baseline](windows-build-baseline.json) completed 50 Siso steps
+in 16m 21.87s; the build stage including checks took 21m 58.219s. All 116 selected
+native cases and 160 baseline browser checks passed on the measured R7 core.
+Wider readback, retained-buffer and Audio diagnostics remain separate gates.
 
 Preserves the exact 128-patch R6 prefix and adds one Chromium-owned patch:
 [`0129-webgpu-readback-capacity.patch`](patches/0129-webgpu-readback-capacity.patch).
@@ -18,7 +23,9 @@ capacity follows the existing live-buffer budget without increasing byte quotas.
 | Native target syntax | Three translation units passed |
 | Host registration | Reversible archive preserves exact older tooling |
 | Resources | Windows max j4; one heavy link; full-build reserve 180 GiB |
-| Canonical source transition / browser build | Transition passed; first attempt failed at an out-of-memory link |
+| Canonical source transition / browser build | Passed on retry; first out-of-memory link report retained |
+| Selected native context/launch/worker cases | 116 passed; input/core postguards passed |
+| Eight-gate baseline browser suite | 160 checks passed; not third-party anti-bot acceptance |
 | Retained-buffer browser regression | Required; not replaced by early buffer release |
 | Legacy Audio compatibility | Unresolved; no Audio change in this recipe |
 | Production admission | Not granted |
