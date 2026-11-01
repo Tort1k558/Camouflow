@@ -1,0 +1,67 @@
+diff --git a/wire_probe.cc b/wire_probe.cc
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -213,12 +213,36 @@
+     auto sharedMemory = nativeProcs.deviceImportSharedTextureMemory(nativeDevice,
+         reinterpret_cast<const WGPUSharedTextureMemoryDescriptor*>(&memoryDescriptor));
+     Check(sharedMemory != nullptr);
++    auto producer = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
++        reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
++    WGPUSharedTextureMemoryBeginAccessDescriptor producerAccess{};
++    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, producer, &producerAccess) == WGPUStatus_Success);
++    auto nativeQueue = nativeProcs.deviceGetQueue(nativeDevice);
++    WGPUTexelCopyTextureInfo producerCopy{};
++    producerCopy.texture = producer;
++    producerCopy.aspect = WGPUTextureAspect_All;
++    WGPUTexelCopyBufferLayout producerLayout{};
++    producerLayout.bytesPerRow = width * 4;
++    producerLayout.rowsPerImage = height;
++    WGPUExtent3D producerExtent{width, height, 1};
++    nativeProcs.queueWriteTexture(nativeQueue, &producerCopy, pixels.data(), pixels.size(), &producerLayout, &producerExtent);
++    nativeProcs.queueRelease(nativeQueue);
++    WGPUSharedTextureMemoryEndAccessState produced{};
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, producer, &produced) == WGPUStatus_Success);
++    textureDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::TextureBinding;
+     auto importedTexture = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+     Check(importedTexture != nullptr);
+     WGPUSharedTextureMemoryBeginAccessDescriptor access{};
+-    access.initialized = false;
++    access.initialized = produced.initialized;
++    access.concurrentRead = true;
++    access.fenceCount = produced.fenceCount;
++    access.fences = produced.fences;
++    access.signaledValueCount = produced.signaledValueCount;
++    access.signaledValues = produced.signaledValues;
+     Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, importedTexture, &access) == WGPUStatus_Success);
++    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(produced);
++    nativeProcs.textureRelease(producer);
+     auto importedReservation = client->ReserveTexture(device.Get(),
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+     Check(server->InjectTexture(importedTexture, importedReservation.handle, importedReservation.deviceHandle));
+@@ -230,7 +254,7 @@
+     upload.rowsPerImage = height;
+     wgpu::Extent3D extent{width, height, 1};
+     auto queue = device.GetQueue();
+-    queue.WriteTexture(&textureCopy, pixels.data(), pixels.size(), &upload, &extent);
++    // Contents were initialized by the separate native producer before reader access.
+     wgpu::BufferDescriptor mapDescriptor{};
+     mapDescriptor.size = bytes;
+     mapDescriptor.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
+@@ -650,6 +674,7 @@
+     Check(!backendTexture->HasAccess());
+     WGPUSharedTextureMemoryBeginAccessDescriptor resumed{};
+     resumed.initialized = ended.initialized;
++    resumed.concurrentRead = true;
+     resumed.fenceCount = ended.fenceCount;
+     resumed.signaledValueCount = ended.signaledValueCount;
+     resumed.fences = ended.fences;
+@@ -689,7 +714,7 @@
+     pump();
+     requireBudgetDrained();
+     std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"protected_channels\":%zu,"
++                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"initialized_concurrent_read\":true,\"protected_channels\":%zu,"
+                 "\"projected_compute_values\":%zu,\"unrelated_values\":16,\"repeated_map\":true,"
+                 "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
+                 "\"capture_bytes_after_destroy\":%llu,"

@@ -1,0 +1,223 @@
+{
+  "schema": 1,
+  "selected": false,
+  "prepared": true,
+  "variants": {
+    "large": {
+      "base_collector_sha256": "6b95668472ca86567d2c7bb4df722acc0266ab8f75f5aedd951300dbc5722873",
+      "measured_collector_sha256": "2dc998d6c92f8e840f82d27cb125086201c52592de58680852e49123d5bfd6b4",
+      "portable_collector_sha256": "d481cf94d0b8d82d0f5a9ed989ce02fc71b3f7298792bac6a498ffdc933197e7",
+      "fixture_sha256": "ef895167df237721bad04ed0f65e2675865ea1af2cfd63d0e8dccfca54ac2c34",
+      "patch_sha256": "91a3a47b1a6353979bf69e79454b4b1ab1a2d65ec763ef7561c11d3963df3184",
+      "isolated_apply_reverse_passed": true,
+      "code_rebinding_roundtrip_exact": true,
+      "portable_source_paths_executed": false,
+      "raw_report_sha256": "6d094642f5f1ea06fc2dd58cff701e6a194baac62c0fc66088a46ede81e1517b",
+      "browser_gate_passed": false,
+      "candidate": "upstream-156-webgpu-r2",
+      "candidate_manifest_sha256": "70e6cd468876ab91fa59a1068ed92cc3117d91dc8b3cf0929526f4da98f5e4e7",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+        "chrome.dll": "136f64b721edf0f46de51c61d7cfb2c750aaab28ba9708b26cf7a90b2e878aa5",
+        "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+      },
+      "privacy_admitted": false,
+      "production_admitted": false,
+      "expected_native_capture_failure_observed": true,
+      "baseline_cases": [
+        {
+          "size": 1921,
+          "format": "rgba8unorm",
+          "baseline_exact": true,
+          "rgba_sha256": "3996b80974a1630923d999eabe9864559fdbc9814da00a841f4a28e5b823ad74"
+        },
+        {
+          "size": 1921,
+          "format": "bgra8unorm",
+          "baseline_exact": true,
+          "rgba_sha256": "3996b80974a1630923d999eabe9864559fdbc9814da00a841f4a28e5b823ad74"
+        },
+        {
+          "size": 2048,
+          "format": "rgba8unorm",
+          "baseline_exact": true,
+          "rgba_sha256": "feac9c8b6f74dd7ccf10ef456d940d05e1df5e5bf31293b64f422d24b91bfcef"
+        },
+        {
+          "size": 2048,
+          "format": "bgra8unorm",
+          "baseline_exact": true,
+          "rgba_sha256": "feac9c8b6f74dd7ccf10ef456d940d05e1df5e5bf31293b64f422d24b91bfcef"
+        }
+      ],
+      "cleanup_analysis_sha256": "055e713ca4d2b3ba800b8c32962d3b46dcd3753219ffa400075cda9f6f45323a",
+      "scope": "Four baseline cases exact; ready loses the device at native capture E_OUTOFMEMORY. This remains a failed browser gate."
+    },
+    "contexts": {
+      "base_collector_sha256": "6b95668472ca86567d2c7bb4df722acc0266ab8f75f5aedd951300dbc5722873",
+      "measured_collector_sha256": "4d9c483e75d57440b81f1f0f73887ca0f44e7a7dbe0069fa4a3a367d95fb7d71",
+      "portable_collector_sha256": "8d1980ddddb05ffdb314b5e88887c4a60c520cc4371bdbc4f0aa80ea725fec2e",
+      "fixture_sha256": "fab8a6ca0bfeb4fa0a5cda1b4b49213bfd50f235e8e630054eaf40ccde7b1191",
+      "patch_sha256": "75e10ba0f26d99aade584848e6ade3c1ebdde21a9648aef1a4dc270398e168e6",
+      "isolated_apply_reverse_passed": true,
+      "code_rebinding_roundtrip_exact": true,
+      "portable_source_paths_executed": false,
+      "raw_report_sha256": "20aba3087d4e751f0eabd6a2891775ff4f93a6c2c3822c78d9f05b4e6445f343",
+      "browser_gate_passed": true,
+      "candidate": "upstream-156-webgpu-r2",
+      "candidate_manifest_sha256": "70e6cd468876ab91fa59a1068ed92cc3117d91dc8b3cf0929526f4da98f5e4e7",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+        "chrome.dll": "136f64b721edf0f46de51c61d7cfb2c750aaab28ba9708b26cf7a90b2e878aa5",
+        "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+      },
+      "privacy_admitted": false,
+      "production_admitted": false,
+      "contexts": {
+        "document": {
+          "passed": true,
+          "surface_noise_observed": true
+        },
+        "same-origin-iframe": {
+          "passed": true,
+          "surface_noise_observed": true
+        },
+        "dedicated-worker": {
+          "passed": true,
+          "surface_noise_observed": true
+        },
+        "cross-origin-iframe": {
+          "passed": true,
+          "surface_noise_observed": true
+        },
+        "cross-origin-dedicated-worker": {
+          "passed": true,
+          "surface_noise_observed": true
+        },
+        "nested-dedicated-worker": {
+          "passed": true,
+          "surface_noise_observed": true
+        }
+      },
+      "scope": "Twelve observations across six actual realms, consistency within each; not cross-site partition-isolation admission."
+    },
+    "mutation": {
+      "base_collector_sha256": "6b95668472ca86567d2c7bb4df722acc0266ab8f75f5aedd951300dbc5722873",
+      "measured_collector_sha256": "d52158407bf99fe4d265019998af17f3476b4336a61edcdb1f0d2b2300bb300f",
+      "portable_collector_sha256": "7a7e23d27cc66e544b5003d1681bd7109e8175ea6a620af0035159ad6d888e35",
+      "fixture_sha256": "49f2c30dd66b915ed591e3068e28b1f8f713d59aa74e2ffcbf7c5c4401903489",
+      "patch_sha256": "f6ebd31d6858b242aee035cb059f719e890733bfece49a25c41ba25deba58fa5",
+      "isolated_apply_reverse_passed": true,
+      "code_rebinding_roundtrip_exact": true,
+      "portable_source_paths_executed": false,
+      "raw_report_sha256": "ddd86720913d1a43006b573a396a77a03b64f18aeb4d1db3900ce4d1f3310e54",
+      "browser_gate_passed": true,
+      "candidate": "upstream-156-webgpu-r2",
+      "candidate_manifest_sha256": "70e6cd468876ab91fa59a1068ed92cc3117d91dc8b3cf0929526f4da98f5e4e7",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+        "chrome.dll": "136f64b721edf0f46de51c61d7cfb2c750aaab28ba9708b26cf7a90b2e878aa5",
+        "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+      },
+      "privacy_admitted": false,
+      "production_admitted": false,
+      "cases": [
+        {
+          "mode": "baseline",
+          "format": "rgba8unorm",
+          "route": "render",
+          "before_sha256": "9b7bc08afa297641ed6361e9079c7ae4e73e4615275d849ad5db8dac233d4e94",
+          "after_sha256": "805ad8c7e8366941a70b7276878eb113b5ce00c18ae6e06f626220a5a1462b9d",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "baseline",
+          "format": "rgba8unorm",
+          "route": "copy",
+          "before_sha256": "9b7bc08afa297641ed6361e9079c7ae4e73e4615275d849ad5db8dac233d4e94",
+          "after_sha256": "805ad8c7e8366941a70b7276878eb113b5ce00c18ae6e06f626220a5a1462b9d",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "baseline",
+          "format": "rgba8unorm",
+          "route": "storage",
+          "before_sha256": "9b7bc08afa297641ed6361e9079c7ae4e73e4615275d849ad5db8dac233d4e94",
+          "after_sha256": "805ad8c7e8366941a70b7276878eb113b5ce00c18ae6e06f626220a5a1462b9d",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "baseline",
+          "format": "bgra8unorm",
+          "route": "render",
+          "before_sha256": "9b7bc08afa297641ed6361e9079c7ae4e73e4615275d849ad5db8dac233d4e94",
+          "after_sha256": "805ad8c7e8366941a70b7276878eb113b5ce00c18ae6e06f626220a5a1462b9d",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "baseline",
+          "format": "bgra8unorm",
+          "route": "copy",
+          "before_sha256": "9b7bc08afa297641ed6361e9079c7ae4e73e4615275d849ad5db8dac233d4e94",
+          "after_sha256": "805ad8c7e8366941a70b7276878eb113b5ce00c18ae6e06f626220a5a1462b9d",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "ready",
+          "format": "rgba8unorm",
+          "route": "render",
+          "before_sha256": "377af6db7737854a1d80119c02e1ae7897c1f84b1cf720ca56adb03908b5cef6",
+          "after_sha256": "8090d6f2655975569f0611ab2dbd54c7227135f1a6cf135230115613bdd05d94",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "ready",
+          "format": "rgba8unorm",
+          "route": "copy",
+          "before_sha256": "377af6db7737854a1d80119c02e1ae7897c1f84b1cf720ca56adb03908b5cef6",
+          "after_sha256": "8090d6f2655975569f0611ab2dbd54c7227135f1a6cf135230115613bdd05d94",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "ready",
+          "format": "rgba8unorm",
+          "route": "storage",
+          "before_sha256": "377af6db7737854a1d80119c02e1ae7897c1f84b1cf720ca56adb03908b5cef6",
+          "after_sha256": "8090d6f2655975569f0611ab2dbd54c7227135f1a6cf135230115613bdd05d94",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "ready",
+          "format": "bgra8unorm",
+          "route": "render",
+          "before_sha256": "377af6db7737854a1d80119c02e1ae7897c1f84b1cf720ca56adb03908b5cef6",
+          "after_sha256": "8090d6f2655975569f0611ab2dbd54c7227135f1a6cf135230115613bdd05d94",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        },
+        {
+          "mode": "ready",
+          "format": "bgra8unorm",
+          "route": "copy",
+          "before_sha256": "377af6db7737854a1d80119c02e1ae7897c1f84b1cf720ca56adb03908b5cef6",
+          "after_sha256": "8090d6f2655975569f0611ab2dbd54c7227135f1a6cf135230115613bdd05d94",
+          "old_capture_immutable": true,
+          "shader_readback_consistent": true
+        }
+      ],
+      "scope": "Ten mutation cases, full direct/shader agreement and immutable retained CPU capture; not arbitrary GPU consumers or exhaustion."
+    }
+  },
+  "scope": "Portable unselected diagnostic source with measured R2 evidence; R3 checks remain queued",
+  "r3_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

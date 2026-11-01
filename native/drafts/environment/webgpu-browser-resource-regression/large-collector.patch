@@ -1,0 +1,139 @@
+diff --git a/scripts/verify_native_webgpu_consistency.py b/scripts/verify_native_webgpu_consistency.py
+--- a/scripts/verify_native_webgpu_consistency.py
++++ b/scripts/verify_native_webgpu_consistency.py
+@@ -1,4 +1,4 @@
+-"""Owned WebGPU copy/shader/PNG consistency gate; never full privacy admission."""
++"""Owned large WebGPU aligned/padded RGBA/BGRA resource gate; never full privacy admission."""
+ from __future__ import annotations
+ 
+ import argparse
+@@ -19,7 +19,7 @@
+ 
+ from scripts.native_build import CANDIDATES, WEBGPU_CANDIDATES
+ 
+-PROBE = ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js'
++PROBE = ROOT / 'native/drafts/environment/webgpu-browser-resource-regression/large-probe.js'
+ DRIVER_MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
+ PIXEL_BYTES = 16 * 16 * 4
+ TRANSPORT_FEATURE = 'GlintWebGPUPolicyTransportCandidate'
+@@ -88,47 +88,74 @@
+     return {'changed_channels': sum(value != 0 for value in delta), 'maximum_delta': max(delta)}
+ 
+ 
+-def validate_rows(rows: list[dict]) -> dict:
++def validate_rows(rows):
+     if (not isinstance(rows, list) or len(rows) != 2
+-            or any(not isinstance(row, dict) or type(row.get('mode')) is not str
+-                   or row['mode'] not in ('baseline', 'ready') for row in rows)
+-            or {row['mode'] for row in rows} != {'baseline', 'ready'}):
+-        raise ValueError('Exactly one baseline and ready document are required')
+-    reference = bytes(channel for y in range(16) for x in range(16)
+-                      for channel in ((x * 17) % 256, (y * 29 + 31) % 256,
+-                                      (x * 43 + y * 11) % 256, 255))
++            or {row.get('mode') for row in rows} != {'baseline', 'ready'}):
++        raise ValueError('Exactly baseline/ready observations are required')
++    from PyQt6.QtGui import QImage
++
+     measured = []
++    expected_cases = {(size, fmt) for size in (1921, 2048) for fmt in ('rgba8unorm', 'bgra8unorm')}
+     for row in rows:
+         value = row.get('value')
+-        if (row.get('context') != 'document' or not isinstance(value, dict)
+-                or value.get('measured') is not True or value.get('commandValidationPassed') is not True
+-                or value.get('exportStable') is not True
+-                or value.get('format') not in ('rgba8unorm', 'bgra8unorm')):
+-            raise ValueError('Missing successful owned document/GPU commands/export')
+-        encoded = value.get('rgbaBase64')
+-        if not isinstance(encoded, str) or len(encoded) > 2048:
+-            raise ValueError('Malformed bounded direct GPU pixels')
+-        direct = base64.b64decode(encoded, validate=True)
+-        shader = bounded_bytes(value.get('shaderRGBA'), PIXEL_BYTES)
+-        png = decode_png(value.get('png'))
+-        if any(any(alpha != 255 for alpha in pixels[3::4]) for pixels in (direct, shader, png)):
+-            raise ValueError('Opaque fixture alpha changed')
+-        deviations = {name: compare(data, reference) for name,data in (
+-            ('direct', direct), ('shader', shader), ('png', png))}
+-        if row['mode'] == 'baseline' and any(item['changed_channels'] for item in deviations.values()):
+-            raise ValueError('Unprotected fixture no longer matches exact integer colors')
+-        if any(item['maximum_delta'] > 1 for item in deviations.values()):
+-            raise ValueError('Fixture colors exceed the current one-level policy bound')
+-        measured.append({'mode': row['mode'], 'measured': True, 'deviation_from_reference': deviations,
+-            'direct_vs_shader': compare(direct, shader), 'png_vs_direct': compare(png, direct),
+-            'png_vs_shader': compare(png, shader), 'shader_rgba_sha256': hashlib.sha256(shader).hexdigest()})
+-    ready = next(row for row in measured if row['mode'] == 'ready')
+-    noise_observed = ready['deviation_from_reference']['png']['changed_channels'] > 0
+-    coherent = all(not row[name]['changed_channels'] for row in measured
+-                   for name in ('direct_vs_shader', 'png_vs_direct', 'png_vs_shader'))
+-    return {'fixture_validation_passed': True, 'surface_noise_observed': noise_observed,
+-            'readback_consistent': coherent, 'consistency_gate_passed': noise_observed and coherent,
+-            'rows': measured, 'privacy_admitted': False, 'production_admitted': False}
++        if row.get('context') != 'document' or not isinstance(value, dict) or value.get('measured') is not True:
++            raise ValueError('Missing measured document result')
++        cases = value.get('cases')
++        if (not isinstance(cases, list) or len(cases) != 4
++                or {(case.get('size'), case.get('format')) for case in cases} != expected_cases):
++            raise ValueError('Missing complete aligned/padded RGBA/BGRA matrix')
++        for case in cases:
++            size = case['size']
++            if (case.get('pitch') != ((size * 4 + 255) // 256) * 256
++                    or any(case.get(flag) is not True for flag in
++                           ('measured', 'paddingZero', 'commandValidationPassed', 'exportStable'))):
++                raise ValueError('GPU validation/padding/export gate failed')
++            cut = size // 2
++            points = [[x, y] for y in (0, 1, cut, size - 1) for x in (0, cut - 1, cut, size - 1)]
++            if case.get('points') != points:
++                raise ValueError('Shader sampling locations changed')
++            png_url = case.get('png')
++            if (not isinstance(png_url, str) or not png_url.startswith('data:image/png;base64,')
++                    or len(png_url) > 3 * 1024**2):
++                raise ValueError('PNG payload outside bound')
++            png = base64.b64decode(png_url.partition(',')[2], validate=True)
++            if (len(png) < 33 or len(png) > 2 * 1024**2
++                    or png[:16] != b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR'
++                    or png[16:24] != struct.pack('>II', size, size)):
++                raise ValueError('PNG dimensions must match the fixed fixture before decoding')
++            image = QImage.fromData(png, 'PNG').convertToFormat(QImage.Format.Format_RGBA8888)
++            if image.isNull() or (image.width(), image.height(), image.bytesPerLine()) != (size, size, size * 4):
++                raise ValueError('Decoded PNG shape changed')
++            rgba = image.constBits().asstring(image.sizeInBytes())
++            fingerprint = hashlib.sha256(rgba).hexdigest()
++            if fingerprint != case.get('directSHA256'):
++                raise ValueError('Full PNG and direct texture readback disagree')
++            samples = [channel for x, y in points for channel in rgba[(y * size + x) * 4:(y * size + x) * 4 + 4]]
++            for field in ('directSamples', 'shaderRGBA'):
++                actual = case.get(field)
++                if (not isinstance(actual, list) or len(actual) != 64
++                        or any(type(item) is not int or not 0 <= item <= 255 for item in actual)
++                        or actual != samples):
++                    raise ValueError('Real GPU shader and direct/PNG edge samples disagree')
++            reference_row = bytes((64, 128, 191, 255)) * cut + bytes((191, 64, 128, 255)) * (size - cut)
++            reference = reference_row * size
++            changed = 0
++            maximum = 0
++            for actual, expected in zip(rgba, reference, strict=True):
++                delta = abs(actual - expected)
++                changed += delta != 0
++                maximum = max(maximum, delta)
++            if any(alpha != 255 for alpha in rgba[3::4]):
++                raise ValueError('Opaque alpha changed')
++            if maximum > 1 or (row['mode'] == 'baseline' and changed) or (row['mode'] == 'ready' and not changed):
++                raise ValueError('Baseline exactness or ready one-level projection failed')
++            measured.append({'mode': row['mode'], 'size': size, 'format': case['format'],
++                             'rgba_sha256': fingerprint, 'changed_channels': changed,
++                             'maximum_delta': maximum, 'full_png_direct_equal': True,
++                             'shader_edge_samples_equal': True, 'padding_zero': True})
++    return {'consistency_gate_passed': True, 'rows': measured,
++            'scope': 'Four large document textures, full direct/PNG equality and 16 real shader samples each; not recovery or privacy admission',
++            'privacy_admitted': False, 'production_admitted': False}
+ 
+ 
+ class FixtureHandler(BaseHTTPRequestHandler):
+@@ -189,7 +216,7 @@
+                 {'mode': mode, 'enabled': transport_enabled})
+             page = await context.new_page()
+             await page.goto(f'http://127.0.0.1:{server.server_port}/', wait_until='load')
+-            value = await asyncio.wait_for(page.evaluate('async () => {' + source + '; return await probeWebGPU();}'), 90)
++            value = await asyncio.wait_for(page.evaluate('async () => {' + source + '; return await probeWebGPU();}'), 240)
+             report['observations'].append({'mode': mode, 'context': 'document', 'value': value})
+         finally:
+             await runtime.close()

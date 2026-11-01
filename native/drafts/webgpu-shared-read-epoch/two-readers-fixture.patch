@@ -1,0 +1,151 @@
+diff --git a/wire_probe.cc b/wire_probe.cc
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -5,6 +5,7 @@
+ #include <cstdlib>
+ #include <cstring>
+ #include <source_location>
++#include <string_view>
+ #include <thread>
+ #include <utility>
+ #include <vector>
+@@ -213,16 +214,73 @@
+     auto sharedMemory = nativeProcs.deviceImportSharedTextureMemory(nativeDevice,
+         reinterpret_cast<const WGPUSharedTextureMemoryDescriptor*>(&memoryDescriptor));
+     Check(sharedMemory != nullptr);
++    auto producer = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
++        reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
++    WGPUSharedTextureMemoryBeginAccessDescriptor producerAccess{};
++    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, producer, &producerAccess) == WGPUStatus_Success);
++    auto nativeQueue = nativeProcs.deviceGetQueue(nativeDevice);
++    WGPUTexelCopyTextureInfo producerCopy{};
++    producerCopy.texture = producer;
++    producerCopy.aspect = WGPUTextureAspect_All;
++    WGPUTexelCopyBufferLayout producerLayout{};
++    producerLayout.bytesPerRow = width * 4;
++    producerLayout.rowsPerImage = height;
++    WGPUExtent3D producerExtent{width, height, 1};
++    nativeProcs.queueWriteTexture(nativeQueue, &producerCopy, pixels.data(), pixels.size(), &producerLayout, &producerExtent);
++    nativeProcs.queueRelease(nativeQueue);
++    WGPUSharedTextureMemoryEndAccessState produced{};
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, producer, &produced) == WGPUStatus_Success);
++    textureDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::TextureBinding;
+     auto importedTexture = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+     Check(importedTexture != nullptr);
+     WGPUSharedTextureMemoryBeginAccessDescriptor access{};
+-    access.initialized = false;
++    access.initialized = produced.initialized;
++    access.concurrentRead = true;
++    access.fenceCount = produced.fenceCount;
++    access.fences = produced.fences;
++    access.signaledValueCount = produced.signaledValueCount;
++    access.signaledValues = produced.signaledValues;
+     Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, importedTexture, &access) == WGPUStatus_Success);
++    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(produced);
++    nativeProcs.textureRelease(producer);
+     auto importedReservation = client->ReserveTexture(device.Get(),
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+     Check(server->InjectTexture(importedTexture, importedReservation.handle, importedReservation.deviceHandle));
+     auto texture = wgpu::Texture::Acquire(importedReservation.texture);
++    auto secondNative = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
++        reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
++    WGPUSharedTextureMemoryBeginAccessDescriptor secondAccess{};
++    secondAccess.initialized = true;
++    secondAccess.concurrentRead = true;
++    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, secondNative, &secondAccess) == WGPUStatus_Success);
++    auto secondReservation = client->ReserveTexture(device.Get(),
++        reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
++    Check(server->InjectTexture(secondNative, secondReservation.handle, secondReservation.deviceHandle));
++    auto secondTexture = wgpu::Texture::Acquire(secondReservation.texture);
++    auto writerDescriptor = textureDescriptor;
++    writerDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst;
++    auto writer = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
++        reinterpret_cast<const WGPUTextureDescriptor*>(&writerDescriptor));
++    auto denyWriter = [&] {
++        device.PushErrorScope(wgpu::ErrorFilter::Validation);
++        pump();
++        WGPUSharedTextureMemoryBeginAccessDescriptor writerAccess{};
++        writerAccess.initialized = true;
++        Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, writer, &writerAccess) == WGPUStatus_Error);
++        std::atomic_bool errorDone = false;
++        bool rejectedForReaders = false;
++        device.PopErrorScope(wgpu::CallbackMode::AllowSpontaneous,
++            [&](wgpu::PopErrorScopeStatus status, wgpu::ErrorType type, wgpu::StringView message) {
++                rejectedForReaders = status == wgpu::PopErrorScopeStatus::Success &&
++                    type == wgpu::ErrorType::Validation &&
++                    std::string_view(message.data, message.length).find("currently accessed for reading") != std::string_view::npos;
++                errorDone = true;
++            });
++        wait(errorDone);
++        Check(rejectedForReaders);
++    };
++    denyWriter();
+     wgpu::TexelCopyTextureInfo textureCopy{};
+     textureCopy.texture = texture;
+     wgpu::TexelCopyBufferLayout upload{};
+@@ -230,7 +288,7 @@
+     upload.rowsPerImage = height;
+     wgpu::Extent3D extent{width, height, 1};
+     auto queue = device.GetQueue();
+-    queue.WriteTexture(&textureCopy, pixels.data(), pixels.size(), &upload, &extent);
++    // Contents were initialized by the separate native producer before reader access.
+     wgpu::BufferDescriptor mapDescriptor{};
+     mapDescriptor.size = bytes;
+     mapDescriptor.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
+@@ -637,6 +695,23 @@
+         std::memcpy(&got, transformed.data() + i * 4, 4);
+         Check(got == (indirectZero ? initialOutput[i] : (wanted ^ 0xa1b2c3d4u)));
+     }
++    auto secondEntries = entries;
++    secondEntries[0].textureView = secondTexture.CreateView();
++    auto secondGroupDescriptor = groupDescriptor;
++    secondGroupDescriptor.entries = secondEntries.data();
++    auto secondGroup = device.CreateBindGroup(&secondGroupDescriptor);
++    auto secondEncoder = device.CreateCommandEncoder();
++    auto secondPass = secondEncoder.BeginComputePass();
++    secondPass.SetPipeline(pipeline);
++    secondPass.SetBindGroup(0, secondGroup);
++    secondPass.DispatchWorkgroups(width * height);
++    secondPass.End();
++    secondEncoder.CopyBufferToBuffer(output, 0, outputMap, 0, packed);
++    auto secondCommands = secondEncoder.Finish();
++    queue.Submit(1, &secondCommands);
++    auto secondShader = wireRead(outputMap, packed);
++    Check(secondShader == transformed);
++    denyWriter();
+     auto* backendDevice = dawn::native::d3d12::ToBackend(dawn::native::FromAPI(nativeDevice));
+     auto projectorResult = backendDevice->GetGlintTextureProjector();
+     Check(!projectorResult.IsError());
+@@ -648,8 +723,22 @@
+     WGPUSharedTextureMemoryEndAccessState ended{};
+     Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &ended) == WGPUStatus_Success);
+     Check(!backendTexture->HasAccess());
++    Check(!backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM));
++    denyWriter();
++    WGPUSharedTextureMemoryEndAccessState secondEnded{};
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, secondNative, &secondEnded) == WGPUStatus_Success);
++    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(secondEnded);
++    nativeProcs.textureRelease(secondNative);
++    WGPUSharedTextureMemoryBeginAccessDescriptor writerAccess{};
++    writerAccess.initialized = true;
++    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, writer, &writerAccess) == WGPUStatus_Success);
++    WGPUSharedTextureMemoryEndAccessState writerEnded{};
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, writer, &writerEnded) == WGPUStatus_Success);
++    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(writerEnded);
++    nativeProcs.textureRelease(writer);
+     WGPUSharedTextureMemoryBeginAccessDescriptor resumed{};
+     resumed.initialized = ended.initialized;
++    resumed.concurrentRead = true;
+     resumed.fenceCount = ended.fenceCount;
+     resumed.signaledValueCount = ended.signaledValueCount;
+     resumed.fences = ended.fences;
+@@ -689,7 +778,7 @@
+     pump();
+     requireBudgetDrained();
+     std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"protected_channels\":%zu,"
++                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"initialized_concurrent_read\":true,\"two_gpu_readers\":true,\"writer_excluded_until_both_end\":true,\"no_access_cache_excluded\":true,\"protected_channels\":%zu,"
+                 "\"projected_compute_values\":%zu,\"unrelated_values\":16,\"repeated_map\":true,"
+                 "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
+                 "\"capture_bytes_after_destroy\":%llu,"

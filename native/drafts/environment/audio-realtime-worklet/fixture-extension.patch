@@ -1,0 +1,188 @@
+diff --git a/native/fixtures/audio/realtime.js b/native/fixtures/audio/realtime.js
+--- a/native/fixtures/audio/realtime.js
++++ b/native/fixtures/audio/realtime.js
+@@ -1,35 +1,65 @@
+ async () => {
+-  const result = {schema: 1, scope: "Muted realtime compressor/analyser lifecycle only; not audio quality or worklet admission",
+-    passed: false, checks: {}, errors: []};
++  const result = {schema: 1, scope: 'Muted realtime compressor/analyser/AudioWorklet consistency only',
++    passed: false, checks: {}, workletChecks: {}, errors: []};
+   let context;
+   let oscillator;
++  let worklet;
+   let started = false;
+   const nodes = [];
++  const packets = [];
++  let packetError;
+   try {
+     result.checks.trustedActivation = navigator.userActivation.isActive;
+     context = new AudioContext();
++    await context.suspend();
+     result.sampleRate = context.sampleRate;
++    await context.audioWorklet.addModule('/glint-audio-worklet.js');
+     oscillator = context.createOscillator();
+-    oscillator.type = "triangle";
++    oscillator.type = 'triangle';
+     oscillator.frequency.value = 997;
+     const compressor = context.createDynamicsCompressor();
+     const analyser = context.createAnalyser();
+-    analyser.fftSize = 256;
++    analyser.fftSize = 2048;
+     analyser.smoothingTimeConstant = 0;
+     const mute = context.createGain();
+     mute.gain.value = 0;
+-    nodes.push(oscillator, compressor, analyser, mute);
+-    oscillator.connect(compressor).connect(analyser).connect(mute).connect(context.destination);
++    worklet = new AudioWorkletNode(context, 'owned-realtime-capture', {numberOfInputs: 1,
++      numberOfOutputs: 1, channelCount: 1, channelCountMode: 'explicit', outputChannelCount: [1]});
++    nodes.push(oscillator, compressor, analyser, worklet, mute);
++    worklet.onprocessorerror = () => { packetError = new Error('Owned realtime processor error'); };
++    worklet.port.onmessage = ({data}) => {
++      if (packetError) return;
++      if (packets.length >= 4096 || !data || !Number.isInteger(data.offset) || data.offset < 0
++          || !(data.samples instanceof Float32Array) || data.samples.length !== 128
++          || data.rate !== context.sampleRate || data.time !== data.offset / data.rate) {
++        packetError = new Error('Invalid or oversized realtime worklet packet');
++        return;
++      }
++      if (packets.length && packets.at(-1).offset + 128 !== data.offset) {
++        packetError = new Error('Realtime worklet timeline has a gap or overlap');
++        return;
++      }
++      packets.push(data);
++    };
++    oscillator.connect(compressor).connect(analyser).connect(worklet).connect(mute).connect(context.destination);
+     oscillator.start();
+     started = true;
+     await context.resume();
+-    const deadline = performance.now() + 5000;
+-    while (context.currentTime < 4 * analyser.fftSize / context.sampleRate && performance.now() < deadline) {
+-      await new Promise((resolve) => setTimeout(resolve, 10));
++    const deadline = performance.now() + 10000;
++    const began = context.currentTime;
++    while (context.currentTime < began + 4 * analyser.fftSize / context.sampleRate && performance.now() < deadline) {
++      if (packetError) throw packetError;
++      await new Promise(resolve => setTimeout(resolve, 10));
+     }
+-    result.checks.realtimeAdvanced = context.currentTime >= 4 * analyser.fftSize / context.sampleRate;
++    result.checks.realtimeAdvanced = context.currentTime >= began + 4 * analyser.fftSize / context.sampleRate;
+     await context.suspend();
+-    result.checks.suspended = context.state === "suspended";
++    result.checks.suspended = context.state === 'suspended';
++    const endFrame = Math.round(context.currentTime * context.sampleRate);
++    while ((!packets.length || packets.at(-1).offset + 128 < endFrame) && performance.now() < deadline) {
++      if (packetError) throw packetError;
++      await new Promise(resolve => setTimeout(resolve, 5));
++    }
++    if (packetError) throw packetError;
+     const time = new Float32Array(analyser.fftSize);
+     const again = new Float32Array(analyser.fftSize);
+     analyser.getFloatTimeDomainData(time);
+@@ -38,32 +68,55 @@
+     analyser.getByteTimeDomainData(bytes);
+     const frequency = new Float32Array(analyser.frequencyBinCount);
+     analyser.getFloatFrequencyData(frequency);
+-    result.checks.signalFiniteAndNonzero = time.every(Number.isFinite) && time.some((value) => value !== 0);
++    result.checks.signalFiniteAndNonzero = time.every(Number.isFinite) && time.some(value => value !== 0);
+     result.checks.suspendedReadsExact = time.every((value, index) => Object.is(value, again[index]));
+     result.checks.byteConversionExact = bytes.every((value, index) => value ===
+       Math.max(0, Math.min(255, Math.floor(Math.fround(128 * (1 + time[index]))))));
+-    result.checks.frequencyValid = frequency.every((value) => Number.isFinite(value) || value === -Infinity);
++    result.checks.frequencyValid = frequency.every(value => Number.isFinite(value) || value === -Infinity);
+     result.checks.compressorReductionFinite = Number.isFinite(compressor.reduction);
+     result.checks.outputMuted = mute.gain.value === 0;
+     result.checks.nativeSampleRateValid = Number.isFinite(context.sampleRate) && context.sampleRate > 0;
++    const tail = new Float32Array(analyser.fftSize);
++    tail.fill(NaN);
++    const coverage = new Uint8Array(tail.length);
++    for (const packet of packets) for (let i = 0; i < packet.samples.length; i++) {
++      const target = packet.offset + i - (endFrame - tail.length);
++      if (target >= 0 && target < tail.length) {
++        coverage[target]++;
++        tail[target] = packet.samples[i];
++      }
++    }
++    result.workletChecks = {
++      packetsBounded: packets.length > 0 && packets.length <= 4096,
++      exactSuspendedFrame: packets.length > 0 && packets.at(-1).offset + 128 === endFrame,
++      exactTailCoverage: coverage.every(count => count === 1),
++      signalFiniteAndNonzero: tail.every(Number.isFinite) && tail.some(value => value !== 0),
++      analyserMatchesWorkletTail: time.every((value, index) => Object.is(value, tail[index])),
++      processorHealthy: !packetError,
++    };
++    const hash = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',
++      new Uint8Array(value.buffer, value.byteOffset, value.byteLength))), x => x.toString(16).padStart(2,'0')).join('');
++    result.workletObservation = {packetCount: packets.length, firstFrame: packets[0]?.offset,
++      lastFrame: packets.at(-1)?.offset + 128, suspendedFrame: endFrame, fftSize: analyser.fftSize,
++      analyserSHA256: await hash(time), workletTailSHA256: await hash(tail),
++      differentSamples: time.reduce((count, value, index) => count + !Object.is(value, tail[index]), 0)};
+   } catch (error) {
+-    result.errors.push({phase: "measurement", name: error.name, message: error.message});
++    result.errors.push({phase: 'measurement', name: error.name, message: error.message});
+   } finally {
+     if (started) {
+-      try { oscillator.stop(); } catch (error) { result.errors.push({phase: "stop", message: error.message}); }
++      try { oscillator.stop(); } catch (error) { result.errors.push({phase: 'stop', message: error.message}); }
+     }
+     for (const node of nodes) {
+-      try { node.disconnect(); } catch (error) { result.errors.push({phase: "disconnect", message: error.message}); }
++      try { node.disconnect(); } catch (error) { result.errors.push({phase: 'disconnect', message: error.message}); }
+     }
++    if (worklet) worklet.port.close();
+     if (context) {
+-      try {
+-        await context.close();
+-        result.checks.closed = context.state === "closed";
+-      } catch (error) {
+-        result.errors.push({phase: "close", message: error.message});
+-      }
++      try { await context.close(); result.checks.closed = context.state === 'closed'; }
++      catch (error) { result.errors.push({phase: 'close', message: error.message}); }
+     }
+   }
+-  result.passed = Object.keys(result.checks).length === 11 && Object.values(result.checks).every(Boolean) && result.errors.length === 0;
++  result.passed = Object.keys(result.checks).length === 11 && Object.values(result.checks).every(Boolean)
++    && Object.keys(result.workletChecks).length === 6 && Object.values(result.workletChecks).every(Boolean)
++    && result.errors.length === 0;
+   return result;
+ }
+diff --git a/native/fixtures/audio/worklet-processor.js b/native/fixtures/audio/worklet-processor.js
+--- a/native/fixtures/audio/worklet-processor.js
++++ b/native/fixtures/audio/worklet-processor.js
+@@ -13,3 +13,15 @@
+     return true;
+   }
+ });
++
++registerProcessor('owned-realtime-capture', class extends AudioWorkletProcessor {
++  process(inputs, outputs) {
++    const output = outputs[0][0];
++    const input = inputs[0][0];
++    if (input) output.set(input); else output.fill(0);
++    const copy = output.slice();
++    this.port.postMessage({offset: currentFrame, time: currentTime, rate: sampleRate,
++      samples: copy}, [copy.buffer]);
++    return true;
++  }
++});
+diff --git a/scripts/verify_native_audio_compatibility.py b/scripts/verify_native_audio_compatibility.py
+--- a/scripts/verify_native_audio_compatibility.py
++++ b/scripts/verify_native_audio_compatibility.py
+@@ -66,6 +66,17 @@
+                 or observed.get("errors") != []):
+             raise ValueError("Invalid realtime Audio metadata or cleanup errors")
+         validate_checks(observed.get("checks"), probe)
++        required = {"packetsBounded", "exactSuspendedFrame", "exactTailCoverage",
++                    "signalFiniteAndNonzero", "analyserMatchesWorkletTail", "processorHealthy"}
++        checks = observed.get("workletChecks")
++        if not isinstance(checks, dict) or set(checks) != required or any(value is not True for value in checks.values()):
++            raise ValueError("Realtime AudioWorklet/analyser consistency failed")
++        measurement = observed.get("workletObservation")
++        if (not isinstance(measurement, dict) or measurement.get("differentSamples") != 0
++                or measurement.get("analyserSHA256") != measurement.get("workletTailSHA256")
++                or not isinstance(measurement.get("analyserSHA256"), str)
++                or len(measurement["analyserSHA256"]) != 64):
++            raise ValueError("Realtime worklet evidence is incomplete")
+         return {"cases": 1, "checks_per_case": len(CHECKS[probe])}
+     graphs = FIDELITY_GRAPHS if probe == "fidelity" else GRAPHS
+     repetitions = range(3 if probe == "fidelity" else 2)

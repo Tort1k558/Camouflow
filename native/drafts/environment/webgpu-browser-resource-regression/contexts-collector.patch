@@ -1,0 +1,129 @@
+diff --git a/scripts/verify_native_webgpu_consistency.py b/scripts/verify_native_webgpu_consistency.py
+--- a/scripts/verify_native_webgpu_consistency.py
++++ b/scripts/verify_native_webgpu_consistency.py
+@@ -19,7 +19,9 @@
+ 
+ from scripts.native_build import CANDIDATES, WEBGPU_CANDIDATES
+ 
+-PROBE = ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js'
++PROBE = ROOT / 'native/drafts/environment/webgpu-browser-resource-regression/contexts-probe.js'
++BOUND_WORKER = PROBE.with_name("bound-worker.js")
++WORKER_CLIENT = PROBE.with_name("worker-client.js")
+ DRIVER_MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
+ PIXEL_BYTES = 16 * 16 * 4
+ TRANSPORT_FEATURE = 'GlintWebGPUPolicyTransportCandidate'
+@@ -134,8 +136,19 @@
+ class FixtureHandler(BaseHTTPRequestHandler):
+     def do_GET(self):
+         body = b'<!doctype html><title>Owned WebGPU consistency fixture</title>'
++        content_type = 'text/html; charset=utf-8'
++        if self.path == '/bound-worker.js':
++            body = (PROBE.read_text(encoding='utf-8') + '\n' + BOUND_WORKER.read_text(encoding='utf-8')).encode('utf-8')
++            content_type = 'application/javascript; charset=utf-8'
++        if self.path == '/worker.js':
++            body = (PROBE.read_text(encoding='utf-8') + '''
++self.onmessage = async () => {
++  try { self.postMessage({value: await probeWebGPU()}); }
++  catch (error) { self.postMessage({error: String(error && error.stack || error)}); }
++};''').encode('utf-8')
++            content_type = 'application/javascript; charset=utf-8'
+         self.send_response(200)
+-        self.send_header('Content-Type', 'text/html; charset=utf-8')
++        self.send_header('Content-Type', content_type)
+         self.send_header('Cache-Control', 'no-store')
+         self.send_header('Content-Length', str(len(body)))
+         self.end_headers()
+@@ -191,6 +204,67 @@
+             await page.goto(f'http://127.0.0.1:{server.server_port}/', wait_until='load')
+             value = await asyncio.wait_for(page.evaluate('async () => {' + source + '; return await probeWebGPU();}'), 90)
+             report['observations'].append({'mode': mode, 'context': 'document', 'value': value})
++            frame_element = await page.evaluate_handle('''async () => {
++              const frame = document.createElement('iframe');
++              const loaded = new Promise((resolve, reject) => {
++                frame.onload = resolve;
++                frame.onerror = () => reject(new Error('Owned iframe failed'));
++              });
++              frame.src = '/'; document.body.append(frame); await loaded; return frame;
++            }''')
++            try:
++                frame = await frame_element.as_element().content_frame()
++                if frame is None:
++                    raise ValueError('Owned iframe has no context')
++                value = await asyncio.wait_for(frame.evaluate('async () => {' + source + '; return await probeWebGPU();}'), 90)
++                report['observations'].append({'mode': mode, 'context': 'same-origin-iframe', 'value': value})
++            finally:
++                await frame_element.evaluate('(frame) => frame.remove()')
++                await frame_element.dispose()
++            value = await asyncio.wait_for(page.evaluate('''async () => {
++              const worker = new Worker('/worker.js');
++              let timeout;
++              try {
++                return await new Promise((resolve, reject) => {
++                  timeout = setTimeout(() => reject(new Error('Owned WebGPU worker timed out')), 85000);
++                  worker.onerror = (event) => reject(new Error(event.message));
++                  worker.onmessage = ({data}) => data.error ? reject(new Error(data.error)) : resolve(data.value);
++                  worker.postMessage('probe');
++                });
++              } finally { clearTimeout(timeout); worker.terminate(); }
++            }'''), 90)
++            report['observations'].append({'mode': mode, 'context': 'dedicated-worker', 'value': value})
++            frame_url = f'http://localhost:{server.server_port}/'
++            frame_element = await page.evaluate_handle('''async (url) => {
++              const frame = document.createElement('iframe');
++              const loaded = new Promise((resolve, reject) => {
++                frame.onload = resolve; frame.onerror = () => reject(new Error('Cross-origin frame failed'));
++              });
++              frame.src = url; document.body.append(frame); await loaded; return frame;
++            }''', frame_url)
++            try:
++                frame = await frame_element.as_element().content_frame()
++                if frame is None or frame.url != frame_url:
++                    raise ValueError('Cross-origin frame URL missing')
++                realm = await frame.evaluate('''() => {
++                  let parentAccess;
++                  try { parentAccess = parent.location.origin; } catch (error) { parentAccess = error.name; }
++                  return {url: location.href, origin: location.origin, parentAccess, secure: isSecureContext};
++                }''')
++                if realm != {'url': frame_url, 'origin': frame_url.rstrip('/'), 'parentAccess': 'SecurityError', 'secure': True}:
++                    raise ValueError('Expected an actual secure cross-origin realm and denied parent access')
++                value = await asyncio.wait_for(frame.evaluate('async () => {' + source + '; return await probeWebGPU();}'), 90)
++                report['observations'].append({'mode': mode, 'context': 'cross-origin-iframe', 'realm': realm, 'value': value})
++                reply = await asyncio.wait_for(frame.evaluate(WORKER_CLIENT.read_text(encoding='utf-8'), {'kind': 'probe'}), 90)
++                report['observations'].append({'mode': mode, 'context': 'cross-origin-dedicated-worker',
++                    'realm': reply['realm'], 'value': reply['value']})
++            finally:
++                await frame_element.evaluate('(frame) => frame.remove()')
++                await frame_element.dispose()
++            reply = await asyncio.wait_for(page.evaluate(WORKER_CLIENT.read_text(encoding='utf-8'), {'kind': 'nested'}), 90)
++            report['observations'].append({'mode': mode, 'context': 'nested-dedicated-worker',
++                'realm': reply['realm'], 'nested_realm': reply['nestedRealm'], 'value': reply['value']})
++
+         finally:
+             await runtime.close()
+ 
+@@ -241,7 +315,7 @@
+         receipt = validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name=args.candidate)
+         probe_snapshot = probe_inputs(candidate_name=args.candidate)
+         inputs = {str(ROOT / path): value for path,value in probe_snapshot.items()}
+-        inputs.update({str(path): digest(path) for path in (Path(__file__), PROBE, DRIVER_MANIFEST)})
++        inputs.update({str(path): digest(path) for path in (Path(__file__), PROBE, DRIVER_MANIFEST, BOUND_WORKER, WORKER_CLIENT)})
+         report.update(runtime_core_sha256_measured=core, receipt_sha256=hashlib.sha256(receipt).hexdigest(),
+                       probe_inputs_sha256=inputs, javascript_sha256=digest(PROBE), candidate=args.candidate,
+                       candidate_manifest_sha256=json.loads(receipt)['candidate_manifest_sha256'])
+@@ -249,7 +323,15 @@
+         thread = threading.Thread(target=server.serve_forever, daemon=True)
+         thread.start()
+         asyncio.run(observe(args.executable, owned, server, PROBE.read_text(encoding='utf-8-sig'), report, runtimes))
+-        report['result'] = validate_rows(report['observations'])
++        contexts = ('document', 'same-origin-iframe', 'dedicated-worker', 'cross-origin-iframe', 'cross-origin-dedicated-worker', 'nested-dedicated-worker')
++        rows = report['observations']
++        if len(rows) != 12 or {(row['mode'], row['context']) for row in rows} != {
++                (mode, context) for mode in ('baseline', 'ready') for context in contexts}:
++            raise ValueError('Owned WebGPU context matrix is incomplete or duplicated')
++        measured = {context: validate_rows([dict(row, context='document') for row in rows
++                                            if row['context'] == context]) for context in contexts}
++        report['result'] = {'contexts': measured,
++                            'consistency_gate_passed': all(value['consistency_gate_passed'] for value in measured.values())}
+         report['measurement_complete'] = True
+         report['postguards_passed'] = (measure_runtime_core(args.executable) == core
+             and validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name=args.candidate) == receipt

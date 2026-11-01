@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Six muted realtime compressor/analyser/AudioWorklet comparisons on preserved 118-patch R2, not newest R3 or audio quality admission",
+  "candidate_manifest_sha256": "70e6cd468876ab91fa59a1068ed92cc3117d91dc8b3cf0929526f4da98f5e4e7",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "136f64b721edf0f46de51c61d7cfb2c750aaab28ba9708b26cf7a90b2e878aa5",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "raw_report_sha256": "ba385504478a79f4a384b029b1ea431c2eb43e807efe1cfeaae9e3f449d5c3af",
+  "measured_collector_sources_sha256": {
+    "run.py": "ee7df0d2bb6ed7d11814328a343070bc7dc98c04adcb1ead3f76ebb637133a00",
+    "audio_module.py": "3ca0953441b3588d23b67344413b276111cf49180bd7954672769ad24b15610f"
+  },
+  "patch_sha256": "ae0cdb54f27bbb8f4f5c049ebbb35b936c74bf1535b185fae737c8adf80fa6d3",
+  "portable_source_pins": {
+    "native/fixtures/audio/realtime.js": {
+      "before_sha256": "34a85e2c65b2d1dc7aef741108720a23e9813464bcdcb9eaa9045201e340a5c5",
+      "after_sha256": "08c2711c4ab82760f777acb7a3749cad97cf8887aa4c00b45b7887c5961e7d4e"
+    },
+    "native/fixtures/audio/worklet-processor.js": {
+      "before_sha256": "1bc5016658728225f2c9b85c6d055f18991a5c6ed32ce2c8baecc55d65278606",
+      "after_sha256": "e6e87494a1358117a2d94580a9b8ef03bb54266b1cd85d8c7eb113795f2ef718"
+    },
+    "scripts/verify_native_audio_compatibility.py": {
+      "before_sha256": "55a5e20100ef4214f10a9f02272382319ae78518e062092fd94bdeff372644a4",
+      "after_sha256": "03302565a3c8458b0f309bd01f5071042b51fb80dde3f680afbeb4ee749de3e7"
+    }
+  },
+  "isolated_apply_reverse_passed": true,
+  "measurements": [
+    {
+      "profile": 0,
+      "mode": "baseline",
+      "sample_rate": 48000,
+      "packetCount": 64,
+      "firstFrame": 0,
+      "lastFrame": 8192,
+      "suspendedFrame": 8192,
+      "fftSize": 2048,
+      "analyserSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "workletTailSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "differentSamples": 0
+    },
+    {
+      "profile": 0,
+      "mode": "math",
+      "sample_rate": 48000,
+      "packetCount": 64,
+      "firstFrame": 0,
+      "lastFrame": 8192,
+      "suspendedFrame": 8192,
+      "fftSize": 2048,
+      "analyserSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "workletTailSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "differentSamples": 0
+    },
+    {
+      "profile": 0,
+      "mode": "math-restart",
+      "sample_rate": 48000,
+      "packetCount": 64,
+      "firstFrame": 0,
+      "lastFrame": 8192,
+      "suspendedFrame": 8192,
+      "fftSize": 2048,
+      "analyserSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "workletTailSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "differentSamples": 0
+    },
+    {
+      "profile": 1,
+      "mode": "baseline",
+      "sample_rate": 48000,
+      "packetCount": 64,
+      "firstFrame": 0,
+      "lastFrame": 8192,
+      "suspendedFrame": 8192,
+      "fftSize": 2048,
+      "analyserSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "workletTailSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "differentSamples": 0
+    },
+    {
+      "profile": 1,
+      "mode": "math",
+      "sample_rate": 48000,
+      "packetCount": 64,
+      "firstFrame": 0,
+      "lastFrame": 8192,
+      "suspendedFrame": 8192,
+      "fftSize": 2048,
+      "analyserSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "workletTailSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "differentSamples": 0
+    },
+    {
+      "profile": 1,
+      "mode": "math-restart",
+      "sample_rate": 48000,
+      "packetCount": 64,
+      "firstFrame": 0,
+      "lastFrame": 8192,
+      "suspendedFrame": 8192,
+      "fftSize": 2048,
+      "analyserSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "workletTailSHA256": "64866f331a5a0bb04ddd3e0a7116a61dc2fbffa6c00f00b29f62b23c08f959d9",
+      "differentSamples": 0
+    }
+  ],
+  "source_postguards_passed": true,
+  "runtime_postguards_passed": true,
+  "driver_postguard_passed": true,
+  "two_output_classes_claimed_here": false,
+  "device_cohort_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

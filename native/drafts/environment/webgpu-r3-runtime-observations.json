@@ -1,0 +1,122 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-webgpu-r3",
+  "patches": 120,
+  "manifest_sha256": "4e87158aea8ea24f6219cddda9a8a3a3d257201591a2f62578869b5f82d0a4a4",
+  "compiled": true,
+  "all_browser_gates_passed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "main_gates": [
+    {
+      "name": "runtime-suite",
+      "passed": true,
+      "terminal": true,
+      "returncode": 0,
+      "report_sha256": "f0d2341fd87a87e5c4b9c53b28323f5f68b71c026d08fdc913db5de42bd3c26e"
+    },
+    {
+      "name": "worker-startup",
+      "passed": true,
+      "terminal": true,
+      "returncode": 0,
+      "report_sha256": "01b22c323226900a4ffae70457f03a2f0bc0cf356ff9b25b6d5e3959d2c6d9db"
+    },
+    {
+      "name": "surfaces",
+      "passed": true,
+      "terminal": true,
+      "returncode": 0,
+      "report_sha256": "4f236ba69803faeab97dade2dc1ff2a75b4fd91833d65308c1d8e99c46902d4e"
+    },
+    {
+      "name": "gpu-contexts",
+      "passed": true,
+      "terminal": true,
+      "returncode": 0,
+      "report_sha256": "3a4f6987bb1a57be97ca628d4a4e3feaffd2aece816b264f2a87e881d4996bc0"
+    },
+    {
+      "name": "webgpu-consistency",
+      "passed": true,
+      "terminal": true,
+      "returncode": 0,
+      "report_sha256": "37508a3a7020f7938d0d52b6836542e3fbf1e0427fd8a9f9e7429500e5a6c328"
+    },
+    {
+      "name": "combined-math",
+      "passed": true,
+      "terminal": true,
+      "returncode": 0,
+      "report_sha256": "0e69a13f11441ddb3c737273a6978ad01fb40d912d07b51bb6c46dd5a16976cf"
+    },
+    {
+      "name": "audio-compatibility",
+      "passed": false,
+      "terminal": true,
+      "returncode": 1,
+      "report_sha256": "3b273414f5d8178948d8337dfd0a5fd9d1486d19c3a81bb68d0261d47c812190"
+    },
+    {
+      "name": "webgpu-context-consistency",
+      "passed": true,
+      "terminal": true,
+      "returncode": 0,
+      "report_sha256": "57a94531eea258f80e635fb5b245f02dfe5dab8a9749e7880e210d3dfb882915"
+    },
+    {
+      "name": "audio-math-long-buffer",
+      "passed": true,
+      "terminal": true,
+      "returncode": 0,
+      "report_sha256": "5eede4f134d6d026013d67e09b5b662d083961202364b1196d3596f1db67640a"
+    }
+  ],
+  "additional_reports": [
+    {
+      "name": "build",
+      "passed": true,
+      "report_sha256": "d66953f989dd3cdbd3e44e2479bf2d99a7a7dec37908b36914555d8ad12d7a6a"
+    },
+    {
+      "name": "large_canvas",
+      "passed": false,
+      "report_sha256": "4309398eecfcac346ef3fb6d75dc1ba99d49b4ac763f7fe1c5492fc3a69b2609"
+    },
+    {
+      "name": "gpu_recovery",
+      "passed": true,
+      "report_sha256": "6d0d2c64e0c630ea5b57ac510560a9b689f6b154532729bd34b7ea57fa864202"
+    },
+    {
+      "name": "realtime_worklet",
+      "passed": true,
+      "report_sha256": "d55d562aa0f036ab3fde99bbfd8957aa38e1826723e1b1708654b22c22ccfccc"
+    },
+    {
+      "name": "cross_context",
+      "passed": true,
+      "report_sha256": "8eccf164d6cf5481fe427b322f9ed56317fcfc2141c5b33ddb2becea7d2af34c"
+    },
+    {
+      "name": "mutation",
+      "passed": true,
+      "report_sha256": "970a74436abaa9392db094101e96344f4277cc7be57310ebcac0bdb8e7655eda"
+    },
+    {
+      "name": "large_internal",
+      "passed": true,
+      "report_sha256": "b1135a97db9938f1c8fe18a8c0ec7864c0411f96c544c776be1bf6b29e42ae33"
+    },
+    {
+      "name": "large_canvas_no_export",
+      "passed": false,
+      "report_sha256": "0d68f35605a01b782b0493a820bfd107d361d18499504d4c552c23ff1ee6866e"
+    },
+    {
+      "name": "desktop_structure_only",
+      "passed": true,
+      "report_sha256": "9aafa59b34dc9e66eafaff253fd05c2bb9b20e0ee279115779414fef79f200e9"
+    }
+  ]
+}

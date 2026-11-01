@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "reproducibility_check_passed": true,
+  "all_browser_gates_passed": false,
+  "scope": "Actual execution of the portable collector patches from public Git archive; preserved R2 only",
+  "preparation_observations_sha256": "5ac42a678c5a2e0bd581a9290691d3e96f58d7264a80c3bef70e68fcad2f6386",
+  "queue_report_sha256": "6f2349e1422e3c7d054e9700772c758f1d48554bd03377035fafdd41f788bfb0",
+  "git_head": "d04ed2e088a22a3a3f10ae680112800678172c2b",
+  "public_archive_sha256": "8855e2bc667fcc8e6bb284c212158ca8c3c5e108c997ee65006e4868a92f9934",
+  "variants": [
+    {
+      "kind": "contexts",
+      "portable_collector_sha256": "8d1980ddddb05ffdb314b5e88887c4a60c520cc4371bdbc4f0aa80ea725fec2e",
+      "report_sha256": "e082187474f265851a3c13bfb04b8ddf4612d6bd7ed6effcd982a724bc625d80",
+      "original_browser_gate_passed": true,
+      "duration_seconds": 64.91232085227966,
+      "independent_source_postguard_passed": true,
+      "independent_runtime_postguard_passed": true,
+      "context_observations": 12
+    },
+    {
+      "kind": "mutation",
+      "portable_collector_sha256": "7a7e23d27cc66e544b5003d1681bd7109e8175ea6a620af0035159ad6d888e35",
+      "report_sha256": "f2670214932f624ab11b3ec090cf5d8c04ffdad7e1f0eda5d5ee7f79130bb6f7",
+      "original_browser_gate_passed": true,
+      "duration_seconds": 27.595704793930054,
+      "independent_source_postguard_passed": true,
+      "independent_runtime_postguard_passed": true,
+      "mutation_cases": 10
+    },
+    {
+      "kind": "large",
+      "portable_collector_sha256": "d481cf94d0b8d82d0f5a9ed989ce02fc71b3f7298792bac6a498ffdc933197e7",
+      "report_sha256": "b76bfa1276a3bf0be611ee263ab8363dae62add77a120512e71ba01e8c4585d7",
+      "original_browser_gate_passed": false,
+      "duration_seconds": 24.576080322265625,
+      "independent_source_postguard_passed": true,
+      "independent_runtime_postguard_passed": true,
+      "expected_native_oom_reproduced": true
+    }
+  ],
+  "remaining_owned_runtime_processes": [],
+  "r3_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

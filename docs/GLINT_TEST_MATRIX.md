@@ -1,5 +1,36 @@
 # Glint browser test matrix
 
+## 2026-11-01: R3 compiled and measured; not admitted
+
+| Gate | Result |
+| --- | --- |
+| Windows R3, 120 patches, maximum j4 | Compiled: 88 executed incremental steps, 27m44.05s |
+| Independent runtime | 269 assets preserved and hash-verified |
+| Core / worker startup | 160 / 60 checks passed |
+| Combined surfaces / eight-profile math / WebGPU copy-shader-PNG | Passed |
+| Cross-context / mutation / GPU-process recovery | 12 observations / 10 cases / baseline and ready passed |
+| Realtime AudioWorklet / long Audio graphs | Passed; not device-cohort certification |
+| Legacy Audio | **Failed on both profiles** |
+| Large Canvas to WebGPU | **Projection OOM and device loss remain** |
+| Large internal textures without export | Eight cases passed; Canvas without export still fails |
+| Packaged desktop with staged driver | Build and archive inspection passed; app runtime not verified |
+
+[Hash-bound results](../native/drafts/environment/webgpu-r3-runtime-observations.json)
+retain failed gates. The complete browser batch is not green. No privacy or
+production capability is promoted. Compilation is not a clean-build estimate.
+The first controller failed a six-versus-seven changed-file assertion; its evidence
+is preserved separately from the successful verified resume, not rewritten.
+
+The next [access-epoch cache draft](../native/drafts/webgpu-external-access-cache/README.md)
+compiles and passes 54 internal checks plus three real imported-resource Wire
+runs. It is not in Chromium. Producer mutation, negative controls, large imports
+and browser Canvas verification remain required. Do not increase the quota or
+cache arbitrary external textures to conceal the failing gate.
+
+Public diagnostic packets: [resource/context/mutation collectors](../native/drafts/environment/webgpu-browser-resource-regression/README.md)
+and [realtime AudioWorklet fixture](../native/drafts/environment/audio-realtime-worklet/README.md).
+Their measurements and portable-source scope are recorded independently.
+
 ## 2026-11-01: revision-2 browser results; legacy Audio remains failed
 
 | Gate | Measured result | Boundary |

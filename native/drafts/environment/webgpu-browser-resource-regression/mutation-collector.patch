@@ -1,0 +1,108 @@
+diff --git a/scripts/verify_native_webgpu_consistency.py b/scripts/verify_native_webgpu_consistency.py
+--- a/scripts/verify_native_webgpu_consistency.py
++++ b/scripts/verify_native_webgpu_consistency.py
+@@ -1,4 +1,4 @@
+-"""Owned WebGPU copy/shader/PNG consistency gate; never full privacy admission."""
++"""Owned texture write-invalidation and retained-readback gate; never full privacy admission."""
+ from __future__ import annotations
+ 
+ import argparse
+@@ -19,7 +19,7 @@
+ 
+ from scripts.native_build import CANDIDATES, WEBGPU_CANDIDATES
+ 
+-PROBE = ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js'
++PROBE = ROOT / 'native/drafts/environment/webgpu-browser-resource-regression/mutation-probe.js'
+ DRIVER_MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
+ PIXEL_BYTES = 16 * 16 * 4
+ TRANSPORT_FEATURE = 'GlintWebGPUPolicyTransportCandidate'
+@@ -88,47 +88,52 @@
+     return {'changed_channels': sum(value != 0 for value in delta), 'maximum_delta': max(delta)}
+ 
+ 
+-def validate_rows(rows: list[dict]) -> dict:
++def validate_rows(rows):
+     if (not isinstance(rows, list) or len(rows) != 2
+-            or any(not isinstance(row, dict) or type(row.get('mode')) is not str
+-                   or row['mode'] not in ('baseline', 'ready') for row in rows)
+-            or {row['mode'] for row in rows} != {'baseline', 'ready'}):
+-        raise ValueError('Exactly one baseline and ready document are required')
+-    reference = bytes(channel for y in range(16) for x in range(16)
+-                      for channel in ((x * 17) % 256, (y * 29 + 31) % 256,
+-                                      (x * 43 + y * 11) % 256, 255))
++            or {row.get('mode') for row in rows} != {'baseline', 'ready'}):
++        raise ValueError('Exactly baseline and ready observations are required')
++    expected = {('rgba8unorm', route) for route in ('render', 'copy', 'storage')} | {
++        ('bgra8unorm', route) for route in ('render', 'copy')}
+     measured = []
+     for row in rows:
+         value = row.get('value')
+-        if (row.get('context') != 'document' or not isinstance(value, dict)
+-                or value.get('measured') is not True or value.get('commandValidationPassed') is not True
+-                or value.get('exportStable') is not True
+-                or value.get('format') not in ('rgba8unorm', 'bgra8unorm')):
+-            raise ValueError('Missing successful owned document/GPU commands/export')
+-        encoded = value.get('rgbaBase64')
+-        if not isinstance(encoded, str) or len(encoded) > 2048:
+-            raise ValueError('Malformed bounded direct GPU pixels')
+-        direct = base64.b64decode(encoded, validate=True)
+-        shader = bounded_bytes(value.get('shaderRGBA'), PIXEL_BYTES)
+-        png = decode_png(value.get('png'))
+-        if any(any(alpha != 255 for alpha in pixels[3::4]) for pixels in (direct, shader, png)):
+-            raise ValueError('Opaque fixture alpha changed')
+-        deviations = {name: compare(data, reference) for name,data in (
+-            ('direct', direct), ('shader', shader), ('png', png))}
+-        if row['mode'] == 'baseline' and any(item['changed_channels'] for item in deviations.values()):
+-            raise ValueError('Unprotected fixture no longer matches exact integer colors')
+-        if any(item['maximum_delta'] > 1 for item in deviations.values()):
+-            raise ValueError('Fixture colors exceed the current one-level policy bound')
+-        measured.append({'mode': row['mode'], 'measured': True, 'deviation_from_reference': deviations,
+-            'direct_vs_shader': compare(direct, shader), 'png_vs_direct': compare(png, direct),
+-            'png_vs_shader': compare(png, shader), 'shader_rgba_sha256': hashlib.sha256(shader).hexdigest()})
+-    ready = next(row for row in measured if row['mode'] == 'ready')
+-    noise_observed = ready['deviation_from_reference']['png']['changed_channels'] > 0
+-    coherent = all(not row[name]['changed_channels'] for row in measured
+-                   for name in ('direct_vs_shader', 'png_vs_direct', 'png_vs_shader'))
+-    return {'fixture_validation_passed': True, 'surface_noise_observed': noise_observed,
+-            'readback_consistent': coherent, 'consistency_gate_passed': noise_observed and coherent,
+-            'rows': measured, 'privacy_admitted': False, 'production_admitted': False}
++        if row.get('context') != 'document' or not isinstance(value, dict) or value.get('measured') is not True:
++            raise ValueError('Missing measured owned document')
++        cases = value.get('cases')
++        if (not isinstance(cases, list) or len(cases) != 5
++                or {(case.get('format'), case.get('route')) for case in cases} != expected):
++            raise ValueError('Incomplete render/copy/RGBA storage mutation matrix')
++        for case in cases:
++            if case.get('commandValidationPassed') is not True:
++                raise ValueError('Mutation command validation failed')
++            snapshots = {}
++            for phase in ('before', 'after'):
++                capture = case.get(phase)
++                if not isinstance(capture, dict):
++                    raise ValueError('Missing mutation phase')
++                direct = bounded_bytes(capture.get('rgba'), 1024)
++                shader = bounded_bytes(capture.get('shader'), 1024)
++                reference = bytes(channel for y in range(16) for x in range(16) for channel in (
++                    ((64, 128, 191, 255) if x < 8 else (191, 64, 128, 255)) if phase == 'before'
++                    else ((128, 191, 64, 255) if x < 8 else (64, 128, 191, 255))))
++                if direct != shader or any(alpha != 255 for alpha in direct[3::4]):
++                    raise ValueError('GPU shader/readback or opaque alpha mismatch')
++                deviation = compare(direct, reference)
++                if (deviation['maximum_delta'] > 1
++                        or (row['mode'] == 'baseline' and deviation['changed_channels'])
++                        or (row['mode'] == 'ready' and not deviation['changed_channels'])):
++                    raise ValueError('Stale pixels or incorrect mutation/reference projection')
++                snapshots[phase] = direct
++            retained = bounded_bytes(case.get('retainedBefore'), 1024)
++            if retained != snapshots['before'] or snapshots['before'] == snapshots['after']:
++                raise ValueError('Retained capture changed or texture mutation was not observed')
++            measured.append({'mode': row['mode'], 'format': case['format'], 'route': case['route'],
++                'before_sha256': hashlib.sha256(snapshots['before']).hexdigest(),
++                'after_sha256': hashlib.sha256(snapshots['after']).hexdigest(),
++                'old_capture_immutable': True, 'shader_readback_consistent': True})
++    return {'consistency_gate_passed': True, 'rows': measured,
++            'scope': 'Five document texture mutations per mode and retained CPU capture; not arbitrary GPU consumer or exhaustion admission',
++            'privacy_admitted': False, 'production_admitted': False}
+ 
+ 
+ class FixtureHandler(BaseHTTPRequestHandler):

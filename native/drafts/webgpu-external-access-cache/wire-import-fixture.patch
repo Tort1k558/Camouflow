@@ -1,0 +1,131 @@
+diff --git a/wire_probe.cc b/wire_probe.cc
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -11,6 +11,9 @@
+ 
+ #include "dawn/dawn_proc.h"
+ #include "dawn/native/DawnNative.h"
++#include "dawn/native/D3D12Backend.h"
++#include <wrl/client.h>
++#include "src/dawn/native/d3d12/TextureD3D12.h"
+ #include "dawn/wire/WireClient.h"
+ #include "dawn/wire/WireServer.h"
+ #include "gpu/command_buffer/common/glint/canvas_readback_candidate.h"
+@@ -52,9 +55,16 @@
+     const bool renderDirect = vertexDirect || indexDirect || writableDirect || (argc == 2 && std::strcmp(argv[1], "--render-direct") == 0);
+     const bool renderBundle = vertexBundle || indexBundle || writableBundle || (argc == 2 && std::strcmp(argv[1], "--render-bundle") == 0);
+     Check(argc == 1 || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota || renderDirect || renderBundle || indirectMode || sampledMode);
++    Check(argc == 2 && sampledRGBA);
+     const bool expectDenied = unsupportedFormat || cancelMap || snapshotQuota;
+     dawnProcSetProcs(&dawn::native::GetProcs());
+-    dawn::native::Instance nativeInstance;
++    const char* nativeImportToggle = "allow_unsafe_apis";
++    wgpu::DawnTogglesDescriptor instanceToggles{};
++    instanceToggles.enabledToggleCount = 1;
++    instanceToggles.enabledToggles = &nativeImportToggle;
++    wgpu::InstanceDescriptor nativeInstanceDescriptor{};
++    nativeInstanceDescriptor.nextInChain = &instanceToggles;
++    dawn::native::Instance nativeInstance(&nativeInstanceDescriptor);
+     auto toServer = std::make_unique<dawn::utils::TerribleCommandBuffer>();
+     auto toClient = std::make_unique<dawn::utils::TerribleCommandBuffer>();
+     dawn::wire::WireServerDescriptor serverDescriptor{};
+@@ -110,6 +120,11 @@
+     std::atomic_bool deviceDone = false;
+     wgpu::Device device;
+     wgpu::DeviceDescriptor deviceDescriptor{};
++    std::array<wgpu::FeatureName, 2> sharedFeatures{
++        wgpu::FeatureName::SharedTextureMemoryD3D12Resource,
++        wgpu::FeatureName::SharedFenceDXGISharedHandle};
++    deviceDescriptor.requiredFeatureCount = sharedFeatures.size();
++    deviceDescriptor.requiredFeatures = sharedFeatures.data();
+     deviceDescriptor.SetUncapturedErrorCallback(
+         [](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView message) {
+             std::fprintf(stderr, "Wire device error: %.*s\n", static_cast<int>(message.length), message.data);
+@@ -171,7 +186,43 @@
+             std::swap(expected[index], expected[index + 2]);
+         }
+     }
+-    auto texture = device.CreateTexture(&textureDescriptor);
++    const auto& nativeProcs = dawn::native::GetProcs();
++    auto d3dDevice = dawn::native::d3d12::GetD3D12Device(nativeDevice);
++    Check(d3dDevice.Get() != nullptr);
++    D3D12_RESOURCE_DESC resourceDescriptor{};
++    resourceDescriptor.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
++    resourceDescriptor.Width = width;
++    resourceDescriptor.Height = height;
++    resourceDescriptor.DepthOrArraySize = 1;
++    resourceDescriptor.MipLevels = 1;
++    resourceDescriptor.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
++    resourceDescriptor.SampleDesc.Count = 1;
++    resourceDescriptor.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
++        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
++    D3D12_HEAP_PROPERTIES heap{};
++    heap.Type = D3D12_HEAP_TYPE_DEFAULT;
++    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
++    Microsoft::WRL::ComPtr<ID3D12Resource> sharedResource;
++    Check(SUCCEEDED(d3dDevice->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE,
++        &resourceDescriptor, D3D12_RESOURCE_STATE_COMMON, nullptr,
++        IID_PPV_ARGS(sharedResource.GetAddressOf()))));
++    dawn::native::d3d12::SharedTextureMemoryD3D12ResourceDescriptor resourceImport{};
++    resourceImport.resource = sharedResource.Get();
++    wgpu::SharedTextureMemoryDescriptor memoryDescriptor{};
++    memoryDescriptor.nextInChain = &resourceImport;
++    auto sharedMemory = nativeProcs.deviceImportSharedTextureMemory(nativeDevice,
++        reinterpret_cast<const WGPUSharedTextureMemoryDescriptor*>(&memoryDescriptor));
++    Check(sharedMemory != nullptr);
++    auto importedTexture = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
++        reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
++    Check(importedTexture != nullptr);
++    WGPUSharedTextureMemoryBeginAccessDescriptor access{};
++    access.initialized = false;
++    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, importedTexture, &access) == WGPUStatus_Success);
++    auto importedReservation = client->ReserveTexture(device.Get(),
++        reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
++    Check(server->InjectTexture(importedTexture, importedReservation.handle, importedReservation.deviceHandle));
++    auto texture = wgpu::Texture::Acquire(importedReservation.texture);
+     wgpu::TexelCopyTextureInfo textureCopy{};
+     textureCopy.texture = texture;
+     wgpu::TexelCopyBufferLayout upload{};
+@@ -586,6 +637,33 @@
+         std::memcpy(&got, transformed.data() + i * 4, 4);
+         Check(got == (indirectZero ? initialOutput[i] : (wanted ^ 0xa1b2c3d4u)));
+     }
++    auto* backendDevice = dawn::native::d3d12::ToBackend(dawn::native::FromAPI(nativeDevice));
++    auto projectorResult = backendDevice->GetGlintTextureProjector();
++    Check(!projectorResult.IsError());
++    auto* projector = projectorResult.AcquireSuccess();
++    auto* backendTexture = dawn::native::d3d12::ToBackend(dawn::native::FromAPI(importedTexture));
++    auto cached = backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM);
++    if (!cached) { std::fputs("SHARED_EPOCH_CACHE_MISSING\n", stderr); return 1; }
++    cached.reset();
++    WGPUSharedTextureMemoryEndAccessState ended{};
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &ended) == WGPUStatus_Success);
++    Check(!backendTexture->HasAccess());
++    WGPUSharedTextureMemoryBeginAccessDescriptor resumed{};
++    resumed.initialized = ended.initialized;
++    resumed.fenceCount = ended.fenceCount;
++    resumed.signaledValueCount = ended.signaledValueCount;
++    resumed.fences = ended.fences;
++    resumed.signaledValues = ended.signaledValues;
++    Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, importedTexture, &resumed) == WGPUStatus_Success);
++    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(ended);
++    Check(backendTexture->HasAccess());
++    cached = backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM);
++    if (cached) { std::fputs("SHARED_EPOCH_CACHE_STALE\n", stderr); return 1; }
++    WGPUSharedTextureMemoryEndAccessState finished{};
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &finished) == WGPUStatus_Success);
++    nativeProcs.sharedTextureMemoryEndAccessStateFreeMembers(finished);
++    nativeProcs.textureRelease(importedTexture);
++    nativeProcs.sharedTextureMemoryRelease(sharedMemory);
+     std::array<uint32_t, 16> plain{};
+     for (size_t i = 0; i < plain.size(); ++i) plain[i] = static_cast<uint32_t>(i * 1234567u);
+     inputDescriptor.size = sizeof(plain);
+@@ -611,7 +689,7 @@
+     pump();
+     requireBudgetDrained();
+     std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                "\"native_d3d12_queue_executed\":true,\"protected_channels\":%zu,"
++                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"protected_channels\":%zu,"
+                 "\"projected_compute_values\":%zu,\"unrelated_values\":16,\"repeated_map\":true,"
+                 "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
+                 "\"capture_bytes_after_destroy\":%llu,"
