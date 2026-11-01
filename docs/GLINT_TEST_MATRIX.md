@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-01: native rendering controls and same-profile restart
+
+[Research packet](../native/drafts/canvas-native-rendering/README.md): seven
+existing native font/text presets, five contexts, two alpha modes, first launch
+and same-profile restart: **140 image observations**, all repeated reads,
+cross-context image pairs, uniform-colour checks and seven restart pairs exact.
+Six distinct image pairs were measured; Native and ClearType RGB coincide.
+
+Readback masking was **off**. This is not a repaired Canvas policy, a seeded
+rendering identity or a validated real-device cohort. Only `willReadFrequently`
+2D backing was exercised; exports, default backing, multicolour fidelity and
+combined GPU policies remain unverified. Aliased rendering changes text metrics.
+The rejected first-run font/gamma combination remains recorded; no guard relaxed.
+
 ## 2026-11-01: first bound external R8 observations — not all PASS
 
 [Measured record](../native/drafts/upstream-156-audio-r8/public-sites-observations.json).

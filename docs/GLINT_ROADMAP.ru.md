@@ -12,8 +12,18 @@
 - [157 source chain](../native/drafts/upstream-157-r8-port/full-source-observations.json):
   all 131 packets apply/reverse; 270 immutable inputs restored. Not compiled.
 
-Next: finish two-profile Audio difference diagnostics, review/build the 157 C++
-integration and execute queued Audio tests, then repeat combined/runtime gates.
+Two-profile Audio difference diagnostics are now recorded, including both
+preselected reference classes; Legacy remains failed. The new
+[native rendering investigation](../native/drafts/canvas-native-rendering/README.md)
+completed 140 images and seven same-profile restart pairs. Existing native
+presets vary text pixels without changing the measured uniform colour, with
+readback masking off; this is not yet a versioned Canvas identity policy.
+
+Next: implement an explicit versioned rendering configuration without silent
+migration; bind actual raster/text settings, expand drawing/export/default-backing
+and mixed-policy checks, then evaluate replacing readback masking. Review/build
+the 157 C++ integration and execute queued Audio tests when storage permits,
+then repeat combined/runtime gates. The full build reserve remains 180 GiB.
 Legacy Audio, device cohorts, installed-package/update/rollback and full privacy/
 production admission remain open. Earlier checkpoints below retain their scopes.
 

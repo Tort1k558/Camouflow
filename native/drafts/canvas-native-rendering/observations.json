@@ -1,0 +1,2562 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "10dad15a0065aa71a7527c099cced71301ab487818ef3740bc0ac52ecad9837d",
+  "headless": true,
+  "proxy_used": false,
+  "source_core_driver_asset_postguards_passed": true,
+  "fixture_thread_closed": true,
+  "measurement_complete": true,
+  "scope": "Existing native font/text controls with readback masking OFF; renderer variation experiment, not a new Canvas policy",
+  "attempts": [
+    {
+      "attempt": 1,
+      "raw_report_sha256": "845967738fff973d97f7572cbf2eff1f4e463b6da32e791a8f06d8c18426bba5",
+      "state": "failed",
+      "measurement_complete": false,
+      "phases": 3,
+      "runner_sha256": "811c7ccedef0fccdd6d33293e4186f8068c49aa5319a2050713090c06db6a36d"
+    },
+    {
+      "attempt": 2,
+      "raw_report_sha256": "83bdaaf21449800c0fee1b2b78cb5a2afe9a5902d481313c6f7326ea1210ec0c",
+      "state": "observations-complete",
+      "measurement_complete": true,
+      "phases": 7,
+      "runner_sha256": "f681877d6304f3a1ba6d00523c70bbf15fd4a0fb9d721d4c69113904cca1d084"
+    },
+    {
+      "attempt": 3,
+      "raw_report_sha256": "a2bf17d0dd603d7166298b43da609e29bc944a34c212360bbb4ad65ca99f6f69",
+      "state": "observations-complete",
+      "measurement_complete": true,
+      "phases": 14,
+      "runner_sha256": "b67c7a25e2477af4a651b708b4a3c68d6d22c3f9c46d843ad90367b8afdf6939"
+    }
+  ],
+  "base_probe_sha256": "1fe15a7223eaa4d5d11db4ecb8fe39df7426c4ecfb77e2fdc1fa0745d4976139",
+  "probe_sha256": "228d6ad20fe7e66d2cae1d05ab3ee33a365fc26f0576423ec33fad7334408643",
+  "probe_extension_sha256": "a1bf42a314a7eb6f32f120bf929b7971169d59a1bce0dfccab524a32a488925d",
+  "measured_validator_sha256": "684b298ff478bc94bcfcc75534d37193a868372cb201efdf961baf49c68379a6",
+  "publication_validator_sha256": "977740d1048b54b399223f339948402babd3f6df2b86ddc952b151f944310cc3",
+  "publication_validator_rechecked_all_phases": true,
+  "presets": 7,
+  "contexts_per_phase": 5,
+  "alpha_modes_per_context": 2,
+  "phases": [
+    {
+      "name": "native",
+      "profile_name": "native",
+      "restart": false,
+      "rasterization": "native",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "aliased",
+      "profile_name": "aliased",
+      "restart": false,
+      "rasterization": "aliased",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "grayscale",
+      "profile_name": "grayscale",
+      "restart": false,
+      "rasterization": "grayscale",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "cleartype-rgb",
+      "profile_name": "cleartype-rgb",
+      "restart": false,
+      "rasterization": "cleartype-rgb",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "cleartype-bgr",
+      "profile_name": "cleartype-bgr",
+      "restart": false,
+      "rasterization": "cleartype-bgr",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "gamma14",
+      "profile_name": "gamma14",
+      "restart": false,
+      "rasterization": "native",
+      "text_tuning": "gamma-1400-contrast-300",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "gamma22",
+      "profile_name": "gamma22",
+      "restart": false,
+      "rasterization": "native",
+      "text_tuning": "gamma-2200-contrast-500",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "native-restart",
+      "profile_name": "native",
+      "restart": true,
+      "rasterization": "native",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "aliased-restart",
+      "profile_name": "aliased",
+      "restart": true,
+      "rasterization": "aliased",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                "repeatExact": true,
+                "metrics": [
+                  175,
+                  -1,
+                  174,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "grayscale-restart",
+      "profile_name": "grayscale",
+      "restart": true,
+      "rasterization": "grayscale",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  -1,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "cleartype-rgb-restart",
+      "profile_name": "cleartype-rgb",
+      "restart": true,
+      "rasterization": "cleartype-rgb",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "cleartype-bgr-restart",
+      "profile_name": "cleartype-bgr",
+      "restart": true,
+      "rasterization": "cleartype-bgr",
+      "text_tuning": "native",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "gamma14-restart",
+      "profile_name": "gamma14",
+      "restart": true,
+      "rasterization": "native",
+      "text_tuning": "gamma-1400-contrast-300",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "name": "gamma22-restart",
+      "profile_name": "gamma22",
+      "restart": true,
+      "rasterization": "native",
+      "text_tuning": "gamma-2200-contrast-500",
+      "readback_masking_enabled": false,
+      "resources_closed": true,
+      "observed": {
+        "schema": 1,
+        "scope": "Native text-rendering controls and exact opaque colours in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "images": [
+              {
+                "alpha": true,
+                "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              },
+              {
+                "alpha": false,
+                "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                "repeatExact": true,
+                "metrics": [
+                  171.240234375,
+                  0,
+                  171.507568359375,
+                  13,
+                  0
+                ]
+              }
+            ],
+            "plainChangedChannels": 0,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validation": {
+        "measurement_complete": true,
+        "passed": true,
+        "contexts": 5,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    }
+  ],
+  "image_observations": 140,
+  "restart_pairs_exact": 7,
+  "contexts_agree": true,
+  "distinct_initial_image_pairs": 6,
+  "readback_masking_enabled": false,
+  "will_read_frequently": true,
+  "default_backing_verified": false,
+  "multicolour_contract_verified": false,
+  "export_contracts_verified": false,
+  "seed_bound_rendering_identity": false,
+  "real_device_cohorts_verified": false,
+  "canvas_policy_repaired": false,
+  "third_party_verdict_validated": false,
+  "manager_admission_changed": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
