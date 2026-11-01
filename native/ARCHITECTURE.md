@@ -1,6 +1,6 @@
 # Glint architecture
 
-## 2026-11-01: R5 registered; browser build and runtime checks still required
+## 2026-11-01: R5 compiled; runtime admission remains unverified
 
 The [124-patch Windows candidate](drafts/upstream-156-webgpu-r5/README.md)
 preserves the exact R4 prefix and upstream/resource pins. It adds explicit
@@ -10,10 +10,14 @@ upstream files; this is source evidence, not a repaired browser result.
 
 | Next gate | Required evidence |
 | --- | --- |
-| Windows build | Fresh R5 receipt and independent preserved runtime; maximum j4 |
+| Windows build | Compiled: 62 executed Siso steps, maximum j4; browser QA remains separate |
 | Native launch/context tests | All 41 cases executed, including the four new launch tests |
 | Normal-profile delivery | Documents/iframe/workers and restarts without diagnostic bootstrap flags |
 | Large Canvas/WebGPU | Repeat the retained failed R4 gate with the actual new binary |
+
+[Exact Windows build evidence](drafts/upstream-156-webgpu-r5/windows-build-observations.json)
+binds the new DLL, unchanged launcher, build receipt, source chain and SDK.
+Siso execution took 27m15s; the complete build stage took 34m47s.
 
 The manager package allowlist is unchanged. Native tests, registration and
 standalone GPU controls do not admit the policy or guarantee CAPTCHA results.

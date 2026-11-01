@@ -1,6 +1,11 @@
 # Glint Chromium 156: normal-profile launch and shared swapchain epochs
 
-**Registered Windows build candidate; not compiled or production-admitted.**
+**Windows candidate compiled; native tests and browser admission are not proven yet.**
+
+[Exact build evidence](windows-build-observations.json): 62 executed Siso steps,
+27m15s build execution, 34m47s complete build stage, maximum j4.
+The launcher hash is unchanged from R4; the actual browser DLL has changed.
+The record binds all three runtime code files, not only `chrome.exe`.
 
 Preserves the exact 122-patch R4 prefix, upstream revisions and resource limits.
 Patch 123 adds explicit versioned normal-profile policy activation; patch 124

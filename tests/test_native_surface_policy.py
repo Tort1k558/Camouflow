@@ -1,4 +1,5 @@
 from dataclasses import replace
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -140,6 +141,33 @@ def test_surface_r5_candidate_preserves_r4_prefix_and_repository_ownership():
     root = Path(__file__).resolve().parents[1]
     assert (candidate['directory'] / 'patches' / dawn['name']).read_bytes() == (
         root / 'native/drafts/webgpu-shared-swapchain-epoch/dawn-owned.patch').read_bytes()
+
+
+def test_surface_r5_windows_build_evidence_does_not_admit_runtime_features():
+    from scripts import native_build as build
+
+    root = Path(__file__).resolve().parents[1]
+    candidate = build.load_candidate('upstream-156-webgpu-r5')
+    record = json.loads((candidate['directory'] / 'windows-build-observations.json').read_bytes())
+    previous = json.loads((root / 'native/drafts/environment/webgpu-r4-runtime-observations.json').read_bytes())
+    assert record['compiled'] is True
+    assert record['runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['chromium_revision'] == candidate['manifest']['target_revision']
+    assert record['chromium_version'] == candidate['manifest']['target_version']
+    assert record['jobs'] == candidate['lock']['build_jobs'] == 4 and record['patches'] == 124
+    core = record['runtime_core_sha256_measured']
+    assert set(core) == {'chrome.exe', 'chrome.dll', 'chrome_elf.dll'}
+    assert all(re.fullmatch('[0-9a-f]{64}', value) for value in core.values())
+    assert core['chrome.exe'] == previous['runtime_core']['chrome.exe']
+    assert core['chrome.dll'] != previous['runtime_core']['chrome.dll']
+    assert record['gn_template_sha256'] == hashlib.sha256((root / 'native/args.gn').read_bytes()).hexdigest()
+    assert record['siso_executed_steps'] == 62
+    assert 0 < record['siso_duration_seconds'] < record['build_stage_duration_seconds']
+    assert len(record['changed_source_sha256']) == 14
+    swapchain = json.loads((root / 'native/drafts/webgpu-shared-swapchain-epoch/observations.json').read_bytes())
+    assert record['changed_source_sha256']['third_party/dawn/src/dawn/native/d3d12/TextureD3D12.cpp'] == swapchain['source_after_sha256']
+    assert record['manual_build_output_timestamp_restoration'] is False
 
 
 def test_surface_launch_unit_target_requires_exact_new_and_existing_test_names():
