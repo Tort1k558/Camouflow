@@ -6,6 +6,8 @@ generate_about_credits = true
 symbol_level = 0
 blink_symbol_level = 0
 v8_symbol_level = 0
+# Heavy links share one slot; --jobs still controls compile parallelism.
+concurrent_links = 1
 use_remoteexec = false
 
 # Bind development builds to the actual source revision, not the dummy stamp.

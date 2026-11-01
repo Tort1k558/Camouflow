@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "source_project_head": "6c796e5c8f12ab396457393d8c1f417ebe2a11fc",
+  "candidate_manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "sync_passed": true,
+  "hooks_passed": true,
+  "patch_passed": true,
+  "jobs": 4,
+  "previous_link_pool_depth": 2,
+  "changed_translation_units_compiled": 4,
+  "native_object_sha256": {
+    "gpu/command_buffer/common/common_sources/webgpu_readback_provenance.obj": "1b91989385021a25a8fc932f1a66dde07267b433a5362d3dec96da98e9995f8b",
+    "gpu/command_buffer/common/common_sources/webgpu_readback_snapshot.obj": "2b733ee902c3889c9270dcaaadb216ba858d7a92039420f0397d99f69d4ef3d4",
+    "gpu/command_buffer/service/gles2_sources/glint_webgpu_readback_observer.obj": "16bbc27f59eb7645c01c5a19b87f02b37edf326a85a9a75b2ff7d793c8ff1095",
+    "gpu/command_buffer/service/gles2_sources/webgpu_decoder_impl.obj": "ef1253761ff9bc3dadc2b19bf7b68542010657af6bcc9fced16c6054ad41871e"
+  },
+  "failure_kind": "linker-out-of-memory",
+  "failed_target": "v8_context_snapshot_generator.exe",
+  "build_report_sha256": "4e831807f9fe03bfcdb4a10a5a16cf503369e013f6bacda18583eb7f9b827146",
+  "build_log_sha256": "d29d0ea9256fea127212aed493ceb0984945cacc9aaea4371f73efb24a8a7c67",
+  "minimum_available_commit_bytes": 119042048,
+  "memory_report_sha256": "3f2ca768af98373deb870c3b8c7ab2d6d878ebc616342d652f8dfb7da044570d",
+  "gn_template_sha256": "6e8852cef01631ece51948ab7f99176e86947cb02d07819e4af524e0116e6ab8",
+  "generated_args_sha256": "222ad77f8e78da92e478b520876a131275aafd3639ac5ddda8b28318c32a0de1",
+  "compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "scope": "Failed R7 attempt retained; four successful object compiles do not prove a browser binary"
+}

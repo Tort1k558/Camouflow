@@ -8,8 +8,28 @@ import pytest
 
 
 @pytest.fixture
-def host_sources_before_profile_surface(tmp_path):
-    """Recover exact manager bytes used by older browser measurements."""
+def native_args_before_serial_links(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'serial-links-args-upgrade.json').read_bytes())
+    base = tmp_path / 'before-serial-links'
+    path = base / 'native/args.gn'
+    path.parent.mkdir(parents=True)
+    value = (root / 'native/args.gn').read_bytes()
+    assert hashlib.sha256(value).hexdigest() == record['after_sha256']
+    path.write_bytes(value)
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    value = path.read_bytes()
+    assert hashlib.sha256(value).hexdigest() == record['before_sha256']
+    return value
+
+
+@pytest.fixture
+def host_sources_before_profile_surface(tmp_path, native_args_before_serial_links):
+    """Recover manager and GN bytes used by older browser measurements."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'profile-surface-host-source-upgrade.json').read_bytes())
@@ -24,7 +44,7 @@ def host_sources_before_profile_surface(tmp_path):
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=15)
-    sources = {}
+    sources = {'native/args.gn': native_args_before_serial_links}
     for row in record['sources']:
         path = base / row['source']
         if row['before_sha256'] is None:

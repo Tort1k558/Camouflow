@@ -17,13 +17,15 @@ capacity follows the existing live-buffer budget without increasing byte quotas.
 | Standalone C++ normal / AddressSanitizer | Passed in the linked packet |
 | Native target syntax | Three translation units passed |
 | Host registration | Reversible archive preserves exact older tooling |
-| Resources | Unchanged: Windows max j4; full-build reserve 180 GiB |
-| Canonical source transition / browser build | Not performed |
+| Resources | Windows max j4; one heavy link; full-build reserve 180 GiB |
+| Canonical source transition / browser build | Transition passed; first attempt failed at an out-of-memory link |
 | Retained-buffer browser regression | Required; not replaced by early buffer release |
 | Legacy Audio compatibility | Unresolved; no Audio change in this recipe |
 | Production admission | Not granted |
 
 [Manifest](manifest.json) and [replay evidence](preparation.json) bind the recipe.
+[First build attempt](windows-build-attempt1.json) retains four successful object
+compiles and the linker failure; it does not prove a completed browser binary.
 [Packet implementation and independent checks](../webgpu-readback-capacity/README.md)
 remain distinct from linked-browser evidence. Preserve R6 binaries and original
 failing retained-buffer reports for comparison; run the unchanged retention and

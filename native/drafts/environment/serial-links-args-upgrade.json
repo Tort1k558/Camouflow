@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "source": "native/args.gn",
+  "patch": "serial-links-args-upgrade.patch",
+  "patch_sha256": "615b3f85a51dc975e50fafbe1311d7fbb1220805cff24016ab65493c622af0e7",
+  "before_sha256": "6e8852cef01631ece51948ab7f99176e86947cb02d07819e4af524e0116e6ab8",
+  "after_sha256": "a42675f3f4d7f64f04950f7599f81e60423cca499e7ed1a4c860b3c6075d29f8",
+  "compile_jobs": 4,
+  "concurrent_links": 1,
+  "scope": "Only serialize memory-heavy link jobs; preserve prior measured GN bytes and existing objects",
+  "compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "installed_scheduler_control": {
+    "binary_sha256": "a11596cbf2fa3f313221e9d5101632f7db1c1537aee11a5ef810f634b54d47ac",
+    "version": "v1.6.3",
+    "cases": [
+      {
+        "depth": 2,
+        "returncode": 0,
+        "max_concurrent_tasks": 5,
+        "max_concurrent_links": 2
+      },
+      {
+        "depth": 1,
+        "returncode": 0,
+        "max_concurrent_tasks": 4,
+        "max_concurrent_links": 1
+      }
+    ],
+    "scope": "Installed Siso generic-action link-pool fixture; global compiler-job cap is not measured; no Chromium build, linker memory or runtime admission",
+    "global_compile_cap_verified_by_fixture": false
+  }
+}

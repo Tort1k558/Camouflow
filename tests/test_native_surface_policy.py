@@ -143,7 +143,7 @@ def test_surface_r5_candidate_preserves_r4_prefix_and_repository_ownership():
         root / 'native/drafts/webgpu-shared-swapchain-epoch/dawn-owned.patch').read_bytes()
 
 
-def test_surface_r5_windows_build_evidence_does_not_admit_runtime_features():
+def test_surface_r5_windows_build_evidence_does_not_admit_runtime_features(native_args_before_serial_links):
     from scripts import native_build as build
 
     root = Path(__file__).resolve().parents[1]
@@ -161,7 +161,7 @@ def test_surface_r5_windows_build_evidence_does_not_admit_runtime_features():
     assert all(re.fullmatch('[0-9a-f]{64}', value) for value in core.values())
     assert core['chrome.exe'] == previous['runtime_core']['chrome.exe']
     assert core['chrome.dll'] != previous['runtime_core']['chrome.dll']
-    assert record['gn_template_sha256'] == hashlib.sha256((root / 'native/args.gn').read_bytes()).hexdigest()
+    assert record['gn_template_sha256'] == hashlib.sha256(native_args_before_serial_links).hexdigest()
     assert record['siso_executed_steps'] == 62
     assert 0 < record['siso_duration_seconds'] < record['build_stage_duration_seconds']
     assert len(record['changed_source_sha256']) == 14

@@ -1,5 +1,19 @@
 # Glint: план проверки и развития
 
+## 2026-11-01: R7 link-memory recovery
+
+The [first R7 attempt](../native/drafts/upstream-156-webgpu-r7/windows-build-attempt1.json) passed sync, hooks and all 129 patches.
+Four affected C++ translation units compiled; the snapshot-generator link failed
+with LLVM out-of-memory while two heavy links were scheduled. Observed system
+commit headroom reached less than 128 MiB. No R7 browser binary or runtime gate
+is admitted. The failed logs and R6 rollback runtime are preserved.
+
+The GN template now sets `concurrent_links = 1`; compiler parallelism remains max
+j4 and the 180 GiB full-build reserve is unchanged. The prior GN bytes are archived
+for historical evidence. Retry only the build stage, reusing verified source,
+dependency-stage receipts and completed objects; do not clean or restart checkout.
+Single-link completion and actual runtime behavior still require measurement.
+
 ## 2026-11-01: R7 source recipe registered
 
 [R7](../native/drafts/upstream-156-webgpu-r7/README.md) preserves all 128 R6 patches and appends the bounded sparse
