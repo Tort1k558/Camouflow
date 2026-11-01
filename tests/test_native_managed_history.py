@@ -139,13 +139,14 @@ def test_actual_managed_history_retains_disabled_bfcache_without_hiding_consiste
         "process_swap_verified", "protected_policies_enabled", "full_lifecycle_admitted", "privacy_admitted", "production_admitted"))
 
 
-def test_bfcache_launch_experiment_replays_without_changing_active_runtime(tmp_path):
+def test_bfcache_launch_experiment_replays_without_changing_active_runtime(tmp_path, host_sources_before_profile_surface):
     root = Path(__file__).resolve().parents[1]
     folder = root / "native/drafts/environment"
     record = json.loads((folder / "managed-bfcache-optin70-observations.json").read_bytes())
     overlay = record["experimental_runtime_overlay"]
     source = root / overlay["base_source"]
-    original = source.read_bytes()
+    active_source = source.read_bytes()
+    original = host_sources_before_profile_surface['sources'].get(overlay['base_source'], active_source)
     assert hashlib.sha256(original).hexdigest() == overlay["base_source_sha256"]
     patch = folder / record["patch"]
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record["patch_sha256"] == overlay["patch_sha256"]
@@ -155,7 +156,7 @@ def test_bfcache_launch_experiment_replays_without_changing_active_runtime(tmp_p
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--whitespace=error", str(patch)],
                    cwd=tmp_path, check=True, capture_output=True)
     assert hashlib.sha256(target.read_bytes()).hexdigest() == overlay["prepared_source_sha256"]
-    assert source.read_bytes() == original
+    assert source.read_bytes() == active_source
     assert overlay["selected"] is False and record["selected"] is False
 
 

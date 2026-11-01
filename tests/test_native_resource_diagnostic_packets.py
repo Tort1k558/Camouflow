@@ -75,6 +75,38 @@ def test_realtime_worklet_extension_restores_all_canonical_files(tmp_path):
     assert record['privacy_admitted'] is record['production_admitted'] is False
 
 
+def test_realtime_selector_coverage_patch_preserves_validator_and_source_history(tmp_path):
+    packet = ENV / 'audio-realtime-worklet'
+    baseline = json.loads((packet / 'observations.json').read_bytes())
+    record = json.loads((packet / 'selector-coverage-observations.json').read_bytes())
+    first, second = packet / 'fixture-extension.patch', packet / record['source_patch']
+    assert sha256(first) == record['base_patch_sha256']
+    assert sha256(second) == record['source_patch_sha256']
+    for name, pins in baseline['portable_source_pins'].items():
+        source, target = ROOT / name, tmp_path / name
+        assert sha256(source) == pins['before_sha256']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+    apply_patch(tmp_path, first)
+    apply_patch(tmp_path, second)
+    target = tmp_path / 'scripts/verify_native_audio_compatibility.py'
+    assert sha256(target) == record['portable_source_after_sha256']
+    source = target.read_text(encoding='utf-8-sig')
+    assert 'prepare_owned_selector_profile(directory / "protected", index % 2)' in source
+    assert 'selector_selected_before_measurement' in source
+    apply_patch(tmp_path, second, reverse=True)
+    apply_patch(tmp_path, first, reverse=True)
+    for name in baseline['portable_source_pins']:
+        assert (tmp_path / name).read_bytes() == (ROOT / name).read_bytes()
+    assert record['measurement_complete'] and record['profile_summary']['passed']
+    assert record['profile_summary']['reference_selectors_covered']
+    assert record['profile_summary']['internal_backend_observed'] is False
+    assert record['profile_summary']['device_cohort_verified'] is False
+    assert record['first_random_fixture_coverage_failure_retained']
+    assert record['fixture_keys_logged_or_exported'] is record['canonical_source_modified'] is False
+    assert record['selected'] is record['production_admitted'] is False
+
+
 def test_imported_resource_draft_has_exact_fixture_and_no_browser_admission(tmp_path):
     packet = ROOT / 'native/drafts/webgpu-external-access-cache'
     record = json.loads((packet / 'observations.json').read_bytes())

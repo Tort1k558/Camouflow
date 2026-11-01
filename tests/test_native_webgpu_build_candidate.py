@@ -103,8 +103,10 @@ def test_diagnostic_cli_uses_the_explicit_candidate_registry(relative):
     assert isinstance(choices, ast.Name) and choices.id == 'CANDIDATES'
 
 
-def test_diagnostic_upgrade_recovers_all_previously_measured_sources(diagnostic_sources_before_candidate):
-    assert set(diagnostic_sources_before_candidate) == set(CANDIDATE_TOOLS) | {'scripts/native_build.py'}
+def test_diagnostic_upgrade_recovers_all_previously_measured_sources(
+        diagnostic_sources_before_candidate, host_sources_before_profile_surface):
+    expected = set(CANDIDATE_TOOLS) | {'scripts/native_build.py'} | set(host_sources_before_profile_surface['sources'])
+    assert set(diagnostic_sources_before_candidate) == expected
     for name, value in diagnostic_sources_before_candidate.items():
         assert value != (ROOT / name).read_bytes()
         ast.parse(value.decode('utf-8-sig'))

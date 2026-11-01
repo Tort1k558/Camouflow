@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "selected": false,
+  "production_admitted": false,
+  "source_patch": "selector-coverage.patch",
+  "source_patch_sha256": "c79173e2cffb67d3227e5a9e5906104a7726e997221ce4f8c335e68bcc646cb3",
+  "base_patch_sha256": "ae0cdb54f27bbb8f4f5c049ebbb35b936c74bf1535b185fae737c8adf80fa6d3",
+  "portable_source_after_sha256": "29f578efaedb2129df224f8ad8d9444c9105e1c2cda47b4085cdb591aa9725fe",
+  "forward_reverse_exact": true,
+  "runtime_report_sha256": "9af9fc36c8f43d7a77e7b87c487c3ee6c015edc5ef49b0e8eb36204f9d32d437",
+  "profile_summary": {
+    "reference_selectors_covered": true,
+    "comparisons": [
+      {
+        "index": 0,
+        "reference_selector": 0,
+        "restart_exact": true,
+        "unmodified_graphs_exact": true,
+        "math_baseline_different_rows": 0
+      },
+      {
+        "index": 1,
+        "reference_selector": 1,
+        "restart_exact": true,
+        "unmodified_graphs_exact": true,
+        "math_baseline_different_rows": 0
+      }
+    ],
+    "internal_backend_observed": false,
+    "device_cohort_verified": false,
+    "passed": true
+  },
+  "measurement_complete": true,
+  "runtime_postguards_passed": true,
+  "source_postguards_passed": true,
+  "driver_postguard_passed": true,
+  "scope": "Portable diagnostic patch uses pre-measurement owned key selection to cover both reference branches; production key generation and validators unchanged",
+  "browser_runtime_measured": "upstream-156-webgpu-r4",
+  "canonical_source_modified": false,
+  "fixture_keys_logged_or_exported": false,
+  "first_random_fixture_coverage_failure_retained": true
+}

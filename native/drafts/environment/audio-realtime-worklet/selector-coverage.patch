@@ -1,0 +1,56 @@
+diff --git a/scripts/verify_native_audio_compatibility.py b/scripts/verify_native_audio_compatibility.py
+--- a/scripts/verify_native_audio_compatibility.py
++++ b/scripts/verify_native_audio_compatibility.py
+@@ -378,12 +378,51 @@
+                           for mode in row["modes"].values()) for row in profiles)}
+ 
+ 
++def prepare_owned_selector_profile(profile: Path, expected: int) -> None:
++    # This is bounded fixture selection BEFORE observation, not a production key
++    # generator or a retry of failed measurements. Never log or export its seed.
++    import secrets
++    from PyQt6.QtCore import QLockFile
++    from app.core.native.identity import (
++        IDENTITY_FILE, NativePrivacyIdentity, _save_windows_identity,
++        load_or_create_identity,
++    )
++
++    if type(expected) is not int or expected not in (0, 1):
++        raise ValueError("Select one known diagnostic AudioMath selector")
++    if not profile.is_absolute() or profile != profile.resolve() or profile.drive.upper() != "D:" or profile.exists():
++        raise ValueError("Selector fixtures require fresh canonical owned D: storage")
++    profile.mkdir()
++    lock = QLockFile(str(profile / "native-runtime.lock"))
++    lock.setStaleLockTime(0)
++    if not lock.tryLock(0):
++        raise ValueError("Selector fixture profile already has an owner")
++    try:
++        for _ in range(128):
++            identity = NativePrivacyIdentity(secrets.token_bytes(32))
++            if profile_math_selector(identity) == expected:
++                break
++        else:
++            raise ValueError("Could not prepare the requested diagnostic selector")
++        payload = json.dumps({"schema": 1, "seed": identity.seed.hex()}).encode("utf-8")
++        _save_windows_identity(profile / IDENTITY_FILE, payload, replace=False)
++        (profile / "camouflow-native.json").write_text(
++            json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
++        if profile_math_selector(load_or_create_identity(profile)) != expected:
++            raise ValueError("Persisted diagnostic selector differs before measurement")
++    finally:
++        lock.unlock()
++
++
+ async def measure_profiles(executable: Path, owned: Path, server: AudioFixtureServer, modes: tuple[str, ...],
+                            report: dict, revision: str, version: str, count: int) -> None:
+     for index in range(count):
+         directory = owned / f"profile-{index:02d}"
+         directory.mkdir()
+-        row = {"index": index, "modes": {}, "cleanup_errors": []}
++        prepare_owned_selector_profile(directory / "protected", index % 2)
++        row = {"index": index, "modes": {}, "cleanup_errors": [],
++               "reference_selector": index % 2,
++               "selector_selected_before_measurement": True}
+         report["profiles"].append(row)
+         await measure_modes(executable, directory, server, modes, row, revision, version, audit_backend=True)
+     report["profile_summary"] = summarize_profiles(report["profiles"], count, modes)

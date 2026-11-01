@@ -1,6 +1,37 @@
 # Glint: план проверки и развития
 
-## Access-epoch batch R4: source verified, browser not compiled
+## 2026-11-01: R4 measured; resource and legacy Audio gates remain failed
+
+| Gate | Measured Windows result |
+| --- | --- |
+| 122-patch runtime | Compiled; 269 preserved assets |
+| Runtime / worker startup | 160 / 60 checks passed |
+| Combined surfaces / eight-profile math | Passed |
+| GPU contexts / WebGPU consistency | Passed; GPU context preflight conflict retained and separately rechecked |
+| WebGPU contexts / mutations / GPU-process recovery | Passed |
+| Long Audio / realtime AudioWorklet | Passed; realtime rerun preselected both diagnostic reference branches |
+| Legacy Audio | **Failed; not silently replaced by AudioMath** |
+| Large Canvas to WebGPU | **Still fails with projection E_OUTOFMEMORY/device loss** |
+
+[Exact R4 observations](../native/drafts/environment/webgpu-r4-runtime-observations.json) retain the first failed preflight and the random
+Audio fixture's missing branch coverage separately from their successful reruns.
+No quota was raised, no failed browser result was rewritten, and no production
+capability is promoted. New ordinary-profile launch/IPC adapters have nine C++
+syntax checks and 683 manager regression tests, but their 123-patch source chain
+is not a compiled browser. QML does not expose the new selector yet.
+
+The shared-memory swapchain follow-up passes 54 internal controls and 18
+imported-resource runs, including large RGBA/BGRA textures, plus an expected
+old-library cache-exclusion failure. These are standalone native measurements,
+not a repaired Chromium Canvas result.
+
+Next: complete swapchain-marked mutation/exclusion/live-device controls, compose
+the 124-patch browser batch and repeat the failed large-Canvas gate. Linux/macOS
+remain deferred; device cohorts, recoverable quotas, packaging of the new manager
+code and full release admission remain open.
+
+
+## Historical R4 source preparation
 
 The [122-patch candidate](../native/drafts/upstream-156-webgpu-r4/README.md)
 preserves the exact R3 prefix. Its full patch replay/reversal restores 270

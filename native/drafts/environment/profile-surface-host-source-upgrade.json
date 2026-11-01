@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "scope": "Reconstruct exact historical manager bytes; never rewrite measured runtime records",
+  "patch": "profile-surface-host-source-upgrade.patch",
+  "patch_sha256": "5d1067707e0ea4e0977ac5be5f7834bf017bfcbc0ec061a048ee9636de7e8c26",
+  "sources": [
+    {
+      "source": "app/core/native/privacy.py",
+      "before_sha256": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+      "after_sha256": "32ca9a75771679653a93b40e4386a0292e37c7a7a9e666459bb1c42a298c9660"
+    },
+    {
+      "source": "app/core/native/runtime.py",
+      "before_sha256": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+      "after_sha256": "ed5e5ba0139d048531947f95ea7287e2bbc31d8519666ac5ec797b88c95aad57"
+    },
+    {
+      "source": "app/core/native/surface_driver.py",
+      "before_sha256": null,
+      "after_sha256": "12f24421841ccd0b64a3ef1a3b78412ef99b758fa7addc4628801d7fd3252511"
+    },
+    {
+      "source": "app/ui/bridge/browser_settings.py",
+      "before_sha256": "02431f85731a60b05c1187ddec8748f21f8ff39992fd6c9ce048ee946fad59e4",
+      "after_sha256": "b5a9b865a56b06fccad79a9afc369fd05b3a42431064765a869a5adca051f3ce"
+    },
+    {
+      "source": "tests/test_release_tools.py",
+      "before_sha256": "1dfb7b6f641ee630fc12a02f31c7ae9fa83239e6e1507a06c2ed2f34d251c9aa",
+      "after_sha256": "438b9e7c7e6e5b1b9f62a48ccefb85ee8d64edc079a557afb8e2c561384ac937"
+    }
+  ]
+}

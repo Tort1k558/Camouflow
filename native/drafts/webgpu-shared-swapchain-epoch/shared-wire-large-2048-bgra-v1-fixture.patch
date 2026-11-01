@@ -1,0 +1,23 @@
+diff --git a/wire_probe.cc b/wire_probe.cc
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -233,7 +233,11 @@
+     auto importedTexture = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+     Check(importedTexture != nullptr);
++    WGPUSharedTextureMemoryD3DSwapchainBeginState canvasAccess{};
++    canvasAccess.chain.sType = WGPUSType_SharedTextureMemoryD3DSwapchainBeginState;
++    canvasAccess.isSwapchain = true;
+     WGPUSharedTextureMemoryBeginAccessDescriptor access{};
++    access.nextInChain = &canvasAccess.chain;
+     access.initialized = produced.initialized;
+     access.concurrentRead = true;
+     access.fenceCount = produced.fenceCount;
+@@ -675,6 +679,7 @@
+     Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &ended) == WGPUStatus_Success);
+     Check(!backendTexture->HasAccess());
+     WGPUSharedTextureMemoryBeginAccessDescriptor resumed{};
++    resumed.nextInChain = &canvasAccess.chain;
+     resumed.initialized = ended.initialized;
+     resumed.concurrentRead = true;
+     resumed.fenceCount = ended.fenceCount;

@@ -175,6 +175,37 @@ class BrowserSettingsBridge(QObject):
                      for gamma in (1400, 2200) for contrast in (300, 500)}}
         return [{"value": name, "label": labels[name]} for name in TEXT_TUNING_ARGUMENTS]
 
+    @pyqtProperty(str, notify=changed)
+    def nativeSurfacePolicyMode(self) -> str:  # noqa: N802
+        from app.core.native.privacy import NativePrivacyPolicy
+        return NativePrivacyPolicy.from_dict(self._native.get("privacy_policy", {})).fingerprint_derivation_mode
+
+    @pyqtProperty("QVariantList", constant=True)
+    def nativeSurfacePolicyOptions(self) -> list:  # noqa: N802
+        return [{"value": "", "label": "Browser defaults"},
+                {"value": "profile-identity", "label": "Stable profile identity"},
+                {"value": "partitioned-privacy", "label": "Partitioned privacy"}]
+
+    @pyqtSlot(str)
+    def setNativeSurfacePolicyMode(self, mode: str) -> None:  # noqa: N802
+        if self._engine != "native":
+            return
+        from app.core.native.privacy import NativePrivacyPolicy
+        try:
+            if not isinstance(mode, str) or mode not in ("", "profile-identity", "partitioned-privacy"):
+                raise ValueError("Unknown Glint surface policy mode")
+            policy = NativePrivacyPolicy.from_dict({
+                **self._native.get("privacy_policy", {}),
+                "surface_policy_version": 1 if mode else 0,
+                "fingerprint_derivation_mode": mode,
+            })
+        except (ValueError, TypeError) as error:
+            self._emit_message(str(error))
+            return
+        self._native["privacy_policy"] = policy.to_dict()
+        self._compatibility_report = "Not checked"
+        self.changed.emit()
+
     @pyqtSlot(str, "QVariant")
     def setNativePrivacyValue(self, key: str, value: Any) -> None:  # noqa: N802
         if self._engine != "native":

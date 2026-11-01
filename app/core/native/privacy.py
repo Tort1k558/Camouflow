@@ -26,6 +26,8 @@ class NativePrivacyPolicy:
     native_user_agent: bool = False
     font_rasterization: str = "native"
     text_tuning: str = "native"
+    surface_policy_version: int = 0
+    fingerprint_derivation_mode: str = ""
 
     @classmethod
     def from_dict(cls, value: dict) -> "NativePrivacyPolicy":
@@ -43,9 +45,21 @@ class NativePrivacyPolicy:
         values = {**asdict(self), "fonts": list(self.fonts)}
         if self.text_tuning == "native":
             del values["text_tuning"]
+        if self.surface_policy_version == 0:
+            del values["surface_policy_version"]
+            del values["fingerprint_derivation_mode"]
         return values
 
     def validate(self) -> None:
+        if type(self.surface_policy_version) is not int or self.surface_policy_version not in (0, 1):
+            raise ValueError("Unknown Glint surface policy version")
+        if not isinstance(self.fingerprint_derivation_mode, str):
+            raise ValueError("Glint fingerprint derivation mode must be a string")
+        if self.surface_policy_version == 0:
+            if self.fingerprint_derivation_mode:
+                raise ValueError("Fingerprint derivation requires an explicit surface policy version")
+        elif self.fingerprint_derivation_mode not in ("profile-identity", "partitioned-privacy"):
+            raise ValueError("Glint surface policy requires an explicit fingerprint derivation mode")
         if type(self.cpu_limit) is not int or not 0 <= self.cpu_limit <= 64:
             raise ValueError("Native CPU limit must be 0 (native) or 1..64")
         if (isinstance(self.memory_limit, bool) or not isinstance(self.memory_limit, (int, float))
@@ -75,6 +89,7 @@ class NativePrivacyPolicy:
     def required_capabilities(self) -> list[str]:
         self.validate()
         return [name for name, requested in (
+            ("surface-policy-v1", self.surface_policy_version == 1),
             ("hardware", bool(self.cpu_limit or self.memory_limit)), ("fonts", bool(self.fonts)),
             ("webrtc", self.restrict_webrtc), ("automation", self.conceal_automation),
             ("identity", self.native_user_agent),
@@ -84,6 +99,15 @@ class NativePrivacyPolicy:
     def prepared_arguments(self) -> list[str]:
         self.validate()
         arguments = []
+        if self.surface_policy_version == 1:
+            arguments.extend([
+                "--glint-profile-surface-policy=1",
+                "--camouflow-native-privacy-key-service=1",
+                "--glint-fingerprint-derivation-mode=" + self.fingerprint_derivation_mode,
+                "--enable-features=ThirdPartyStoragePartitioning,GlintAudioMathCandidate,"
+                "GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,"
+                "GlintWebGPUPolicyTransportCandidate",
+            ])
         if self.cpu_limit:
             arguments.append(f"--camouflow-hardware-concurrency={self.cpu_limit}")
         if self.memory_limit:

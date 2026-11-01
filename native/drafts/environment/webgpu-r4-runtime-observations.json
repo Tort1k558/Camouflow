@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-webgpu-r4",
+  "candidate_manifest_sha256": "82a03a1f8344823b9e401af1b43b391dc55237624ea0c4806a86fa8efffdc96b",
+  "compiled": true,
+  "complete_browser_batch_passed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Owned Windows diagnostic fixtures; not third-party anti-bot acceptance",
+  "source_commit": "79ef0fd01865adcd343a6c79f399ce913081ba7e",
+  "runtime_assets": 269,
+  "runtime_core": {
+    "chrome.dll": "cdeac0c436b23756295bd63632d4804b26fe85d8ae60206cdc58cccd95ba29a5",
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "main_gates": [
+    {
+      "name": "runtime-suite",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 453.625,
+      "report_sha256": "3ebb6ff856ed748d05ac671cd2314487a1ef3969dbb3b589dbc9d0dae3031c1d"
+    },
+    {
+      "name": "worker-startup",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 52.107,
+      "report_sha256": "8cb5834f1a6af2056a258dd85fd2c9bede751a21e76b63f1c0a202353104f561"
+    },
+    {
+      "name": "surfaces",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 171.518,
+      "report_sha256": "60d7cf3dc954191ce2518b259c759855e3fdbfb1bb2d91f1464ea6cc103e09fa"
+    },
+    {
+      "name": "gpu-contexts",
+      "passed": false,
+      "returncode": 1,
+      "duration_seconds": 0.812,
+      "report_sha256": "4d2273ce0ee1a4160064ee46aa4f7891247ef470fae6368eea1b6364fcf79e24"
+    },
+    {
+      "name": "webgpu-consistency",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 20.752,
+      "report_sha256": "9547ba68aa6c017b26b04483b1854cd4f11810a5731d45be2c17ae6c814ee63b"
+    },
+    {
+      "name": "combined-math",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 431.947,
+      "report_sha256": "9b17170e15795ae70846822892da1d784b7035119ea90a6dae8de0c6652ba427"
+    },
+    {
+      "name": "audio-compatibility",
+      "passed": false,
+      "returncode": 1,
+      "duration_seconds": 51.717,
+      "report_sha256": "9d6de160b6c1f4099ee6b0f3effd7ae653d119de2c2d5fe7bdc9309724ff7db5"
+    },
+    {
+      "name": "webgpu-context-consistency",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 30.608,
+      "report_sha256": "ac038c559b4f2e4063e3e406a65b54eab5f365cae72d7f5f7f88cbdf62e4c7a7"
+    },
+    {
+      "name": "audio-math-long-buffer",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 63.339,
+      "report_sha256": "42407e6f16f5edcb7e4f46dfd3e5d48c523714f9a0ed32f50bc30bfe08abb487"
+    }
+  ],
+  "gpu_context_preflight_failure": "Independent syntax-only compiler triggered the native idle-builder guard; no browser measurement occurred",
+  "gpu_context_recheck": {
+    "passed": true,
+    "report_sha256": "756addc602276c618e29821c88bdab98d9b7959f68d0c566ebad869c1bc6082a"
+  },
+  "large_canvas_webgpu": {
+    "passed": false,
+    "error": "Protected texture projection E_OUTOFMEMORY and device loss",
+    "report_sha256": "47c41a2a5de6f60c231619aa7f9175f20fce81e99f716ae91e1e20e8ced3908f"
+  },
+  "legacy_audio": {
+    "passed": false,
+    "report_sha256": "9d6de160b6c1f4099ee6b0f3effd7ae653d119de2c2d5fe7bdc9309724ff7db5"
+  },
+  "realtime_audio_first_run": {
+    "passed": false,
+    "reason": "Both random fixtures selected branch 1; reference-selector coverage incomplete",
+    "report_sha256": "6325b1ff8424694554a02126376c91a60af1d09c3d899c9eafb65f65300104ad"
+  },
+  "realtime_audio_preselected_coverage": {
+    "passed": true,
+    "profile_summary": {
+      "reference_selectors_covered": true,
+      "comparisons": [
+        {
+          "index": 0,
+          "reference_selector": 0,
+          "restart_exact": true,
+          "unmodified_graphs_exact": true,
+          "math_baseline_different_rows": 0
+        },
+        {
+          "index": 1,
+          "reference_selector": 1,
+          "restart_exact": true,
+          "unmodified_graphs_exact": true,
+          "math_baseline_different_rows": 0
+        }
+      ],
+      "internal_backend_observed": false,
+      "device_cohort_verified": false,
+      "passed": true
+    },
+    "report_sha256": "9af9fc36c8f43d7a77e7b87c487c3ee6c015edc5ef49b0e8eb36204f9d32d437"
+  },
+  "serial_tail_reports": {
+    "full-r4-gpu-recovery-20261101-v2": {
+      "passed": true,
+      "queue_report_sha256": "6148e10f4d60e6f843a23ecf15a298e28b28d9b0641b1358c3836b1337c3e6ea"
+    },
+    "audio-realtime-worklet-r4-queue-20261101-v2": {
+      "passed": false,
+      "queue_report_sha256": "2bb24d135ef23fcced72ca4c3ed72588e01766471163f9e7ebab77e52caaff6d"
+    },
+    "webgpu-cross-context-r4-queue-20261101-v2": {
+      "passed": true,
+      "queue_report_sha256": "cf0a47dc2268adb75665915b96c512bf60690a78e9f1351e251be46b24aaea1b"
+    },
+    "webgpu-mutation-r4-queue-20261101-v2": {
+      "passed": true,
+      "queue_report_sha256": "a65f181f92484d7ce99099d6677f13bee1409fed91a4abd83092aa146be3db42"
+    }
+  },
+  "host_regression_at_source_commit": {
+    "passed": 5425,
+    "skipped": 1
+  },
+  "normal_profile_surface_policy": "Not compiled or admitted; separate prepared 123-patch chain"
+}

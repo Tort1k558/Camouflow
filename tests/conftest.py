@@ -8,6 +8,37 @@ import pytest
 
 
 @pytest.fixture
+def host_sources_before_profile_surface(tmp_path):
+    """Recover exact manager bytes used by older browser measurements."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'profile-surface-host-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-profile-surface-host'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        value = (root / row['source']).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == row['after_sha256']
+        target.write_bytes(value)
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources = {}
+    for row in record['sources']:
+        path = base / row['source']
+        if row['before_sha256'] is None:
+            assert not path.exists()
+        else:
+            value = path.read_bytes()
+            assert hashlib.sha256(value).hexdigest() == row['before_sha256']
+            sources[row['source']] = value
+    return {'sources': sources,
+            'sha256': {name: hashlib.sha256(value).hexdigest() for name, value in sources.items()},
+            'absent': {row['source'] for row in record['sources'] if row['before_sha256'] is None}}
+
+
+@pytest.fixture
 def host_sources_before_webgpu_r4(tmp_path):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -54,7 +85,7 @@ def host_sources_before_webgpu_r3(tmp_path, host_sources_before_webgpu_r4):
 
 
 @pytest.fixture
-def host_sources_before_webgpu_r2(tmp_path, host_sources_before_webgpu_r3):
+def host_sources_before_webgpu_r2(tmp_path, host_sources_before_webgpu_r3, host_sources_before_profile_surface):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'webgpu-r2-host-source-upgrade.json').read_bytes())
@@ -68,7 +99,7 @@ def host_sources_before_webgpu_r2(tmp_path, host_sources_before_webgpu_r3):
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=15)
-    sources = {}
+    sources = {name: value for name, value in host_sources_before_profile_surface['sources'].items() if name.startswith('app/')}
     for row in record['sources']:
         value = (base / row['source']).read_bytes()
         assert hashlib.sha256(value).hexdigest() == row['before_sha256']
@@ -96,7 +127,7 @@ def native_build_before_index_mtime_fix(tmp_path, host_sources_before_webgpu_r2)
 
 
 @pytest.fixture
-def diagnostic_sources_before_candidate(tmp_path, native_build_before_index_mtime_fix, host_sources_before_webgpu_r2):
+def diagnostic_sources_before_candidate(tmp_path, native_build_before_index_mtime_fix, host_sources_before_webgpu_r2, host_sources_before_profile_surface):
     """Recover measured diagnostic sources without updating historical evidence."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -113,7 +144,7 @@ def diagnostic_sources_before_candidate(tmp_path, native_build_before_index_mtim
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=15)
-    sources = {}
+    sources = dict(host_sources_before_profile_surface['sources'])
     for row in record['sources']:
         data = (base / row['source']).read_bytes()
         assert hashlib.sha256(data).hexdigest() == row['before_normalized_sha256']
@@ -352,13 +383,14 @@ def qml_before_delivery_diagnostics_sha256(tmp_path):
 def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256,
                                      storage_before_read_lock_sha256, surface_sources_before_retained,
                                      native_tooling_before_dawn, diagnostic_sources_before_candidate,
-                                     historical_source_newlines):
+                                     historical_source_newlines, host_sources_before_profile_surface):
     root = Path(__file__).resolve().parents[1]
     return {
         **{name: row['measured_sha256'] for name, row in historical_source_newlines.items()},
         **{name: hashlib.sha256(data).hexdigest() for name, data in diagnostic_sources_before_candidate.items()},
         "native/drafts/upstream-156/manifest.json": hashlib.sha256(
             (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest(),
+        **host_sources_before_profile_surface['sha256'],
         **surface_sources_before_retained['sha256'],
         **native_tooling_before_dawn['sha256'],
         "scripts/verify_native_privacy_units.py": native_units_before_orientation["source_sha256"],
@@ -513,7 +545,8 @@ def historical_source_newlines():
 
 @pytest.fixture
 def historical_surface_source_sha256(surface_sources_before_retained, native_tooling_before_dawn,
-                                    diagnostic_sources_before_candidate, historical_source_newlines):
+                                    diagnostic_sources_before_candidate, historical_source_newlines,
+                                    host_sources_before_profile_surface):
     """Hash reconstructed Audio/GPU and tooling sources used by older runtime records."""
     root = Path(__file__).resolve().parents[1]
     names = {'scripts/verify_native_audio.py', 'scripts/verify_native_gpu.py',
@@ -538,6 +571,11 @@ def historical_surface_source_sha256(surface_sources_before_retained, native_too
             return hashlib.sha256(value).hexdigest()
         if name in historical_source_newlines:
             return historical_source_newlines[name]['canonical_lf_sha256' if normalized else 'measured_sha256']
+        if name in host_sources_before_profile_surface['sources']:
+            value = host_sources_before_profile_surface['sources'][name]
+            if normalized:
+                value = value.decode('utf-8-sig').replace('\r\n', '\n').encode('utf-8')
+            return hashlib.sha256(value).hexdigest()
         path = root / name
         source = path.read_text(encoding='utf-8-sig').encode('utf-8') if normalized else path.read_bytes()
         return hashlib.sha256(source).hexdigest()

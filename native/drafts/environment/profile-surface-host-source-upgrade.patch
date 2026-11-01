@@ -1,0 +1,187 @@
+diff --git a/app/core/native/privacy.py b/app/core/native/privacy.py
+--- a/app/core/native/privacy.py
++++ b/app/core/native/privacy.py
+@@ -26,6 +26,8 @@
+     native_user_agent: bool = False
+     font_rasterization: str = "native"
+     text_tuning: str = "native"
++    surface_policy_version: int = 0
++    fingerprint_derivation_mode: str = ""
+ 
+     @classmethod
+     def from_dict(cls, value: dict) -> "NativePrivacyPolicy":
+@@ -43,9 +45,21 @@
+         values = {**asdict(self), "fonts": list(self.fonts)}
+         if self.text_tuning == "native":
+             del values["text_tuning"]
++        if self.surface_policy_version == 0:
++            del values["surface_policy_version"]
++            del values["fingerprint_derivation_mode"]
+         return values
+ 
+     def validate(self) -> None:
++        if type(self.surface_policy_version) is not int or self.surface_policy_version not in (0, 1):
++            raise ValueError("Unknown Glint surface policy version")
++        if not isinstance(self.fingerprint_derivation_mode, str):
++            raise ValueError("Glint fingerprint derivation mode must be a string")
++        if self.surface_policy_version == 0:
++            if self.fingerprint_derivation_mode:
++                raise ValueError("Fingerprint derivation requires an explicit surface policy version")
++        elif self.fingerprint_derivation_mode not in ("profile-identity", "partitioned-privacy"):
++            raise ValueError("Glint surface policy requires an explicit fingerprint derivation mode")
+         if type(self.cpu_limit) is not int or not 0 <= self.cpu_limit <= 64:
+             raise ValueError("Native CPU limit must be 0 (native) or 1..64")
+         if (isinstance(self.memory_limit, bool) or not isinstance(self.memory_limit, (int, float))
+@@ -75,6 +89,7 @@
+     def required_capabilities(self) -> list[str]:
+         self.validate()
+         return [name for name, requested in (
++            ("surface-policy-v1", self.surface_policy_version == 1),
+             ("hardware", bool(self.cpu_limit or self.memory_limit)), ("fonts", bool(self.fonts)),
+             ("webrtc", self.restrict_webrtc), ("automation", self.conceal_automation),
+             ("identity", self.native_user_agent),
+@@ -84,6 +99,15 @@
+     def prepared_arguments(self) -> list[str]:
+         self.validate()
+         arguments = []
++        if self.surface_policy_version == 1:
++            arguments.extend([
++                "--glint-profile-surface-policy=1",
++                "--camouflow-native-privacy-key-service=1",
++                "--glint-fingerprint-derivation-mode=" + self.fingerprint_derivation_mode,
++                "--enable-features=ThirdPartyStoragePartitioning,GlintAudioMathCandidate,"
++                "GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,"
++                "GlintWebGPUPolicyTransportCandidate",
++            ])
+         if self.cpu_limit:
+             arguments.append(f"--camouflow-hardware-concurrency={self.cpu_limit}")
+         if self.memory_limit:
+diff --git a/app/core/native/runtime.py b/app/core/native/runtime.py
+--- a/app/core/native/runtime.py
++++ b/app/core/native/runtime.py
+@@ -60,6 +60,18 @@
+             else:
+                 options = self.configuration.context_options(admission=admission)
+                 arguments = self.configuration.launch_arguments(admission=admission)
++            surface_driver_options = {}
++            if self.configuration.privacy_policy.surface_policy_version == 1:
++                from playwright._impl._driver import compute_driver_executable
++
++                from .surface_driver import surface_driver_arguments
++
++                node, cli = compute_driver_executable()
++                driver_root = Path(cli).parent.parent
++                if Path(node) != driver_root / "node.exe":
++                    raise NativeRuntimeError("Surface policy requires the reviewed bundled Node driver")
++                surface_driver_options = await asyncio.to_thread(surface_driver_arguments, driver_root)
++                arguments.extend(surface_driver_options.pop("arguments"))
+             if not self.executable.is_file():
+                 raise NativeRuntimeError("Native Chromium executable is not installed")
+             if not self.profile_dir.is_absolute() or self.profile_dir != self.profile_dir.resolve() or self.profile_dir.is_symlink() or self.profile_dir.is_junction():
+@@ -104,7 +116,7 @@
+                 self.context = await self.playwright.chromium.launch_persistent_context(
+                     str(self.profile_dir), executable_path=str(self.executable), headless=headless,
+                     chromium_sandbox=True, proxy=proxy, timeout=30000,
+-                    args=arguments, **options,
++                    args=arguments, **surface_driver_options, **options,
+                 )
+                 self._policy_admission = admission
+                 return self.context
+diff --git a/app/core/native/surface_driver.py b/app/core/native/surface_driver.py
+new file mode 100644
+--- /dev/null
++++ b/app/core/native/surface_driver.py
+@@ -0,0 +1,25 @@
++"""Exact measured driver argument override; not runtime policy admission."""
++import hashlib
++from pathlib import Path
++
++NODE_SHA256 = '3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5'
++BUNDLE_SHA256 = '26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c'
++ORIGINAL_DISABLED_FEATURES = '--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion'
++PARTITIONED_DISABLED_FEATURES = '--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion'
++
++
++def surface_driver_arguments(driver_directory: Path) -> dict:
++    root = Path(driver_directory)
++    if not root.is_absolute() or root != root.resolve() or not root.is_dir():
++        raise ValueError("Surface policy requires a canonical measured Playwright driver")
++    for relative, expected in (("node.exe", NODE_SHA256),
++                               ("package/lib/coreBundle.js", BUNDLE_SHA256)):
++        path = root / relative
++        if path != path.resolve() or not path.is_file():
++            raise ValueError("Surface policy driver file is missing or linked")
++        with path.open("rb") as stream:
++            actual = hashlib.file_digest(stream, "sha256").hexdigest()
++        if actual != expected:
++            raise ValueError("Surface policy driver bytes are not reviewed")
++    return {"ignore_default_args": [ORIGINAL_DISABLED_FEATURES],
++            "arguments": [PARTITIONED_DISABLED_FEATURES]}
+diff --git a/app/ui/bridge/browser_settings.py b/app/ui/bridge/browser_settings.py
+--- a/app/ui/bridge/browser_settings.py
++++ b/app/ui/bridge/browser_settings.py
+@@ -174,6 +174,37 @@
+                   **{f"gamma-{gamma}-contrast-{contrast}": f"Gamma {gamma / 1000:g} / Contrast {contrast / 1000:g}"
+                      for gamma in (1400, 2200) for contrast in (300, 500)}}
+         return [{"value": name, "label": labels[name]} for name in TEXT_TUNING_ARGUMENTS]
++
++    @pyqtProperty(str, notify=changed)
++    def nativeSurfacePolicyMode(self) -> str:  # noqa: N802
++        from app.core.native.privacy import NativePrivacyPolicy
++        return NativePrivacyPolicy.from_dict(self._native.get("privacy_policy", {})).fingerprint_derivation_mode
++
++    @pyqtProperty("QVariantList", constant=True)
++    def nativeSurfacePolicyOptions(self) -> list:  # noqa: N802
++        return [{"value": "", "label": "Browser defaults"},
++                {"value": "profile-identity", "label": "Stable profile identity"},
++                {"value": "partitioned-privacy", "label": "Partitioned privacy"}]
++
++    @pyqtSlot(str)
++    def setNativeSurfacePolicyMode(self, mode: str) -> None:  # noqa: N802
++        if self._engine != "native":
++            return
++        from app.core.native.privacy import NativePrivacyPolicy
++        try:
++            if not isinstance(mode, str) or mode not in ("", "profile-identity", "partitioned-privacy"):
++                raise ValueError("Unknown Glint surface policy mode")
++            policy = NativePrivacyPolicy.from_dict({
++                **self._native.get("privacy_policy", {}),
++                "surface_policy_version": 1 if mode else 0,
++                "fingerprint_derivation_mode": mode,
++            })
++        except (ValueError, TypeError) as error:
++            self._emit_message(str(error))
++            return
++        self._native["privacy_policy"] = policy.to_dict()
++        self._compatibility_report = "Not checked"
++        self.changed.emit()
+ 
+     @pyqtSlot(str, "QVariant")
+     def setNativePrivacyValue(self, key: str, value: Any) -> None:  # noqa: N802
+diff --git a/tests/test_release_tools.py b/tests/test_release_tools.py
+--- a/tests/test_release_tools.py
++++ b/tests/test_release_tools.py
+@@ -5231,7 +5231,7 @@
+     assert data["frozen_inputs_unchanged"] == 201 and data["application_gate"]
+ 
+ 
+-def test_windows_profile_version_guard_binds_runtime_and_readonly_controls():
++def test_windows_profile_version_guard_binds_runtime_and_readonly_controls(host_sources_before_profile_surface):
+     import ast
+     import hashlib
+     import json
+@@ -5248,7 +5248,13 @@
+         assert data[field] is False
+     assert data["source_application_passed"] and data["no_fallback"]
+     runtime = build.ROOT / data["source_file"]
+-    normalized = runtime.read_text(encoding="utf-8-sig").encode("utf-8")
++    active_source = runtime.read_text(encoding="utf-8-sig")
++    normalized = host_sources_before_profile_surface['sources'].get(
++        data["source_file"], active_source.encode("utf-8"))
++    ast.parse(active_source)
++    assert active_source.index("ensure_profile_version_compatible(self.profile_dir, self.executable)") < active_source.index(
++        "self._privacy_identity = load_or_create_identity") < active_source.index(
++        "self._driver_start_task = asyncio.create_task")
+     assert hashlib.sha256(normalized).hexdigest() == data["source_after_sha256"]
+     assert (build.ROOT / "app/core/native/profile_version.py").read_bytes() == (root / data["guard"]["file"]).read_bytes()
+     for field in ("guard", "patch"):

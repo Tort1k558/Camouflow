@@ -1,6 +1,11 @@
 # Glint Chromium 156: access-epoch resource batch
 
-**Source-replayed 122-patch candidate, not a compiled/admitted browser.**
+**Windows candidate compiled and measured; not production-admitted.**
+
+The [R4 runtime observations](../environment/webgpu-r4-runtime-observations.json)
+record passed core/worker/surface/GPU/recovery checks and retained failures:
+large Canvas/WebGPU projection OOM and legacy Audio. Compilation is not
+complete privacy admission. The source-preparation details below are historical.
 
 Preserves the exact 120-patch R3 prefix and all upstream pins, adding the two
 native access-epoch corrections. All 122 patches apply/reverse, 270 upstream

@@ -5231,7 +5231,7 @@ def test_runtime_retention_preserves_original_failure_scope():
     assert data["frozen_inputs_unchanged"] == 201 and data["application_gate"]
 
 
-def test_windows_profile_version_guard_binds_runtime_and_readonly_controls():
+def test_windows_profile_version_guard_binds_runtime_and_readonly_controls(host_sources_before_profile_surface):
     import ast
     import hashlib
     import json
@@ -5248,7 +5248,13 @@ def test_windows_profile_version_guard_binds_runtime_and_readonly_controls():
         assert data[field] is False
     assert data["source_application_passed"] and data["no_fallback"]
     runtime = build.ROOT / data["source_file"]
-    normalized = runtime.read_text(encoding="utf-8-sig").encode("utf-8")
+    active_source = runtime.read_text(encoding="utf-8-sig")
+    normalized = host_sources_before_profile_surface['sources'].get(
+        data["source_file"], active_source.encode("utf-8"))
+    ast.parse(active_source)
+    assert active_source.index("ensure_profile_version_compatible(self.profile_dir, self.executable)") < active_source.index(
+        "self._privacy_identity = load_or_create_identity") < active_source.index(
+        "self._driver_start_task = asyncio.create_task")
     assert hashlib.sha256(normalized).hexdigest() == data["source_after_sha256"]
     assert (build.ROOT / "app/core/native/profile_version.py").read_bytes() == (root / data["guard"]["file"]).read_bytes()
     for field in ("guard", "patch"):

@@ -60,6 +60,18 @@ class NativeRuntime:
             else:
                 options = self.configuration.context_options(admission=admission)
                 arguments = self.configuration.launch_arguments(admission=admission)
+            surface_driver_options = {}
+            if self.configuration.privacy_policy.surface_policy_version == 1:
+                from playwright._impl._driver import compute_driver_executable
+
+                from .surface_driver import surface_driver_arguments
+
+                node, cli = compute_driver_executable()
+                driver_root = Path(cli).parent.parent
+                if Path(node) != driver_root / "node.exe":
+                    raise NativeRuntimeError("Surface policy requires the reviewed bundled Node driver")
+                surface_driver_options = await asyncio.to_thread(surface_driver_arguments, driver_root)
+                arguments.extend(surface_driver_options.pop("arguments"))
             if not self.executable.is_file():
                 raise NativeRuntimeError("Native Chromium executable is not installed")
             if not self.profile_dir.is_absolute() or self.profile_dir != self.profile_dir.resolve() or self.profile_dir.is_symlink() or self.profile_dir.is_junction():
@@ -104,7 +116,7 @@ class NativeRuntime:
                 self.context = await self.playwright.chromium.launch_persistent_context(
                     str(self.profile_dir), executable_path=str(self.executable), headless=headless,
                     chromium_sandbox=True, proxy=proxy, timeout=30000,
-                    args=arguments, **options,
+                    args=arguments, **surface_driver_options, **options,
                 )
                 self._policy_admission = admission
                 return self.context
