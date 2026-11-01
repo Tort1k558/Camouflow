@@ -2,6 +2,12 @@
 
 **Windows browser built; all 26 native groups passed. Full browser admission pending.**
 
+The [fresh full host repeat](full-host-recheck.json) passed **5704 tests / one
+skip** in 583.89 seconds on `7197573`, with unchanged inputs. Both historical
+GPU snapshot-reconstruction failures are fixed without changing their measured
+226-input counts or digests. Later 157 source/publication tests are not covered
+by this historical run; native runtime and production admission remain separate.
+
 The [full native retry](native-all-observations.json) passed **554 executions /
 397 distinct tests** over six test binaries, with final source/core/receipt,
 SDK/GN and executable guards. Shared contract cases explain the larger execution

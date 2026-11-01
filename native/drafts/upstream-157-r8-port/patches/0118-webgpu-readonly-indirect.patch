@@ -1,0 +1,48 @@
+--- a/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -905,10 +905,24 @@
+                                          mGlintComputeScope->textureInputs, true};
+         DAWN_TRY_ASSIGN(mGlintProjectedBuffers,
+                         projector->RecordBuffers(context, inputScope, mGlintComputeScope->owners));
+-        // Validated indirect scratch/original ancestry requires its own routing proof.
+-        DAWN_INTERNAL_ERROR_IF(
+-            indirectBuffer && !mGlintProjectedBuffers->buffers.empty(),
+-            "Glint projected buffer inputs for indirect dispatch are not yet admitted.");
++        if (indirectBuffer) {
++            const auto projectsControl = [&](BufferBase* control) {
++                return control && std::any_of(mGlintProjectedBuffers->buffers.begin(),
++                    mGlintProjectedBuffers->buffers.end(), [&](const auto& projected) {
++                        return projected.source.Get() == control;
++                    });
++            };
++            // Keep validated scratch and original/count controls unchanged. Writable
++            // projection also stays denied: indirect zero-work must not cause copyback.
++            DAWN_INTERNAL_ERROR_IF(
++                projectsControl(indirectBuffer) || projectsControl(originalInputs->buffer.Get()) ||
++                projectsControl(originalInputs->countBuffer.Get()) ||
++                std::any_of(mGlintProjectedBuffers->buffers.begin(),
++                    mGlintProjectedBuffers->buffers.end(), [](const auto& projected) {
++                        return !projected.writableRanges.empty();
++                    }),
++                "Glint projected indirect controls or writable inputs are not yet admitted.");
++        }
+         auto* commands = context->GetCommandList();
+         for (const auto& projected : mGlintProjectedBuffers->buffers) {
+             if (!projected.writableRanges.empty()) {
+@@ -2410,8 +2424,15 @@
+                     signature, 1, ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
+                 DAWN_TRY(bindingTracker->CopyBackGlintBuffers(commandContext));
++                std::shared_ptr<const GlintGpuInputPlan> inputPlan;
++                DAWN_TRY_ASSIGN(inputPlan, bindingTracker->GetGlintGpuInputPlanForCapture());
++                std::shared_ptr<const GlintGpuInputReceipt> receipt;
++                if (inputPlan) {
++                    receipt = std::shared_ptr<const GlintGpuInputReceipt>(
++                        new GlintGpuInputReceipt(std::move(inputPlan)));
++                }
+                 DAWN_TRY(bindingTracker->CaptureGlintComputeScope(
+-                    commandContext, nullptr, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
++                    commandContext, std::move(receipt), dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
+                     &dispatch->glintInputs));
+                 break;
+             }

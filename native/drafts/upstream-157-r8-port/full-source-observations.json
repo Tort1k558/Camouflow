@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "passed": true,
+  "source_only": true,
+  "verified_prefix_patches": 131,
+  "complete_patch_count": 131,
+  "complete_forward_port": false,
+  "next_required_patch": null,
+  "manifest_sha256": "be32f76c4d34effc54c7396743e0ba2bde0a9ae834b49fa419ad1a66e249766e",
+  "forward_report_sha256": "d2e2e711ff44b7fd582a97a11a0ee6ddf8473910a6b9344ac61193952c70efc5",
+  "source_invariants": {
+    "gpu_commands": {
+      "preserved": 321,
+      "appended": 577
+    },
+    "grit_structure_preserved": true
+  },
+  "source_inputs_unchanged": true,
+  "reverse_patch_count": 131,
+  "restored_upstream_files": 270,
+  "all_added_files_removed_by_reverse": true,
+  "canonical_checkout_changed": false,
+  "cpp_type_correctness_verified": false,
+  "compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "previous_75_prefix_manifest_sha256": "5a2104bafdc5cd5afffb32cae4a0817743cc4587c2a2e91bf4ea188d4f5ab0fa",
+  "new_adapted_patches": [
+    {
+      "number": 76,
+      "file": "upstream-157-r8-port/patches/0076-native-screenshot-transactions.patch",
+      "sha256": "8aa1f668aa45566240d0489e8ce45a5f165021206f3c69fdc3b450977d03358e"
+    },
+    {
+      "number": 77,
+      "file": "upstream-157-r8-port/patches/0077-shared-gpu-readback-core-chromium.patch",
+      "sha256": "a28cd817f86eb0fa3bc72620d165c3e248f36bce7388fb3a10ec4fb3f022509f"
+    },
+    {
+      "number": 78,
+      "file": "upstream-157-r8-port/patches/0078-webgpu-renderer-policy-transport-chromium.patch",
+      "sha256": "d1304543b82ded0d23e2be2983eb657967f188c3d570020f04c9ea8a43f04545"
+    },
+    {
+      "number": 80,
+      "file": "upstream-157-r8-port/patches/0080-webgpu-native-copy-hook-dawn.patch",
+      "sha256": "97122a9668fe76df9f7f4aad221919353ceb8a36c73224112875a3e5776ea9a2"
+    },
+    {
+      "number": 85,
+      "file": "upstream-157-r8-port/patches/0085-webgpu-shader-scope-dawn.patch",
+      "sha256": "19ea82dbdc5dee6a3d532e390fa3dabd39cec050d97319a20e27e32e7c7a4a1c"
+    },
+    {
+      "number": 88,
+      "file": "upstream-157-r8-port/patches/0088-webgpu-binding-ranges-dawn.patch",
+      "sha256": "37dd4cb8d7939f9ec251580a3aae6f952e95b3564dfb5a6e4c0e561aa252de66"
+    },
+    {
+      "number": 90,
+      "file": "upstream-157-r8-port/patches/0090-webgpu-render-ranges-dawn.patch",
+      "sha256": "2942e513563dff95572ef39c6d0530f1e64d1abda057a72e0cdd2f18e79ba20c"
+    },
+    {
+      "number": 93,
+      "file": "upstream-157-r8-port/patches/0093-webgpu-compute-projection-dawn.patch",
+      "sha256": "cae899456008d98e0e6ac3ed463be14ae68c5293511e9d90306579d17272974e"
+    },
+    {
+      "number": 95,
+      "file": "upstream-157-r8-port/patches/0095-webgpu-shader-capture-dawn.patch",
+      "sha256": "eec5efb668d6bb2f33bee61dc0ec0119da0abb85eedb2d0d1fbc138e71874b43"
+    },
+    {
+      "number": 98,
+      "file": "upstream-157-r8-port/patches/0098-webgpu-raster-byte-capture-dawn.patch",
+      "sha256": "0c2b60e4fbbde34518cbadbb94f72a6d2804ea6ce03e2c2faeb234c19ed5640f"
+    },
+    {
+      "number": 99,
+      "file": "upstream-157-r8-port/patches/0099-webgpu-execution-inputs-dawn.patch",
+      "sha256": "687d6c21753c78ea70e9db77b91563b0a61af8c5d3e185d3b2eb393e21a815be"
+    },
+    {
+      "number": 111,
+      "file": "upstream-157-r8-port/patches/0111-webgpu-buffer-routing-dawn.patch",
+      "sha256": "ec84d4b78ad5193510269dfef0e9babe4827456cf711c302844e5e56d98b6fac"
+    },
+    {
+      "number": 115,
+      "file": "upstream-157-r8-port/patches/0115-webgpu-render-buffer-routing-dawn.patch",
+      "sha256": "05e93ade0853649dedb191e304b700fd891eaf7594b426f262b2beb6c2aac24a"
+    },
+    {
+      "number": 118,
+      "file": "upstream-157-r8-port/patches/0118-webgpu-readonly-indirect.patch",
+      "sha256": "bafb4ad58eda9909480924c91c437c8b9636644d3b7dbd51a6c000b896cb73ff"
+    },
+    {
+      "number": 131,
+      "file": "upstream-157-r8-port/patches/0131-audio-context-ownership.patch",
+      "sha256": "7bb7848b1a415fb8d44bcade4bc5c9493d606ac3bc31eee97bfe7dfc6c3feb63"
+    }
+  ],
+  "adaptation_boundaries": [
+    "Screenshot transaction teardown follows ResetWebContentsEmulation including orphaned sessions",
+    "Upstream Dawn CommandSignature wrapper and MaybeUnknownError paths retained",
+    "Upstream D3D12 indirect draw batching retained; collect-only preview never enqueues GPU draws",
+    "Audio131 claims queued resolvers, retains keys between chunks and clears terminal seeds; seven context tests prepared, not executed",
+    "Source replay does not establish C++ API/type correctness or execution"
+  ],
+  "public_packet_still_on_external_d": false,
+  "active_candidate_registered": false,
+  "prepared_external_record_sha256": "90b424bb8345ac196d0e418d88c534df802bca30cb2f779768114ef85f4dfc89"
+}

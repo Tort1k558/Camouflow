@@ -263,3 +263,16 @@ def test_audio_r8_controlled_rechecks_preserve_runner_failures_and_admission_lim
                  'fresh_complete_baseline_suite_verified', 'third_party_antibot_verified',
                  'privacy_admitted', 'production_admitted'):
         assert record[flag] is False
+
+
+def test_audio_r8_full_host_recheck_does_not_cover_later_publications_or_admit_browser():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'full-host-recheck.json').read_bytes())
+    assert record['passed'] and record['input_postguards_passed'] and record['changed_inputs'] == []
+    assert record['counts'] == dict(passed=5704, failed=0, skipped=1)
+    assert record['previous_counts'] == dict(passed=5694, failed=2, skipped=1)
+    assert record['previous_attempt_preserved'] and record['historical_gpu_input_counts_and_digests_preserved']
+    assert record['measured_commit'] == '7197573'
+    for name in ('later_157_full_source_packet_included', 'later_http2_public_record_tests_included',
+                 'native_runtime_admitted', 'legacy_audio_repaired', 'production_admitted'):
+        assert record[name] is False

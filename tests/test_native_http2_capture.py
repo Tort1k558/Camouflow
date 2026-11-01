@@ -279,3 +279,28 @@ def test_owned_http2_stock_calibration_is_bound_and_does_not_admit_glint():
     assert hashlib.sha256((root / record['stock_control_file']).read_bytes()).hexdigest() == record['stock_control_sha256']
     assert len(record['retained_failed_attempts']) == 2
     assert all(row['passed'] is False and row['postguards_passed'] for row in record['retained_failed_attempts'])
+
+
+def test_owned_http2_matched_r8_controls_do_not_claim_tls_or_platform_parity():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / 'native/drafts/network/matched-r8-http2-observations.json').read_bytes())
+    stock = json.loads((root / 'native/drafts/network/stock-http2-observations.json').read_bytes())
+    build = json.loads((root / 'native/drafts/upstream-156-audio-r8/windows-build.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['fresh_profile_count'] == 9
+    assert [row['name'] for row in record['phases']] == ['glint-before', 'stock-control', 'glint-after']
+    for row in record['phases']:
+        expected = stock['stock_core_sha256'] if row['name'] == 'stock-control' else build['runtime_core_sha256_measured']
+        assert row['passed'] and row['completed_request_connections'] == 3
+        assert row['runtime_core_sha256_measured'] == expected
+    assert record['selected_control_shape'] == stock['selected_control_shape']
+    assert record['all_completed_selected_control_shapes_equal']
+    assert record['fixture_threads_closed'] and record['ephemeral_private_keys_removed']
+    assert record['diagnostic_spki_allowlist_used'] and record['earlier_failed_baseline_preserved']
+    for name in ('protected_profile_policy_measured', 'fresh_complete_baseline_suite_verified',
+                 'tls_fingerprint_parity_verified', 'ja3_ja4_verified', 'cross_platform_identity_verified',
+                 'ordinary_certificate_path_validation_verified', 'global_ignore_certificate_errors_used',
+                 'certificate_store_changed', 'privacy_admitted', 'production_admitted'):
+        assert record[name] is False

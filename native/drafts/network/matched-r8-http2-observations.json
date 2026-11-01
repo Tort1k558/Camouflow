@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "scope": "Headless policy-off Glint R8 / stock156 / Glint R8 on owned TLS1.3/h2 fixture",
+  "controller_report_sha256": "545e671509393c6e042241cbdea13887c1f164ac087de560d43cf46be74496d4",
+  "phases": [
+    {
+      "name": "glint-before",
+      "passed": true,
+      "completed_request_connections": 3,
+      "report_sha256": "0d499073f958a2169f56c2b409afe65c1ed97f023ee70ab3d78ce05217f30cfa",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+        "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+        "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+      }
+    },
+    {
+      "name": "stock-control",
+      "passed": true,
+      "completed_request_connections": 3,
+      "report_sha256": "bf8d49edf7fe1ac8e19c8d826760862bf80125457e24c00af9fc4fec2f3933d2",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+        "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+        "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+      }
+    },
+    {
+      "name": "glint-after",
+      "passed": true,
+      "completed_request_connections": 3,
+      "report_sha256": "a64d5ec927f36e42fcdc6475bc435794bd395a70ce587042e016bd8b237fc7b0",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+        "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+        "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+      }
+    }
+  ],
+  "fresh_profile_count": 9,
+  "selected_control_shape": [
+    {
+      "type": 4,
+      "flags": 0,
+      "stream": 0,
+      "settings": [
+        {
+          "identifier": 1,
+          "value": 65536
+        },
+        {
+          "identifier": 2,
+          "value": 0
+        },
+        {
+          "identifier": 4,
+          "value": 6291456
+        },
+        {
+          "identifier": 6,
+          "value": 262144
+        }
+      ]
+    },
+    {
+      "type": 8,
+      "flags": 0,
+      "stream": 0,
+      "window_increment": 15663105
+    },
+    {
+      "type": 1,
+      "flags": 37,
+      "stream": 1,
+      "priority": {
+        "exclusive": true,
+        "dependency": 0,
+        "weight": 256
+      },
+      "end_headers": true,
+      "end_stream": true
+    }
+  ],
+  "all_completed_selected_control_shapes_equal": true,
+  "postguards_passed": true,
+  "earlier_failed_baseline_preserved": true,
+  "fresh_complete_baseline_suite_verified": false,
+  "header_block_decoded_by_h2": true,
+  "initial_parser_decodes_headers": false,
+  "diagnostic_spki_allowlist_used": true,
+  "ordinary_certificate_path_validation_verified": false,
+  "global_ignore_certificate_errors_used": false,
+  "certificate_store_changed": false,
+  "fixture_threads_closed": true,
+  "ephemeral_private_keys_removed": true,
+  "protected_profile_policy_measured": false,
+  "tls_fingerprint_parity_verified": false,
+  "ja3_ja4_verified": false,
+  "cross_platform_identity_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

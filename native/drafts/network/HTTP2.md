@@ -69,14 +69,22 @@ their uninstrumented truncations cannot retrospectively be classified as empty.
 
 The selected comparison omits payload lengths, HPACK bytes, TLS records and
 timings. This is not JA3/JA4 equality, resumption, ordinary certificate-path
-validation, cross-platform identity, privacy or production admission. Glint R8
-still requires its own matched measurement after the native gates finish.
+validation, cross-platform identity, privacy or production admission.
+
+### Matched Glint R8 / stock156 controls
+
+[Matched measurement](matched-r8-http2-observations.json): Glint R8 → stock156 →
+Glint R8, three fresh profiles per phase. All nine completed requests passed;
+their selected initial control shapes match. Core/source guards, fixture-thread
+cleanup and ephemeral-key removal passed. All runs were headless with protected
+policies off and one diagnostic SPKI allowlist, not ordinary certificate-path
+validation. Earlier baseline failure is preserved, not admitted by this result.
 
 ```powershell
 .venv\Scripts\python.exe -B -m pytest -q tests/test_native_http2_capture.py `
   -o cache_dir=D:/GlintChecks/http2-cache --basetemp D:/GlintChecks/http2-temp
 ```
 
-Next measurement: matched stock/independent Glint runtime with the same owned
-fixture, source/core postguards and owned-process cleanup. Do not infer a
-cross-platform transport identity from matching initial control frames alone.
+Next measurement: protected-profile transport, resumption and HTTP/3 as separate
+gates. Do not infer cross-platform TLS identity or JA3/JA4 equality from matching
+initial HTTP/2 control frames alone.

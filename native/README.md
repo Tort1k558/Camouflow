@@ -26,6 +26,11 @@ cases, with final source/core/toolchain guards. The later
 [all-native batch](drafts/upstream-156-audio-r8/native-all-observations.json)
 passed all 26 registered groups: **554 executions / 397 distinct tests**, with
 final postguards. Broader browser QA and package admission remain pending.
+The [full host repeat](drafts/upstream-156-audio-r8/full-host-recheck.json)
+passed **5704 tests / one skip** with unchanged inputs on `7197573`; later
+publications are outside that measured scope. The unregistered
+[Chromium 157 packet](drafts/upstream-157-r8-port/README.md) now applies and
+reverses all 131 patches. It is source-only: no 157 C++ build or runtime proof.
 The [first broader R8 attempt](drafts/upstream-156-audio-r8/qa-attempt1.json)
 is not green: hardware teardown, Legacy Audio and launcher/history issues need
 their own follow-up; narrow passes do not admit the entire engine.

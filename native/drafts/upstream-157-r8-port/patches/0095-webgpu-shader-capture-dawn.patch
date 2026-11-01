@@ -1,0 +1,678 @@
+diff --git a/include/dawn/native/DawnNative.h b/include/dawn/native/DawnNative.h
+--- a/include/dawn/native/DawnNative.h
++++ b/include/dawn/native/DawnNative.h
+@@ -84,6 +84,28 @@
+     std::span<const GlintShaderBufferUse> buffers;
+     bool hasTextureInputs = false;
+     bool complete = false;
++};
++
++class DAWN_NATIVE_EXPORT GlintByteReadbackSnapshot {
++  public:
++    virtual ~GlintByteReadbackSnapshot() = default;
++    virtual GlintReadbackStatus Read(std::span<const uint8_t>* bytes) const = 0;
++    virtual uint64_t GetByteSize() const = 0;
++};
++struct GlintShaderByteRequest {
++    GlintBufferIdentity buffer;
++    uint64_t offset = 0;
++    uint64_t size = 0;
++    uint64_t requestId = 0;
++};
++struct GlintShaderBytePlan {
++    uint64_t ticket = 0;
++    std::vector<GlintShaderByteRequest> requests;
++    bool failed = false;
++};
++struct GlintShaderByteResult {
++    uint64_t requestId = 0;
++    std::unique_ptr<GlintByteReadbackSnapshot> snapshot;
+ };
+ 
+ enum class GlintReadbackMapStatus { Denied, Unrelated, Protected };
+@@ -127,6 +149,13 @@
+     virtual bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) = 0;
+     // Validated binding ranges, not proof of exact shader writes.
+     virtual void OnShaderScope(const GlintShaderScope& scope) = 0;
++    // Trusted native calls only. Empty plan means use the existing opaque scope path.
++    // An outstanding plan must be committed or invalidated with OnExecutionError.
++    // Projection readiness is backend-owned, never supplied by renderer commands.
++    virtual GlintShaderBytePlan BeginShaderByteScope(const GlintShaderScope& scope,
++                                                     bool sampledInputsProjected) = 0;
++    virtual bool CommitShaderByteScope(uint64_t ticket,
++                                       std::vector<GlintShaderByteResult> results) = 0;
+     virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
+                                                    uint64_t offset,
+                                                    uint64_t size) = 0;
+diff --git a/src/dawn/native/d3d12/CommandBufferD3D12.cpp b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+--- a/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -29,6 +29,7 @@
+ 
+ #include <algorithm>
+ #include <map>
++#include <optional>
+ #include <utility>
+ #include <vector>
+ 
+@@ -485,14 +486,18 @@
+     BindGroupStateTracker(Device* device, DescriptorHeapState* heapState)
+         : Base(), mDevice(device), mHeapState(heapState) {}
+ 
+-    void NotifyGlintBindingScope(wgpu::ShaderStage stages,
+-                                 std::span<const GlintShaderBufferUse> extraUses = {},
+-                                 bool framebufferFetch = false) {
+-        auto observer = mDevice->GetGlintReadbackObserver();
+-        if (!observer) {
+-            return;
+-        }
++    struct GlintBoundScope {
+         std::vector<GlintShaderBufferUse> uses;
++        std::vector<Ref<BufferBase>> owners;
++        bool textureInputs;
++    };
++
++    std::optional<GlintBoundScope> BuildGlintBindingScope(
++        wgpu::ShaderStage stages,
++        std::span<const GlintShaderBufferUse> extraUses = {},
++        bool framebufferFetch = false) {
++        std::vector<GlintShaderBufferUse> uses;
++        std::vector<Ref<BufferBase>> owners;
+         auto append = [&](BufferBase* buffer, uint64_t offset, uint64_t size,
+                           bool writable) {
+             if (!buffer || offset > buffer->GetSize() || size > buffer->GetSize() - offset ||
+@@ -501,6 +506,7 @@
+             }
+             uses.push_back({{ToAPI(buffer), buffer->GetSize()}, true, writable,
+                             offset, size, true});
++            owners.push_back(buffer);
+             return true;
+         };
+         bool textureInputs = framebufferFetch || mPipeline->GetLayout()->UsesResourceTable();
+@@ -511,8 +517,7 @@
+             }
+             auto* group = mBindGroups[groupIndex];
+             if (!group) {
+-                observer->OnShaderScope({});
+-                return;
++                return std::nullopt;
+             }
+             const auto* layout = group->GetLayout();
+             for (BindingIndex index : layout->GetSampledTextureIndices()) {
+@@ -534,8 +539,7 @@
+                     case wgpu::StorageTextureAccess::WriteOnly:
+                         break;
+                     default:
+-                        observer->OnShaderScope({});
+-                        return;
++                        return std::nullopt;
+                 }
+             }
+             // External textures expand to sampled planes and a metadata buffer.
+@@ -547,8 +551,7 @@
+             }
+             const auto dynamic = GetDynamicOffsets(groupIndex);
+             if (dynamic.size() != layout->GetDynamicBufferCount()) {
+-                observer->OnShaderScope({});
+-                return;
++                return std::nullopt;
+             }
+             for (BindingIndex index : layout->GetBufferIndices()) {
+                 const auto& info = layout->GetBindingInfo(index);
+@@ -562,8 +565,7 @@
+                     if (index >= dynamic.size() || !binding.buffer ||
+                         offset > binding.buffer->GetSize() ||
+                         dynamic[index] > binding.buffer->GetSize() - offset) {
+-                        observer->OnShaderScope({});
+-                        return;
++                        return std::nullopt;
+                     }
+                     offset += dynamic[index];
+                 }
+@@ -579,12 +581,10 @@
+                         writable = true;
+                         break;
+                     default:
+-                        observer->OnShaderScope({});
+-                        return;
++                        return std::nullopt;
+                 }
+                 if (!append(binding.buffer, offset, binding.size, writable)) {
+-                    observer->OnShaderScope({});
+-                    return;
++                    return std::nullopt;
+                 }
+             }
+             for (BindingIndex index : layout->GetTexelBufferIndices()) {
+@@ -602,29 +602,42 @@
+                         writable = true;
+                         break;
+                     default:
+-                        observer->OnShaderScope({});
+-                        return;
++                        return std::nullopt;
+                 }
+                 auto* view = group->GetBindingAsTexelBufferView(index);
+                 if (!view || !append(view->GetBuffer(), view->GetOffset(), view->GetSize(), writable)) {
+-                    observer->OnShaderScope({});
+-                    return;
++                    return std::nullopt;
+                 }
+             }
+         }
+         for (const auto& use : extraUses) {
+             if (!use.rangeKnown || !use.buffer.handle || use.offset > use.buffer.size ||
+                 use.size > use.buffer.size - use.offset || uses.size() == kGlintShaderBufferUseLimit) {
+-                observer->OnShaderScope({});
+-                return;
++                return std::nullopt;
+             }
+             uses.push_back(use);
+         }
+-        observer->OnShaderScope({uses, textureInputs, true});
++        return GlintBoundScope{std::move(uses), std::move(owners), textureInputs};
++    }
++
++    void NotifyGlintBindingScope(wgpu::ShaderStage stages,
++                                 std::span<const GlintShaderBufferUse> extraUses = {},
++                                 bool framebufferFetch = false) {
++        auto observer = mDevice->GetGlintReadbackObserver();
++        if (!observer) {
++            return;
++        }
++        auto scope = BuildGlintBindingScope(stages, extraUses, framebufferFetch);
++        if (!scope) {
++            observer->OnShaderScope({});
++            return;
++        }
++        observer->OnShaderScope({scope->uses, scope->textureInputs, true});
+     }
+ 
+     MaybeError PrepareGlintComputeProjection(CommandRecordingContext* context) {
+         static_assert(std::is_same_v<PipelineType, ComputePipeline>);
++        mGlintComputeProjectedReady = false;
+         ResetGlintViewOverrides();
+         if (!mDevice->GetGlintReadbackObserver()) return {};
+         DAWN_INTERNAL_ERROR_IF(!mPipeline || mPipeline->GetLayout()->UsesResourceTable(),
+@@ -648,6 +661,7 @@
+             }
+         }
+         if (recorded) RestoreAfterGlintProjection(context->GetCommandList());
++        mGlintComputeProjectedReady = true;
+         return {};
+     }
+ 
+@@ -691,16 +705,70 @@
+         return {};
+     }
+ 
+-    void NotifyGlintComputeScope(BufferBase* indirectBuffer = nullptr,
+-                                uint64_t indirectOffset = 0) {
++    MaybeError CaptureGlintComputeScope(CommandRecordingContext* context,
++                                        BufferBase* indirectBuffer = nullptr,
++                                        uint64_t indirectOffset = 0) {
++        static_assert(std::is_same_v<PipelineType, ComputePipeline>);
++        auto observer = mDevice->GetGlintReadbackObserver();
++        if (!observer) {
++            return {};
++        }
++        std::optional<GlintBoundScope> bound;
+         if (indirectBuffer) {
+-            const std::array uses{GlintShaderBufferUse{
+-                {ToAPI(indirectBuffer), indirectBuffer->GetSize()}, true, false,
+-                indirectOffset, 3 * sizeof(uint32_t), true}};
+-            NotifyGlintBindingScope(wgpu::ShaderStage::Compute, uses);
++            const std::array uses{
++                GlintShaderBufferUse{{ToAPI(indirectBuffer), indirectBuffer->GetSize()},
++                                     true,
++                                     false,
++                                     indirectOffset,
++                                     3 * sizeof(uint32_t),
++                                     true}};
++            bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute, uses);
+         } else {
+-            NotifyGlintBindingScope(wgpu::ShaderStage::Compute);
+-        }
++            bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute);
++        }
++        DAWN_INTERNAL_ERROR_IF(!bound, "Invalid Glint compute capture binding scope.");
++        const GlintShaderScope scope{bound->uses, bound->textureInputs, true};
++        const auto plan = observer->BeginShaderByteScope(scope, mGlintComputeProjectedReady);
++        DAWN_INTERNAL_ERROR_IF(plan.failed, "Glint shader capture controller failed.");
++        if (!plan.ticket) {
++            observer->OnShaderScope(scope);
++            return {};
++        }
++        std::vector<GlintShaderByteResult> results;
++        for (const auto& request : plan.requests) {
++            const auto owner = std::find_if(bound->owners.begin(), bound->owners.end(),
++                                            [&](const Ref<BufferBase>& buffer) {
++                                                return ToAPI(buffer.Get()) == request.buffer.handle;
++                                            });
++            DAWN_INTERNAL_ERROR_IF(owner == bound->owners.end() || !request.size ||
++                                       request.buffer.size != (*owner)->GetSize() ||
++                                       request.offset > request.buffer.size ||
++                                       request.size > request.buffer.size - request.offset,
++                                   "Glint capture request has no matching native buffer owner.");
++            // Verify the requested interval is entirely covered by the actual writable bindings.
++            const uint64_t end = request.offset + request.size;
++            uint64_t covered = request.offset;
++            while (covered < end) {
++                uint64_t next = covered;
++                for (const auto& use : bound->uses) {
++                    if (use.writable && use.buffer.handle == request.buffer.handle &&
++                        use.offset <= covered && use.offset + use.size > next) {
++                        next = std::min(end, use.offset + use.size);
++                    }
++                }
++                DAWN_INTERNAL_ERROR_IF(next == covered,
++                                       "Glint byte capture exceeds writable bindings.");
++                covered = next;
++            }
++            std::unique_ptr<GlintByteReadbackSnapshot> snapshot;
++            DAWN_TRY_ASSIGN(snapshot,
++                            RecordGlintNativeByteSnapshot(mDevice, context, ToBackend(owner->Get()),
++                                                          request.offset, request.size));
++            results.push_back({request.requestId, std::move(snapshot)});
++        }
++        DAWN_INTERNAL_ERROR_IF(!observer->CommitShaderByteScope(plan.ticket, std::move(results)),
++                               "Glint shader byte capture transaction was rejected.");
++        return {};
+     }
+ 
+     // A WebGPU pipeline layout can map to multiple D3D12 root signatures (PipelineLayoutHandles)
+@@ -1123,6 +1191,7 @@
+ 
+     PerBindGroup<D3D12_GPU_DESCRIPTOR_HANDLE> mBoundRootSamplerTables = {};
+     bool mGlintStateInvalidated = false;
++    bool mGlintComputeProjectedReady = false;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+     PerBindGroup<Ref<BindGroup>> mGlintGroupSources;
+@@ -1741,6 +1810,12 @@
+ 
+                 RecordResolveQuerySetCmd(commandList, device, querySet, cmd->firstQuery,
+                                          cmd->queryCount, destination, cmd->destinationOffset);
++                if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
++                    observer->OnBufferWrite(
++                        {ToAPI(cmd->destination.Get()), destination->GetSize()},
++                        cmd->destinationOffset, ToQueryStorageSize(cmd->queryCount),
++                        GlintBufferWriteKind::Uncertain);
++                }
+ 
+                 break;
+             }
+@@ -1871,7 +1946,7 @@
+                 immediates.Apply(commandContext);
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
+-                bindingTracker->NotifyGlintComputeScope();
++                DAWN_TRY(bindingTracker->CaptureGlintComputeScope(commandContext));
+                 break;
+             }
+ 
+@@ -1892,7 +1967,7 @@
+                     signature, 1, ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
+-                bindingTracker->NotifyGlintComputeScope(
+-                    dispatch->indirectBuffer.Get(), dispatch->indirectOffset);
++                DAWN_TRY(bindingTracker->CaptureGlintComputeScope(
++                    commandContext, dispatch->indirectBuffer.Get(), dispatch->indirectOffset));
+                 break;
+             }
+ 
+diff --git a/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h b/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
+--- a/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
++++ b/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
+@@ -10,6 +10,7 @@
+ namespace dawn::native::d3d12 {
+ class Device;
+ class Texture;
++class Buffer;
+ class CommandRecordingContext;
+ // Native validated recording under the device lock. Device quota is retained
+ // through the existing COM retirement queue; caller still registers provenance.
+@@ -21,5 +22,12 @@
+     Device* device,
+     CommandRecordingContext* context,
+     Texture* texture);
++// Private execution-bound byte snapshot. Does not itself authorize map admission.
++ResultOrError<std::unique_ptr<GlintByteReadbackSnapshot>> RecordGlintNativeByteSnapshot(
++    Device* device,
++    CommandRecordingContext* context,
++    Buffer* source,
++    uint64_t offset,
++    uint64_t size);
+ }  // namespace dawn::native::d3d12
+ #endif
+diff --git a/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp b/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
+--- a/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
++++ b/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
+@@ -3,6 +3,7 @@
+ #include "src/dawn/native/d3d12/GlintTextureReadbackD3D12.h"
+ 
+ #include "src/dawn/native/d3d/D3DError.h"
++#include "src/dawn/native/d3d12/BufferD3D12.h"
+ #include "src/dawn/native/d3d12/CommandRecordingContext.h"
+ #include "src/dawn/native/d3d12/DeviceD3D12.h"
+ #include "src/dawn/native/d3d12/QueueD3D12.h"
+@@ -32,6 +33,25 @@
+ 
+   private:
+     std::unique_ptr<glint::candidate::d3d12::TextureCapture> mCapture;
++};
++class NativeGlintByteReadbackSnapshot final : public GlintByteReadbackSnapshot {
++  public:
++    NativeGlintByteReadbackSnapshot(
++        std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture,
++        uint64_t size)
++        : mCapture(std::move(capture)), mSize(size) {}
++    GlintReadbackStatus Read(std::span<const uint8_t>* bytes) const override {
++        const HRESULT result = mCapture->ReadCompleted(bytes);
++        if (result == E_PENDING) {
++            return GlintReadbackStatus::Pending;
++        }
++        return SUCCEEDED(result) ? GlintReadbackStatus::Ready : GlintReadbackStatus::Failed;
++    }
++    uint64_t GetByteSize() const override { return mSize; }
++
++  private:
++    std::unique_ptr<glint::candidate::d3d12::TextureCapture> mCapture;
++    uint64_t mSize;
+ };
+ }  // namespace
+ 
+@@ -75,4 +95,31 @@
+     return std::unique_ptr<GlintReadbackSnapshot>(
+         new NativeGlintReadbackSnapshot(std::move(capture)));
+ }
++ResultOrError<std::unique_ptr<GlintByteReadbackSnapshot>> RecordGlintNativeByteSnapshot(
++    Device* device,
++    CommandRecordingContext* context,
++    Buffer* source,
++    uint64_t offset,
++    uint64_t size) {
++    DAWN_INTERNAL_ERROR_IF(!device || !context || !source || source->GetDevice() != device ||
++                               !source->HasAccess() || !source->GetD3D12Resource() || size == 0 ||
++                               offset > source->GetSize() || size > source->GetSize() - offset,
++                           "Invalid Glint byte-capture source owner or range.");
++    DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
++    DAWN_TRY(source->EnsureDataInitialized(context));
++    // Internal GPU copying does not expose a WebGPU CopySrc command or require that API usage.
++    source->TrackUsageAndTransitionNow(context, wgpu::BufferUsage::CopySrc);
++    auto* queue = ToBackend(device->GetQueue());
++    std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture;
++    DAWN_TRY(CheckHRESULT(
++        glint::candidate::d3d12::TextureCapture::RecordBufferBudgeted(
++            device->GetD3D12Device(), context->GetCommandList(), source->GetD3D12Resource(), offset,
++            size, true, queue->GetSharedFence()->GetD3DFence(),
++            uint64_t{queue->GetPendingCommandSerial()}, device->GetGlintReadbackBudget(), &capture),
++        "Glint execution-bound byte capture"));
++    device->ReferenceUntilUnused(capture->retirement_handle());
++    context->AddGlintReadbackSubmission(capture->submission_marker());
++    return std::unique_ptr<GlintByteReadbackSnapshot>(
++        new NativeGlintByteReadbackSnapshot(std::move(capture), size));
++}
+ }  // namespace dawn::native::d3d12
+diff --git a/src/dawn/native/d3d12/glint/texture_capture.h b/src/dawn/native/d3d12/glint/texture_capture.h
+--- a/src/dawn/native/d3d12/glint/texture_capture.h
++++ b/src/dawn/native/d3d12/glint/texture_capture.h
+@@ -53,6 +53,19 @@
+                                   uint64_t completion_value,
+                                   const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
+                                   std::unique_ptr<TextureCapture>* result);
++    // Exact private byte snapshot, not a pixel surface. Caller validates logical
++    // ownership, initialized contents and COPY_SOURCE state on an open DIRECT list.
++    // ReadCompleted returns the original byte range; it does not transform it.
++    static HRESULT RecordBufferBudgeted(ID3D12Device* device,
++                                       ID3D12GraphicsCommandList* commands,
++                                       ID3D12Resource* source,
++                                       uint64_t offset,
++                                       uint64_t size,
++                                       bool source_initialized,
++                                       ID3D12Fence* completion_fence,
++                                       uint64_t completion_value,
++                                       const std::shared_ptr<CaptureMemoryBudget>& budget,
++                                       std::unique_ptr<TextureCapture>* result);
+     ~TextureCapture();
+     TextureCapture(const TextureCapture&) = delete;
+     TextureCapture& operator=(const TextureCapture&) = delete;
+@@ -75,6 +88,14 @@
+                               uint64_t allocation_limit,
+                               const std::shared_ptr<CaptureMemoryBudget>& budget,
+                               std::unique_ptr<TextureCapture>* result);
++    static HRESULT AllocateReadback(ID3D12Device* device,
++                                    ID3D12Resource* source_resource,
++                                    ID3D12Fence* completion_fence,
++                                    uint64_t completion_value,
++                                    uint64_t mapped_bytes,
++                                    uint64_t allocation_budget,
++                                    const std::shared_ptr<CaptureMemoryBudget>& budget,
++                                    std::unique_ptr<TextureCapture>* result);
+     TextureCapture() = default;
+     Microsoft::WRL::ComPtr<ID3D12Device> device_;
+     Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+diff --git a/src/dawn/native/d3d12/glint/texture_capture.cc b/src/dawn/native/d3d12/glint/texture_capture.cc
+--- a/src/dawn/native/d3d12/glint/texture_capture.cc
++++ b/src/dawn/native/d3d12/glint/texture_capture.cc
+@@ -54,19 +54,23 @@
+         }
+         return remaining;
+     }
+-    void SetResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource) {
++    void SetResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource,
++                     Microsoft::WRL::ComPtr<ID3D12Resource> source) {
+         resource_ = std::move(resource);
++        source_ = std::move(source);
+     }
+ 
+   private:
+     ~CaptureRetirement() {
+         resource_.Reset();
++        source_.Reset();
+         budget_->Release(bytes_);
+     }
+     std::atomic<ULONG> references_{1};
+     std::shared_ptr<CaptureMemoryBudget> budget_;
+     const uint64_t bytes_;
+     Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
++    Microsoft::WRL::ComPtr<ID3D12Resource> source_;
+ };
+ 
+ HRESULT TextureCapture::Record(ID3D12Device* device,
+@@ -163,65 +167,10 @@
+         mapped_bytes > std::numeric_limits<size_t>::max() || mapped_bytes > allocation_budget) {
+         return E_OUTOFMEMORY;
+     }
+-    D3D12_RESOURCE_DESC destination{};
+-    destination.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+-    destination.Width = mapped_bytes;
+-    destination.Height = 1;
+-    destination.DepthOrArraySize = 1;
+-    destination.MipLevels = 1;
+-    destination.SampleDesc.Count = 1;
+-    destination.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+-    const auto allocation = device->GetResourceAllocationInfo(0, 1, &destination);
+-    if (allocation.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
+-        allocation.SizeInBytes == 0 || allocation.SizeInBytes > allocation_budget) {
+-        return E_OUTOFMEMORY;
+-    }
+-    Microsoft::WRL::ComPtr<CaptureRetirement> retirement;
+-    if (budget) {
+-        if (!budget->Reserve(allocation.SizeInBytes)) {
+-            return E_OUTOFMEMORY;
+-        }
+-        auto* hold = new (std::nothrow) CaptureRetirement(budget, allocation.SizeInBytes);
+-        if (!hold) {
+-            budget->Release(allocation.SizeInBytes);
+-            return E_OUTOFMEMORY;
+-        }
+-        retirement.Attach(hold);
+-    }
+-    std::unique_ptr<TextureCapture> capture(new (std::nothrow) TextureCapture());
+-    if (!capture) {
+-        return E_OUTOFMEMORY;
+-    }
+-    D3D12_HEAP_PROPERTIES heap{};
+-    heap.Type = D3D12_HEAP_TYPE_READBACK;
+-    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
+-    hr = device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &destination,
+-                                         D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+-                                         IID_PPV_ARGS(&capture->resource_));
+-    if (FAILED(hr)) {
+-        return hr;
+-    }
+-    if (retirement) {
+-        retirement->SetResource(capture->resource_);
+-        capture->retirement_ = retirement;
+-    }
+-    void* mapped = nullptr;
+-    D3D12_RANGE read_range{0, static_cast<SIZE_T>(mapped_bytes)};
+-    hr = capture->resource_->Map(0, &read_range, &mapped);
+-    if (FAILED(hr)) {
+-        return hr;
+-    }
+-    if (!mapped) {
+-        capture->resource_->Unmap(0, nullptr);
+-        return E_FAIL;
+-    }
+-    capture->mapped_ = std::span<const uint8_t>(static_cast<const uint8_t*>(mapped),
+-                                                static_cast<size_t>(mapped_bytes));
+-    capture->submitted_ = std::make_shared<std::atomic<bool>>(false);
+-    capture->device_ = device;
+-    capture->fence_ = completion_fence;
+-    capture->completion_value_ = completion_value;
+-    capture->allocation_bytes_ = allocation.SizeInBytes;
++    std::unique_ptr<TextureCapture> capture;
++    hr = AllocateReadback(device, texture, completion_fence, completion_value,
++                          mapped_bytes, allocation_budget, budget, &capture);
++    if (FAILED(hr)) return hr;
+     capture->width_ = static_cast<uint32_t>(source.Width);
+     capture->height_ = source.Height;
+     capture->row_pitch_ = footprint.Footprint.RowPitch;
+@@ -239,6 +188,125 @@
+     return S_OK;
+ }
+ 
++HRESULT TextureCapture::AllocateReadback(
++    ID3D12Device* device,
++    ID3D12Resource* source_resource,
++    ID3D12Fence* completion_fence,
++    uint64_t completion_value,
++    uint64_t mapped_bytes,
++    uint64_t allocation_budget,
++    const std::shared_ptr<CaptureMemoryBudget>& budget,
++    std::unique_ptr<TextureCapture>* result) {
++    D3D12_RESOURCE_DESC destination{};
++    destination.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
++    destination.Width = mapped_bytes;
++    destination.Height = 1;
++    destination.DepthOrArraySize = 1;
++    destination.MipLevels = 1;
++    destination.SampleDesc.Count = 1;
++    destination.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
++    const auto allocation = device->GetResourceAllocationInfo(0, 1, &destination);
++    if (allocation.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
++        allocation.SizeInBytes == 0 || allocation.SizeInBytes > allocation_budget) {
++        return E_OUTOFMEMORY;
++    }
++    Microsoft::WRL::ComPtr<CaptureRetirement> retirement;
++    if (budget) {
++        if (!budget->Reserve(allocation.SizeInBytes)) {
++            return E_OUTOFMEMORY;
++        }
++        auto* hold = new (std::nothrow) CaptureRetirement(budget, allocation.SizeInBytes);
++        if (!hold) {
++            budget->Release(allocation.SizeInBytes);
++            return E_OUTOFMEMORY;
++        }
++        retirement.Attach(hold);
++    }
++    std::unique_ptr<TextureCapture> capture(new (std::nothrow) TextureCapture());
++    if (!capture) {
++        return E_OUTOFMEMORY;
++    }
++    D3D12_HEAP_PROPERTIES heap{};
++    heap.Type = D3D12_HEAP_TYPE_READBACK;
++    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
++    HRESULT hr = device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &destination,
++                                         D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
++                                         IID_PPV_ARGS(&capture->resource_));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (retirement) {
++        retirement->SetResource(capture->resource_, source_resource);
++        capture->retirement_ = retirement;
++    }
++    void* mapped = nullptr;
++    D3D12_RANGE read_range{0, static_cast<SIZE_T>(mapped_bytes)};
++    hr = capture->resource_->Map(0, &read_range, &mapped);
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (!mapped) {
++        capture->resource_->Unmap(0, nullptr);
++        return E_FAIL;
++    }
++    capture->mapped_ = std::span<const uint8_t>(static_cast<const uint8_t*>(mapped),
++                                                static_cast<size_t>(mapped_bytes));
++    capture->submitted_ = std::make_shared<std::atomic<bool>>(false);
++    capture->device_ = device;
++    capture->fence_ = completion_fence;
++    capture->completion_value_ = completion_value;
++    capture->allocation_bytes_ = allocation.SizeInBytes;
++    *result = std::move(capture);
++    return S_OK;
++}
++
++HRESULT TextureCapture::RecordBufferBudgeted(
++    ID3D12Device* device,
++    ID3D12GraphicsCommandList* commands,
++    ID3D12Resource* source,
++    uint64_t offset,
++    uint64_t size,
++    bool source_initialized,
++    ID3D12Fence* completion_fence,
++    uint64_t completion_value,
++    const std::shared_ptr<CaptureMemoryBudget>& budget,
++    std::unique_ptr<TextureCapture>* result) {
++    if (!result || *result || !device || !commands || !source || !completion_fence ||
++        !budget || budget->limit_bytes() == 0 || !source_initialized || size == 0 ||
++        completion_value == 0 || completion_value == std::numeric_limits<uint64_t>::max() ||
++        commands->GetType() != D3D12_COMMAND_LIST_TYPE_DIRECT) {
++        return E_INVALIDARG;
++    }
++    const auto desc = source->GetDesc();
++    if (desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER || desc.Format != DXGI_FORMAT_UNKNOWN ||
++        offset > desc.Width || size > desc.Width - offset) {
++        return E_INVALIDARG;
++    }
++    if (size > 64 * 1024 * 1024 || size > std::numeric_limits<size_t>::max()) {
++        return E_OUTOFMEMORY;
++    }
++    const auto prior = completion_fence->GetCompletedValue();
++    if (prior == std::numeric_limits<uint64_t>::max()) return DXGI_ERROR_DEVICE_REMOVED;
++    if (prior >= completion_value) return E_INVALIDARG;
++    Microsoft::WRL::ComPtr<ID3D12Device> source_device, commands_device, fence_device;
++    HRESULT hr = source->GetDevice(IID_PPV_ARGS(&source_device));
++    if (FAILED(hr)) return hr;
++    hr = commands->GetDevice(IID_PPV_ARGS(&commands_device));
++    if (FAILED(hr)) return hr;
++    hr = completion_fence->GetDevice(IID_PPV_ARGS(&fence_device));
++    if (FAILED(hr)) return hr;
++    if (source_device.Get() != device || commands_device.Get() != device || fence_device.Get() != device) {
++        return E_INVALIDARG;
++    }
++    std::unique_ptr<TextureCapture> capture;
++    hr = AllocateReadback(device, source, completion_fence, completion_value, size,
++                          budget->limit_bytes(), budget, &capture);
++    if (FAILED(hr)) return hr;
++    commands->CopyBufferRegion(capture->resource_.Get(), 0, source, offset, size);
++    *result = std::move(capture);
++    return S_OK;
++}
++
+ TextureCapture::~TextureCapture() {
+     if (resource_ && !mapped_.empty()) {
+         D3D12_RANGE written{0, 0};

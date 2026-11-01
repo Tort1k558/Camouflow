@@ -1,0 +1,111 @@
+diff --git a/include/dawn/native/DawnNative.h b/include/dawn/native/DawnNative.h
+--- a/include/dawn/native/DawnNative.h
++++ b/include/dawn/native/DawnNative.h
+@@ -68,6 +68,19 @@
+ struct GlintBufferIdentity {
+     WGPUBuffer handle = nullptr;
+     uint64_t size = 0;
++};
++
++struct GlintShaderBufferUse {
++    GlintBufferIdentity buffer;
++    bool readable = false;
++    bool writable = false;
++};
++
++inline constexpr size_t kGlintShaderBufferUseLimit = 256;
++struct GlintShaderScope {
++    std::span<const GlintShaderBufferUse> buffers;
++    bool hasTextureInputs = false;
++    bool complete = false;
+ };
+ 
+ enum class GlintReadbackMapStatus { Denied, Unrelated, Protected };
+@@ -105,6 +118,8 @@
+                                uint64_t size,
+                                GlintBufferWriteKind kind) = 0;
+     virtual void OnBufferDestroyed(WGPUBuffer buffer) = 0;
++    // Whole-buffer potential dependencies, not proof of exact shader writes.
++    virtual void OnShaderScope(const GlintShaderScope& scope) = 0;
+     virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
+                                                    uint64_t offset,
+                                                    uint64_t size) = 0;
+diff --git a/src/dawn/native/d3d12/CommandBufferD3D12.cpp b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+--- a/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -64,6 +64,51 @@
+ 
+ namespace {
+ 
++void NotifyGlintShaderScope(DeviceBase* device,
++                            const SyncScopeResourceUsage& scope,
++                            bool framebufferFetch = false) {
++    auto observer = device->GetGlintReadbackObserver();
++    if (!observer) {
++        return;
++    }
++    if (scope.buffers.size() != scope.bufferSyncInfos.size() ||
++        scope.textures.size() != scope.textureSyncInfos.size() ||
++        scope.buffers.size() > kGlintShaderBufferUseLimit) {
++        observer->OnShaderScope({});
++        return;
++    }
++    if (scope.buffers.empty()) {
++        return;
++    }
++    bool textureInputs =
++        framebufferFetch || scope.resourceTable != nullptr || !scope.externalTextures.empty();
++    constexpr auto textureReads = wgpu::TextureUsage::TextureBinding |
++                                  wgpu::TextureUsage::StorageBinding | kReadOnlyStorageTexture;
++    for (const auto& info : scope.textureSyncInfos) {
++        if (textureInputs) {
++            break;
++        }
++        info.Iterate([&](const SubresourceRange&, const TextureSyncInfo& usage) {
++            if (usage.usage & textureReads) {
++                textureInputs = true;
++            }
++        });
++    }
++    std::vector<GlintShaderBufferUse> uses;
++    uses.reserve(scope.buffers.size());
++    for (size_t index = 0; index < scope.buffers.size(); ++index) {
++        auto* buffer = scope.buffers[index];
++        const auto usage = scope.bufferSyncInfos[index].usage;
++        const bool writable = !IsSubset(usage, kReadOnlyBufferUsages);
++        const bool readable =
++            (usage & (kReadOnlyBufferUsages | kShaderBufferUsages)) != wgpu::BufferUsage::None;
++        if (readable || writable) {
++            uses.push_back({{ToAPI(buffer), buffer->GetSize()}, readable, writable});
++        }
++    }
++    observer->OnShaderScope({uses, textureInputs, true});
++}
++
+ DXGI_FORMAT DXGIIndexFormat(wgpu::IndexFormat format) {
+     switch (format) {
+         case wgpu::IndexFormat::Undefined:
+@@ -1049,6 +1094,8 @@
+                 DAWN_TRY(RecordRenderPass(commandContext,
+                                           descriptorHeapState.GetGraphicsBindingTracker(),
+                                           beginRenderPassCmd, nextRenderPassNumber, passHasUAV));
++                const auto& scope = GetResourceUsages().renderPasses[nextRenderPassNumber];
++                NotifyGlintShaderScope(GetDevice(), scope, scope.usesFramebufferFetch);
+ 
+                 nextRenderPassNumber++;
+                 break;
+@@ -1527,6 +1574,7 @@
+                 immediates.Apply(commandContext);
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
++                NotifyGlintShaderScope(GetDevice(), scope);
+                 break;
+             }
+ 
+@@ -1546,5 +1594,6 @@
+                     signature, 1, ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
++                NotifyGlintShaderScope(GetDevice(), scope);
+                 break;
+             }
+ 

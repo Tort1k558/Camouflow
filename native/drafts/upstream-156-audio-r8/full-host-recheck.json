@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Full host regression on 7197573 before the later Chromium157 source packet publication",
+  "measured_commit": "7197573",
+  "counts": {
+    "passed": 5704,
+    "failed": 0,
+    "skipped": 1
+  },
+  "duration_seconds": 583.89,
+  "raw_report_sha256": "7f8d2f4292d21beedf66a5f5809e750858b31eca09e433732038e2b23f3f08da",
+  "log_sha256": "37c79877df8aed149346230102769a7fbc3a2df101e53b5c3f6c098a8adee659",
+  "input_postguards_passed": true,
+  "changed_inputs": [],
+  "tested_input_count": 978,
+  "inputs_map_sha256": "9a5cdfd9c46d4af79f477b0b0d4ceac066df2602a8d5142cac0d78f801789854",
+  "previous_attempt_preserved": true,
+  "previous_counts": {
+    "passed": 5694,
+    "failed": 2,
+    "skipped": 1
+  },
+  "historical_gpu_input_counts_and_digests_preserved": true,
+  "later_157_full_source_packet_included": false,
+  "later_http2_public_record_tests_included": false,
+  "native_runtime_admitted": false,
+  "legacy_audio_repaired": false,
+  "production_admitted": false
+}

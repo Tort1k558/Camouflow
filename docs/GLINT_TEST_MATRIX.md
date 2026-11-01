@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-01: full host repeat and Chromium 157 source application
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| [Full host repeat](../native/drafts/upstream-156-audio-r8/full-host-recheck.json) | **5704 passed / 0 failed / 1 skipped**, 583.89 seconds; input postguards passed | Measured `7197573`; later source/publication tests not included |
+| [157 source packet](../native/drafts/upstream-157-r8-port/full-source-observations.json) | **131 forward / 131 reverse**, all 270 upstream files restored | No C++ compilation, native execution or browser admission |
+| [Matched HTTP/2](../native/drafts/network/matched-r8-http2-observations.json) | Glint → stock156 → Glint, **9 fresh profiles**, selected initial controls match | Headless, policies off, owned TLS1.3/h2 fixture; not JA3/JA4/platform identity |
+
+The 157 packet adapts queued Audio ownership and preserves upstream indirect
+draw batching. Four original completion tests and three new chunk/queue tests
+are prepared, not executed. The earlier failed host, source-port and baseline
+attempts remain historical records. Legacy Audio, full browser/privacy/package
+and production gates remain open.
+
 ## 2026-11-01: controlled R8 browser rechecks
 
 [Controlled evidence](../native/drafts/upstream-156-audio-r8/controlled-rechecks.json)

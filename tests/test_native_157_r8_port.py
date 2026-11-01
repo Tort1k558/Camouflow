@@ -101,3 +101,44 @@ def test_157_r8_source_evidence_does_not_claim_a_full_forward_port_or_native_exe
     for name in ('full_chain_ported', 'compiled', 'native_tests_executed', 'runtime_verified',
                  'canonical_checkout_modified', 'selected_candidate_changed', 'production_admitted'):
         assert record[name] is False
+
+
+def test_157_r8_complete_source_packet_preserves_prefix_inputs_and_admission_boundary():
+    manifest = read('full-source-manifest.json')
+    record = read('full-source-observations.json')
+    assert manifest['patches'][:75] == read('manifest.json')['patches']
+    assert manifest['source_files'] == read('manifest.json')['source_files']
+    assert len(manifest['patches']) == manifest['selected_patch_count'] == 131
+    assert manifest['source_application_complete'] and manifest['next_port_required_patch'] is None
+    assert manifest['complete_forward_port'] is False
+    assert record['manifest_sha256'] == hashlib.sha256((PACKET / 'full-source-manifest.json').read_bytes()).hexdigest()
+    assert record['passed'] and record['source_inputs_unchanged']
+    assert record['reverse_patch_count'] == 131 and record['restored_upstream_files'] == 270
+    assert record['all_added_files_removed_by_reverse']
+    assert [row['number'] for row in record['new_adapted_patches']] == [
+        76, 77, 78, 80, 85, 88, 90, 93, 95, 98, 99, 111, 115, 118, 131]
+    for row in manifest['patches']:
+        path = ROOT / 'native/drafts' / row['file']
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == row['sha256']
+    assert record['source_invariants'] == {
+        'gpu_commands': {'preserved': 321, 'appended': 577}, 'grit_structure_preserved': True}
+    for name in ('complete_forward_port', 'canonical_checkout_changed', 'cpp_type_correctness_verified',
+                 'compiled', 'runtime_verified', 'production_admitted', 'active_candidate_registered'):
+        assert record[name] is False
+
+
+def test_157_audio_ownership_source_covers_queued_and_terminal_paths_without_claiming_execution():
+    text = (PACKET / 'patches/0131-audio-context-ownership.patch').read_text(encoding='utf-8-sig')
+    assert 'WrapPersistent(start_rendering_resolvers_.TakeFirst().Get())' in text
+    assert 'start_rendering_resolvers_.empty() && pending_render_targets_.empty()' in text
+    assert 'if (IsRenderComplete()) {\n+    ClearGlintAudioPartitionSeed();' in text
+    assert 'ScopedGlintAudioSeed seed' in text and 'OPENSSL_cleanse' in text
+    for case in ('GlintRejectClearsSeedAndBlocksLateCompletion',
+                 'GlintDetachClearsSeedWithoutPublishingRawCompletion',
+                 'GlintCompletionClaimsResolverAndClearsSeedBeforeCallbacks',
+                 'GlintMissingDestinationRejectsAndClearsCapturedSeed',
+                 'GlintFiniteChunksSharePolicyUntilFinalCompletion',
+                 'GlintIndefiniteIdleRetainsPolicyUntilExplicitClose',
+                 'GlintRejectSettlesEveryQueuedOwnerWithoutLatePublication'):
+        assert text.count('+TEST_F(OfflineAudioContextTest, ' + case + ')') == 1
+    assert not any(line.startswith('-TEST_F(') for line in text.splitlines())
