@@ -33,7 +33,7 @@ def test_selected_76_is_an_exact_75_prefix_append_with_unchanged_settings():
 def test_capture_gate_adds_all_twelve_cases_without_replacing_existing_494(native_units_before_screenshot):
     historical = native_units_before_screenshot['namespace']
     screenshot_targets = (*historical['SUPPORTED_TARGETS'], 'screenshot-transaction')
-    assert units.SUPPORTED_TARGETS == (*screenshot_targets, 'surface-launch')
+    assert units.SUPPORTED_TARGETS == (*screenshot_targets, 'surface-launch', 'audio-lifecycle')
     assert len(screenshot_targets) == 24
     for target in historical['SUPPORTED_TARGETS']:
         assert units.required_tests(target) == historical['required_tests'](target)
