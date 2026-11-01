@@ -81,3 +81,18 @@ def test_audio_lifecycle_targets_linked_blink_and_exact_seven_cases():
     report['testsuites'][0]['testsuite'][0]['name'] = 'UnrelatedPassingTest'
     with pytest.raises(ValueError, match='names differ'):
         units.validate_results(report, target='audio-lifecycle')
+
+
+def test_audio_lifecycle_registration_keeps_all_historical_target_prefixes(
+        tmp_path, monkeypatch, host_sources_before_audio_r8):
+    import runpy
+    import sys
+
+    path = tmp_path / 'before_audio_r8_units.py'
+    path.write_bytes(host_sources_before_audio_r8['scripts/verify_native_privacy_units.py'])
+    monkeypatch.setattr(sys, 'path', sys.path.copy())
+    previous = runpy.run_path(str(path))
+    assert units.SUPPORTED_TARGETS == (*previous['SUPPORTED_TARGETS'], 'audio-lifecycle')
+    for target in previous['SUPPORTED_TARGETS']:
+        assert units.required_tests(target) == previous['required_tests'](target)
+        assert units.unit_binary_target(target) == previous['unit_binary_target'](target)

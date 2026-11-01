@@ -202,8 +202,8 @@ REQUIRED_GPU_READBACK_TESTS = {
 NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "gpu-metadata", "worker-surfaces", "font-rasterization")
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
-                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "audio-lifecycle", "screen-metrics", "screen-widget", "screen-orientation",
-                     "screen-live-main", "screen-dispatch", "screenshot-transaction", "surface-launch")
+                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics", "screen-widget", "screen-orientation",
+                     "screen-live-main", "screen-dispatch", "screenshot-transaction", "surface-launch", "audio-lifecycle")
 
 SCREENSHOT_TRANSACTION_TESTS = {"GlintScreenshotEmulationTest": {
     "CrossSessionUsesEffectiveParameters", "TemporaryReadbackNeverClaimsPersistentOwnership",
