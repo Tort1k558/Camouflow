@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Real R7 browser AgentSession -> parameterized replay -> CLI queue using an owned HTTP fixture LLM",
+  "candidate": "upstream-156-webgpu-r7",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "57bdabaf11f6ad9f37f1b00c6e687df8c2f5ae3587fb06dcd334cf4cea82bdd5",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "8de67c1e805bf9a8abec4b603a02c4edc47a3533c01ad1f3279202a508bd1b76",
+  "driver_manifest_sha256": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5",
+  "measurement_report_sha256": "695e25a284406bbe7e84d52fff17d8e7724755b603d3c3984096644b767c2ff9",
+  "log_sha256": "588c945994472c7cb0bde6b50cd29ea8912cde7ea56eb0d6e2fdc884e07ab3b8",
+  "fixture_llm_only": true,
+  "external_ai_provider_verified": false,
+  "privacy_policy": "browser-defaults",
+  "postguards_passed": true,
+  "remaining_owned_processes": [],
+  "checks": [
+    "fixture HTTP LLM",
+    "structured extraction",
+    "editable privacy",
+    "unique selectors",
+    "viewport scrolling",
+    "parameterized fresh replay",
+    "JSON artifact",
+    "CLI queue run"
+  ],
+  "reusable_cli": {
+    "source": "scripts/verify_ai_workflows.py",
+    "source_sha256": "be8ef6cf667536e77b3664581e8c4fc85d6b87ceee7ae464578bf1674273a441",
+    "original_assertions_unchanged": true,
+    "assertion_count": 13,
+    "focused_argument_tests": 13,
+    "test_source_sha256": "b42c2e5064f2142a32515c43665c0f1b36856076eded640f4cef98a55e666351"
+  },
+  "previous_full_host": {
+    "commit": "05e33ab32dcbb43d441f64c48a2bb940a32b9a63",
+    "counts": {
+      "passed": 5548,
+      "failed": 0,
+      "skipped": 1
+    },
+    "report_sha256": "1d2f6ac5a5a04b3c19fdacb34f17995423ec038d3903aa4f70b610b7285835d7",
+    "duration_seconds": 585.907,
+    "scope": "Completed before the reusable AI CLI extension"
+  },
+  "privacy_admitted": false,
+  "production_admitted": false
+}

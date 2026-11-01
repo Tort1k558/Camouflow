@@ -121,6 +121,25 @@ analyser, worklet and muted realtime paths. The pinned stock156 calibration is
 not a Glint result; selected 0067 still requires its own completed native/runtime
 gates. Requested legacy failures remain failures even if experimental math passes.
 
+## AI workflow integration check
+
+The existing workflow verifier now accepts Glint's `native` engine with an
+explicit Windows executable and fresh D: workspace:
+
+```powershell
+.venv\Scripts\python.exe -B scripts/verify_ai_workflows.py native `
+  --native-executable D:\GlintQA\runtime\chrome.exe `
+  --work-dir D:\GlintQA\ai-workflow-new
+```
+
+It exercises AgentSession extraction, editable-data exclusion, unique selectors,
+scrolling, parameterized replay, JSON output and the CLI queue. The model is an
+owned loopback HTTP fixture: no external API key, charge or model-quality claim.
+The [measured R7 run](drafts/upstream-156-webgpu-r7/ai-workflow-observations.json)
+used the pinned staged driver, verified core/receipt and browser-default policy;
+it does not admit protected policies or an arbitrary executable supplied to the CLI.
+Camoufox/CloakBrowser invocation defaults are unchanged.
+
 ## GPU compatibility diagnostics
 
 [Source-bound GPU checks](drafts/gpu/README.md#current-source-bound-diagnostics)

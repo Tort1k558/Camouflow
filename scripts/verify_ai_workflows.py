@@ -16,11 +16,44 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-def main():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("engine", nargs="?", choices=("camoufox", "cloakbrowser"), default="camoufox")
-    engine = parser.parse_args().engine
-    root = Path(tempfile.mkdtemp(prefix="camouflow-ai-workflow-"))
+    parser.add_argument("engine", nargs="?", choices=("camoufox", "cloakbrowser", "native"), default="camoufox")
+    parser.add_argument("--native-executable", type=Path)
+    parser.add_argument("--work-dir", type=Path)
+    args = parser.parse_args(argv)
+    if args.engine == "native":
+        path = args.native_executable
+        if (os.name != "nt" or path is None or not path.is_absolute() or path != path.resolve()
+                or not path.is_file() or path.drive.upper() != "D:"):
+            parser.error("Native verification requires an existing canonical D: --native-executable on Windows")
+        if args.work_dir is None:
+            parser.error("Native verification requires a fresh D: --work-dir")
+    elif args.native_executable is not None:
+        parser.error("--native-executable is only valid for the native engine")
+    path = args.work_dir
+    if path is not None:
+        checkout = Path(__file__).resolve().parents[1]
+        if (not path.is_absolute() or path != path.resolve() or path.drive.upper() != "D:"
+                or path.exists() or not path.parent.is_dir() or path.is_relative_to(checkout)
+                or (args.native_executable is not None
+                    and (path.is_relative_to(args.native_executable.parent)
+                         or args.native_executable.is_relative_to(path)))):
+            parser.error("Use a fresh canonical D: --work-dir outside the checkout and runtime")
+    return args
+
+
+def main():
+    args = parse_args()
+    engine = args.engine
+    root = args.work_dir
+    if root is None:
+        root = Path(tempfile.mkdtemp(prefix="camouflow-ai-workflow-"))
+    else:
+        root.mkdir()
+    browser_settings = {"headless": True}
+    if engine == "native":
+        browser_settings["executable_path"] = str(args.native_executable)
     os.environ["CAMOUFLOW_DATA_DIR"] = str(root)
     from app.core.browser_interface import BrowserInterface
     from app.services.ai_agent.llm import LLMClient, LLMConfig
@@ -93,7 +126,7 @@ def main():
 
     async def run():
         browser = BrowserInterface(
-            "ai-source", browser_engine=engine, browser_settings={"headless": True}
+            "ai-source", browser_engine=engine, browser_settings=browser_settings
         )
         try:
             await browser.start()
@@ -138,7 +171,7 @@ def main():
         account = {
             "name": "ai-replay",
             "_browser_engine": engine,
-            "_browser_settings": {"headless": True},
+            "_browser_settings": dict(browser_settings),
             "extra_fields": {"catalog_url": url + "?v2"},
         }
         executor = ScenarioExecutor(account, "", scenario, keep_browser_open=False)
@@ -158,7 +191,7 @@ def main():
             {
                 "name": "cli-smoke",
                 "browser_engine": engine,
-                f"{engine}_settings": {"headless": True},
+                f"{engine}_settings": dict(browser_settings),
                 "extra_fields": {"catalog_url": url + "?v2"},
             }
         )
@@ -212,6 +245,7 @@ def main():
                 {
                     "passed": True,
                     "engine": engine,
+                    "fixture_llm_only": True,
                     "data_root": str(root),
                     "checks": [
                         "fixture HTTP LLM",

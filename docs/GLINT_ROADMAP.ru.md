@@ -1,6 +1,6 @@
 # Glint: план проверки и развития
 
-## 2026-11-01: explicit Audio pipeline pin prepared
+## 2026-11-01: explicit Audio pipeline pin; host regression passed
 
 The profile policy now supports an explicit `audio_pipeline_version: 2` pin for
 the existing graph-math path. Selecting a surface mode in the manager stores the
@@ -12,8 +12,12 @@ Exact pre-change host bytes are archived for historical test/evidence replay.
 
 This is configuration/versioning groundwork, not a native Audio repair or a new
 device cohort. Legacy post-render mismatch remains open. 710 focused host tests
-passed; a new full run is still required for these host changes. The earlier full
-run passed 5532 tests/one skip on commit `48887fa`, before this pin was added.
+passed, then the full host suite passed **5548 tests/one skip** on `05e33ab` with
+input postguards. The later reusable native AI workflow extension passed 82 AI
+host tests and the actual R7 local-fixture AgentSession → replay → CLI chain.
+See the [matrix](GLINT_TEST_MATRIX.md#2026-11-01-r7-ai-workflow--replay-integration)
+for its scope; real external model quality and protected-policy admission are not
+proved. Native Audio boundary work remains next; no tolerance is relaxed.
 
 ## 2026-11-01: R7 diagnostics complete; Audio work remains
 

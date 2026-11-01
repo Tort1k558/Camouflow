@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-01: R7 AI workflow / replay integration
+
+The [public workflow CLI](../native/README.md#ai-workflow-integration-check)
+passed eight scoped checks on the measured R7 core: local HTTP LLM fixture,
+structured extraction, editable-data privacy, unique selectors, viewport scrolling,
+fresh parameterized replay, JSON output and CLI queue execution. Core/receipt and
+source postguards passed; no owned processes remained. [Bound evidence](../native/drafts/upstream-156-webgpu-r7/ai-workflow-observations.json).
+
+This uses browser-default policy and a fixture provider, **not** a real external
+model or protected-policy admission. The portable CLI retained all 13 original
+workflow assertions; 82 AI-focused host tests passed. The earlier full host run
+passed 5548 tests/one skip on `05e33ab`, before this CLI extension. Legacy Audio
+and production admission remain open.
+
 ## 2026-11-01: R7 retained-readback repair measured
 
 The [completed runtime record](../native/drafts/upstream-156-webgpu-r7/runtime-observations.json)
