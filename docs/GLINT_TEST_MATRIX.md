@@ -1,5 +1,14 @@
 # Glint browser test matrix
 
+## 2026-11-01: next Audio lifecycle packet, not selected
+
+[Context ownership](../native/drafts/audio-context-ownership/README.md) and
+[masker cleanup](../native/drafts/audio-masker-cleanup/README.md) were checked
+together: six-file apply/reverse restored exact R7 preimages; four C++ translation
+units passed syntax checks with actual generated GN flags. Canonical sources were
+unchanged. Four new lifecycle GTests are proposed, **not executed**. No new browser
+was built and the Legacy Audio failure remains open.
+
 ## 2026-11-01: R7 AI workflow / replay integration
 
 The [public workflow CLI](../native/README.md#ai-workflow-integration-check)

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "prepared": true,
+  "selected": false,
+  "compiled_browser": false,
+  "browser_verified": false,
+  "base_candidate": "upstream-156-webgpu-r7",
+  "base_manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "source_sha256": {
+    "third_party/blink/renderer/modules/webaudio/offline_audio_context.h": {
+      "before": "196acc4cb75fcdf7a6099d7f368befef06560f699dbe1023a6215f3a492fac11",
+      "after": "8a1a5630bcc5bd2ef472d49354ef2fd8b49267b263e9d2b06bbb224df8b13d4f"
+    },
+    "third_party/blink/renderer/modules/webaudio/offline_audio_context.cc": {
+      "before": "6cb71c7aa9aa6cb2b4578bd4809339452a3b4c3b31a073eb604d1be1ce74f9b4",
+      "after": "e9d9fa2ff4c0762728093905bde907ceddfa6fef383880906c82bc0920e971a0"
+    },
+    "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc": {
+      "before": "55e5cdaa6c821ac6f3b1811ae113157275cbc23728fef507eb361d9558b0926c",
+      "after": "b19eb7d5d14addf6a745c4b723fa3ec0ae047a62731ddc52cdb2ac29dee1df8e"
+    }
+  },
+  "scope": "Draft context completion ownership with proposed real Blink lifecycle tests; not executed yet",
+  "legacy_audio_repaired": false,
+  "production_admitted": false,
+  "native_tests_added": 4,
+  "callback_variants": 3,
+  "test_source_revision": "Bounded span view replaces unsafe byte-pointer indexing; warnings unchanged",
+  "patch_sha256": "afa90bc9e3967b5e1ec4d46a04da3c58ff7b7c5ea1d0681e2617711cf2fcaf60",
+  "native_tests_executed": false,
+  "companion_packet_sha256": "fe733de7d58d4b0c9ee99e4b7bc0cf398ea488cc41dc96f6d5b6b1289430f2fc"
+}

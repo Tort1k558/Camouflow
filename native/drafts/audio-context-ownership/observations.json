@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "passed": true,
+  "native_sources_modified": false,
+  "compiled_browser": false,
+  "native_tests_executed": false,
+  "production_admitted": false,
+  "targets": [
+    {
+      "source": "third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc",
+      "returncode": 0,
+      "response_sha256": "ee52dd461042d387d14088164b9de222cde4c9ffd6dfc4d6d8d9d2babda49c81",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc",
+      "returncode": 0,
+      "response_sha256": "1d8fc1ea10c5edec82623438eda825a0677be302df9d183b50e44a61fa50fc95",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webaudio/offline_audio_context.cc",
+      "returncode": 0,
+      "response_sha256": "ecccd2711952cc9cf2cb9e9be6e390e42f308a5d6f9af72b4e87ebf5326de8bb",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
+      "returncode": 0,
+      "response_sha256": "0db9dedc7862186ad2043133b69eba52a66a56f296b81ac3b21ccc7dbe7654a0",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "input_postguards_passed": true,
+  "packet_sha256": "28c8f39de70c5790ef2b059ef4552593775612106183bf2ae4cf9bea6a55a8b9",
+  "report_sha256": "131f87bda8a4b257eddb8745c477f91740f97687362cc3c7437f10edd57bb48e",
+  "preparation_sha256": "1c3833d041ffdb5e16440328698d74147138155f662d9f0e58a43c762ec11fdd",
+  "reverse_restored": true,
+  "combined_files": 6,
+  "scope": "Actual generated GN target flags; VFS overlay of both disjoint packets; syntax only, no native test execution"
+}
