@@ -151,3 +151,27 @@ def test_audio_r8_selected_native_record_binds_exact_cases_without_browser_admis
                  'native_seed_erasure_proved_for_all_future_scheduling', 'legacy_audio_repaired',
                  'privacy_admitted', 'production_admitted'):
         assert record[flag] is False
+
+
+def test_audio_r8_public_lifecycle_run_is_separate_from_r7_and_full_admission():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'audio-lifecycle-observations.json').read_bytes())
+    compiled = json.loads((candidate['directory'] / 'windows-build.json').read_bytes())
+    assert record['passed'] and record['public_cli_executed']
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['runtime_core_sha256_measured'] == compiled['runtime_core_sha256_measured']
+    assert record['receipt_sha256'] == compiled['receipt_sha256']
+    assert record['total_cases'] == 74 and record['total_checks'] == 346
+    assert {name: (row['cases'], row['checks']) for name, row in record['modes'].items()} == {
+        'baseline': (24, 114), 'legacy': (26, 118), 'math': (24, 114)}
+    assert all(row['passed'] and row['resources_closed'] and row['pending_detach_window_ms'] == 150
+               for row in record['modes'].values())
+    assert record['r7_comparison_record_sha256'] == hashlib.sha256(
+        (ROOT / 'native/drafts/audio-lifecycle-runtime/r7-observations.json').read_bytes()).hexdigest()
+    for name, digest in record['source_sha256'].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    for flag in ('postguards_passed', 'driver_postguard_passed', 'runtime_asset_postguards_passed', 'resources_closed'):
+        assert record[flag] is True
+    for flag in ('native_seed_erasure_proven', 'all_future_scheduling_verified', 'legacy_audio_repaired',
+                 'full_runtime_suite_admitted', 'privacy_admitted', 'production_admitted'):
+        assert record[flag] is False

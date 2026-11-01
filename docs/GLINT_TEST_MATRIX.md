@@ -1,5 +1,24 @@
 # Glint browser test matrix
 
+## 2026-11-01: R8 public Audio lifecycle CLI passed
+
+[Runtime evidence](../native/drafts/upstream-156-audio-r8/audio-lifecycle-observations.json):
+the actual public CLI executed against the independent R8 runtime, not the
+writable build output or the preserved R7 binary.
+
+| Mode | Cases | Checks |
+| --- | ---: | ---: |
+| Baseline | 24 | 114 |
+| Legacy | 26 | 118 |
+| Math | 24 | 114 |
+| **Total** | **74** | **346** |
+
+The 34.911-second run passed core/receipt/source, all runtime-asset and driver
+postguards; owned resources closed. The 150 ms detach window is bounded; JS does
+not prove native seed erasure or every future schedule. This does not repair
+Legacy DSP fidelity, admit the entire runtime suite or grant production release.
+The R7 isolated collector and earlier unexecuted-CLI notes remain historical.
+
 ## 2026-11-01: R8 selected linked native cases passed
 
 [Exact native evidence](../native/drafts/upstream-156-audio-r8/native-selected-observations.json),

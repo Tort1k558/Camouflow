@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "passed": true,
+  "public_cli_executed": true,
+  "scope": "Owned completion/iframe lifecycle only; 150ms pending-detach window, not all future scheduling, DSP fidelity, private-key erasure or privacy admission",
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "10dad15a0065aa71a7527c099cced71301ab487818ef3740bc0ac52ecad9837d",
+  "raw_report_sha256": "662b514e9600e0bf1273e0ef692164719ee6cb81633ea0eb2f55c8d7b43199ff",
+  "independent_runtime_proof_sha256": "7d9a9213e221be52bc6fc7dfadcdbdf956751eafe6ecfff79a9510c572d1cfc7",
+  "duration_seconds": 34.911,
+  "modes": {
+    "baseline": {
+      "passed": true,
+      "resources_closed": true,
+      "cases": 24,
+      "checks": 114,
+      "pending_detach_window_ms": 150
+    },
+    "legacy": {
+      "passed": true,
+      "resources_closed": true,
+      "cases": 26,
+      "checks": 118,
+      "pending_detach_window_ms": 150
+    },
+    "math": {
+      "passed": true,
+      "resources_closed": true,
+      "cases": 24,
+      "checks": 114,
+      "pending_detach_window_ms": 150
+    }
+  },
+  "total_cases": 74,
+  "total_checks": 346,
+  "source_sha256": {
+    "scripts/verify_native_audio_lifecycle.py": "4db41887f2f29c3a51babf98e9f0f3bba061d555392902b95b9bfdb07f7d41d6",
+    "native/fixtures/audio/lifecycle.js": "a4087e34a7581f92f1eef5fe59b21645c1987131822d08a864aa49306645162f",
+    "scripts/verify_native_audio_compatibility.py": "55a5e20100ef4214f10a9f02272382319ae78518e062092fd94bdeff372644a4"
+  },
+  "postguards_passed": true,
+  "driver_postguard_passed": true,
+  "runtime_asset_postguards_passed": true,
+  "resources_closed": true,
+  "r7_comparison_record_sha256": "6999adfd2ebd196326a6993031382b02d1d73bd5e34719cc4a4edb49da7ea735",
+  "native_seed_erasure_proven": false,
+  "all_future_scheduling_verified": false,
+  "legacy_audio_repaired": false,
+  "full_runtime_suite_admitted": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

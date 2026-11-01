@@ -25,8 +25,9 @@ passed 135 cases across five exact groups, including all seven new lifecycle
 cases, with final source/core/toolchain guards. Independent browser, broader
 native-target and package admission remain pending.
 The new [Audio lifecycle verifier](drafts/audio-lifecycle-runtime/README.md)
-has a measured R7 fixture baseline of 74 cases/346 checks, separate from the
-failing Legacy DSP compatibility gate. Historical rows below retain their own
+has now passed its actual public CLI on R8: **74 cases/346 checks**, with unchanged
+source/runtime/driver and closed resources. Its R7 comparison baseline remains
+separate, as does the failing Legacy DSP compatibility gate. Historical rows below retain their own
 patch-chain scopes.
 
 **Upstream release blocker (October 18, 2026):** the fork is pinned to Chromium
