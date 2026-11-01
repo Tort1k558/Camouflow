@@ -1,5 +1,17 @@
 # Glint architecture
 
+## 2026-11-01: R7 runtime readback results
+
+The [completed owned diagnostics](drafts/upstream-156-webgpu-r7/runtime-observations.json)
+confirm the original retained-array and producer-mutation probes now pass.
+No smaller geometry or early buffer-release substitute was used. Fifteen of
+sixteen named groups pass after an independent exact-R7 normal-profile WebGPU
+launch; the original runner rejection and legacy Audio failures are preserved.
+Legacy post-render masking disagrees by one ULP with exact graph/analyser/worklet
+observations. Fix the policy/processing boundary, not the validation tolerance.
+AudioMath long-buffer/restart coverage is separate from legacy compatibility and
+real-device cohort verification; no broad runtime or production admission follows.
+
 ## 2026-11-01: measured R7 Windows baseline
 
 R7 is now compiled. The [bound build/baseline evidence](drafts/upstream-156-webgpu-r7/windows-build-baseline.json)

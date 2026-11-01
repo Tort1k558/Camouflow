@@ -82,3 +82,25 @@ def test_surface_launch_accepts_r7_before_requiring_a_real_workspace(monkeypatch
     with pytest.raises(PreflightReached):
         units.verify(tmp_path, tmp_path / 'not-executed.json', target='surface-launch',
                      candidate_name='upstream-156-webgpu-r7')
+
+
+def test_r7_runtime_record_preserves_original_failures_and_audio_boundary():
+    directory = build.load_candidate('upstream-156-webgpu-r7')['directory']
+    record = json.loads((directory / 'runtime-observations.json').read_bytes())
+    baseline = json.loads((directory / 'windows-build-baseline.json').read_bytes())
+    assert record['runtime_core_sha256_measured'] == baseline['runtime']['runtime_core_sha256_measured']
+    assert len(record['original_gates']) == record['total_named_gates'] == 16
+    assert sum(row['passed'] for row in record['original_gates']) == record['original_passing_gates'] == 14
+    assert {row['name'] for row in record['original_gates'] if not row['passed']} == {
+        'normal-profile-webgpu', 'audio-compatibility'}
+    assert record['corrected_normal_profile_webgpu']['passed']
+    assert record['corrected_normal_profile_webgpu']['validators_unchanged']
+    assert record['effective_passing_gates'] == 15
+    assert record['retained_array']['result']['cases'] == 144
+    assert record['retained_array']['result']['profile_isolation_proven'] is False
+    assert record['retained_mutation']['result']['producer_mutation_visible']
+    assert record['long_audio']['profile_summary']['reference_selectors_covered']
+    metrics = record['audio_differences']
+    assert metrics['original_report_passed'] is False and metrics['pass_criteria_unchanged']
+    assert all(row['maximum_ulp_distance'] == 1 for row in metrics['groups'] if row['mode'] == 'legacy')
+    assert record['complete_compatibility_passed'] is record['privacy_admitted'] is record['production_admitted'] is False

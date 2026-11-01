@@ -1,5 +1,21 @@
 # Glint: план проверки и развития
 
+## 2026-11-01: R7 diagnostics complete; Audio work remains
+
+The original retained-buffer failure is now repaired in measured R7 fixtures:
+144 retained-array cases and the original retained-mutation probe passed without
+changing geometry or releasing buffers early. See the [runtime record](../native/drafts/upstream-156-webgpu-r7/runtime-observations.json).
+The corrected normal-profile WebGPU launch passed; its earlier R6-only runner
+rejection remains preserved. Effective named coverage is 15/16, not full admission.
+
+Next native work must address legacy post-render Audio/readback disagreement with
+fidelity, analyser and worklet consumers. Sample diagnostics measured one-ULP
+differences; relaxing equality is not a repair. Keep versioned compatibility and
+the coherent math path separate from legacy evidence. Long-buffer math covers
+both selectors and restart, but is not a measured real-device cohort.
+Then repeat affected combined checks and complete guarded delivery/manager gates;
+the full goal, release and privacy/production admission remain open.
+
 ## 2026-11-01: R7 compiled; baseline passed, full diagnostics in progress
 
 The R7 Windows retry completed; **116 native cases and 160 baseline browser

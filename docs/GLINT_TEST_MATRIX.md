@@ -1,5 +1,26 @@
 # Glint browser test matrix
 
+## 2026-11-01: R7 retained-readback repair measured
+
+The [completed runtime record](../native/drafts/upstream-156-webgpu-r7/runtime-observations.json)
+preserves all original outcomes: 14/16 named groups passed initially. One rejected
+an R7 launch because its saved script required R6; a separate exact-selector copy
+passed with unchanged validators. Effective coverage is **15/16**, not a fully
+passing suite. Legacy Audio remains failed.
+
+| Diagnostic | R7 result | Limit |
+| --- | --- | --- |
+| Original retained-array probe | **144 cases / 24 observations passed** | Original JS/geometry; no early buffer release; profile isolation not independently proved |
+| Retained producer mutation | **Passed**: 2 formats × 3 mips × 3 layers × 2 epochs | Owned fixture, not arbitrary application coverage |
+| Normal-profile WebGPU correction | **Passed**: noise observed, direct/shader/PNG agree | Original pre-browser runner rejection retained |
+| Large-resource / GPU recovery | **All three groups passed** | Controlled baseline/ready recovery fixtures |
+| Long AudioMath | **Passed**: both selectors, exact restart, unchanged linear graphs | Alternate selector differs in 12 long-buffer rows; no device-cohort admission |
+| Legacy Audio | **Failed**: fidelity, analyser, worklet | Measured differences are at most one ULP; exact-match requirements stay unchanged |
+
+All main and extra diagnostics reached terminal measurement reports. Input/core
+postguards and owned-process cleanup passed. Audio metric details and raw-report
+hashes are bound in the record. No production or external anti-bot admission.
+
 ## 2026-11-01: R7 Windows build and baseline verified
 
 Evidence: [R7 build/baseline](../native/drafts/upstream-156-webgpu-r7/windows-build-baseline.json).

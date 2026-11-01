@@ -1,0 +1,354 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-webgpu-r7",
+  "complete_compatibility_passed": false,
+  "scope": "Completed owned R7 runtime diagnostics with original failed runs preserved; not production or third-party acceptance",
+  "candidate_manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "57bdabaf11f6ad9f37f1b00c6e687df8c2f5ae3587fb06dcd334cf4cea82bdd5",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "original_main_report_sha256": "e3837e392b811e8a2d20a3b8f64109e777fb98173e9f83ba8d028fa3ac3d0d71",
+  "original_extra_report_sha256": "0ac3d1489b7b5056485f34b977e25e0b40dcceb33d84aa7877dae43062cfc287",
+  "original_gates": [
+    {
+      "name": "runtime-suite",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 444.734,
+      "report_sha256": "a3beb4e5bf04c72f9f31a1d66776b82c90bd6117f3eec12ab31750c6864454c2"
+    },
+    {
+      "name": "normal-profile-surfaces",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 106.698,
+      "report_sha256": "c996914987982142b7fee08e2d82b394be56ce18a5d1ccf05443dd70ac88fd1d"
+    },
+    {
+      "name": "normal-profile-webgpu",
+      "passed": false,
+      "returncode": 2,
+      "duration_seconds": 0.125
+    },
+    {
+      "name": "worker-startup",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 37.639,
+      "report_sha256": "0ff5c811f4662a7dca5af06cc31c52fd315921588cedbc6f0607a21a0791d9be"
+    },
+    {
+      "name": "surfaces",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 132.83,
+      "report_sha256": "b44cdc57c35133d0b7a8012e64a88dc48fbd9b2f389a607ab50c3ac028c7b677"
+    },
+    {
+      "name": "gpu-contexts",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 29.084,
+      "report_sha256": "8748db5d89ea4ed2ec93b257b9578a16b05f6ac74a4ffceca551f67e8910a5c9"
+    },
+    {
+      "name": "webgpu-consistency",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 21.278,
+      "report_sha256": "a5207bccbdf392fc97e1c464f631c35acffec36736e7df39cf8225b5713820f4"
+    },
+    {
+      "name": "combined-math",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 384.245,
+      "report_sha256": "a41b3f041f303ca971e47fa72d5b338239c2bf3bf4ad7d6c5496b20bc5aeb484"
+    },
+    {
+      "name": "audio-compatibility",
+      "passed": false,
+      "returncode": 1,
+      "duration_seconds": 46.765,
+      "report_sha256": "559d2a49309ab7af321fa8d7f8949ee5e0b59070116470e9aa5c85cb1876228a"
+    },
+    {
+      "name": "webgpu-context-consistency",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 23.799,
+      "report_sha256": "6c18751aea162f0e0df3991744eca9c38ccc5fc5330e19901104fcdfb7974d9e"
+    },
+    {
+      "name": "audio-math-long-buffer",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 47.791,
+      "report_sha256": "4d957171eeda1903b00bc8f47756b706fb2d636e99eed6f05916ff3f596b6a08"
+    },
+    {
+      "name": "retained-array-contexts",
+      "passed": true,
+      "returncode": 0,
+      "duration_seconds": 51.546,
+      "report_sha256": "b778f879341eeffb1b6df93f5cd818da72516dda849a260bb79ff5ca1eda615c"
+    },
+    {
+      "name": "retained-mutation",
+      "passed": true,
+      "returncode": 0,
+      "report_sha256": "4dc72ba7399542905a01e256359b955177906284ff777cb26bd908158b5a4b06"
+    },
+    {
+      "name": "large-resource",
+      "passed": true,
+      "returncode": 0,
+      "report_sha256": "9e073fabd2f7ae193f138d95192919b46000fd11a0aefac686e78b97a3409eb3"
+    },
+    {
+      "name": "gpu-recovery-baseline",
+      "passed": true,
+      "returncode": 0,
+      "report_sha256": "b796da50ab8adefa92e7d994f32f5dfa28ce1a1c394137eb66abc130057dbb63"
+    },
+    {
+      "name": "gpu-recovery-ready",
+      "passed": true,
+      "returncode": 0,
+      "report_sha256": "6113b347179c5422d32be2777988e871fca35bcb78bb675c7c979a08b58127d2"
+    }
+  ],
+  "original_passing_gates": 14,
+  "total_named_gates": 16,
+  "corrected_normal_profile_webgpu": {
+    "passed": true,
+    "report_sha256": "8ac3d54bd5ae1c604150c05b77b2f4411a183a0d51bd6d5780d4165c8384060f",
+    "preparation_sha256": "74ecf0304f0f62d3700f258c6136c77a8f6e134458f7c25323c11cae78cb2f9a",
+    "original_rejection_log_sha256": "3acd42f976ba192708920b65cc221b810036dc9baf82e085749698c122220b87",
+    "selector_and_message_only": true,
+    "validators_unchanged": true,
+    "noise_observed": true,
+    "readback_consistent": true
+  },
+  "effective_passing_gates": 15,
+  "retained_array": {
+    "report_sha256": "b778f879341eeffb1b6df93f5cd818da72516dda849a260bb79ff5ca1eda615c",
+    "javascript_sha256": "c21dbb73a86ceb33291b0cd589fdf49a6994f77f5a9a880829577329166f4e9f",
+    "result": {
+      "consistency_gate_passed": true,
+      "observations": 24,
+      "cases": 144,
+      "same_origin_and_restart_agreement": true,
+      "profile_isolation_proven": false,
+      "privacy_admitted": false,
+      "production_admitted": false
+    }
+  },
+  "retained_mutation": {
+    "report_sha256": "4dc72ba7399542905a01e256359b955177906284ff777cb26bd908158b5a4b06",
+    "javascript_sha256": "0fc71b034d6137a2460a314c23b6da9996ad7182aee18bc525a3e6c834669324",
+    "result": {
+      "consistency_gate_passed": true,
+      "formats": 2,
+      "mips": 3,
+      "layers": 3,
+      "epochs": 2,
+      "producer_mutation_visible": true,
+      "privacy_admitted": false,
+      "production_admitted": false
+    }
+  },
+  "long_audio": {
+    "report_sha256": "4d957171eeda1903b00bc8f47756b706fb2d636e99eed6f05916ff3f596b6a08",
+    "profile_summary": {
+      "reference_selectors_covered": true,
+      "comparisons": [
+        {
+          "index": 0,
+          "reference_selector": 0,
+          "restart_exact": true,
+          "unmodified_graphs_exact": true,
+          "math_baseline_different_rows": 0
+        },
+        {
+          "index": 1,
+          "reference_selector": 1,
+          "restart_exact": true,
+          "unmodified_graphs_exact": true,
+          "math_baseline_different_rows": 12
+        }
+      ],
+      "internal_backend_observed": false,
+      "device_cohort_verified": false,
+      "passed": true
+    }
+  },
+  "audio_differences": {
+    "report_sha256": "86bcc50cd501e6e9c18dd46ecb0362bf2f02c53b38f3a939b1a8b2a5ed035fda",
+    "raw_report_sha256": "298baa62c12e4c632696f0c2645d268d8548cf02f6c134017cbe85c7bdac9164",
+    "groups": [
+      {
+        "profile_index": 0,
+        "mode": "baseline",
+        "probe": "fidelity",
+        "comparisons": 84,
+        "compared_samples": 43008,
+        "changed_samples": 0,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 0,
+        "maximum_absolute_difference": 0,
+        "observed_rows": 54,
+        "compared_rows": 42,
+        "rows_without_sample_reference": 12,
+        "original_failed_rows": 0,
+        "original_probe_passed": true
+      },
+      {
+        "profile_index": 0,
+        "mode": "baseline",
+        "probe": "analyser",
+        "comparisons": 12,
+        "compared_samples": 3072,
+        "changed_samples": 0,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 0,
+        "maximum_absolute_difference": 0,
+        "observed_rows": 12,
+        "compared_rows": 12,
+        "rows_without_sample_reference": 0,
+        "original_failed_rows": 0,
+        "original_probe_passed": true
+      },
+      {
+        "profile_index": 0,
+        "mode": "baseline",
+        "probe": "worklet",
+        "comparisons": 12,
+        "compared_samples": 24576,
+        "changed_samples": 0,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 0,
+        "maximum_absolute_difference": 0,
+        "observed_rows": 12,
+        "compared_rows": 12,
+        "rows_without_sample_reference": 0,
+        "original_failed_rows": 0,
+        "original_probe_passed": true
+      },
+      {
+        "profile_index": 0,
+        "mode": "legacy",
+        "probe": "fidelity",
+        "comparisons": 84,
+        "compared_samples": 43008,
+        "changed_samples": 6480,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 1,
+        "maximum_absolute_difference": 1.4901161193847656e-08,
+        "observed_rows": 54,
+        "compared_rows": 42,
+        "rows_without_sample_reference": 12,
+        "original_failed_rows": 12,
+        "original_probe_passed": false
+      },
+      {
+        "profile_index": 0,
+        "mode": "legacy",
+        "probe": "analyser",
+        "comparisons": 12,
+        "compared_samples": 3072,
+        "changed_samples": 1592,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 1,
+        "maximum_absolute_difference": 1.4901161193847656e-08,
+        "observed_rows": 12,
+        "compared_rows": 12,
+        "rows_without_sample_reference": 0,
+        "original_failed_rows": 12,
+        "original_probe_passed": false
+      },
+      {
+        "profile_index": 0,
+        "mode": "legacy",
+        "probe": "worklet",
+        "comparisons": 12,
+        "compared_samples": 24576,
+        "changed_samples": 11942,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 1,
+        "maximum_absolute_difference": 1.4901161193847656e-08,
+        "observed_rows": 12,
+        "compared_rows": 12,
+        "rows_without_sample_reference": 0,
+        "original_failed_rows": 12,
+        "original_probe_passed": false
+      },
+      {
+        "profile_index": 0,
+        "mode": "math",
+        "probe": "fidelity",
+        "comparisons": 84,
+        "compared_samples": 43008,
+        "changed_samples": 0,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 0,
+        "maximum_absolute_difference": 0,
+        "observed_rows": 54,
+        "compared_rows": 42,
+        "rows_without_sample_reference": 12,
+        "original_failed_rows": 0,
+        "original_probe_passed": true
+      },
+      {
+        "profile_index": 0,
+        "mode": "math",
+        "probe": "analyser",
+        "comparisons": 12,
+        "compared_samples": 3072,
+        "changed_samples": 0,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 0,
+        "maximum_absolute_difference": 0,
+        "observed_rows": 12,
+        "compared_rows": 12,
+        "rows_without_sample_reference": 0,
+        "original_failed_rows": 0,
+        "original_probe_passed": true
+      },
+      {
+        "profile_index": 0,
+        "mode": "math",
+        "probe": "worklet",
+        "comparisons": 12,
+        "compared_samples": 24576,
+        "changed_samples": 0,
+        "nonfinite_pairs": 0,
+        "signed_zero_differences": 0,
+        "maximum_ulp_distance": 0,
+        "maximum_absolute_difference": 0,
+        "observed_rows": 12,
+        "compared_rows": 12,
+        "rows_without_sample_reference": 0,
+        "original_failed_rows": 0,
+        "original_probe_passed": true
+      }
+    ],
+    "original_report_passed": false,
+    "postguards_passed": true,
+    "pass_criteria_unchanged": true
+  },
+  "remaining_failed_gate": "audio-compatibility: legacy fidelity/analyser/worklet",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "third_party_antibot_verified": false
+}
