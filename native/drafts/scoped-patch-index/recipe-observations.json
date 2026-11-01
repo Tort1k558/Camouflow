@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Synthetic independent Git commits with exact public R7 bytes and patches; not a real Chromium source transition or compile",
+  "public_candidate_manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "patches": 129,
+  "compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "final_owned_files_matched": 400,
+  "upstream_files_restored": 270,
+  "real_indices_unchanged": true,
+  "unrelated_files_preserved": 192,
+  "scoped_index_bytes": {
+    "index-0": 41158,
+    "index-1": 342,
+    "index-2": 4790
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "passed": true,
+  "selected": false,
+  "packet_sha256": "90c7224f47c14920e63d0f01e0503c255603014ae6fcffa135dc065019e1cf16",
+  "checker_sha256": "f1d8216ca50c6c46481878dfb41ce7f9e262605279a88029f1b16454ca04fa1e",
+  "host": {
+    "passed": true,
+    "counts": {
+      "passed": 1171,
+      "failed": 0,
+      "skipped": 1
+    },
+    "input_postguards_passed": true,
+    "log_sha256": "4be16c856af7a0d90a6760d4c893915d0aee9bbbe4d404df33cad71fe96e876a",
+    "duration_seconds": 144.219
+  },
+  "host_report_sha256": "ddfd62c96f8688648cf98159d102951e8ffb55a15b80f16c031a2ef30d75b4ec",
+  "recipe_report_sha256": "7c1cdaadce4e05998ea402e67aa840d71897b583bc0275298205fdf01fa965d2",
+  "public_recipe_sha256": "7c1cdaadce4e05998ea402e67aa840d71897b583bc0275298205fdf01fa965d2",
+  "recipe_checker_sha256": "fc9cd6b9765ebf5bca370e05bc5fb4506165e501fce09b529ead8781c0543a85",
+  "recipe_checker_template_sha256": "be8d18cb695aa28242927a85718cb1cada79ce3266880f07a219fd637ae27f6e",
+  "canonical_builder_modified": false,
+  "compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "scope": "Pinned detached builder checks and synthetic source recipe only; no native speed measurement"
+}

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "selected": false,
+  "compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "source": "scripts/native_build.py",
+  "before_sha256": "fd1d9d54aceaae53587622d21316df4b20d2dcdb1daabfbb6cb7108a6b908cd7",
+  "after_sha256": "b52fe4705af871efd5f521fabd6311620090b0cd2fa16d20417e529414b36bfc",
+  "patch_sha256": "005e0ab80722cf5cb7dd8ad1aad32777c299b5a27566708f45dc422a8be0b5c1",
+  "checker_sha256": "f1d8216ca50c6c46481878dfb41ce7f9e262605279a88029f1b16454ca04fa1e",
+  "base_project_head": "6c796e5c8f12ab396457393d8c1f417ebe2a11fc",
+  "base_candidate": "upstream-156-webgpu-r7",
+  "base_candidate_manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "test_inputs_sha256": {
+    "tests/test_native_patch_net_paths.py": "7c3e626a9e657f0412e0739b9a610d3261c142a2152086ef66c680a2f1a95b53",
+    "tests/test_release_tools.py": "438b9e7c7e6e5b1b9f62a48ccefb85ee8d64edc079a557afb8e2c561384ac937"
+  },
+  "scope": "Unselected scoped/bulk Git-index preparation; active builder unchanged"
+}
