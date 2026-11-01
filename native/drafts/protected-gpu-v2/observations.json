@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "candidate": "upstream-156-image-r10",
+  "candidate_manifest_sha256": "3a1472a565328348b1cf4ae0038fbf905d2bd547f594f2cc4664b4143a1d7c48",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "7fb4b5776c989fa462b99821cb6a6f3b9adad0b2499dc3ca5f1fd2ab40437156",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "validator_sha256": "74af93564d9b5fbae0fb23762aa3195d17b6a5ce009aa63eea2ffd34a16a6c16",
+  "source_report_sha256": "ab5f144a2d9dfc4eb89b37aa63ab31ae15914b4571b5cefb8d07d2b2a54960e1",
+  "context_observations": 40,
+  "texture_observations": 240,
+  "isolated_profiles": 2,
+  "restart_pairs": 2,
+  "phases": [
+    {
+      "profile": "baseline",
+      "restart": false,
+      "passed": true,
+      "validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 0,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "resources_closed": true
+    },
+    {
+      "profile": "profile-a",
+      "restart": false,
+      "passed": true,
+      "validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 496,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "resources_closed": true
+    },
+    {
+      "profile": "profile-a",
+      "restart": true,
+      "passed": true,
+      "validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 496,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "resources_closed": true
+    },
+    {
+      "profile": "profile-b",
+      "restart": false,
+      "passed": true,
+      "validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 544,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "resources_closed": true
+    },
+    {
+      "profile": "profile-b",
+      "restart": true,
+      "passed": true,
+      "validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 544,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "resources_closed": true
+    }
+  ],
+  "malformed_data_injections_rejected": 38,
+  "scope": "Matched unselected baseline and two protected profile identities on preserved R10, five owned loopback launches; fixture-specific, not full GPU/browser acceptance",
+  "initial_harness_failure_preserved": true,
+  "legacy_validator_replaced": false,
+  "full_browser_admitted": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

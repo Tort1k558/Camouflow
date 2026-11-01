@@ -16,6 +16,11 @@ The old GPU validator still expects raw texture pixels; a separate new matched
 GPU harness also exposed a baseline-normalization bug. Neither failure is hidden
 or reclassified as a repaired browser result.
 
+The [corrected version-2 GPU contract](../protected-gpu-v2/README.md) subsequently
+passed a matched baseline, two protected profiles and both restarts: 40 contexts,
+240 texture observations. This narrow result does not repair the copy/placeholder
+failures above or admit R10 as a complete browser.
+
 | Component | State |
 | --- | --- |
 | Base | Exact 132-patch R9 prefix, unchanged dependency/build pins |

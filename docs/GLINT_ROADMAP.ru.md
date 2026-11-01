@@ -1,5 +1,14 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: matched protected GPU consistency checks passed
+
+[Version-2 GPU contract](../native/drafts/protected-gpu-v2/README.md) passed a fresh
+R10 baseline, two protected profiles and both restarts: 40 contexts / 240 texture
+observations. Exact repeats, shader copies, padding/alpha, profile separation and
+restart identity are checked. The initial baseline-normalization harness failure
+is retained. This does not repair source-copy/placeholder or shared-worker
+rendering failures, establish a full GPU mask oracle, or grant browser admission.
+
 ## 2026-11-02: R10 built; 581 native executions passed; browser failures retained
 
 [R10 evidence](../native/drafts/upstream-156-image-r10/README.md): the incremental
