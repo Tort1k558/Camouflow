@@ -13,6 +13,50 @@ ROOT = Path(__file__).resolve().parents[1]
 CANDIDATE = 'upstream-156-image-r10'
 
 
+def test_image_r10_measured_build_and_native_records_keep_runtime_admission_separate():
+    candidate = build.load_candidate(CANDIDATE)
+    records = {name: json.loads((candidate['directory'] / (name + '.json')).read_bytes())
+               for name in ('windows-build', 'native-all-observations', 'runtime-observations')}
+    for record in records.values():
+        assert record['candidate'] == CANDIDATE
+        assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+        assert record['privacy_admitted'] is record['production_admitted'] is False
+    windows, native, runtime = (records[name] for name in records)
+    assert windows['compiled'] and windows['build']['jobs'] == 4
+    assert windows['build']['siso_steps'] == 66
+    assert windows['build']['siso_duration_seconds'] == 957.96
+    assert windows['final_owned_source_files_matched'] == 406
+    assert windows['changed_source_files'] == 12
+    assert windows['build_output_timestamps_modified'] is False
+    assert native['passed'] and native['postguards_passed']
+    assert native['native_groups'] == len(native['targets']) == 28
+    assert native['native_case_executions'] == sum(row['case_executions'] for row in native['targets']) == 581
+    actual = {(row['build_target'], suite, case) for row in native['targets']
+              for suite, cases in row['required_cases'].items() for case in cases}
+    assert len(actual) == native['distinct_binary_suite_cases'] == 424
+    added = next(row for row in native['targets'] if row['target'] == 'gpu-image-sources')
+    assert added['passed'] and added['case_executions'] == 21
+    assert added['required_cases'] == {suite: sorted(cases) for suite, cases in units.GPU_IMAGE_SOURCE_TESTS.items()}
+    assert runtime['passed'] is runtime['measurement_complete'] is False
+    assert runtime['phases_attempted'] == len(runtime['phases']) == 14
+    assert runtime['frame_measurement_complete'] is False
+    assert runtime['invalid_launches_rejected'] == 11
+    assert runtime['invalid_launch_positive_control_passed']
+    assert runtime['new_gpu_validator_first_attempt']['passed'] is False
+    assert runtime['source_core_driver_asset_postguards_passed'] and runtime['owned_resources_closed']
+    assert not runtime['external_sites_tested'] and not runtime['third_party_antibot_verified']
+
+
+def test_image_r10_full_host_record_names_the_exact_measured_commit():
+    candidate = build.load_candidate(CANDIDATE)
+    record = json.loads((candidate['directory'] / 'host-observations.json').read_bytes())
+    assert record['passed'] and record['full_suite_executed'] and record['input_postguards_passed']
+    assert record['measured_commit'] == 'b65851516c0f79acc12854da8c0a94f7ebb284ed'
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['counts'] == {'passed': 5897, 'failed': 0, 'skipped': 1}
+    assert record['production_admitted'] is False
+
+
 def test_image_r10_keeps_exact_r9_prefix_and_explicit_new_upstream_inputs():
     candidate = build.load_candidate(CANDIDATE)
     previous = build.load_candidate('upstream-156-canvas-r9')

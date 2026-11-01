@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Full host test suite, not browser or release admission",
+  "measured_commit": "b65851516c0f79acc12854da8c0a94f7ebb284ed",
+  "candidate_manifest_sha256": "3a1472a565328348b1cf4ae0038fbf905d2bd547f594f2cc4664b4143a1d7c48",
+  "counts": {
+    "passed": 5897,
+    "failed": 0,
+    "skipped": 1
+  },
+  "duration_seconds": 661.688,
+  "input_postguards_passed": true,
+  "full_suite_executed": true,
+  "report_sha256": "b0566d064e0524f0cfcd95ff1c409e36b44b2745a928c1d43bbc949e37ac4cc1",
+  "log_sha256": "02110106fa3c591d5dc3cb78301f17df1fb822793ce03d9583a7f2f0c5ef47f6",
+  "production_admitted": false
+}

@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## 2026-11-02: R10 built; 581 native executions passed; browser failures retained
+
+[R10 evidence](../native/drafts/upstream-156-image-r10/README.md): the incremental
+Windows build completed 66 steps in 15m 57.96s at j4. All 28 native groups passed
+581 executions / 424 distinct cases, including the new 21-case image-source group.
+The exact recorded host commit passed 5897 tests with one skip.
+
+Real browser checks are not admitted: protected opaque WebGL transferToImageBitmap
+rejects its source copy, transferred worker frames are not observed, and one
+shared module-worker comparison differs on restart. Eleven invalid launch cases
+reject correctly. The legacy GPU validator and a separate new baseline-normalization
+harness failure remain recorded, not relabelled as browser passes.
+
+Next: a connected source-copy/placeholder repair batch, separate harness correction,
+then fresh native/runtime, large-image/format/resource and mixed-policy checks.
+Preserve independent R9/R10 runtimes; manager/package/cohort/security gates stay open.
+
 ## 2026-11-02: R10 registered, not built/executed
 
 [R10](../native/drafts/upstream-156-image-r10/README.md) now registers the complete
