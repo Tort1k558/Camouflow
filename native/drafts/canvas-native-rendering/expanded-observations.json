@@ -1,0 +1,3958 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "10dad15a0065aa71a7527c099cced71301ab487818ef3740bc0ac52ecad9837d",
+  "headless": true,
+  "proxy_used": false,
+  "source_core_driver_asset_postguards_passed": true,
+  "fixture_thread_closed": true,
+  "measurement_complete": true,
+  "scope": "Native rendering controls, two backing requests, exact opaque colour and PNG export contracts",
+  "raw_report_sha256": "2c2adf40cc88c2ba597e3dcb5e3a3445b55f976c7103dcf8c2125f468d323c96",
+  "preflight_failure_sha256": "380a32c3b864c85a07bf965c0cf090f3a03814f88fd852e450f3d1b1a28ddc1e",
+  "runner_sha256": "ae01bb607e8a2ca238092ec6ee5d322f804afafb0c97c28b6b292b3c512969a5",
+  "base_probe_sha256": "1fe15a7223eaa4d5d11db4ecb8fe39df7426c4ecfb77e2fdc1fa0745d4976139",
+  "probe_sha256": "7c2ce91a6aa018b9c87bc8a1ffbb4187fe066b08bf9fa77cccf16c70d91d6169",
+  "probe_extension_sha256": "154c109950e8a5fb4ce852e6f967cd2c9142763fea47a05a028d468dd4a8fa52",
+  "measured_validator_sha256": "547512c28f047f41749698620069c64083098aae9b4d6e27316d9751b5bbbabb",
+  "publication_validator_sha256": "590029b21113b0fa3d489eac47a46ff3ca879731c76b45446d7f67d7c49699e6",
+  "text_validator_sha256": "977740d1048b54b399223f339948402babd3f6df2b86ddc952b151f944310cc3",
+  "publication_validator_rechecked_all_phases": true,
+  "image_observations": 280,
+  "png_exports": 392,
+  "restart_pairs_exact": 7,
+  "cross_context_pixels_and_metrics_exact": true,
+  "presets": [
+    {
+      "name": "native",
+      "rasterization": "native",
+      "text_tuning": "native",
+      "observed": {
+        "schema": 1,
+        "scope": "Native text, two backing requests, exact colours and PNG exports in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    {
+      "name": "aliased",
+      "rasterization": "aliased",
+      "text_tuning": "native",
+      "observed": {
+        "schema": 1,
+        "scope": "Native text, two backing requests, exact colours and PNG exports in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b2a6266a8c3891e6b0ad5b63866beb1d7361acdc6609fec0a6dc0f363fa50450"
+                      }
+                    ],
+                    "metrics": [
+                      175,
+                      -1,
+                      174,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    {
+      "name": "grayscale",
+      "rasterization": "grayscale",
+      "text_tuning": "native",
+      "observed": {
+        "schema": 1,
+        "scope": "Native text, two backing requests, exact colours and PNG exports in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dff8d272729edeaa39105d2498b3016ec1233d49d719b9f5b5551d9c3a937b30"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3215227b2cd515bcb33a81eb608eb179c94a78639ec4b6b59e69b7f5627b3976"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      -1,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    {
+      "name": "cleartype-rgb",
+      "rasterization": "cleartype-rgb",
+      "text_tuning": "native",
+      "observed": {
+        "schema": 1,
+        "scope": "Native text, two backing requests, exact colours and PNG exports in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d4f013817f210aa4f65a583a08db4cb68cc034bd97531d1b7b3aa01867510739"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "c7ccf2a48a5ca51654bda006232bc8dea788085a336e87e7e51c697114eca407"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    {
+      "name": "cleartype-bgr",
+      "rasterization": "cleartype-bgr",
+      "text_tuning": "native",
+      "observed": {
+        "schema": 1,
+        "scope": "Native text, two backing requests, exact colours and PNG exports in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "dbf444ba9cf66421dfa49d836eaf7091ea079d6443c3428cbaac51e0bcd1e28b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "d095d7015c1e4a6407bcb7c201732111886132a9e9bf5b2d742ed34b8f5dc963"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "e45df40cac4d2697707394068c94748beabd99cefee35eff2eca62416aad8863"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "6aa225b691c18ada65af9a79d2789ebfd44af90c443124e017c79cb0d922133a"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    {
+      "name": "gamma14",
+      "rasterization": "native",
+      "text_tuning": "gamma-1400-contrast-300",
+      "observed": {
+        "schema": 1,
+        "scope": "Native text, two backing requests, exact colours and PNG exports in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "bb64338569b3bf6d80a4f8619fcc1962dd9e5ec5351e56c626c46afa93601727"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "7dfd647e06b250dd098a9fc9107e2a492741cf9334428ee2ca02a6de2a3e8937"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "a396d4a9943ab4fff329fc2f194dd2d742ef41434245ba4833397cda4e603ac5"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "f1b8adf099b7b26e4b9a059cf6ab84fa15145bc3d29a1b77eb39f675f318aa88"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    {
+      "name": "gamma22",
+      "rasterization": "native",
+      "text_tuning": "gamma-2200-contrast-500",
+      "observed": {
+        "schema": 1,
+        "scope": "Native text, two backing requests, exact colours and PNG exports in five contexts",
+        "rows": [
+          {
+            "name": "document-html",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "document-offscreen",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "same-origin-frame",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "toDataURL",
+                        "changedChannels": 0,
+                        "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582"
+                      },
+                      {
+                        "name": "toBlob",
+                        "changedChannels": 0,
+                        "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-classic",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          },
+          {
+            "name": "worker-module",
+            "variants": [
+              {
+                "willReadFrequently": false,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "87d30c7b4b93ed8a62ff7e71d212545c3c5bb6adc727ee46a1eb1b0d82329a82"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "b145cc466c4b5416c041bb15a8f53467a486d2640724ef68b2bf7089ca0c7a3b"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              },
+              {
+                "willReadFrequently": true,
+                "images": [
+                  {
+                    "alpha": true,
+                    "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "3e1541b4aec105074c865cec647842190360603f24b96ff86545832f10e1d4ca"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  },
+                  {
+                    "alpha": false,
+                    "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582",
+                    "repeatExact": true,
+                    "exports": [
+                      {
+                        "name": "convertToBlob",
+                        "changedChannels": 0,
+                        "sha256": "feb976e2e4193e4bd6ebab838db533d54c155997bcc9fda6e4a4a2a591a7e582"
+                      }
+                    ],
+                    "metrics": [
+                      171.240234375,
+                      0,
+                      171.507568359375,
+                      13,
+                      0
+                    ]
+                  }
+                ],
+                "plainChangedChannels": 0,
+                "multicolourChangedChannels": 0,
+                "passed": true
+              }
+            ],
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    }
+  ],
+  "phases": [
+    {
+      "name": "native",
+      "profile_name": "native",
+      "restart": false,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "fec41cf49f2836c7b998b4825f1f44b0c1d40bed35bd1f8eeb91d1a06ed611bf"
+    },
+    {
+      "name": "aliased",
+      "profile_name": "aliased",
+      "restart": false,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "9266af5ef1a46779df4fae016d93c382a7418c1890696e17229e1a055048bc09"
+    },
+    {
+      "name": "grayscale",
+      "profile_name": "grayscale",
+      "restart": false,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "3ae1d03c43ab4be160ac1062c69504dc46dc3c5de4e928a338aaee5bb16ea36b"
+    },
+    {
+      "name": "cleartype-rgb",
+      "profile_name": "cleartype-rgb",
+      "restart": false,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "fec41cf49f2836c7b998b4825f1f44b0c1d40bed35bd1f8eeb91d1a06ed611bf"
+    },
+    {
+      "name": "cleartype-bgr",
+      "profile_name": "cleartype-bgr",
+      "restart": false,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "88b492f08e3be441a8e3d067a7a550e24fb15e4a518570b261d10e6d85b03db1"
+    },
+    {
+      "name": "gamma14",
+      "profile_name": "gamma14",
+      "restart": false,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "1205e330e3f000ca58dcf6d96b05b8babff3dd3e91188293c2a9e45e36b44b9c"
+    },
+    {
+      "name": "gamma22",
+      "profile_name": "gamma22",
+      "restart": false,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "431aba8951104420d428c962dcea44e505abf298aed096cd23299eb86758b9d0"
+    },
+    {
+      "name": "native-restart",
+      "profile_name": "native",
+      "restart": true,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "fec41cf49f2836c7b998b4825f1f44b0c1d40bed35bd1f8eeb91d1a06ed611bf"
+    },
+    {
+      "name": "aliased-restart",
+      "profile_name": "aliased",
+      "restart": true,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "9266af5ef1a46779df4fae016d93c382a7418c1890696e17229e1a055048bc09"
+    },
+    {
+      "name": "grayscale-restart",
+      "profile_name": "grayscale",
+      "restart": true,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "3ae1d03c43ab4be160ac1062c69504dc46dc3c5de4e928a338aaee5bb16ea36b"
+    },
+    {
+      "name": "cleartype-rgb-restart",
+      "profile_name": "cleartype-rgb",
+      "restart": true,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "fec41cf49f2836c7b998b4825f1f44b0c1d40bed35bd1f8eeb91d1a06ed611bf"
+    },
+    {
+      "name": "cleartype-bgr-restart",
+      "profile_name": "cleartype-bgr",
+      "restart": true,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "88b492f08e3be441a8e3d067a7a550e24fb15e4a518570b261d10e6d85b03db1"
+    },
+    {
+      "name": "gamma14-restart",
+      "profile_name": "gamma14",
+      "restart": true,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "1205e330e3f000ca58dcf6d96b05b8babff3dd3e91188293c2a9e45e36b44b9c"
+    },
+    {
+      "name": "gamma22-restart",
+      "profile_name": "gamma22",
+      "restart": true,
+      "resources_closed": true,
+      "passed": true,
+      "observed_sha256": "431aba8951104420d428c962dcea44e505abf298aed096cd23299eb86758b9d0"
+    }
+  ],
+  "readback_masking_enabled": false,
+  "backing_requests": [
+    false,
+    true
+  ],
+  "backing_hashes_can_differ": true,
+  "hardware_gpu_backing_verified": false,
+  "multicolour_contract_verified": true,
+  "png_contracts_verified": true,
+  "float16_or_p3_verified": false,
+  "seed_bound_rendering_identity": false,
+  "real_device_cohorts_verified": false,
+  "canvas_policy_repaired": false,
+  "third_party_verdict_validated": false,
+  "manager_admission_changed": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

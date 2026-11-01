@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-11-01: expanded native Canvas colour and PNG contracts
+
+[Expanded experiment](../native/drafts/canvas-native-rendering/expanded-observations.json):
+**280 images / 392 decoded PNG exports**, seven native rendering presets,
+five contexts, ordinary/frequent-read backing requests and same-profile restart.
+Known multicolour and uniform opaque fills were exact; PNG/readback, repetition,
+cross-context pixel/metric and seven restart comparisons passed. Source/core/
+driver/runtime-asset guards passed and all owned resources closed.
+
+Backing requests may render different glyph pixels, including Native baseline;
+this is not itself a failure or proof of GPU allocation. Each request passed its
+own consistency checks. Masking was off; no profile-seed binding, translucent/
+P3/float16 validation, mixed protected-policy or real-device admission is claimed.
+The earlier driver-cache preflight failure is retained, not reclassified as a pass.
+
 ## 2026-11-01: native rendering controls and same-profile restart
 
 [Research packet](../native/drafts/canvas-native-rendering/README.md): seven

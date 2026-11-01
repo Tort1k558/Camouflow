@@ -19,8 +19,13 @@ completed 140 images and seven same-profile restart pairs. Existing native
 presets vary text pixels without changing the measured uniform colour, with
 readback masking off; this is not yet a versioned Canvas identity policy.
 
+The [expanded follow-up](../native/drafts/canvas-native-rendering/expanded-observations.json)
+then passed 280 images / 392 PNG exports, both backing requests, exact multicolour
+fills and seven restart pairs. Actual GPU allocation, translucent/P3/float16,
+protected-policy combinations and real-device cohorts are not established.
+
 Next: implement an explicit versioned rendering configuration without silent
-migration; bind actual raster/text settings, expand drawing/export/default-backing
+migration; bind actual raster/text settings, expand translucent/colour-space
 and mixed-policy checks, then evaluate replacing readback masking. Review/build
 the 157 C++ integration and execute queued Audio tests when storage permits,
 then repeat combined/runtime gates. The full build reserve remains 180 GiB.

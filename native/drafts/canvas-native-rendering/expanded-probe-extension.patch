@@ -1,0 +1,160 @@
+diff --git a/native/drafts/canvas-roundtrip/probe.js b/native/drafts/canvas-roundtrip/probe.js
+--- a/native/drafts/canvas-roundtrip/probe.js
++++ b/native/drafts/canvas-roundtrip/probe.js
+@@ -1,56 +1,75 @@
+ async () => {
+-  const measure = (create) => {
+-    const size = 8;
+-    const source = create(size, size);
+-    const target = create(size, size);
+-    const sourceContext = source.getContext('2d', {willReadFrequently: true});
+-    const targetContext = target.getContext('2d', {willReadFrequently: true});
+-    if (!sourceContext || !targetContext) throw new Error('A native 2D context is unavailable');
+-    const expected = new Uint8ClampedArray(size * size * 4);
+-    const offset = (x, y) => (y * size + x) * 4;
+-    for (let x = 0; x < size; x += 1) {
+-      for (let y = 0; y < size; y += 1) {
++  const measure = async (create) => {
++    const hash = async (data) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', data)),
++      (value) => value.toString(16).padStart(2, '0')).join('');
++    const variants = [];
++    for (const willReadFrequently of [false, true]) {
++      const images = [];
++      for (const alpha of [true, false]) {
++        const canvas = create(192, 96);
++        const context = canvas.getContext('2d', {alpha, willReadFrequently});
++        if (!context) throw new Error('Native 2D rendering unavailable');
++        context.fillStyle = '#fff'; context.fillRect(0, 0, 192, 96);
++        context.fillStyle = '#234167'; context.font = '17.5px Arial';
++        context.fillText('Glint text 0123456789', 3.25, 23.5);
++        const metrics = context.measureText('Glint text 0123456789');
++        context.font = '18px Times New Roman';
++        context.fillText('Native glyphs: AaWmZz', 4.75, 48.25);
++        context.font = '16px monospace'; context.fillText('canvas: [123] {456}', 3.5, 73.25);
++        const first = context.getImageData(0, 0, 192, 96).data;
++        const second = context.getImageData(0, 0, 192, 96).data;
++        const exports = [];
++        const readExport = async (name, blob) => {
++          if (!blob || blob.type !== 'image/png') throw new Error('PNG export unavailable');
++          const bitmap = await createImageBitmap(blob, {colorSpaceConversion: 'none'});
++          try {
++            const copy = create(192, 96).getContext('2d', {willReadFrequently});
++            if (!copy) throw new Error('PNG decode context unavailable');
++            copy.drawImage(bitmap, 0, 0);
++            const decoded = copy.getImageData(0, 0, 192, 96).data;
++            const changedChannels = decoded.filter((value, index) => value !== first[index]).length;
++            exports.push({name, changedChannels, sha256: await hash(decoded)});
++          } finally { bitmap.close(); }
++        };
++        if (typeof canvas.toDataURL === 'function') {
++          await readExport('toDataURL', await (await fetch(canvas.toDataURL('image/png'))).blob());
++          await readExport('toBlob', await new Promise((resolve, reject) => {
++            const timer = setTimeout(() => reject(new Error('PNG callback deadline')), 10000);
++            canvas.toBlob((blob) => { clearTimeout(timer); resolve(blob); }, 'image/png');
++          }));
++        } else {
++          await readExport('convertToBlob', await canvas.convertToBlob({type: 'image/png'}));
++        }
++        images.push({alpha, sha256: await hash(first),
++          repeatExact: first.every((value, index) => value === second[index]), exports,
++          metrics: [metrics.width, metrics.actualBoundingBoxLeft, metrics.actualBoundingBoxRight,
++            metrics.actualBoundingBoxAscent, metrics.actualBoundingBoxDescent]});
++      }
++      const plain = create(8, 8).getContext('2d', {willReadFrequently});
++      if (!plain) throw new Error('Native colour context unavailable');
++      plain.fillStyle = 'rgb(37, 129, 211)'; plain.fillRect(0, 0, 8, 8);
++      const plainChangedChannels = Array.from(plain.getImageData(0, 0, 8, 8).data)
++        .filter((value, index) => value !== [37, 129, 211, 255][index % 4]).length;
++      const coloured = create(8, 8).getContext('2d', {willReadFrequently});
++      if (!coloured) throw new Error('Native multicolour context unavailable');
++      const expected = new Uint8ClampedArray(256);
++      for (let x = 0; x < 8; x++) for (let y = 0; y < 8; y++) {
+         const rgba = [(x * 53 + y * 17 + 23) % 256, (x * 31 + y * 71 + 91) % 256,
+           (x * 97 + y * 13 + 47) % 256, 255];
+-        sourceContext.fillStyle = `rgb(${rgba[0]}, ${rgba[1]}, ${rgba[2]})`;
+-        sourceContext.fillRect(x, y, 1, 1);
+-        expected.set(rgba, offset(x, y));
++        coloured.fillStyle = `rgb(${rgba[0]},${rgba[1]},${rgba[2]})`;
++        coloured.fillRect(x, y, 1, 1); expected.set(rgba, (y * 8 + x) * 4);
+       }
++      const multicolourChangedChannels = Array.from(coloured.getImageData(0, 0, 8, 8).data)
++        .filter((value, index) => value !== expected[index]).length;
++      variants.push({willReadFrequently, images, plainChangedChannels, multicolourChangedChannels,
++        passed: plainChangedChannels === 0 && multicolourChangedChannels === 0 &&
++          images.every((image) => image.repeatExact && image.exports.every((e) => e.changedChannels === 0))});
+     }
+-    const written = [];
+-    let sourceFillChangedChannels = 0;
+-    let immediateCopyChangedChannels = 0;
+-    let disjointWriteChangedChannels = 0;
+-    for (let x = 0; x < size; x += 1) {
+-      for (let y = 0; y < size; y += 1) {
+-        const read = Array.from(sourceContext.getImageData(x, y, 1, 1).data);
+-        sourceFillChangedChannels += read.filter((value, channel) => value !== expected[offset(x, y) + channel]).length;
+-        targetContext.fillStyle = `rgba(${read[0]}, ${read[1]}, ${read[2]}, ${read[3] / 255})`;
+-        targetContext.fillRect(x, y, 1, 1);
+-        const copied = Array.from(targetContext.getImageData(x, y, 1, 1).data);
+-        immediateCopyChangedChannels += copied.filter((value, channel) => value !== read[channel]).length;
+-        written.push({x, y, copied});
+-      }
+-    }
+-    for (const {x, y, copied} of written) {
+-      const final = targetContext.getImageData(x, y, 1, 1).data;
+-      disjointWriteChangedChannels += copied.filter((value, channel) => value !== final[channel]).length;
+-    }
+-    const uniform = create(size, size).getContext('2d', {willReadFrequently: true});
+-    if (!uniform) throw new Error('A uniform native 2D context is unavailable');
+-    uniform.fillStyle = 'rgb(37, 129, 211)';
+-    uniform.fillRect(0, 0, size, size);
+-    const uniformRead = uniform.getImageData(0, 0, size, size).data;
+-    const uniformFillChangedChannels = Array.from(uniformRead).filter(
+-      (value, index) => value !== [37, 129, 211, 255][index % 4]).length;
+-    return {pixels: size * size, sourceFillChangedChannels, immediateCopyChangedChannels,
+-      disjointWriteChangedChannels, uniformFillChangedChannels,
+-      passed: sourceFillChangedChannels === 0 && immediateCopyChangedChannels === 0 &&
+-        disjointWriteChangedChannels === 0 && uniformFillChangedChannels === 0};
++    return {variants, passed: variants.every((variant) => variant.passed)};
+   };
+   const rows = [];
+-  const record = (name, operation) => {
+-    try { rows.push({name, ...operation()}); }
++  const record = async (name, operation) => {
++    try { rows.push({name, ...await operation()}); }
+     catch (error) { rows.push({name, passed: false, error: String(error)}); }
+   };
+   const htmlCanvas = (document) => (width, height) => {
+@@ -59,8 +78,8 @@
+     canvas.height = height;
+     return canvas;
+   };
+-  record('document-html', () => measure(htmlCanvas(document)));
+-  record('document-offscreen', () => measure((width, height) => new OffscreenCanvas(width, height)));
++  await record('document-html', () => measure(htmlCanvas(document)));
++  await record('document-offscreen', () => measure((width, height) => new OffscreenCanvas(width, height)));
+   const frame = document.createElement('iframe');
+   let frameTimer;
+   try {
+@@ -71,13 +90,13 @@
+     frame.srcdoc = '<!doctype html><title>Owned pixel-copy contract</title>';
+     document.body.append(frame);
+     await loaded;
+-    record('same-origin-frame', () => measure(htmlCanvas(frame.contentDocument)));
++    await record('same-origin-frame', () => measure(htmlCanvas(frame.contentDocument)));
+   } catch (error) { rows.push({name: 'same-origin-frame', passed: false, error: String(error)}); }
+   finally { clearTimeout(frameTimer); frame.remove(); }
+   for (const type of ['classic', 'module']) {
+     let worker, timer;
+     const url = URL.createObjectURL(new Blob([
+-      `const measure = ${measure.toString()}; onmessage = () => {try {postMessage(measure((w,h)=>new OffscreenCanvas(w,h)));}` +
++      `const measure = ${measure.toString()}; onmessage = async () => {try {postMessage(await measure((w,h)=>new OffscreenCanvas(w,h)));}` +
+       'catch(error){postMessage({passed:false,error:String(error)});}};'
+     ], {type: 'application/javascript'}));
+     try {
+@@ -92,6 +111,6 @@
+     } catch (error) { rows.push({name: 'worker-' + type, passed: false, error: String(error)}); }
+     finally { clearTimeout(timer); worker?.terminate(); URL.revokeObjectURL(url); }
+   }
+-  return {schema: 1, scope: 'Owned opaque CSS fill/copy and disjoint-write contracts only',
++  return {schema: 1, scope: 'Native text, two backing requests, exact colours and PNG exports in five contexts',
+     rows, passed: rows.length === 5 && rows.every((row) => row.passed)};
+ }
