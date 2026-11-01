@@ -24,6 +24,9 @@ completed 60 Siso steps in 16m 05.31s. The separate linked
 passed 135 cases across five exact groups, including all seven new lifecycle
 cases, with final source/core/toolchain guards. Independent browser, broader
 native-target and package admission remain pending.
+The [first broader R8 attempt](drafts/upstream-156-audio-r8/qa-attempt1.json)
+is not green: hardware teardown, Legacy Audio and launcher/history issues need
+their own follow-up; narrow passes do not admit the entire engine.
 The new [Audio lifecycle verifier](drafts/audio-lifecycle-runtime/README.md)
 has now passed its actual public CLI on R8: **74 cases/346 checks**, with unchanged
 source/runtime/driver and closed resources. Its R7 comparison baseline remains

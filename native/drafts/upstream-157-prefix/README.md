@@ -1,5 +1,10 @@
 # Chromium 157 source-port prefix
 
+The newer [R8 port workbench](../upstream-157-r8-port/README.md) verifies a
+75-packet source prefix with the AudioMath adaptation. Its complete 131-packet
+inventory still fails at 76; no 157 build/runtime or active-candidate change.
+The 65-packet measurements below retain their original scope.
+
 **Source-only workbench: all 65 patch applications verified. No compiled 157 browser.**
 
 Pins Chromium `157.0.8103.27` / `f9d7b13a569b352a0267234ea5740fdecc83ffa2`

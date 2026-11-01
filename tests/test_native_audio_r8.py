@@ -175,3 +175,29 @@ def test_audio_r8_public_lifecycle_run_is_separate_from_r7_and_full_admission():
     for flag in ('native_seed_erasure_proven', 'all_future_scheduling_verified', 'legacy_audio_repaired',
                  'full_runtime_suite_admitted', 'privacy_admitted', 'production_admitted'):
         assert record[flag] is False
+
+
+def test_audio_r8_first_qa_attempt_preserves_failures_and_the_exact_history_fix():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'qa-attempt1.json').read_bytes())
+    assert record['measurement_complete'] and record['passed'] is False
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['native_selected_cases_passed'] == 135
+    assert record['public_audio_lifecycle_cases_passed'] == 74
+    assert record['baseline_suite']['checks_in_passing_groups'] == 151
+    assert record['baseline_suite']['failed_group'] == 'hardware'
+    assert record['baseline_suite']['matched_hardware_observations_before_failure'] == 4
+    assert record['baseline_suite']['hardware_failure_root_cause_confirmed'] is False
+    assert record['baseline_suite']['close_deadline_relaxed'] is False
+    assert record['audio_compatibility']['modes'] == {'baseline': True, 'legacy': False, 'math': True}
+    assert record['ai_workflow']['returncode'] == 2
+    assert record['ai_workflow']['actual_workflow_measured'] is False
+    assert record['full_host']['counts'] == dict(passed=5694, failed=2, skipped=1)
+    assert record['full_host']['measured_expected_input_count_preserved'] == 226
+    assert record['full_host']['original_observation_digests_preserved'] is True
+    assert record['full_host']['focused_history_tests_passed'] == 10
+    assert record['full_host']['full_suite_after_repair_executed'] is False
+    assert record['all_native_target_attempt']['executed'] is False
+    assert record['all_native_target_attempt']['requested_groups'] == 26
+    for flag in ('legacy_audio_repaired', 'full_qa_admitted', 'privacy_admitted', 'production_admitted'):
+        assert record[flag] is False

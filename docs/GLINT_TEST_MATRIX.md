@@ -1,5 +1,36 @@
 # Glint browser test matrix
 
+## 2026-11-01: first broad R8 attempt is not green
+
+[Bound first-attempt record](../native/drafts/upstream-156-audio-r8/qa-attempt1.json).
+Successful native/lifecycle results below do not turn this failed attempt into a pass.
+
+| Gate | First-attempt result |
+| --- | --- |
+| Selected native cases / public Audio lifecycle | **135 native cases and 74 browser cases / 346 checks passed** |
+| Eight-group baseline suite | **7 groups / 151 checks passed**; hardware stopped after four matched observations when context close exceeded 10 seconds |
+| Audio compatibility | Baseline and Math passed on one profile; **Legacy failed** |
+| AI workflow | **Did not execute**: the private launcher supplied unsupported `--engine`; the public CLI expects positional `native` |
+| Full host suite | **5694 passed / 2 failed / 1 skipped**, input postguards passed; both failures reconstructed 227 inputs instead of the frozen 226 |
+| Exact-history host repair | **10 focused tests passed**, old 226-input counts/digests unchanged; full post-repair run still required |
+| All 26 native groups | **Not executed**: the unchanged 180 GiB build reserve rejected 178.9 GiB free |
+
+Core/source/driver guards and runtime cleanup passed for the measured runtime
+gates. The hardware close failure has no confirmed root cause; its timeout was
+not relaxed. Broader runtime diagnostics continue separately. No full QA,
+Legacy repair, third-party anti-bot or production admission is granted.
+
+## 2026-11-01: Chromium 157 source-port extension, not a browser result
+
+The [unregistered workbench](../native/drafts/upstream-157-r8-port/README.md)
+extends the existing 65-packet port to a **75-packet passing source prefix**.
+All 270 immutable inputs are pinned; AudioMath preserves 157 chunking and all
+upstream OfflineAudioContext test bodies. Fourteen of its sixteen file sections
+remain byte-identical to R8; all sixteen postimages match isolated preparation.
+GPU command ordinals and GRIT invariants passed. The full 131-packet inventory
+still fails at screenshot packet 76. No 157 C++ build, native execution, runtime
+or active-checkout change is claimed. Five focused host checks passed.
+
 ## 2026-11-01: R8 public Audio lifecycle CLI passed
 
 [Runtime evidence](../native/drafts/upstream-156-audio-r8/audio-lifecycle-observations.json):

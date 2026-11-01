@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "scope": "First independent R8 QA attempt plus a separate exact-history host repair; not a passing full suite",
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "queue_report_sha256": "14183e00a2880ab4bb0274d6f1564101078a8cd569fcb98b98df5b6d08fe4d5a",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "native_selected_cases_passed": 135,
+  "public_audio_lifecycle_cases_passed": 74,
+  "baseline_suite": {
+    "passed": false,
+    "report_sha256": "3683e0fffd99f2378085b542ca004c5e3960f57a9ed6e33cc4310f438fcac63b",
+    "passing_groups": [
+      "runtime",
+      "webrtc",
+      "automation",
+      "fonts",
+      "identity",
+      "cdp",
+      "combined"
+    ],
+    "checks_in_passing_groups": 151,
+    "failed_group": "hardware",
+    "matched_hardware_observations_before_failure": 4,
+    "hardware_report_sha256": "628335fb5908d2cd4b52a01119517bdf8cceda17eb056fe5a1d709f9abcf8372",
+    "hardware_error": "Native hardware test context close exceeded its deadline",
+    "hardware_failure_root_cause_confirmed": false,
+    "close_deadline_relaxed": false
+  },
+  "audio_compatibility": {
+    "passed": false,
+    "modes": {
+      "baseline": true,
+      "legacy": false,
+      "math": true
+    },
+    "report_sha256": "2f239db5134b7b1e125f922501c4d4fedfbeedd08c61af8f823634d007e04f97",
+    "one_profile_only": true,
+    "both_math_selectors_proven_by_this_run": false
+  },
+  "ai_workflow": {
+    "passed": false,
+    "returncode": 2,
+    "error": "unrecognized arguments: --engine",
+    "log_sha256": "5adee0a1070ea28b791d7542da15374a2049cfb34f128834c0688feb6fddd2a0",
+    "actual_workflow_measured": false,
+    "corrected_positional_invocation_executed": false
+  },
+  "full_host": {
+    "passed": false,
+    "counts": {
+      "passed": 5694,
+      "failed": 2,
+      "skipped": 1
+    },
+    "report_sha256": "a0bc1b7009a118bd945f01fc8b280038d5500ed6495614190c86ea4b5a4e7b5c",
+    "input_postguards_passed": true,
+    "failure_report_sha256": "2a6a82e1089796f872c3e77d150df53469be2c14057f591d39ffb80c4b729689",
+    "failed_cases": [
+      "tests/test_native_gpu_process_recovery.py::test_gpu_recovery_complete_input_digest_preserves_measured_newlines",
+      "tests/test_native_gpu_process_recovery.py::test_gpu_recovery_ready_control_binds_its_staged_source_layout"
+    ],
+    "repair": "Explicitly exclude the later Audio lifecycle CLI from the frozen historical 226-input reconstruction",
+    "measured_expected_input_count_preserved": 226,
+    "original_observation_digests_preserved": true,
+    "focused_history_tests_passed": 10,
+    "additional_157_source_tests_passed": 5,
+    "focused_junit_sha256": "0e2c92c26ce978c8b0f30541e3e224a3c5ea4fcf21b1a4dd3d5f5216dd1294a1",
+    "full_suite_after_repair_executed": false
+  },
+  "all_native_target_attempt": {
+    "executed": false,
+    "requested_groups": 26,
+    "error": "Need at least 180 GiB free; found 178.9",
+    "log_sha256": "eca895476c765d2fab1f3ff83146e1acd18151c285835123c22f3590aa10da5a"
+  },
+  "audited_fixture_cleanup": {
+    "report_sha256": "5a4a54b45a75c241cdd177612f2791be12264e5385e027909281ccdfc70acc4d",
+    "observed_free_delta_bytes": 1473482752,
+    "free_bytes_after": 193034784768,
+    "failed_case_entries_preserved": true,
+    "native_runtime_sdk_and_user_profiles_removed": false
+  },
+  "measured_runtime_source_and_driver_postguards_passed": true,
+  "legacy_audio_repaired": false,
+  "full_qa_admitted": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
