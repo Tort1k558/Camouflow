@@ -1,0 +1,101 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "dawn/dawn_proc.h"
+ #include "dawn/native/DawnNative.h"
++#include "src/dawn/native/ChainUtils.h"
+ #include "dawn/native/D3D12Backend.h"
+ #include <wrl/client.h>
+ #include "src/dawn/native/d3d12/TextureD3D12.h"
+@@ -215,7 +216,11 @@
+     Check(sharedMemory != nullptr);
+     auto initialProducer = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
++    WGPUSharedTextureMemoryD3DSwapchainBeginState canvasAccess{};
++    canvasAccess.chain.sType = WGPUSType_SharedTextureMemoryD3DSwapchainBeginState;
++    canvasAccess.isSwapchain = true;
+     WGPUSharedTextureMemoryBeginAccessDescriptor initialProducerAccess{};
++    initialProducerAccess.nextInChain = &canvasAccess.chain;
+     Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, initialProducer, &initialProducerAccess) == WGPUStatus_Success);
+     auto initialNativeQueue = nativeProcs.deviceGetQueue(nativeDevice);
+     WGPUTexelCopyTextureInfo initialProducerCopy{};
+@@ -234,6 +239,7 @@
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+     Check(importedTexture != nullptr);
+     WGPUSharedTextureMemoryBeginAccessDescriptor access{};
++    access.nextInChain = &canvasAccess.chain;
+     access.initialized = produced.initialized;
+     access.concurrentRead = true;
+     access.fenceCount = produced.fenceCount;
+@@ -668,16 +674,39 @@
+     auto* backendTexture = dawn::native::d3d12::ToBackend(dawn::native::FromAPI(importedTexture));
+     auto cached = backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM);
+     if (!cached) { std::fputs("SHARED_EPOCH_CACHE_MISSING\n", stderr); return 1; }
+-    backendTexture->SetIsExternalSwapchainTexture(true);
++    {
++        // An actual external-resource wrapper without SharedTextureMemory ownership
++        // cannot borrow an otherwise valid snapshot, with or without the marker.
++        dawn::native::TextureDescriptor unknownDescriptor{};
++        unknownDescriptor.dimension = wgpu::TextureDimension::e2D;
++        unknownDescriptor.size.width = width;
++        unknownDescriptor.size.height = height;
++        unknownDescriptor.size.depthOrArrayLayers = 1;
++        unknownDescriptor.format = wgpu::TextureFormat::RGBA8Unorm;
++        unknownDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::TextureBinding;
++        unknownDescriptor.mipLevelCount = 1;
++        unknownDescriptor.sampleCount = 1;
++        auto unownedResult = dawn::native::d3d12::Texture::CreateForSwapChain(
++            backendDevice, dawn::native::Unpack(&unknownDescriptor), sharedResource,
++            D3D12_RESOURCE_STATE_COMMON);
++        Check(!unownedResult.IsError());
++        auto unowned = unownedResult.AcquireSuccess();
++        Check(unowned->GetSharedResourceMemoryContents() == nullptr);
++        unowned->CacheGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM, cached);
++        Check(!unowned->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM));
++        unowned->SetIsExternalSwapchainTexture(true);
++        unowned->CacheGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM, cached);
++        Check(!unowned->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM));
++    }
++
++    Check(backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM) == cached);
++    WGPUSharedTextureMemoryEndAccessState ended{};
++    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &ended) == WGPUStatus_Success);
++    Check(!backendTexture->HasAccess());
+     Check(!backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM));
+     backendTexture->CacheGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM, cached);
+     Check(!backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM));
+-    backendTexture->SetIsExternalSwapchainTexture(false);
+-    Check(backendTexture->GetGlintProjection(projector, DXGI_FORMAT_R8G8B8A8_UNORM) == cached);
+     cached.reset();
+-    WGPUSharedTextureMemoryEndAccessState ended{};
+-    Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, importedTexture, &ended) == WGPUStatus_Success);
+-    Check(!backendTexture->HasAccess());
+     // A second texture object is the producer; no consumer-side write occurs.
+     auto producerDescriptor = textureDescriptor;
+     producerDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst;
+@@ -685,6 +714,7 @@
+         reinterpret_cast<const WGPUTextureDescriptor*>(&producerDescriptor));
+     Check(producer != nullptr);
+     WGPUSharedTextureMemoryBeginAccessDescriptor producerAccess{};
++    producerAccess.nextInChain = &canvasAccess.chain;
+     producerAccess.initialized = ended.initialized;
+     producerAccess.fenceCount = ended.fenceCount;
+     producerAccess.fences = ended.fences;
+@@ -708,6 +738,7 @@
+     WGPUSharedTextureMemoryEndAccessState producerEnded{};
+     Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, producer, &producerEnded) == WGPUStatus_Success);
+     WGPUSharedTextureMemoryBeginAccessDescriptor resumed{};
++    resumed.nextInChain = &canvasAccess.chain;
+     resumed.initialized = producerEnded.initialized;
+     resumed.concurrentRead = true;
+     resumed.fenceCount = producerEnded.fenceCount;
+@@ -811,7 +842,7 @@
+     pump();
+     requireBudgetDrained();
+     std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"producer_epoch_mutation\":true,\"old_cpu_snapshot_immutable\":true,\"live_device_budget_drained\":true,\"device_usable_after_drain\":true,\"swapchain_flag_cache_excluded\":true,\"initialized_concurrent_read\":true,\"protected_channels\":%zu,"
++                "\"native_d3d12_queue_executed\":true,\"imported_d3d12_resource\":true,\"access_epoch_cache_detached\":true,\"producer_epoch_mutation\":true,\"old_cpu_snapshot_immutable\":true,\"live_device_budget_drained\":true,\"device_usable_after_drain\":true,\"unowned_wrapper_cache_excluded\":true,\"initialized_concurrent_read\":true,\"protected_channels\":%zu,"
+                 "\"projected_compute_values\":%zu,\"unrelated_values\":16,\"repeated_map\":true,"
+                 "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
+                 "\"capture_bytes_after_destroy\":%llu,"

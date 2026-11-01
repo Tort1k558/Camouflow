@@ -2,6 +2,11 @@
 
 **Compiled standalone; not in the measured Chromium browser.**
 
+`next.patch` retains the original Chromium-root-relative prototype. For an
+actual candidate, apply `dawn-owned.patch` inside `third_party/dawn`, not the
+Chromium repository. [Repository form](repository-form.json) binds this path-only
+conversion; it does not change the measured final C++ source.
+
 Blink marks WebGPU Canvas SharedImages as swapchain textures. Chromium forwards
 that marker through the real shared-memory BeginAccess descriptor. R4 excluded
 all such textures from projection reuse, even inside a known shared-memory epoch.
@@ -22,7 +27,15 @@ backend flag. All case invocations explicitly select their RGBA/BGRA CLI mode.
 The first omitted-argument harness failure is retained separately from the actual
 measurements. These imported resources are not real browser/compositor frames.
 
-Swapchain-marked mutation/stale controls, unknown-external exclusion, live-device
-drain, recoverable quotas and the real Chromium Canvas gate remain required.
+Additional standalone controls now cover swapchain-marked producer mutation,
+stale GPU data when access invalidation is deliberately removed, live-device
+drain followed by another GPU operation, and rejection of an external wrapper
+without SharedTextureMemory ownership. Nine positive runs and three expected
+stale-data failures passed. [Resource supplement](resource-supplement.json)
+includes reversible fixture patches and preserves the original observations.
+
+An extra original-library large-input attempt observed device loss, but did not
+capture its exact out-of-memory cause; it is retained as inconclusive, not PASS.
+Recoverable quotas and the real Chromium Canvas gate remain required.
 R4's large Canvas E_OUTOFMEMORY is still a failed browser result; do not report
 this prototype as its verified browser repair. [Exact observations](observations.json).

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "original_patch": "next.patch",
+  "original_patch_sha256": "d0ee0b0c65f053f65952b4e29db649c629abc8a0871ba71f8fc398678b3c964e",
+  "repository": "third_party/dawn",
+  "repository_patch": "dawn-owned.patch",
+  "repository_patch_sha256": "0d2a403135df8a2f18fe4d2ca40168d46e76d9d9796538e6eb6ec275408d6e1e",
+  "scope": "Path-only conversion for repository-owned application; original measured source bytes unchanged",
+  "browser_integrated": false
+}

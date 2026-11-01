@@ -1,0 +1,38 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -215,7 +215,11 @@
+     Check(sharedMemory != nullptr);
+     auto initialProducer = nativeProcs.sharedTextureMemoryCreateTexture(sharedMemory,
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
++    WGPUSharedTextureMemoryD3DSwapchainBeginState canvasAccess{};
++    canvasAccess.chain.sType = WGPUSType_SharedTextureMemoryD3DSwapchainBeginState;
++    canvasAccess.isSwapchain = true;
+     WGPUSharedTextureMemoryBeginAccessDescriptor initialProducerAccess{};
++    initialProducerAccess.nextInChain = &canvasAccess.chain;
+     Check(nativeProcs.sharedTextureMemoryBeginAccess(sharedMemory, initialProducer, &initialProducerAccess) == WGPUStatus_Success);
+     auto initialNativeQueue = nativeProcs.deviceGetQueue(nativeDevice);
+     WGPUTexelCopyTextureInfo initialProducerCopy{};
+@@ -234,6 +238,7 @@
+         reinterpret_cast<const WGPUTextureDescriptor*>(&textureDescriptor));
+     Check(importedTexture != nullptr);
+     WGPUSharedTextureMemoryBeginAccessDescriptor access{};
++    access.nextInChain = &canvasAccess.chain;
+     access.initialized = produced.initialized;
+     access.concurrentRead = true;
+     access.fenceCount = produced.fenceCount;
+@@ -679,6 +684,7 @@
+         reinterpret_cast<const WGPUTextureDescriptor*>(&producerDescriptor));
+     Check(producer != nullptr);
+     WGPUSharedTextureMemoryBeginAccessDescriptor producerAccess{};
++    producerAccess.nextInChain = &canvasAccess.chain;
+     producerAccess.initialized = ended.initialized;
+     producerAccess.fenceCount = ended.fenceCount;
+     producerAccess.fences = ended.fences;
+@@ -702,6 +708,7 @@
+     WGPUSharedTextureMemoryEndAccessState producerEnded{};
+     Check(nativeProcs.sharedTextureMemoryEndAccess(sharedMemory, producer, &producerEnded) == WGPUStatus_Success);
+     WGPUSharedTextureMemoryBeginAccessDescriptor resumed{};
++    resumed.nextInChain = &canvasAccess.chain;
+     resumed.initialized = producerEnded.initialized;
+     resumed.concurrentRead = true;
+     resumed.fenceCount = producerEnded.fenceCount;

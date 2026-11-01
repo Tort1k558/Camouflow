@@ -25,8 +25,14 @@ imported-resource runs, including large RGBA/BGRA textures, plus an expected
 old-library cache-exclusion failure. These are standalone native measurements,
 not a repaired Chromium Canvas result.
 
-Next: complete swapchain-marked mutation/exclusion/live-device controls, compose
-the 124-patch browser batch and repeat the failed large-Canvas gate. Linux/macOS
+Swapchain-marked mutation, live-device drain/reuse and unknown-external exclusion
+now pass nine additional standalone runs; deliberately removing epoch invalidation
+produces three expected stale-GPU failures. [Resource supplement](../native/drafts/webgpu-shared-swapchain-epoch/resource-supplement.json)
+retains those measurements and an inconclusive original-library device-loss attempt.
+The manager regression at `0faf549` passes 5462 tests with one skipped.
+
+Next: finalize the 124-patch browser batch, execute the new launch/context native
+tests and repeat the failed large-Canvas gate in Chromium. Linux/macOS
 remain deferred; device cohorts, recoverable quotas, packaging of the new manager
 code and full release admission remain open.
 

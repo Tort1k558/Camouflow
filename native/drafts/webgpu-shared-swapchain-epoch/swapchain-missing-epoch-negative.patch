@@ -1,0 +1,15 @@
+--- a/src/dawn/native/d3d12/TextureD3D12.cpp
++++ b/src/dawn/native/d3d12/TextureD3D12.cpp
+@@ -364,12 +364,10 @@
+ }
+ 
+ void Texture::OnBeginAccess() {
+-    ClearGlintProjection();
+     TextureBase::OnBeginAccess();
+ }
+ 
+ ExecutionSerial Texture::OnEndAccess() {
+-    ClearGlintProjection();
+     return TextureBase::OnEndAccess();
+ }
+ 
