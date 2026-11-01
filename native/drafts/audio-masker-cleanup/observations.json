@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "passed": true,
+  "selected": false,
+  "standalone_compiled": true,
+  "compiled_browser": false,
+  "browser_verified": false,
+  "legacy_audio_repaired": false,
+  "production_admitted": false,
+  "packet_sha256": "fe733de7d58d4b0c9ee99e4b7bc0cf398ea488cc41dc96f6d5b6b1289430f2fc",
+  "checker_report_sha256": "3befc6582a7f520b217159fe559c551d8cbac81a406e58842a0f1168b75a47c1",
+  "input_postguards_passed": true,
+  "reverse_restored": true,
+  "local_toolchain_sha256": "68aa63de741ddd1a8a5362863cf49943c725644a209bcc6c59da9efc67a797e7",
+  "real_crypto_cases_per_run": 12327,
+  "independent_python_hmac_match": true,
+  "exact_before_after_outputs": true,
+  "reference_outputs_sha256": "28a7d24ecd767fee184a29fb8e6fb17b001eb3a639096a47fc648f37c242e95d",
+  "output_sha256": {
+    "real-before": "28a7d24ecd767fee184a29fb8e6fb17b001eb3a639096a47fc648f37c242e95d",
+    "real-after": "28a7d24ecd767fee184a29fb8e6fb17b001eb3a639096a47fc648f37c242e95d",
+    "asan-before": "28a7d24ecd767fee184a29fb8e6fb17b001eb3a639096a47fc648f37c242e95d",
+    "asan-after": "28a7d24ecd767fee184a29fb8e6fb17b001eb3a639096a47fc648f37c242e95d"
+  },
+  "runs": [
+    {
+      "mode": "real",
+      "label": "before",
+      "observed": {
+        "cases": 12327,
+        "storage_cleansed": false,
+        "caller_seed_unchanged": true,
+        "copy_move_stable": true
+      },
+      "executable_sha256": "5bb3bab52b28cd3ea36cceb6b3af9aeb9dac6dd2bf9727c280021fbf71496391"
+    },
+    {
+      "mode": "real",
+      "label": "after",
+      "observed": {
+        "cases": 12327,
+        "storage_cleansed": true,
+        "caller_seed_unchanged": true,
+        "copy_move_stable": true
+      },
+      "executable_sha256": "2b1173b3d235b547c1e297b99264c017e08c417683147f7f4610208da9197e36"
+    },
+    {
+      "mode": "asan",
+      "label": "before",
+      "observed": {
+        "cases": 12327,
+        "storage_cleansed": false,
+        "caller_seed_unchanged": true,
+        "copy_move_stable": true
+      },
+      "executable_sha256": "319b3cc5c5b01e9e31ec78e13f454285ad8d1149b4a24013eeb0497bbb37303b"
+    },
+    {
+      "mode": "asan",
+      "label": "after",
+      "observed": {
+        "cases": 12327,
+        "storage_cleansed": true,
+        "caller_seed_unchanged": true,
+        "copy_move_stable": true
+      },
+      "executable_sha256": "8905bdc22123c788a54d5cfe35c5505b6cb490e35a758b6d4abcbd951dfa596a"
+    },
+    {
+      "mode": "fault",
+      "label": "before",
+      "observed": {
+        "injected_hmac_failures": 4,
+        "digest_cleanses": 0,
+        "destroyed_storage_cleansed": 0,
+        "malformed_cleanses": 0,
+        "failed_calls_not_cached": true
+      },
+      "executable_sha256": "c965994431c1dbb4a8d3ff521b4451a25c80ec5a140f809b1d7f7c765b85fe53"
+    },
+    {
+      "mode": "fault",
+      "label": "after",
+      "observed": {
+        "injected_hmac_failures": 4,
+        "digest_cleanses": 4,
+        "destroyed_storage_cleansed": 2,
+        "malformed_cleanses": 0,
+        "failed_calls_not_cached": true
+      },
+      "executable_sha256": "1d29a65c836e60d408504f818cdd3c1989daacc70a3a6872cd3eca3b1ed24ee5"
+    }
+  ],
+  "asan_scope": "helper/driver only; prebuilt crypto dependencies not rebuilt",
+  "native_gtest_syntax_passed": true,
+  "native_gtest_executed": false,
+  "retained_infrastructure_failures": [
+    {
+      "scope": "Initial standalone link omitted existing BoringSSL assembly archive",
+      "report_sha256": "eb84129b524972b435380f96efbd6d18937587b1984b1dbac5ca2999fa3f39d5"
+    },
+    {
+      "scope": "Second standalone link omitted existing libc++ abort-handler object",
+      "report_sha256": "eb84129b524972b435380f96efbd6d18937587b1984b1dbac5ca2999fa3f39d5"
+    },
+    {
+      "scope": "Initial GTest syntax invocation omitted unchanged limits-header include directory",
+      "report_sha256": "4e02f283f19e31aa13e0aeff9c9b22fc145d2d2d228de9a347210a193aaa2cce"
+    }
+  ],
+  "scope": "Owned masker/digest cleanup in isolated CPU executables; context-owned seed and legacy graph mismatch remain unchanged"
+}

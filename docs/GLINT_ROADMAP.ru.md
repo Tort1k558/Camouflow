@@ -2,6 +2,14 @@
 
 ## 2026-11-01: explicit Audio pipeline pin; host regression passed
 
+The separate [masker cleanup packet](../native/drafts/audio-masker-cleanup/README.md)
+is now prepared and CPU-checked: 12,327 exact real-BoringSSL/Python-reference
+outputs, ASan, injected HMAC failure/length controls and proposed GTest syntax.
+It is unselected; R7 source/binary and sample algorithms remain unchanged.
+Context-owned seed teardown still needs a fail-closed protocol; prematurely
+clearing its optional key must not permit raw completion. Keep this cleanup
+separate from the unresolved legacy graph/analyser/worklet mismatch.
+
 The profile policy now supports an explicit `audio_pipeline_version: 2` pin for
 the existing graph-math path. Selecting a surface mode in the manager stores the
 pin; reading old settings does not migrate them. Version zero retains the prior

@@ -108,6 +108,11 @@ WebGPU, future identity mode or third-party acceptance.
 
 ## Audio API compatibility diagnostics
 
+The unselected [masker cleanup packet](drafts/audio-masker-cleanup/README.md)
+wipes owned seed/cache/digest buffers. Real-crypto and ASan helper checks preserve
+12,327 outputs exactly; injected-failure checks are separate. It is not selected
+in R7, does not change context seed teardown, and does not repair legacy Audio.
+
 Newly selected profile surface modes explicitly persist `audio_pipeline_version: 2`
 for the existing graph-math path. They require separate `audio-math-v2` runtime
 admission in addition to `surface-policy-v1`; no current reviewed package grants

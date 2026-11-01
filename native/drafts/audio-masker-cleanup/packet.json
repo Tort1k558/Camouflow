@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "prepared": true,
+  "selected": false,
+  "compiled": false,
+  "browser_verified": false,
+  "base_candidate": "upstream-156-webgpu-r7",
+  "base_manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "source_sha256": {
+    "third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.h": {
+      "before": "40a426c2bc39cfd29c4207cbac4efbdf01d157110526f2530556f879147bf44c",
+      "after": "ecfe945bd65d1243f204ca4f64996a89835e679f81da01209c28971af1a499eb"
+    },
+    "third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc": {
+      "before": "f7831f91542bbb9919025a9b93d5a54593ec47299e5eda8843ab499db02c37b5",
+      "after": "2ef12e6b18a33f5464238496097a7dd3c1472f544adfdfcf57b2b625aad8ffca"
+    },
+    "third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc": {
+      "before": "52ac8a3ae7618577dff71ac89b857a20bbf4a8ff85c25c978bc7df35605a2374",
+      "after": "16f8b14322033be24b30718b6a0c4f3dc1cc303a2ae9974e6c5b7859bdfecdb4"
+    }
+  },
+  "patch_sha256": "52691666946f6ab20187d192fed12a0fbc1b95c1d6643fa311be4e1a81a5c5ef",
+  "scope": "Owned masker seed/cache and temporary HMAC digest cleanup only; no Audio algorithm or context-lifecycle change",
+  "legacy_audio_repaired": false,
+  "production_admitted": false,
+  "artifacts_sha256": {
+    "next.patch": "52691666946f6ab20187d192fed12a0fbc1b95c1d6643fa311be4e1a81a5c5ef",
+    "driver.cc": "ed7e5cf1f61cb2f65776ec762775f9fef7911c07f86ef0aa638a37c3ffbb75f5",
+    "fault_driver.cc": "a5ad1ea54d936dda185d9e2df12ba67ed57ad1e21aa3e3c8bcc508bfb6eb264d",
+    "check.py": "20530263d6d32d1af99426cbcb78b140d07bc9e866e1b090d8399a7610a7b1a4"
+  },
+  "dependency_sha256": {
+    "third_party/blink/renderer/modules/webaudio/glint/offline_audio_limits.h": "5c01660dd8e034ef1bf02e83c97da2e87414b1526c3ae4d00814ace4f858c35c"
+  }
+}
