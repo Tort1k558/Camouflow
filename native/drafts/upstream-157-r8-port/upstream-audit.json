@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "observed_utc": "2026-11-01T15:12:00.098165+00:00",
+  "source_url": "https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=20",
+  "scope": "Official Windows Stable metadata comparison, not a security or release admission",
+  "pinned_version": "156.0.8078.36",
+  "pinned_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "official_releases": [
+    {
+      "version": "156.0.8078.80",
+      "chromium_revision": "fb096c0011f9d50f0a264a9376420cdea9c421e3",
+      "published_utc": "2026-10-29T21:25:50.434000+00:00"
+    },
+    {
+      "version": "156.0.8078.79",
+      "chromium_revision": "a21ce95c24ce3964416f09ae1862f53f319eb4d0",
+      "published_utc": "2026-10-29T21:25:50.434000+00:00"
+    },
+    {
+      "version": "156.0.8078.76",
+      "chromium_revision": "93ce6b54af3fee27e384d1f30346e80db47a14da",
+      "published_utc": "2026-10-29T21:25:50.434000+00:00"
+    },
+    {
+      "version": "157.0.8103.27",
+      "chromium_revision": "f9d7b13a569b352a0267234ea5740fdecc83ffa2",
+      "published_utc": "2026-10-28T17:56:24.686000+00:00"
+    },
+    {
+      "version": "157.0.8103.26",
+      "chromium_revision": "4c20950d2f187a6976cf5e2a1234ca896dcdfd1c",
+      "published_utc": "2026-10-28T17:56:24.686000+00:00"
+    },
+    {
+      "version": "156.0.8078.75",
+      "chromium_revision": "861389936bf33ea77529ee5dcc0605e68f6bb620",
+      "published_utc": "2026-10-28T17:56:24.686000+00:00"
+    },
+    {
+      "version": "156.0.8078.74",
+      "chromium_revision": "d331de35ca8ab1358c7a17e4bd41627d55eaef51",
+      "published_utc": "2026-10-27T20:23:50.012000+00:00"
+    },
+    {
+      "version": "156.0.8078.73",
+      "chromium_revision": "2f9a11097447f226133bc1a31c787291a5eeab98",
+      "published_utc": "2026-10-27T20:23:50.012000+00:00"
+    },
+    {
+      "version": "157.0.8103.15",
+      "chromium_revision": "1aa07b638799e59656559ae6c6649d4b197f555e",
+      "published_utc": "2026-10-22T20:29:23.168000+00:00"
+    },
+    {
+      "version": "156.0.8078.49",
+      "chromium_revision": "29eb03535d5f2f4f899b95f22a92413ffde5284e",
+      "published_utc": "2026-10-22T20:29:23.168000+00:00"
+    },
+    {
+      "version": "156.0.8078.48",
+      "chromium_revision": "d0c02bfad08ec92a6ffcf989e53cd995e6381a4c",
+      "published_utc": "2026-10-20T19:56:54.652000+00:00"
+    },
+    {
+      "version": "156.0.8078.47",
+      "chromium_revision": "1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775",
+      "published_utc": "2026-10-20T19:56:54.652000+00:00"
+    },
+    {
+      "version": "155.0.8059.86",
+      "chromium_revision": "804d6b05f089b27af8342622a36558c49401a1d4",
+      "published_utc": "2026-10-20T19:56:54.652000+00:00"
+    },
+    {
+      "version": "155.0.8059.85",
+      "chromium_revision": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+      "published_utc": "2026-10-15T20:38:35.578000+00:00"
+    },
+    {
+      "version": "155.0.8059.84",
+      "chromium_revision": "5869fe313571d75152b77813cf0a4ee26a4e6df0",
+      "published_utc": "2026-10-15T20:38:35.578000+00:00"
+    },
+    {
+      "version": "155.0.8059.82",
+      "chromium_revision": "c56fe5daef8be123f68808a4bb705ff378cd2019",
+      "published_utc": "2026-10-15T20:38:35.578000+00:00"
+    },
+    {
+      "version": "156.0.8078.36",
+      "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+      "published_utc": "2026-10-14T20:45:08.854000+00:00"
+    },
+    {
+      "version": "156.0.8078.35",
+      "chromium_revision": "4befba4e8237fc6452fe5918001a01235180e6fc",
+      "published_utc": "2026-10-14T20:45:08.854000+00:00"
+    },
+    {
+      "version": "155.0.8059.81",
+      "chromium_revision": "b48e69239255d09b4a4dba4bddc18cf896630b94",
+      "published_utc": "2026-10-14T20:45:08.854000+00:00"
+    },
+    {
+      "version": "155.0.8059.80",
+      "chromium_revision": "43a195105613ac83c21d3f14de279f4a045c7da0",
+      "published_utc": "2026-10-13T20:44:48.706000+00:00"
+    }
+  ],
+  "highest_observed_stable": {
+    "version": "157.0.8103.27",
+    "chromium_revision": "f9d7b13a569b352a0267234ea5740fdecc83ffa2",
+    "published_utc": "2026-10-28T17:56:24.686000+00:00"
+  },
+  "highest_observed_same_milestone": {
+    "version": "156.0.8078.80",
+    "chromium_revision": "fb096c0011f9d50f0a264a9376420cdea9c421e3",
+    "published_utc": "2026-10-29T21:25:50.434000+00:00"
+  },
+  "upstream_aligned": false,
+  "status": "behind-stable",
+  "security_review_complete": false,
+  "production_admitted": false,
+  "sources_changed": false,
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "lock_sha256": "7b3e3ae3cb9877073aaeb14eacc48afdd24bd34a0e5b9189e92276211dfe8ad0",
+  "response_sha256": "ea4839db321e502d337d4d10f58f13ea04ea9d189e4e9496e929911930e48476"
+}

@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "source_replay_passed": true,
+  "prefix_patches": 75,
+  "scope": "Source-context application and selected GPU/GRIT invariants only; no compiler, native or runtime result",
+  "target_version": "157.0.8103.27",
+  "target_revision": "f9d7b13a569b352a0267234ea5740fdecc83ffa2",
+  "prefix_manifest_sha256": "5a2104bafdc5cd5afffb32cae4a0817743cc4587c2a2e91bf4ea188d4f5ab0fa",
+  "full_unported_manifest_sha256": "cd23cfb808c9df05029536a892a0499b90d5ad2c3dddfc24978f36db980f68cb",
+  "replay_report_sha256": "2b4ea9ae858558ae85b71b2248cbee530acc07a067241366feb688ceb91cee97",
+  "source_invariants": {
+    "gpu_commands": {
+      "preserved": 321,
+      "appended": 577
+    },
+    "grit_structure_preserved": true
+  },
+  "inputs_unchanged": true,
+  "source_discovery": {
+    "report_sha256": "a2550b09f276b61533ed33939c2855ebef345e852d6210cc3f94275666cd1b05",
+    "cached_inputs": 185,
+    "network_requests": 85,
+    "total_input_files": 270,
+    "total_input_bytes": 15317261,
+    "minimum_request_interval_seconds": 2.0
+  },
+  "math_packet": {
+    "file": "patches/0067-native-audio-math-context-candidate.patch",
+    "sha256": "162fdfb0d15c07bbfbf35e477d234d02890b1eb69142ecec9e735a6bb2743b30",
+    "source_files": 16,
+    "adapted_source_files": [
+      "third_party/blink/renderer/modules/webaudio/offline_audio_context.cc",
+      "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc"
+    ],
+    "source_only_tests_present": [
+      "GlintMathConstructionPrecedesFirstNode",
+      "GlintMathContextModesAreIndependentAndSeedUnchanged",
+      "GlintMathDirectConstantDoesNotUseReadbackFarbling",
+      "GlintMathDisabledCaptureRemainsLegacy",
+      "GlintMathDuplicateSurfaceSeedRejectsBeforeNodeOrResolver",
+      "GlintMathEnabledCaptureRemainsAfterDisable",
+      "GlintMathFailedCaptureDoesNotFallBackAfterDisable",
+      "GlintMathFrameDetachDoesNotRecapturePolicy",
+      "GlintMathMissingPolicyRejectsBeforeNodeOrResolver",
+      "GlintMathNavigationDoesNotRebindOldContext",
+      "GlintMathStoppedContextPreservesNativeErrorPrecedence",
+      "GlintMathUnknownPipelineIsRejected"
+    ],
+    "legacy_budget_test_preserved": true,
+    "upstream_test_bodies_preserved": true,
+    "unmodified_file_sections_preserved": 14,
+    "exact_sixteen_postimages_preserved": true,
+    "original_patch_sha256": "2a3de912845933c401cb20e97aff6c5551f079bee1147716c7ec17178af0e740"
+  },
+  "full_chain_attempt": {
+    "passed": false,
+    "applied_patches": 75,
+    "first_failed_patch": 76,
+    "report_sha256": "357375b5a048e6b9bd5ce3f108305a20413370bfcca5b5b639de0c27b09cbfbb",
+    "inputs_unchanged": true
+  },
+  "full_chain_ported": false,
+  "compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "canonical_checkout_modified": false,
+  "selected_candidate_changed": false,
+  "production_admitted": false
+}
