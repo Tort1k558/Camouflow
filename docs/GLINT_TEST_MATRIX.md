@@ -1,5 +1,31 @@
 # Glint browser test matrix
 
+## 2026-11-01: R6 measured Windows build and runtime results
+
+R6 completed **90 build steps in 17m 27.66s** (24m 13.857s including build-stage
+prechecks), max j4. The 116 selected native context/launch/worker cases passed;
+the full host run passed 5503 tests with one skip. The owned browser core suite
+passed all 160 checks. These are separate gates, not release admission.
+
+The normal-policy collector initially compared protected WebGPU pixels with a
+stock-byte oracle. An independent keyed CPU reference matched all **288 captured
+cases**; a deliberately wrong seed rejected 128 protected cases. The staged
+validator passed 656 host tests and a fresh normal-policy browser recheck.
+The original failed report is preserved, not rewritten.
+
+Selected mip/layer views, large RGBA/BGRA resources and baseline/protected GPU
+process recovery passed. **Full padded multi-layer mapping still rejects readback**;
+the mutation fixture stops at the same first read. Legacy Audio fidelity/analyser/
+worklet also remain incompatible. AudioMath, its restart and long-buffer gates
+passed, but the ordinary two-profile Audio cohort selected backend zero twice;
+the separately preselected long-buffer cohort covers both selectors.
+
+[Measured R6 evidence](../native/drafts/upstream-156-webgpu-r6/README.md) separates
+build, native, host and browser results. No package/privacy/production admission,
+external detector/CAPTCHA result, Linux/macOS completion or real mobile OS claim.
+Next: resolve padded-array provenance/resource handling, repeat mutation/context
+checks, then continue manager/package admission and the remaining full roadmap.
+
 ## 2026-11-01: R6 registered, full replay passed; no new binary yet
 
 [R6 recipe](../native/drafts/upstream-156-webgpu-r6/README.md) preserves R5's exact 124-patch

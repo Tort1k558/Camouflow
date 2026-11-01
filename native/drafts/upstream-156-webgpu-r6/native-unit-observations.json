@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "passed": true,
+  "native_tests_executed": true,
+  "scope": "Filtered native context/launch/Mojo/worker contracts; not full browser or privacy admission",
+  "candidate_manifest_sha256": "cd63f64a4b05a5d45df7019efa74fc323af65b88bae4dfe6338cb917f5be8ef7",
+  "batch_report_sha256": "dd70bce48320e5bec0066aee338944ea7b8bc67eb877034b3fd3b7da2a7d3f9e",
+  "build_log_sha256": "0504ea06b9df6a61d8c8bb1284d6d2cd4dd44db6ddbc627c38ceb1db7e79135d",
+  "build_invocations": 1,
+  "jobs": 4,
+  "case_executions": 116,
+  "distinct_suite_case_pairs": 116,
+  "targets": [
+    {
+      "target": "surface-launch",
+      "tests": 41,
+      "passed": true,
+      "result": "native-units/surface-launch-tests.json",
+      "portable_result_sha256": "2f7eb30b422994513e5dcf045419a9d751f5372853710890463a85ac6852d82e",
+      "original_result_sha256": "ddecc5161837327682fe2eab031b1e1588af025e53fb9c2769228ad3f3a4b599",
+      "test_binary_sha256": "f2d482d1ef2f45ddaa5cc4bea9bb28edbbd338f04c32442073e3efc029fc4117"
+    },
+    {
+      "target": "identity-transport",
+      "tests": 20,
+      "passed": true,
+      "result": "native-units/identity-transport-tests.json",
+      "portable_result_sha256": "60660395594fd76398059c90e01b500a7fc2b97249e067b8f9f90fa01f79807f",
+      "original_result_sha256": "61395c8f97dd2ea1b287207a8692eb73e68994f1282a9a388c086da9cc20299e",
+      "test_binary_sha256": "f2d482d1ef2f45ddaa5cc4bea9bb28edbbd338f04c32442073e3efc029fc4117"
+    },
+    {
+      "target": "worker-surfaces",
+      "tests": 55,
+      "passed": true,
+      "result": "native-units/worker-surfaces-tests.json",
+      "portable_result_sha256": "72d77dab86e80044c6989b4d50be70008e8997b2c73d3982f966be1eac18ea26",
+      "original_result_sha256": "6e5ea54c14fc67d9aa023e3abb920560dc4f2ecf24ead591e2ce7b3cbac3d5a5",
+      "test_binary_sha256": "f2d482d1ef2f45ddaa5cc4bea9bb28edbbd338f04c32442073e3efc029fc4117"
+    }
+  ],
+  "source_postguards_passed": true,
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "normalization": "UTF-8 LF JSON reserialization only; parsed objects equal retained originals"
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Full host tests at source commit before this evidence-only publication; not browser admission",
+  "counts": {
+    "passed": 5503,
+    "failed": 0,
+    "skipped": 1
+  },
+  "duration_seconds": 586.828,
+  "log_sha256": "e7f2e73575768461ca8ca500b17ec8682da26a4cfbd45b284d9cddc4a5b69a11",
+  "report_sha256": "73c91cd268341f5b6bdf6a508a4ebe0791386f02a5fd27bb2eaf8f5e25c82c96",
+  "input_postguards_passed": true,
+  "source_commit": "795e5d1c8b0ef85dd3f4dc26037f767ae33c8921",
+  "candidate_manifest_sha256": "cd63f64a4b05a5d45df7019efa74fc323af65b88bae4dfe6338cb917f5be8ef7",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "foreign_dirty_file": {
+    "path": "docs/HUB.md",
+    "included_in_commit": false,
+    "sha256": "8d0a8ec86d626f0e9aa187b88b87b1d92a25b9995ebdff7c0496ae1dad7c2206"
+  }
+}

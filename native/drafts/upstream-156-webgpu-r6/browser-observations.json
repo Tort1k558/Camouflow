@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "browser_executed": true,
+  "all_browser_gates_passed": false,
+  "scope": "Owned local R6 browser diagnostics only; no detector/CAPTCHA or managed package admission",
+  "candidate_manifest_sha256": "cd63f64a4b05a5d45df7019efa74fc323af65b88bae4dfe6338cb917f5be8ef7",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a2615f422c046c34d53363bee1a486eba77e8e9f183850265b82bc61f9fdda08",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "original_batch": {
+    "report_sha256": "9ae694e87a8c7e0d5247d3d35168ff19df51af00b9cd44e0758acc170b38900f",
+    "gates": [
+      {
+        "name": "runtime-suite",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "5af69fe1b8386a0064dc42cf0b253e661a74543b336d13b01aac8273c9e16ca0",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "normal-profile-surfaces",
+        "passed": false,
+        "returncode": 1,
+        "report_sha256": "76057909207ea9d1098d94a2f5d4b9a3dd189eba70a95467825187dfa0e8e62c",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "normal-profile-webgpu",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "cb5ac85bf8937b64ae93f584c68f1f2fd89ad7b00e61941ee0f31603f80ac226",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "worker-startup",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "fd364c299786ff2cd0301bd8cfffa114b11ff24e56dbb684bbe297815a7e47fa",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "surfaces",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "ab38753e09d0d832008bd53f414b2668561aeea895287d658539133e90da8a6b",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "gpu-contexts",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "c7f496a9128d9331a451ef17b542aca3382dee3ae727907a1c0dc3e6364ed148",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "webgpu-consistency",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "be29d8a081a0d8ff9029106843e2fe4ab26ad4ccc49682ba5649750479bd986e",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "combined-math",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "4f219e333295416dfdfa959dfdc04ff32f61a3619a72e28f60c21889bc4ce124",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "audio-compatibility",
+        "passed": false,
+        "returncode": 1,
+        "report_sha256": "10cefdad8489ab591e928a261dc95de113a363c50fbe837609ea4e977e94ac0d",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "webgpu-context-consistency",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "a7e83c4be4bad40c7bb7f05b5e9af6306c73e74b165901a43bf065680dd4e688",
+        "runtime_postguard_passed": true
+      },
+      {
+        "name": "audio-math-long-buffer",
+        "passed": true,
+        "returncode": 0,
+        "report_sha256": "703810a9f94e61a66917cf32a6bb3551cbb64eca9ba749d8cb4efe0b4867d5e3",
+        "runtime_postguard_passed": true
+      }
+    ]
+  },
+  "core_runtime": {
+    "passed": true,
+    "checks": 160,
+    "suite_report_sha256": "5af69fe1b8386a0064dc42cf0b253e661a74543b336d13b01aac8273c9e16ca0"
+  },
+  "profile_normal_policy_keyed_recheck": {
+    "passed": true,
+    "report_sha256": "6118a1241537543d2d6bc11a6ab212cd6aedc2a2b02e190e45c5fed762eec863",
+    "validator_host_tests_passed": 656,
+    "independent_keyed_texture_cases": 288,
+    "wrong_seed_negative_control_rejections": 128,
+    "original_stock_pixel_oracle_failure_retained": true
+  },
+  "additional_gates": [
+    {
+      "name": "narrow-array",
+      "passed": true,
+      "returncode": 0,
+      "report_sha256": "94c45b3801f123d93c55777abf1f19c2622f03af36b6613b1e29cc7b65e7f0f5"
+    },
+    {
+      "name": "array-mutation",
+      "passed": false,
+      "returncode": 1,
+      "report_sha256": "06d14e1194e83f93e8f5c55f825ae51c047520ff93196912c65a3ce5aa88b2d2"
+    },
+    {
+      "name": "large-resource",
+      "passed": true,
+      "returncode": 0,
+      "report_sha256": "a543d68517e25f81b7d2838b66844a533ad122d9e6bad4693e5bf64ccc30dc82"
+    },
+    {
+      "name": "gpu-recovery-baseline",
+      "passed": true,
+      "returncode": 0,
+      "report_sha256": "a90b99d24cc26de2585e4636a1dd8ad1c154d6273fcb0d5aa7549dba5a8d1e95"
+    },
+    {
+      "name": "gpu-recovery-ready",
+      "passed": true,
+      "returncode": 0,
+      "report_sha256": "67c45ecf44e9a95aff29c6120d29feeb9d6feb687c667044cc72458354667f82"
+    }
+  ],
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "unresolved": [
+    "Multi-layer padded full-array mapping rejects readback; mutation fixture stops at the same first read.",
+    "Legacy Audio fidelity/analyser/worklet remain incompatible; two random Audio profiles both selected backend zero.",
+    "Recoverable full-pipeline resource exhaustion and managed package admission are not established.",
+    "Linux/macOS deferred; mobile remains Web Emulation; no external detector/CAPTCHA claims."
+  ],
+  "multi_layer_context_matrix": {
+    "passed": false,
+    "report_sha256": "6e3c475828144a841047d46cb33ccaa32d64600096dcae9258459002e675f956",
+    "baseline_observations_completed": 12,
+    "protected_error": "Page.evaluate: OperationError: Failed to execute 'mapAsync' on 'GPUBuffer': Readback policy rejected mapped data"
+  }
+}

@@ -1,0 +1,443 @@
+{
+  "tests": 41,
+  "failures": 0,
+  "disabled": 0,
+  "errors": 0,
+  "timestamp": "2026-11-01T11:36:42Z",
+  "time": "0.31s",
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "NativePrivacyBrowserContextTest",
+      "tests": 37,
+      "failures": 0,
+      "disabled": 0,
+      "errors": 0,
+      "timestamp": "2026-11-01T11:36:42Z",
+      "time": "0.308s",
+      "testsuite": [
+        {
+          "name": "StartupKeyReadyBeforeEventLoop",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 60,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.021s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "StartupMissingIdentityIsTerminalWithoutCreation",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 78,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "StartupMalformedIdentityIsNotReplaced",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 99,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "StartupCannotReplaceReadyOrLoadingOwner",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 110,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "StartupOffTheRecordNeverReadsPersistentIdentity",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 130,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "StartupRejectsInvalidRootWithoutInstallingOwner",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 147,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "PersistentLoadingGatesReadinessAndDerivation",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 160,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "PersistentIdentitySurvivesActualContextRecreation",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 176,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "PersistentProfilesHaveIndependentKeys",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 193,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.005s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "OffTheRecordContextsDoNotShareOriginalOrEachOther",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 211,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "OffTheRecordRejectsPersistentRootBeforeInstallation",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 244,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "PersistentContextRejectsEmptyRoot",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 254,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "MissingIdentityFailsWithoutRegeneration",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 264,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "MalformedIdentityIsNotReplaced",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 276,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "BrowserContextShutdownClearsReadyService",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 289,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "ShutdownDuringLoadRejectsLateReply",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 307,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "DestructionDuringLoadDoesNotUseDestroyedContext",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 321,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "BrowserBridgeSeparatesSurfacesAndTopLevelSites",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 332,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "NullContextIsRejected",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 353,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.002s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "ContextReadinessRejectsMissingServiceAndNullContext",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 360,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "ContextReadinessWaitsForKeyAndAllowsDerivation",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 375,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "ContextReadinessSettlesFailedIdentity",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 390,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "ContextShutdownSettlesQueuedReadinessOnce",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 405,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "ContextDestructionNeverReportsReadinessSuccess",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 425,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.002s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "ContextCallbackShutdownRejectsRemainingReadiness",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 443,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "OffTheRecordReadinessCompletesInlineWithoutPersistentKey",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 461,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "SelectedModesBelongToTheirContextOwners",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 477,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "SelectedIdentityRejectsLoadingAndContextShutdown",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 508,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "InvalidSelectedModeDoesNotOwnTheContext",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 530,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "SelectedModeCannotReplaceLoadingOwner",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 552,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "SelectedIdentitySurvivesNewContextWithSameRoot",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 567,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "SelectedIncognitoIdentityRejectsPersistentRoot",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 587,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "SelectedNullAndFailedContextsNeverExposeMode",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 620,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "LaunchWithoutModePreservesCompatibilityDefault",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 637,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.002s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "ExplicitLaunchModeRequiresEnabledKeyService",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 644,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.002s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "IdentityLaunchRequiresBothFullSurfacePolicies",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 662,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.002s",
+          "classname": "NativePrivacyBrowserContextTest"
+        },
+        {
+          "name": "IdentityLaunchRejectsEitherLegacyCanvasConflict",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 679,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0.002s",
+          "classname": "NativePrivacyBrowserContextTest"
+        }
+      ]
+    },
+    {
+      "name": "NativeSurfaceLaunchTest",
+      "tests": 4,
+      "failures": 0,
+      "disabled": 0,
+      "errors": 0,
+      "timestamp": "2026-11-01T11:36:42Z",
+      "time": "0.001s",
+      "testsuite": [
+        {
+          "name": "ExplicitModesUseProductionBootstrap",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 709,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0s",
+          "classname": "NativeSurfaceLaunchTest"
+        },
+        {
+          "name": "RejectsEveryMissingEffectiveFeature",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 725,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0s",
+          "classname": "NativeSurfaceLaunchTest"
+        },
+        {
+          "name": "RejectsVersionKeyModeAndDiagnosticConflicts",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 749,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0s",
+          "classname": "NativeSurfaceLaunchTest"
+        },
+        {
+          "name": "AbsentVersionRetainsOrdinaryStartup",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_context_unittest.cc",
+          "line": 783,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T11:36:42Z",
+          "time": "0s",
+          "classname": "NativeSurfaceLaunchTest"
+        }
+      ]
+    }
+  ]
+}
