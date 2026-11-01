@@ -1,5 +1,17 @@
 # Glint architecture
 
+## 2026-11-01: R7 source recipe registered
+
+[R7](drafts/upstream-156-webgpu-r7/README.md) preserves all 128 R6 patches and appends the bounded sparse
+readback packet as patch 129 in the Chromium repository. Exact forward and
+reverse replay passed: 400 final owned files matched, 270 upstream files restored.
+Host candidate registration is reversible; previous measured tooling remains
+recoverable through the R7/R6 archive chain. Twelve focused host tests passed.
+This is source preparation, not a linked browser fix. Canonical source and binary
+remain R6. Next gates: resource preflight, preserved-runtime source transition,
+Windows build max j4, then unchanged retained-buffer/mutation and combined runtime
+checks. Legacy Audio remains unresolved; production admission is not granted.
+
 ## 2026-11-01: readback-capacity source packet prepared
 
 The public [capacity packet](drafts/webgpu-readback-capacity/README.md)

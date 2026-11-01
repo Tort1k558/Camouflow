@@ -327,3 +327,5 @@ native/drafts/webgpu-array-projection/* text eol=lf
 native/drafts/webgpu-array-native-integration/* text eol=lf
 native/drafts/webgpu-readback-capacity/* text eol=lf
 native/drafts/environment/webgpu-r6-host-source-upgrade.json text eol=lf
+native/drafts/environment/webgpu-r7-host-source-upgrade.json text eol=lf
+native/drafts/environment/webgpu-r7-host-source-upgrade.patch text eol=lf

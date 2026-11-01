@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "patch": "webgpu-r7-host-source-upgrade.patch",
+  "patch_sha256": "6ca8978be73f0db059d3f3569db5cae7c2d2a3f37bc61d3a18da8efcb642a61c",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "3cbcaed3c2cfa06dbf01589db903900ac47a3480b98a560505d92647ce639cda",
+      "after_sha256": "fd1d9d54aceaae53587622d21316df4b20d2dcdb1daabfbb6cb7108a6b908cd7"
+    },
+    {
+      "source": "scripts/verify_native_privacy_units.py",
+      "before_sha256": "a9a859cb42090efb79a54fa336011ab31dd4678924faa7f0e64a29c64d555760",
+      "after_sha256": "b2105105deacc2b6bb56c0f7892d8e45e911343a78313a3457c46295667c7e56"
+    }
+  ],
+  "scope": "Reversible candidate/unit-tool registration; preserve exact R5 and earlier measured inputs.",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

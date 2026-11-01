@@ -1,0 +1,22 @@
+diff --git a/chrome/app/chrome_main_delegate.cc b/chrome/app/chrome_main_delegate.cc
+--- a/chrome/app/chrome_main_delegate.cc
++++ b/chrome/app/chrome_main_delegate.cc
+@@ -546,6 +546,18 @@
+           base::FilePath(invalid_user_data_dir_buf));
+       command_line->AppendSwitchPath(switches::kUserDataDir, user_data_dir);
+     }
++    // Keep profile ownership paths unchanged outside the browser. Native's
++    // filesystem consumers need extended syntax for nested persistent stores.
++    if (user_data_dir.IsAbsolute() && !user_data_dir.ReferencesParent()) {
++      const auto directory = user_data_dir.NormalizePathSeparators().value();
++      if (!directory.starts_with(FILE_PATH_LITERAL("\\\\?\\")) &&
++          !directory.starts_with(FILE_PATH_LITERAL("\\\\.\\"))) {
++        user_data_dir = base::FilePath(
++            directory.starts_with(FILE_PATH_LITERAL("\\\\"))
++                ? FILE_PATH_LITERAL("\\\\?\\UNC\\") + directory.substr(2)
++                : FILE_PATH_LITERAL("\\\\?\\") + directory);
++      }
++    }
+     CHECK(base::PathService::OverrideAndCreateIfNeeded(
+         chrome::DIR_USER_DATA, user_data_dir, false, true));
+   }

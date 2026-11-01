@@ -1,0 +1,15 @@
+diff --git a/src/dawn/native/d3d12/TextureD3D12.cpp b/src/dawn/native/d3d12/TextureD3D12.cpp
+--- a/src/dawn/native/d3d12/TextureD3D12.cpp
++++ b/src/dawn/native/d3d12/TextureD3D12.cpp
+@@ -376,9 +376,9 @@
+ bool Texture::CanCacheGlintProjection() const {
+     if (mIsExternalSwapChainTexture || !HasAccess()) return false;
+     if (mResourceAllocation.GetInfo().mMethod != AllocationMethod::kExternal) return true;
+-    // Only explicit, exclusive shared-memory epochs can authorize cache reuse.
++    // Explicit shared-memory access prevents writers while any readers remain.
+     auto* contents = GetSharedResourceMemoryContents();
+-    return contents && (contents->HasWriteAccess() || contents->HasExclusiveReadAccess());
++    return contents && contents->HasAccess();
+ }
+ 
+ std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture> Texture::GetGlintProjection(

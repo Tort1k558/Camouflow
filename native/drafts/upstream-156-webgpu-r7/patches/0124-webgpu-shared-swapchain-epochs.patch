@@ -1,0 +1,20 @@
+diff --git a/src/dawn/native/d3d12/TextureD3D12.cpp b/src/dawn/native/d3d12/TextureD3D12.cpp
+--- a/src/dawn/native/d3d12/TextureD3D12.cpp
++++ b/src/dawn/native/d3d12/TextureD3D12.cpp
+@@ -374,9 +374,13 @@
+ }
+ 
+ bool Texture::CanCacheGlintProjection() const {
+-    if (mIsExternalSwapChainTexture || !HasAccess()) return false;
+-    if (mResourceAllocation.GetInfo().mMethod != AllocationMethod::kExternal) return true;
+-    // Explicit shared-memory access prevents writers while any readers remain.
++    if (!HasAccess()) return false;
++    if (mResourceAllocation.GetInfo().mMethod != AllocationMethod::kExternal) {
++        return !mIsExternalSwapChainTexture;
++    }
++    // Chromium's Canvas SharedImages carry the swapchain presentation marker,
++    // but their explicit shared-memory access still bounds the current epoch.
++    // Unknown external/swapchain resources without that ownership stay excluded.
+     auto* contents = GetSharedResourceMemoryContents();
+     return contents && contents->HasAccess();
+ }

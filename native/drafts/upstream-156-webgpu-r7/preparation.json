@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "passed": true,
+  "forward_patches": 129,
+  "reverse_patches": 129,
+  "compiled": false,
+  "canonical_dependency_detector_verified": false,
+  "scope": "Exact source recipe replay with each declared repository directory; no source transition or browser admission",
+  "manifest_sha256": "2ca402cdf0ba7b3a1b455c4266d4725006b156ce93585d3f6704bfc4eb7e4d66",
+  "final_owned_files_matched": 400,
+  "upstream_files_restored": 270,
+  "registered": true,
+  "report_sha256": "780f117f9143f7b4c3282797c182ebfed82eb8257a7236d09c784196834998cc",
+  "source_transitioned": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}
