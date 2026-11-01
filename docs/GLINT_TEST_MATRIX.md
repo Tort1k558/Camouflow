@@ -1,5 +1,37 @@
 # Glint browser test matrix
 
+## 2026-11-01: controlled R8 browser rechecks
+
+[Controlled evidence](../native/drafts/upstream-156-audio-r8/controlled-rechecks.json)
+preserves the original failed reports rather than replacing them.
+
+| Gate | Measured follow-up | Boundary |
+| --- | --- | --- |
+| Hardware | R7 → R8 → R7: **9 checks passed each** | Same 10-second close limit; original timeout not reproduced, root cause unknown |
+| AI workflow | **8 checks passed**, public CLI exit 0 | Fixture AI only; strict JSON stdout, not a generated `report.json` |
+| GPU recovery | Baseline and ready modes passed | Missing `watch.js` staging corrected; collector bytes unchanged |
+| Broader runtime | **14/14 named groups covered** across original 12 passes and corrected GPU runs | Not a fresh single full-suite pass |
+
+The private controller still reports failure because it expected an AI report
+file instead of the public CLI's documented JSON stdout. The audited record
+distinguishes this runner error from the successful workflow. All postguards
+passed; no owned runtime processes remained. Legacy Audio, fresh full host,
+external anti-bot and production admission remain open.
+
+## 2026-11-01: all 26 R8 native groups passed
+
+[Full native evidence](../native/drafts/upstream-156-audio-r8/native-all-observations.json):
+**554 executions / 397 distinct binary-suite-case identities** across all 26
+registered groups. Some contract cases are intentionally re-executed by several
+groups; 554 must not be presented as 554 unique tests. Final source/core/receipt,
+SDK/GN and test-executable postguards passed.
+
+The six test-binary targets built with configured j4: **71 Siso steps / 10m 27.38s**;
+the complete controller including source guards and tests took 995.485 seconds.
+The earlier reserve rejection remains preserved. This native result does not
+repair Legacy Audio, resolve the earlier browser teardown failure or grant full
+browser/privacy/production admission.
+
 ## 2026-11-01: first broad R8 attempt is not green
 
 [Bound first-attempt record](../native/drafts/upstream-156-audio-r8/qa-attempt1.json).

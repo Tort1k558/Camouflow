@@ -22,11 +22,17 @@ tests/one skip before the later lifecycle CLI addition. Its [Windows build](draf
 completed 60 Siso steps in 16m 05.31s. The separate linked
 [native batch](drafts/upstream-156-audio-r8/native-selected-observations.json)
 passed 135 cases across five exact groups, including all seven new lifecycle
-cases, with final source/core/toolchain guards. Independent browser, broader
-native-target and package admission remain pending.
+cases, with final source/core/toolchain guards. The later
+[all-native batch](drafts/upstream-156-audio-r8/native-all-observations.json)
+passed all 26 registered groups: **554 executions / 397 distinct tests**, with
+final postguards. Broader browser QA and package admission remain pending.
 The [first broader R8 attempt](drafts/upstream-156-audio-r8/qa-attempt1.json)
 is not green: hardware teardown, Legacy Audio and launcher/history issues need
 their own follow-up; narrow passes do not admit the entire engine.
+The [controlled rechecks](drafts/upstream-156-audio-r8/controlled-rechecks.json)
+passed hardware R7 → R8 → R7, eight fixture-AI checks and both GPU recovery
+modes. Runner staging/output interpretation errors are preserved separately;
+the hardware timeout root cause and Legacy Audio remain unresolved.
 The new [Audio lifecycle verifier](drafts/audio-lifecycle-runtime/README.md)
 has now passed its actual public CLI on R8: **74 cases/346 checks**, with unchanged
 source/runtime/driver and closed resources. Its R7 comparison baseline remains

@@ -1,0 +1,991 @@
+{
+  "schema": 1,
+  "passed": true,
+  "all_supported_native_targets_verified": true,
+  "scope": "26 linked Windows native groups; execution count includes cases shared between groups",
+  "candidate": "upstream-156-audio-r8",
+  "candidate_manifest_sha256": "8de1feb394983b38ce578ee06850efedc8fc4ccb7fbd20f0cc0d6d9148dd3c18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "476990fa9c7196f774835efd5d810d0f35176b05bf2728f022ecaf59f66e7714",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "10dad15a0065aa71a7527c099cced71301ab487818ef3740bc0ac52ecad9837d",
+  "native_groups": 26,
+  "native_case_executions": 554,
+  "distinct_binary_suite_cases": 397,
+  "shared_case_reexecutions": 157,
+  "targets": [
+    {
+      "target": "keys",
+      "build_target": "camouflow_native_privacy_unittests",
+      "passed": true,
+      "case_executions": 43,
+      "required_cases": {
+        "NativePrivacyKeyTest": [
+          "OpaquePartitionsAreSeparatedAndCopyStable",
+          "ProfilesAreSeparated",
+          "RepeatedAndCopiedPartitionsAreStable",
+          "SurfacesAreSeparated",
+          "TopLevelSitesAreSeparated",
+          "UnknownSurfaceIsRejected"
+        ],
+        "NativePrivacyProfileKeyTest": [
+          "LoadsOwnedFileAndKeepsPrivateSnapshot",
+          "MissingFileIsNotGenerated",
+          "ParsesExistingPythonIdentityAndDerivesKnownKey",
+          "RejectsDirectoryAndOversizedFile",
+          "RejectsHardLinkedIdentity",
+          "RejectsMalformedSchemaWithoutFallback",
+          "RejectsUppercaseAndBom"
+        ],
+        "NativePrivacyKeyServiceTest": [
+          "DestructionCancelsQueuedReadiness",
+          "DestructionWhileLoadingDropsLateReply",
+          "DoesNotDeriveUntilBackgroundLoadCompletes",
+          "EphemeralInstancesAreIndependentAndStable",
+          "FailedLoadingSettlesReadinessWithoutRegeneration",
+          "FailedOwnerCannotReplaceIdentity",
+          "IndependentOwnersDoNotRedirectToOriginal",
+          "InitializationIsSingleUseAndRejectsRelativePath",
+          "InvalidOwnerInstallDoesNotOccupySlot",
+          "MalformedIdentityRemainsFailedAndUnchanged",
+          "MissingIdentityFailsWithoutEphemeralFallback",
+          "OwnerDataCloneDoesNotCopyPrivateIdentity",
+          "OwnerDestructionDuringLoadDropsReply",
+          "OwnerInstallationIsSingleUse",
+          "PersistentAndEphemeralInstancesDoNotShareKeys",
+          "PersistentIdentitySurvivesServiceRecreation",
+          "ReadinessCallbacksMayReenterTerminalService",
+          "ReadinessQueueHasExplicitBound",
+          "ReadinessWaitsForLoadingAndDerivesInsideCallback",
+          "ReadyCallbackDestructionRejectsRemainingCallbacks",
+          "ReadyCallbackShutdownRejectsRemainingCallbacks",
+          "ReadyCallbacksCompleteInline",
+          "ShutdownCancelsLateLoadReply",
+          "ShutdownClearsReadyKeyAndRejectsReinitialization",
+          "ShutdownSettlesReadinessAndIgnoresLateLoad",
+          "UninitializedReadinessFailsInline"
+        ],
+        "All/NativePrivacyKeyVectorTest": [
+          "MatchesIndependentPythonVector/0",
+          "MatchesIndependentPythonVector/1",
+          "MatchesIndependentPythonVector/2",
+          "MatchesIndependentPythonVector/3"
+        ]
+      },
+      "test_binary_sha256": "179a6aff1449026e9f8ea12450a41d717f2adc83f9b48a8e1556f1782e4e9ea7",
+      "result_sha256": "52d1487549beadb39407c2eafa1f136220d3669ace138066e9c9937baabc0b5d",
+      "log_sha256": "afd2d39e80b0b3321b2914050986d366b9643234bb08a0e1dde86e73e4bb107f"
+    },
+    {
+      "target": "contexts",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 26,
+      "required_cases": {
+        "NativePrivacyBrowserContextTest": [
+          "BrowserBridgeSeparatesSurfacesAndTopLevelSites",
+          "BrowserContextShutdownClearsReadyService",
+          "ContextCallbackShutdownRejectsRemainingReadiness",
+          "ContextDestructionNeverReportsReadinessSuccess",
+          "ContextReadinessRejectsMissingServiceAndNullContext",
+          "ContextReadinessSettlesFailedIdentity",
+          "ContextReadinessWaitsForKeyAndAllowsDerivation",
+          "ContextShutdownSettlesQueuedReadinessOnce",
+          "DestructionDuringLoadDoesNotUseDestroyedContext",
+          "MalformedIdentityIsNotReplaced",
+          "MissingIdentityFailsWithoutRegeneration",
+          "NullContextIsRejected",
+          "OffTheRecordContextsDoNotShareOriginalOrEachOther",
+          "OffTheRecordReadinessCompletesInlineWithoutPersistentKey",
+          "OffTheRecordRejectsPersistentRootBeforeInstallation",
+          "PersistentContextRejectsEmptyRoot",
+          "PersistentIdentitySurvivesActualContextRecreation",
+          "PersistentLoadingGatesReadinessAndDerivation",
+          "PersistentProfilesHaveIndependentKeys",
+          "ShutdownDuringLoadRejectsLateReply",
+          "StartupCannotReplaceReadyOrLoadingOwner",
+          "StartupKeyReadyBeforeEventLoop",
+          "StartupMalformedIdentityIsNotReplaced",
+          "StartupMissingIdentityIsTerminalWithoutCreation",
+          "StartupOffTheRecordNeverReadsPersistentIdentity",
+          "StartupRejectsInvalidRootWithoutInstallingOwner"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "0c4d348401b02b085c5fae3a68ff6c0318e68e47576b38fde246c0353992561c",
+      "log_sha256": "85d49b8b87a7c4e3a83dbd5583ca735b72863b533bec10d070e643338282e01a"
+    },
+    {
+      "target": "delivery",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 34,
+      "required_cases": {
+        "NativePrivacyDocumentServiceTest": [
+          "DocumentDestructionDropsLoadingReply",
+          "DuplicateRequestClosesLoadingPipe",
+          "LoadingDoesNotReplyBeforeReadiness",
+          "MissingServiceReturnsUnavailable",
+          "NativePartitionEncodingRetainsDisabledStoragePartitionFields",
+          "PipeDisconnectDropsLoadingReply",
+          "ReadyContextDeliversOnlyCanvasSubkey",
+          "ShutdownSettlesOnceWithoutSeed",
+          "TimeoutRejectsLateReadyReply"
+        ],
+        "NativePrivacyWorkerServiceTest": [
+          "DeadlineRejectsLateReadiness",
+          "DestroyedContextCannotDeliverSeed",
+          "DuplicateRequestCancelsPendingDelivery",
+          "LegacyDataWorkerOriginMismatchIsRejected",
+          "LoadingDoesNotReplyBeforeReadiness",
+          "MatchingOpaqueDataWorkerUsesOwnedPartition",
+          "MissingServiceReturnsUnavailable",
+          "PipeDisconnectDropsLoadingReply",
+          "ReadyPolicyMatchesTrustedPartition",
+          "ReceiverOwnerDestructionDropsLoadingReply",
+          "ShutdownSettlesLoadingOnce",
+          "UnpartitionedSharedAndServiceWorkersFail"
+        ],
+        "NativePrivacyWorkerBootstrapTest": [
+          "BrowserTimeoutDoesNotReturnSeed",
+          "DeadlineCallbackCanDestroyConsumer",
+          "DeadlineRejectsLateReadyReply",
+          "DestructionDropsPendingReply",
+          "FailureCallbackCanDestroyConsumer",
+          "FailureWithSeedIsRejected",
+          "MissingPipeReturnsTypedFailure",
+          "PeerDisconnectSettlesOnce",
+          "ReadyCallbackCanDestroyConsumer",
+          "ReadyPolicyReturnsOwnedSurfaceSeedOnce",
+          "ReadyWithoutPolicyIsRejected",
+          "UnavailableDoesNotReturnSeed",
+          "UnknownVersionIsRejected"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "1c35b8e8ba848c210643004d673047844da0684ea702fea6b858ed333303c85c",
+      "log_sha256": "7e2d367973a7c30ae1406daa9c073bba04113f1b7195450b85fbc8fe800c1a3d"
+    },
+    {
+      "target": "worker-handoff",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 4,
+      "required_cases": {
+        "WorkerThreadTest": [
+          "GlintCanvasSeedArrivesBeforeEvaluation",
+          "GlintCanvasSeedRemainsAbsentWithoutBootstrap",
+          "GlintImmediateTerminationRetainsOwnedCanvasSeed",
+          "GlintSequentialScopesDoNotReusePreviousCanvasSeed"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "2c67c7e8ef4332fdc7f746512d4f75f3492dd9d9db77bd28e69328ddc4ae9a88",
+      "log_sha256": "55987cd8a379d5ab1b124f47d799fad13801dd4bf92ce1fbdfa575a105674f92"
+    },
+    {
+      "target": "document-partition",
+      "build_target": "camouflow_native_privacy_unittests",
+      "passed": true,
+      "case_executions": 9,
+      "required_cases": {
+        "GlintDocumentCanvasPolicyTest": [
+          "EmbeddedNullAndTrailingDataAreNotIgnored",
+          "MatchingPartitionReturnsOwnedSeed",
+          "MissingCommitmentRejectsPolicy",
+          "OpaqueOriginRequiresExactOwnedIdentity",
+          "OriginChangeRejectsPreviousCommitment",
+          "RetainedAncestorChainMatters",
+          "RetainedTopLevelSiteMattersWithPartitioningOff",
+          "StorageNonceChangeRejectsCommitment",
+          "UnknownVersionRejectsMatchingPartition"
+        ]
+      },
+      "test_binary_sha256": "179a6aff1449026e9f8ea12450a41d717f2adc83f9b48a8e1556f1782e4e9ea7",
+      "result_sha256": "e11b66119edd357b39387057891eb9370f6554b7c9913014b0ec31e60316cf34",
+      "log_sha256": "ab580648eb7e2e1510099a78a5e8e8f2a4708c83ad52655f418ad26c51c95cf5"
+    },
+    {
+      "target": "document-navigation",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 12,
+      "required_cases": {
+        "WithAndWithoutUrlLoader/NativeDocumentNavigationTest": [
+          "FlagOffKeepsUpstreamCommitWithoutKeyService/0",
+          "FlagOffKeepsUpstreamCommitWithoutKeyService/1",
+          "MissingPolicyRejectsBeforeCommit/0",
+          "MissingPolicyRejectsBeforeCommit/1",
+          "PolicyAbsentCannotUseRejectionProtocol/0",
+          "PolicyAbsentCannotUseRejectionProtocol/1",
+          "ReadyRequestCarriesItsSelectedPartitionPolicy/0",
+          "ReadyRequestCarriesItsSelectedPartitionPolicy/1",
+          "SelectedFrameRejectsExactPendingCommit/0",
+          "SelectedFrameRejectsExactPendingCommit/1",
+          "UnknownTokenDoesNotCancelPendingCommit/0",
+          "UnknownTokenDoesNotCancelPendingCommit/1"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "f12b12047c64279c7bc7d41fd078de568d2115e958c09a4feeebbe3838db384a",
+      "log_sha256": "da225855c04069dc1c415926e86278aefcd573c520e7762d7586d254241755bf"
+    },
+    {
+      "target": "surface-navigation",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 42,
+      "required_cases": {
+        "WithAndWithoutUrlLoader/NativeDocumentNavigationTest": [
+          "FlagOffKeepsUpstreamCommitWithoutKeyService/0",
+          "FlagOffKeepsUpstreamCommitWithoutKeyService/1",
+          "LateCanvasPolicyLossCancelsAndAllowsNextNavigation/0",
+          "LateCanvasPolicyLossCancelsAndAllowsNextNavigation/1",
+          "LateCanvasPolicyLossObserverMayDestroyWebContents/0",
+          "LateCanvasPolicyLossObserverMayDestroyWebContents/1",
+          "LateSurfacePolicyLossCancelsAndAllowsNextNavigation/0",
+          "LateSurfacePolicyLossCancelsAndAllowsNextNavigation/1",
+          "LateSurfacePolicyLossObserverMayDestroyWebContents/0",
+          "LateSurfacePolicyLossObserverMayDestroyWebContents/1",
+          "MissingPolicyRejectsBeforeCommit/0",
+          "MissingPolicyRejectsBeforeCommit/1",
+          "PolicyAbsentCannotUseRejectionProtocol/0",
+          "PolicyAbsentCannotUseRejectionProtocol/1",
+          "ReadyRequestCarriesItsSelectedPartitionPolicy/0",
+          "ReadyRequestCarriesItsSelectedPartitionPolicy/1",
+          "SelectedFrameRejectsExactPendingCommit/0",
+          "SelectedFrameRejectsExactPendingCommit/1",
+          "SurfaceConflictingFlagsRejectEvenReadyContext/0",
+          "SurfaceConflictingFlagsRejectEvenReadyContext/1",
+          "SurfaceFlagOffCannotCarryPriorNavigationEnvelope/0",
+          "SurfaceFlagOffCannotCarryPriorNavigationEnvelope/1",
+          "SurfaceMissingPolicyRejectsBeforeCommitWithoutFallback/0",
+          "SurfaceMissingPolicyRejectsBeforeCommitWithoutFallback/1",
+          "SurfaceReadyRequestCarriesAllSelectedPartitionDomains/0",
+          "SurfaceReadyRequestCarriesAllSelectedPartitionDomains/1",
+          "SurfaceRejectionObserverMayDestroyWebContents/0",
+          "SurfaceRejectionObserverMayDestroyWebContents/1",
+          "SurfaceSelectedFrameRejectsOnlyItsExactPendingToken/0",
+          "SurfaceSelectedFrameRejectsOnlyItsExactPendingToken/1",
+          "SurfaceStaleRejectedTokenCannotCancelNextNavigation/0",
+          "SurfaceStaleRejectedTokenCannotCancelNextNavigation/1",
+          "SurfaceUnknownTokenDoesNotCancelPendingCommit/0",
+          "SurfaceUnknownTokenDoesNotCancelPendingCommit/1",
+          "UnknownTokenDoesNotCancelPendingCommit/0",
+          "UnknownTokenDoesNotCancelPendingCommit/1"
+        ],
+        "NativeDocumentSurfaceReadinessTest": [
+          "ConflictingFlagsRejectReadyContextWithoutWaiting",
+          "DeadlineRejectsLateReplyWithoutCanvasFallback",
+          "LoadingDefersThenResumesOnlyOnce",
+          "MissingContextCancelsAfterDeferInstalled",
+          "ReadyContextProceedsForBothCommitPaths",
+          "ShutdownCancelsPendingReplyExactlyOnce"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "279c56eb71b194daa2df9bd7e82c8dcfc923e1753d2b1960cca66d5c59ab131d",
+      "log_sha256": "ae8dffd93e17339dd45b2b7fe153b0b95a161bec5b9ef0f7b4f8cd5ae10633fd"
+    },
+    {
+      "target": "window-transport",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 13,
+      "required_cases": {
+        "GlintWindowPrivacyReadinessTest": [
+          "DestructionCancelsBeforeServiceReply",
+          "DuplicateStartDoesNotRequestTwice",
+          "InlineCallbackMayDestroyRequest",
+          "LoadingWaitsForActualProfileReadiness",
+          "MalformedIdentityDoesNotOpenWindow",
+          "MissingContextRejectsInline",
+          "ShutdownSettlesFailureOnce",
+          "UninitializedContextRejectsInline"
+        ],
+        "GlintChildSurfaceTransportTest": [
+          "ActualInitialChildKeyMatchesItsFourBrowserDerivations",
+          "FeatureOffCallbackCanDestroyFrameOwner",
+          "FeatureOffNeverExposesReadyProfilePolicy",
+          "FeatureOffRejectsBeforeTokenConsumption",
+          "SamePartitionParentAndChildUseSamePolicyNotCopiedState"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "ab763185ed69f55d5e7dbc0362d458a9f09ccf02160fb678043d56f759ca9323",
+      "log_sha256": "02d0126c9397b9b4994a670bf88e03469bcde8ccff58f2bbcf108fc44c99f2b2"
+    },
+    {
+      "target": "gpu-pack-copy",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 14,
+      "required_cases": {
+        "GlintRgba8PackCopyTest": [
+          "AliasedStorageCannotMutateCanonicalSource",
+          "AlignmentEightPreservesInterRowPadding",
+          "EmptyReadsDoNotTouchSourceOrDestination",
+          "InvalidPackFieldsRejectWithoutUpstreamDcheck",
+          "LastRowDoesNotRequireTrailingPadding",
+          "NegativeDimensionsRejectBeforeAnyWrite",
+          "NonzeroOffsetPreservesPrefixAndSuffix",
+          "OverlappingRowsUseUpstreamLayout",
+          "OversizedOffsetRejectsBeforeAnyWrite",
+          "RowStrideOverflowRejectsBeforeAnyWrite",
+          "ShortDestinationRejectsBeforeAnyWrite",
+          "SkipsAndPaddingAreNotWritten",
+          "TightLayoutCopiesRowsWithoutSourceMutation",
+          "WrongSourceSizeRejectsBeforeAnyWrite"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "31eea2ffadbc36f236549e5e03ea0c65dbc3ad98631a8f33ed9776ee2d0a91c4",
+      "log_sha256": "c1022a78c6ab498f24b83584a41cfa1cb2f74c8061578dbe3a5e0f845050b456"
+    },
+    {
+      "target": "gpu-readback",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 31,
+      "required_cases": {
+        "GlintRgba8PackCopyTest": [
+          "AliasedStorageCannotMutateCanonicalSource",
+          "AlignmentEightPreservesInterRowPadding",
+          "EmptyReadsDoNotTouchSourceOrDestination",
+          "InvalidPackFieldsRejectWithoutUpstreamDcheck",
+          "LastRowDoesNotRequireTrailingPadding",
+          "NegativeDimensionsRejectBeforeAnyWrite",
+          "NonzeroOffsetPreservesPrefixAndSuffix",
+          "OverlappingRowsUseUpstreamLayout",
+          "OversizedOffsetRejectsBeforeAnyWrite",
+          "RowStrideOverflowRejectsBeforeAnyWrite",
+          "ShortDestinationRejectsBeforeAnyWrite",
+          "SkipsAndPaddingAreNotWritten",
+          "TightLayoutCopiesRowsWithoutSourceMutation",
+          "WrongSourceSizeRejectsBeforeAnyWrite"
+        ],
+        "GlintRgba8ReadbackRegionTest": [
+          "AliasedStorageRejectsBeforeWrite",
+          "CanvasBoundaryClipsHalo",
+          "EmptyReadHasNoTileOrStorage",
+          "ExactFullFrameNeedsOnePrivateAllocation",
+          "ExtremeCoordinatesDoNotOverflowClipping",
+          "ForgedPlanAndWrongStorageNeverWrite",
+          "HaloMatchesFullCanvasForEverySmallCrop",
+          "InvalidDimensionsAndUnboundedMemoryReject",
+          "OutsideOnlyKeepsPrivateDriverPixels",
+          "OverlayCannotSilentlySkipFullFrameTransform",
+          "TinyCropUsesHaloNotWholeLargeFramebuffer"
+        ],
+        "GlintRgba8ClippedPublicationTest": [
+          "AliasesRejectBeforeClippedWrites",
+          "ClipDoesNotRelaxOriginalBufferValidation",
+          "EntirelyOutsideDestinationRemainsExact",
+          "FullRegionRetainsExistingPackContract",
+          "InvalidCopyRegionNeverWrites",
+          "PreservesClippedPixelsPaddingAndOffsets"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "862a33abda93e1af631128fda56a919c6de9fd039ff8d12df0b525769782d17c",
+      "log_sha256": "7539d87542e5a721135bdd96afe80671d08c7a091ea6ec6718e4d54c2fca125e"
+    },
+    {
+      "target": "gpu-metadata",
+      "build_target": "gpu_unittests",
+      "passed": true,
+      "case_executions": 34,
+      "required_cases": {
+        "GlintReadbackMetadataTest": [
+          "ByteColourClaimCannotPromoteFloatIntegerOrUnknownFormat",
+          "ByteColourClassificationIsAnExactBoolean",
+          "ByteColourEligibilityPreservesAllSupportedFormats",
+          "ByteColourRoundTripPreservesNativeDimensions",
+          "DimensionsMustBePositive",
+          "ExtraFieldsAreNotSilentlyAccepted",
+          "InvalidFormatIsNotGuessed",
+          "NegativeSamplesAreRejected",
+          "NonByteAndMultisampleInformationIsNotFabricated",
+          "ProducerRejectsInvalidRepresentations",
+          "ReadyStatusIsExact",
+          "SchemaIsExact",
+          "TruncatedWireNeverReadsMissingFields",
+          "UnavailableCannotBecomeReady"
+        ],
+        "GlintPassthroughWithoutTextureQueryTest": [
+          "TextureAttachmentRemainsUnavailableWithoutNativeQueryExtension"
+        ],
+        "GLES2DecoderPassthroughTest": [
+          "GlintMetadataFeatureOffPublishesOnlyUnavailable",
+          "GlintMetadataInitializedResultDoesNotWrite",
+          "GlintMetadataInvalidSharedMemoryDoesNotWrite",
+          "GlintMetadataOverflowingOffsetDoesNotWrite",
+          "GlintMetadataTruncatedResultStorageDoesNotWrite"
+        ],
+        "GlintPassthroughAttachmentTest": [
+          "ActualRgba8ExtentsPreserveRenderbufferBinding",
+          "ArrayLayerAttachmentReportsNativeExtentsAndPreservesBinding",
+          "CubeFaceAttachmentReportsNativeExtentsAndPreservesBinding",
+          "IncompleteFramebufferRemainsUnavailableWithoutClientErrors",
+          "IntegerAttachmentIsNotByteColourCompatible",
+          "MetadataQueryPreservesPendingClientError",
+          "MultisampleMetadataMatchesActualRenderbufferSamples",
+          "NoReadBufferRemainsUnavailableWithoutClientErrors",
+          "RedefinedAttachmentUsesCurrentNativeDimensions",
+          "SelectedReadAttachmentControlsNativeMetadata",
+          "TextureAttachmentUsesNativeExtentsAndPreservesBinding",
+          "TextureMipAttachmentReportsSelectedLevel",
+          "TextureReattachmentUsesSelectedObjectNotBoundTexture",
+          "ThreeDimensionalLayerReportsNativeExtentsAndPreservesBinding"
+        ]
+      },
+      "test_binary_sha256": "b9e2df81093caa21128002d5bec83f3cbc34f329673acb1894ee1df74b7ec0fa",
+      "result_sha256": "9fb0b86cda2653cac1128a58a468787628c8d744b78d966249d54d149a410c95",
+      "log_sha256": "e6b336d2e8a3a925ee70c1179d4106dd7681dae0ca79a0923a6d0f9c3d03eb90"
+    },
+    {
+      "target": "worker-surfaces",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 55,
+      "required_cases": {
+        "NativePrivacyWorkerServiceTest": [
+          "DeadlineRejectsLateReadiness",
+          "DestroyedContextCannotDeliverSeed",
+          "DuplicateRequestCancelsPendingDelivery",
+          "LegacyDataWorkerOriginMismatchIsRejected",
+          "LoadingDoesNotReplyBeforeReadiness",
+          "MatchingOpaqueDataWorkerUsesOwnedPartition",
+          "MissingServiceReturnsUnavailable",
+          "PipeDisconnectDropsLoadingReply",
+          "ReadyPolicyMatchesTrustedPartition",
+          "ReceiverOwnerDestructionDropsLoadingReply",
+          "ShutdownSettlesLoadingOnce",
+          "UnpartitionedSharedAndServiceWorkersFail"
+        ],
+        "NativePrivacyWorkerBootstrapTest": [
+          "BrowserTimeoutDoesNotReturnSeed",
+          "DeadlineCallbackCanDestroyConsumer",
+          "DeadlineRejectsLateReadyReply",
+          "DestructionDropsPendingReply",
+          "FailureCallbackCanDestroyConsumer",
+          "FailureWithSeedIsRejected",
+          "MissingPipeReturnsTypedFailure",
+          "PeerDisconnectSettlesOnce",
+          "ReadyCallbackCanDestroyConsumer",
+          "ReadyPolicyReturnsOwnedSurfaceSeedOnce",
+          "ReadyWithoutPolicyIsRejected",
+          "UnavailableDoesNotReturnSeed",
+          "UnknownVersionIsRejected"
+        ],
+        "NativePrivacyWorkerSurfaceServiceTest": [
+          "CanvasThenSurfaceCannotRequestTwice",
+          "LoadingDoesNotReplyWithPrematureSnapshot",
+          "MissingServiceReturnsNoSnapshot",
+          "ReadySnapshotMatchesEveryDomainForAllWorkerKinds",
+          "ShutdownDuringReadinessReturnsNoSnapshot",
+          "SurfaceThenCanvasCannotRequestTwice",
+          "UnpartitionedSharedServiceWorkersRejectSnapshot",
+          "WrongWorkerOriginCannotGetSnapshot"
+        ],
+        "NativePrivacyWorkerSurfaceBootstrapTest": [
+          "BrowserTimeoutReturnsNoSnapshot",
+          "CanvasModeCannotUseSurfaceFallback",
+          "CanvasVersionCannotSatisfySurfaceRequest",
+          "ConflictAndUnknownModeNeverBecomeReady",
+          "DeadlineCallbackCanDestroyConsumer",
+          "DeadlineRejectsLateSnapshot",
+          "DestructionDropsPendingReply",
+          "DifferentPartitionCannotInstallSnapshot",
+          "FailureCallbackCanDestroyConsumer",
+          "FailureWithSnapshotIsRejected",
+          "FlagsSelectExactlyOneExplicitMode",
+          "MissingPipeReturnsTypedFailure",
+          "OffModeRejectsUnexpectedBootstrapData",
+          "OpaquePartitionPreservesOwnedIdentity",
+          "OriginOnlyRequestOwnsBrowserPartition",
+          "PeerDisconnectSettlesOnce",
+          "ReadyCallbackCanDestroyConsumer",
+          "ReadyReturnsOwnedIndependentSnapshotOnce",
+          "ReadyWithoutSnapshotIsRejected",
+          "ReusedSurfaceSeedIsRejected",
+          "SurfaceModeCannotUseCanvasFallback",
+          "UnavailableReturnsNoSnapshot"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "98701a62a3df1199c72592e70050b71055085e0beb83521a2a91691bde0f97d7",
+      "log_sha256": "98b9c838bc0635527aa29c34e80d3de6380469337c7601605bb270492d166362"
+    },
+    {
+      "target": "font-rasterization",
+      "build_target": "gfx_unittests",
+      "passed": true,
+      "case_executions": 5,
+      "required_cases": {
+        "GlintWindowsFontRasterizationTest": [
+          "InvalidEnumPreservesAllHostFields",
+          "ModesOnlyChangeRasterizationFields",
+          "NativePreservesAllHostFields",
+          "ParsesEveryNamedMode",
+          "RejectsInvalidNamesWithoutNormalization"
+        ]
+      },
+      "test_binary_sha256": "6aa97ad0c19fbb27a1862007fad8e50d5ceefa2087149ec5eac5a9b875fdd194",
+      "result_sha256": "05846fe750cdf195fc8d9f910892dcf3e357e9037ef9ef2fa30c36e4a130ea34",
+      "log_sha256": "f89277722086603d60040b1a40ee2a640694812a69f3a8cf07b6b264ecd9df4b"
+    },
+    {
+      "target": "identity-keys",
+      "build_target": "camouflow_native_privacy_unittests",
+      "passed": true,
+      "case_executions": 62,
+      "required_cases": {
+        "NativePrivacyKeyTest": [
+          "OpaquePartitionsAreSeparatedAndCopyStable",
+          "ProfilesAreSeparated",
+          "RepeatedAndCopiedPartitionsAreStable",
+          "SurfacesAreSeparated",
+          "TopLevelSitesAreSeparated",
+          "UnknownSurfaceIsRejected"
+        ],
+        "NativePrivacyProfileKeyTest": [
+          "LoadsOwnedFileAndKeepsPrivateSnapshot",
+          "MissingFileIsNotGenerated",
+          "ParsesExistingPythonIdentityAndDerivesKnownKey",
+          "RejectsDirectoryAndOversizedFile",
+          "RejectsHardLinkedIdentity",
+          "RejectsMalformedSchemaWithoutFallback",
+          "RejectsUppercaseAndBom"
+        ],
+        "NativePrivacyKeyServiceTest": [
+          "DestructionCancelsQueuedReadiness",
+          "DestructionWhileLoadingDropsLateReply",
+          "DoesNotDeriveUntilBackgroundLoadCompletes",
+          "EphemeralInstancesAreIndependentAndStable",
+          "FailedLoadingSettlesReadinessWithoutRegeneration",
+          "FailedOwnerCannotReplaceIdentity",
+          "IndependentOwnersDoNotRedirectToOriginal",
+          "InitializationIsSingleUseAndRejectsRelativePath",
+          "InstalledModeCannotBeReplaced",
+          "InvalidModeDoesNotInstallAnOwnerService",
+          "InvalidModeRejectsBothInitializers",
+          "InvalidOwnerInstallDoesNotOccupySlot",
+          "MalformedIdentityRemainsFailedAndUnchanged",
+          "MissingIdentityFailsWithoutEphemeralFallback",
+          "OwnerDataCloneDoesNotCopyPrivateIdentity",
+          "OwnerDestructionDuringLoadDropsReply",
+          "OwnerInstallationIsSingleUse",
+          "PersistentAndEphemeralInstancesDoNotShareKeys",
+          "PersistentIdentitySurvivesServiceRecreation",
+          "ProfileIdentityEphemeralOwnersAreIndependent",
+          "ProfileIdentityFailureDoesNotRegenerateAKey",
+          "ProfileIdentityOwnedReloadPreservesTheKey",
+          "ProfileIdentityRequiresReadyAndRejectsShutdown",
+          "ReadinessCallbacksMayReenterTerminalService",
+          "ReadinessQueueHasExplicitBound",
+          "ReadinessWaitsForLoadingAndDerivesInsideCallback",
+          "ReadyCallbackDestructionRejectsRemainingCallbacks",
+          "ReadyCallbackShutdownRejectsRemainingCallbacks",
+          "ReadyCallbacksCompleteInline",
+          "SelectedDefaultPreservesPartitionedPrivacy",
+          "SelectedEphemeralIdentityOwnersStayIndependent",
+          "SelectedIdentityIsStableAcrossPartitions",
+          "SelectedIdentityReloadPreservesModeAndKey",
+          "SelectedModeRejectsUntilReadyAndAfterShutdown",
+          "ShutdownCancelsLateLoadReply",
+          "ShutdownClearsReadyKeyAndRejectsReinitialization",
+          "ShutdownSettlesReadinessAndIgnoresLateLoad",
+          "UninitializedReadinessFailsInline"
+        ],
+        "All/NativePrivacyKeyVectorTest": [
+          "MatchesIndependentPythonVector/0",
+          "MatchesIndependentPythonVector/1",
+          "MatchesIndependentPythonVector/2",
+          "MatchesIndependentPythonVector/3"
+        ],
+        "NativeProfileIdentityKeyTest": [
+          "AudioMatchesIndependentVector",
+          "CanvasMatchesIndependentVector",
+          "DifferentPartitionsShareIdentityNotPrivacy",
+          "IndependentRootsAndSurfacesDoNotShareKeys",
+          "UnsupportedSurfacesAreRejected",
+          "WebglMatchesIndependentVector",
+          "WebgpuMatchesIndependentVector"
+        ]
+      },
+      "test_binary_sha256": "179a6aff1449026e9f8ea12450a41d717f2adc83f9b48a8e1556f1782e4e9ea7",
+      "result_sha256": "3ff2322bd4f54382290f0ea5bb50591fe732e8029d5cdfd76b6857977146a1e3",
+      "log_sha256": "89e26b47baaa0cb57980798e37392d321d7d3a978c2545d0b3243ae4054428e6"
+    },
+    {
+      "target": "identity-contexts",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 37,
+      "required_cases": {
+        "NativePrivacyBrowserContextTest": [
+          "BrowserBridgeSeparatesSurfacesAndTopLevelSites",
+          "BrowserContextShutdownClearsReadyService",
+          "ContextCallbackShutdownRejectsRemainingReadiness",
+          "ContextDestructionNeverReportsReadinessSuccess",
+          "ContextReadinessRejectsMissingServiceAndNullContext",
+          "ContextReadinessSettlesFailedIdentity",
+          "ContextReadinessWaitsForKeyAndAllowsDerivation",
+          "ContextShutdownSettlesQueuedReadinessOnce",
+          "DestructionDuringLoadDoesNotUseDestroyedContext",
+          "ExplicitLaunchModeRequiresEnabledKeyService",
+          "IdentityLaunchRejectsEitherLegacyCanvasConflict",
+          "IdentityLaunchRequiresBothFullSurfacePolicies",
+          "InvalidSelectedModeDoesNotOwnTheContext",
+          "LaunchWithoutModePreservesCompatibilityDefault",
+          "MalformedIdentityIsNotReplaced",
+          "MissingIdentityFailsWithoutRegeneration",
+          "NullContextIsRejected",
+          "OffTheRecordContextsDoNotShareOriginalOrEachOther",
+          "OffTheRecordReadinessCompletesInlineWithoutPersistentKey",
+          "OffTheRecordRejectsPersistentRootBeforeInstallation",
+          "PersistentContextRejectsEmptyRoot",
+          "PersistentIdentitySurvivesActualContextRecreation",
+          "PersistentLoadingGatesReadinessAndDerivation",
+          "PersistentProfilesHaveIndependentKeys",
+          "SelectedIdentityRejectsLoadingAndContextShutdown",
+          "SelectedIdentitySurvivesNewContextWithSameRoot",
+          "SelectedIncognitoIdentityRejectsPersistentRoot",
+          "SelectedModeCannotReplaceLoadingOwner",
+          "SelectedModesBelongToTheirContextOwners",
+          "SelectedNullAndFailedContextsNeverExposeMode",
+          "ShutdownDuringLoadRejectsLateReply",
+          "StartupCannotReplaceReadyOrLoadingOwner",
+          "StartupKeyReadyBeforeEventLoop",
+          "StartupMalformedIdentityIsNotReplaced",
+          "StartupMissingIdentityIsTerminalWithoutCreation",
+          "StartupOffTheRecordNeverReadsPersistentIdentity",
+          "StartupRejectsInvalidRootWithoutInstallingOwner"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "825ab70f69a76294977f442095096dea380416165d49ec793a53583ac98518e8",
+      "log_sha256": "23b0fdafa274b23640a493e763411e7de3e3cb6bf695148934c89801575a9110"
+    },
+    {
+      "target": "identity-transport",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 20,
+      "required_cases": {
+        "GlintSurfacePolicyProducerTest": [
+          "ChangingReturnedSnapshotDoesNotChangeIdentity",
+          "DefaultModeRetainsPartitionDependentSeeds",
+          "IdentityModeSelectsStableSeedsWithExactPartition",
+          "MissingAndUnreadyContextRejectsSnapshot",
+          "ReadySnapshotUsesFourIndependentDomains",
+          "ShutdownRejectsSnapshot"
+        ],
+        "GlintSurfacePolicyPreflightTest": [
+          "BrowserOwnedWorkerPartitionMatchesFinalOrigin",
+          "IdentityModeRoundtripSurvivesDocumentAndWorkerDecode",
+          "RejectsEveryShortAndLongSeedBeforeCopy",
+          "RejectsWrongBrowserOriginAndReusedSurface",
+          "RejectsWrongVersionAndHugeEncoding",
+          "ResolvesInheritedProvisionalOrigin",
+          "ReturnsOwnedSnapshot",
+          "StableIdentityDoesNotAuthorizeAnotherPartition",
+          "UnknownModeAndLegacyVersionRejectBeforeCopy",
+          "WirePartitionCannotDisagreeWithBinaryCommitment",
+          "WireRejectsMalformedSeedAndWrongPartition",
+          "WireRoundtripRetainsBinaryEncodingAndOwnedSeeds",
+          "WorkerDecoderCannotReplaceNoncePartition",
+          "WorkerDecoderPreservesExactOpaqueIdentity"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "9833546da3e87b65474b93288b6e5c6e9072adbcb0619e002665472630787066",
+      "log_sha256": "ac79f5b2e7cb7826f5e28e72f9db1a90213c5d6adc1f7edac0965a848a70c410"
+    },
+    {
+      "target": "identity-handoff",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 15,
+      "required_cases": {
+        "DocumentLoaderTest/DocumentLoaderTest": [
+          "GlintIdentityModeCloneCannotMutateInstalledDocument/0",
+          "GlintIdentityModeCloneCannotMutateInstalledDocument/1",
+          "GlintIdentityModeCloneCannotMutateInstalledDocument/2",
+          "GlintIdentityModeCloneCannotMutateInstalledDocument/3",
+          "GlintIdentityModeOwnedBeforeFirstInlineScript/0",
+          "GlintIdentityModeOwnedBeforeFirstInlineScript/1",
+          "GlintIdentityModeOwnedBeforeFirstInlineScript/2",
+          "GlintIdentityModeOwnedBeforeFirstInlineScript/3",
+          "GlintUnknownIdentityModeCannotRunInlineScript/0",
+          "GlintUnknownIdentityModeCannotRunInlineScript/1",
+          "GlintUnknownIdentityModeCannotRunInlineScript/2",
+          "GlintUnknownIdentityModeCannotRunInlineScript/3"
+        ],
+        "GlintWorkerSurfaceThreadTest": [
+          "IdentityModeOwnedBeforeFirstEvaluation",
+          "StableIdentityModeCannotReplaceFinalOrigin",
+          "UnknownIdentityModeRejectsEvaluation"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "24fc027936518826856d77658fa5794e0e2e94aac3a72a54cf22083e05eee202",
+      "log_sha256": "95287a273b7e5b8177414ec4c58cb1e01d330a4b6d14f96beb03930fa2194076"
+    },
+    {
+      "target": "audio-math",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 12,
+      "required_cases": {
+        "OfflineAudioContextTest": [
+          "GlintMathConstructionPrecedesFirstNode",
+          "GlintMathContextModesAreIndependentAndSeedUnchanged",
+          "GlintMathDirectConstantDoesNotUseReadbackFarbling",
+          "GlintMathDisabledCaptureRemainsLegacy",
+          "GlintMathDuplicateSurfaceSeedRejectsBeforeNodeOrResolver",
+          "GlintMathEnabledCaptureRemainsAfterDisable",
+          "GlintMathFailedCaptureDoesNotFallBackAfterDisable",
+          "GlintMathFrameDetachDoesNotRecapturePolicy",
+          "GlintMathMissingPolicyRejectsBeforeNodeOrResolver",
+          "GlintMathNavigationDoesNotRebindOldContext",
+          "GlintMathStoppedContextPreservesNativeErrorPrecedence",
+          "GlintMathUnknownPipelineIsRejected"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "7cceaf2a07ffb7df6fc7fe11725a843cb85049066266d60414d244e7c9e3675e",
+      "log_sha256": "cf82c9328b7cd65d8819361859c09c790b6f1e0f39464e4fb39fa5466af05383"
+    },
+    {
+      "target": "screen-metrics",
+      "build_target": "blink_common_unittests",
+      "passed": true,
+      "case_executions": 9,
+      "required_cases": {
+        "GlintLogicalScreenTest": [
+          "DesktopDefaultRetainsOriginalScreenAndDsf",
+          "DesktopExplicitScreenDoesNotMutatePhysicalState",
+          "IndependentValuesAndDisableCompareDifferently",
+          "InvalidLogicalScaleIsRejectedByIpc",
+          "MobileDefaultUsesTopLevelViewportNotChildSize",
+          "MobilePositionAndExplicitScreenAreDistinct",
+          "OptionalOverrideRoundTripsWithoutChangingPhysical",
+          "OrientationDoesNotRewritePhysicalOrOtherDisplays",
+          "PartialViewportAndScaleUseExistingRoundingRules"
+        ]
+      },
+      "test_binary_sha256": "e3654399b106b05ace4e0e13f19f51721c135016045a4ed90d3dc64aa891cbb4",
+      "result_sha256": "b6fca0e2d403c6a43b40c2328b9b9c7b82804d51ebb477233711605346db772d",
+      "log_sha256": "56b51b3aebbad16e8a503dff89c96be609b9d48e622139b0216ffa70e05a550c"
+    },
+    {
+      "target": "screen-widget",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 7,
+      "required_cases": {
+        "WebFrameWidgetSimTest": [
+          "GlintClearedMainDprRestoresNativeInspectorRules",
+          "GlintMainLogicalDprFollowsLatestSnapshot",
+          "GlintMainLogicalDprIgnoresForeignPageInspectorState",
+          "GlintMainLogicalDprTracksWidgetZoomAndCss"
+        ],
+        "WebFrameWidgetImplRemoteFrameSimTest": [
+          "GlintLogicalRemoteDprIgnoresForeignInspectorAndKeepsZoom",
+          "GlintLogicalScreenClearRestoresNativeSnapshot",
+          "GlintLogicalScreenUpdatePreservesPhysicalCompositorMetrics"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "6237ed7ded3d45ac0a31330a639d10b3b77b8439eee1b0430a1ecbfd7b76d516",
+      "log_sha256": "9e010f3f16e538cb1326086150ba8103fbf1de2f136195a7349ee6f1afd7a258"
+    },
+    {
+      "target": "screen-orientation",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 4,
+      "required_cases": {
+        "GlintScreenOrientationVisibilityTest": [
+          "GlintComputedTypeRestoresAtUnchangedAngle",
+          "GlintExplicitTypeRestoresAtUnchangedAngle",
+          "GlintHiddenMainLogicalOrientationRestoresAndClears",
+          "GlintVisibleMainLogicalOrientationUpdatesAndClears"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "7501394fe901687f7d9ed802a88b0d8cbdb84dfb7ce7bc64db2c457ddce2aa4e",
+      "log_sha256": "0caa618de06624ccff9af4b6e5156babab2d54dc845ecc9a9ee85fbf3e25168d"
+    },
+    {
+      "target": "screen-live-main",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 3,
+      "required_cases": {
+        "WebFrameWidgetSimTest": [
+          "GlintLiveMainEmulationClearDropsStaleTransport",
+          "GlintLiveMainEmulationReplacesStaleTransport",
+          "GlintLiveMainEmulationUpdateIgnoresStaleSnapshot"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "b33e5733c59af220f612bf8d0178f73af02c1c5bdddefee0961d956f4483b7b0",
+      "log_sha256": "7e620a6a4bd5653767f6336167c940db58022370291befad2682d381548b7742"
+    },
+    {
+      "target": "screen-dispatch",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 3,
+      "required_cases": {
+        "RenderWidgetHostTest": [
+          "GlintLogicalScreenAdditionRequiresVisualUpdate",
+          "GlintLogicalScreenClearRequiresVisualUpdate",
+          "GlintLogicalScreenOnlyChangesRequireVisualUpdate"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "148c7169fca7d5bf447d74d1ecc716b2364b8f3e5496df7d686139ffc4670951",
+      "log_sha256": "b1d1b189a8547d405c62c53c1adc0d9a88e16e665f37ed7cc991bc486bebd960"
+    },
+    {
+      "target": "screenshot-transaction",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 12,
+      "required_cases": {
+        "GlintScreenshotEmulationTest": [
+          "CapturerDetachRestoresWithoutClearingOwner",
+          "CapturesAreFifoPerTarget",
+          "CrossSessionUsesEffectiveParameters",
+          "DestroyedTargetCancelsSafely",
+          "FullPageRestoresOnlyItsPreferenceFields",
+          "IndependentTargetsDoNotShareLeases",
+          "NavigationDropsOldDocumentLeaseAndQueue",
+          "OwnerDetachCancelsForeignCaptureAndClearsOverride",
+          "PermanentUpdateInvalidatesOldLease",
+          "SameValueUpdateRestoresOriginalView",
+          "StaleOwnerClearKeepsCurrentOverride",
+          "TemporaryReadbackNeverClaimsPersistentOwnership"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "c81a094b42e905803374c8e3319d4b7acd6eeddfd0e386d954d24f0b35554f8e",
+      "log_sha256": "ac6e1068395ae1d5d5b576ad201e477e0ec1f4e83ecd399f31ec2be940872dba"
+    },
+    {
+      "target": "surface-launch",
+      "build_target": "content_unittests",
+      "passed": true,
+      "case_executions": 41,
+      "required_cases": {
+        "NativePrivacyBrowserContextTest": [
+          "BrowserBridgeSeparatesSurfacesAndTopLevelSites",
+          "BrowserContextShutdownClearsReadyService",
+          "ContextCallbackShutdownRejectsRemainingReadiness",
+          "ContextDestructionNeverReportsReadinessSuccess",
+          "ContextReadinessRejectsMissingServiceAndNullContext",
+          "ContextReadinessSettlesFailedIdentity",
+          "ContextReadinessWaitsForKeyAndAllowsDerivation",
+          "ContextShutdownSettlesQueuedReadinessOnce",
+          "DestructionDuringLoadDoesNotUseDestroyedContext",
+          "ExplicitLaunchModeRequiresEnabledKeyService",
+          "IdentityLaunchRejectsEitherLegacyCanvasConflict",
+          "IdentityLaunchRequiresBothFullSurfacePolicies",
+          "InvalidSelectedModeDoesNotOwnTheContext",
+          "LaunchWithoutModePreservesCompatibilityDefault",
+          "MalformedIdentityIsNotReplaced",
+          "MissingIdentityFailsWithoutRegeneration",
+          "NullContextIsRejected",
+          "OffTheRecordContextsDoNotShareOriginalOrEachOther",
+          "OffTheRecordReadinessCompletesInlineWithoutPersistentKey",
+          "OffTheRecordRejectsPersistentRootBeforeInstallation",
+          "PersistentContextRejectsEmptyRoot",
+          "PersistentIdentitySurvivesActualContextRecreation",
+          "PersistentLoadingGatesReadinessAndDerivation",
+          "PersistentProfilesHaveIndependentKeys",
+          "SelectedIdentityRejectsLoadingAndContextShutdown",
+          "SelectedIdentitySurvivesNewContextWithSameRoot",
+          "SelectedIncognitoIdentityRejectsPersistentRoot",
+          "SelectedModeCannotReplaceLoadingOwner",
+          "SelectedModesBelongToTheirContextOwners",
+          "SelectedNullAndFailedContextsNeverExposeMode",
+          "ShutdownDuringLoadRejectsLateReply",
+          "StartupCannotReplaceReadyOrLoadingOwner",
+          "StartupKeyReadyBeforeEventLoop",
+          "StartupMalformedIdentityIsNotReplaced",
+          "StartupMissingIdentityIsTerminalWithoutCreation",
+          "StartupOffTheRecordNeverReadsPersistentIdentity",
+          "StartupRejectsInvalidRootWithoutInstallingOwner"
+        ],
+        "NativeSurfaceLaunchTest": [
+          "AbsentVersionRetainsOrdinaryStartup",
+          "ExplicitModesUseProductionBootstrap",
+          "RejectsEveryMissingEffectiveFeature",
+          "RejectsVersionKeyModeAndDiagnosticConflicts"
+        ]
+      },
+      "test_binary_sha256": "c59229f197c7071b5e84ad549bf6fdcb91fea506f3143651cb6806ef9a0a5db4",
+      "result_sha256": "9d01a1fc9e190e5bd6efc24976b1d6f3e0254de7317bb00a2e9a33ce631594ce",
+      "log_sha256": "372552b71906e9ba070f9d8a4278fd35b0f40119359c6d9da4abcc5d3d9c3ad7"
+    },
+    {
+      "target": "audio-lifecycle",
+      "build_target": "blink_unittests",
+      "passed": true,
+      "case_executions": 7,
+      "required_cases": {
+        "GlintOfflineAudioCandidateTest": [
+          "CopiesAndMovesKeepIndependentOwnedState",
+          "DestructionCleansOwnedSeedAndDerivedCache"
+        ],
+        "OfflineAudioContextTest": [
+          "GlintCompletionClaimsResolverAndClearsSeedBeforeCallbacks",
+          "GlintCopyBudgetRejectsBeforeAllocationOrRenderThread",
+          "GlintDetachClearsSeedWithoutPublishingRawCompletion",
+          "GlintMissingDestinationRejectsAndClearsCapturedSeed",
+          "GlintRejectClearsSeedAndBlocksLateCompletion"
+        ]
+      },
+      "test_binary_sha256": "bf46aa2040924a781330556a224646c0460286418cd13ba25e7caa7fb4e1be9d",
+      "result_sha256": "306c1a01d6d208a9a0eb31f16d193676559d399a287d89aba4a0dbcf6cf477df",
+      "log_sha256": "7e3bba8e914991e86ca78ae81ac1811ed160efa71082b063e9c7605945d9c22b"
+    }
+  ],
+  "postguards_passed": true,
+  "source_sha256": {
+    "scripts/native_build.py": "932ad27bc1947f2213fb1a6afedc9c91bab91264ed1dd3b3f9ea3b1f0152a565",
+    "scripts/verify_native_privacy_batch.py": "fbfbdd04200042cda67938a000115b2f9986e1f41481c7d429bf28e5cb1f5419",
+    "scripts/verify_native_privacy_units.py": "8cedf6d4f3ae4929d03971e180dcc6130e17bda13298070ac51cdd4b5a4da478",
+    "native/args.gn": "a42675f3f4d7f64f04950f7599f81e60423cca499e7ed1a4c860b3c6075d29f8"
+  },
+  "batch_report_sha256": "51333c483fbe30654dc8e9f5e617f98b847d28fe6d71f30ec14477e7c96f375c",
+  "controller_report_sha256": "e34ee1c2f085433cae8ca077a74fd45abe6519981b1537f2b5525cb8adb6688e",
+  "build_log_sha256": "00bcbe05704e0f6ba4b135332c17f86e1ebde91402c1f060aa9d7378a4802b11",
+  "unit_binary_build": {
+    "targets": [
+      "blink_common_unittests",
+      "blink_unittests",
+      "camouflow_native_privacy_unittests",
+      "content_unittests",
+      "gfx_unittests",
+      "gpu_unittests"
+    ],
+    "configured_jobs": 4,
+    "build_invocations": 1,
+    "siso_steps": 71,
+    "siso_duration_seconds": 627.38,
+    "whole_controller_duration_seconds": 995.485
+  },
+  "original_preflight_failure_preserved": true,
+  "full_browser_qa_admitted": false,
+  "legacy_audio_repaired": false,
+  "third_party_antibot_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

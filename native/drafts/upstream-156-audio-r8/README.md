@@ -1,6 +1,22 @@
 # Glint Chromium 156 R8: coupled Audio lifetime cleanup
 
-**Windows browser built; 135 selected native cases passed. Independent browser admission pending.**
+**Windows browser built; all 26 native groups passed. Full browser admission pending.**
+
+The [full native retry](native-all-observations.json) passed **554 executions /
+397 distinct tests** over six test binaries, with final source/core/receipt,
+SDK/GN and executable guards. Shared contract cases explain the larger execution
+count. Its incremental test build took 71 Siso steps / 10m 27.38s, configured j4.
+The original low-space rejection and earlier 135-case subset remain separate
+historical records; this does not admit the full browser or repair Legacy Audio.
+
+[Controlled browser rechecks](controlled-rechecks.json) passed hardware controls
+R7 → R8 → R7 (nine checks each), eight fixture-AI workflow checks and both GPU
+recovery modes. The unchanged GPU collector received its missing `watch.js`;
+the AI result was validated from the public CLI's JSON stdout. The private
+controller's incorrect report-file expectation and earlier failed attempts remain
+recorded. Effective broader coverage is 14/14 named groups across attempts,
+not a fresh full-suite pass. The hardware timeout root cause remains unknown;
+its ten-second deadline was not changed. Legacy Audio and full admission stay open.
 
 The [completed build](windows-build.json) executed **60 Siso steps in 16m 05.31s**;
 the build stage including guards/GN took **21m 35.009s**. This was an incremental

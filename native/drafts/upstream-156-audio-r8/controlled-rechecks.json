@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "measured_rechecks_passed": true,
+  "full_qa_admitted": false,
+  "scope": "Predetermined hardware controls and corrected AI/GPU runner interpretation; not a fresh complete baseline or full host suite",
+  "raw_controller_passed": false,
+  "raw_controller_report_sha256": "eae2cf83320c15178fbec6d47f29f2eb0d3c4893f90d5bbecadb1d70e10b5169",
+  "hardware": {
+    "controls": [
+      {
+        "name": "hardware-r7-before",
+        "passed": true,
+        "checks": 9,
+        "report_sha256": "6484a148c09732e4bb7dccac33bb0cd044436fe938ace18acb5d72fb5f5623b6",
+        "log_sha256": "83ce7a621dfa44b86e95d4b0af0e08694b7106361067b92ada3c4218099d1990",
+        "duration_seconds": 55.83
+      },
+      {
+        "name": "hardware-r8",
+        "passed": true,
+        "checks": 9,
+        "report_sha256": "6484a148c09732e4bb7dccac33bb0cd044436fe938ace18acb5d72fb5f5623b6",
+        "log_sha256": "11e1bbe65c9827dfccf24bf6dfe0ef9f94d23caf185346e44188b3e1c9a34e3d",
+        "duration_seconds": 49.663
+      },
+      {
+        "name": "hardware-r7-after",
+        "passed": true,
+        "checks": 9,
+        "report_sha256": "6484a148c09732e4bb7dccac33bb0cd044436fe938ace18acb5d72fb5f5623b6",
+        "log_sha256": "5f9fddb49142cd7df9c5350b25147d01fef7dff9a689a05b823a9682a59987bc",
+        "duration_seconds": 45.785
+      }
+    ],
+    "r8_checks_passed": 9,
+    "close_timeout_seconds": 10,
+    "deadline_relaxed": false,
+    "original_timeout_preserved": true,
+    "initial_failure_reproduced_in_this_series": false,
+    "root_cause_confirmed": false
+  },
+  "ai_workflow": {
+    "passed": true,
+    "public_cli_executed": true,
+    "checks": [
+      "fixture HTTP LLM",
+      "structured extraction",
+      "editable privacy",
+      "unique selectors",
+      "viewport scrolling",
+      "parameterized fresh replay",
+      "JSON artifact",
+      "CLI queue run"
+    ],
+    "log_sha256": "c94b85bcac9d57e545edc86ed5249ee75043fe9251789d89c5d25de6e0dabcef",
+    "returncode": 0,
+    "fixture_provider_only": true,
+    "external_ai_model_verified": false,
+    "stdout_protocol_validated": true,
+    "controller_artifact_path_error_preserved": true,
+    "normalization": "The public CLI returns its result as JSON stdout; it does not create report.json"
+  },
+  "gpu_recovery": {
+    "modes": [
+      {
+        "mode": "baseline",
+        "passed": true,
+        "report_sha256": "07188b1bb4a9cd7afc84bc71adcfbd0d65cea2d0022de94796b2ea93c910e834",
+        "duration_seconds": 17.234,
+        "measurement_complete": true
+      },
+      {
+        "mode": "ready",
+        "passed": true,
+        "report_sha256": "92195e09ef9cf262acd1e7a63e168483c176a43c06b01ce2389df7a0b7441863",
+        "duration_seconds": 19.688,
+        "measurement_complete": true
+      }
+    ],
+    "collector_bytes_unchanged": true,
+    "collector_sha256": "ad8d66e32a385b9ecae30db37c4297438255feda4999716930d75391a7918e04",
+    "public_watch_sha256": "822a7652f90c8e9dff658702021983ad2ef27b03114daaeecb19f45a906f501c",
+    "original_missing_fixture_failures_preserved": true
+  },
+  "broader_runtime_followup": {
+    "original_report_sha256": "5aaa2a349ceaa12691728c520591c9aff08df04561d97dbfb39b5a0ea50c3e6d",
+    "original_passed_groups": [
+      "normal-profile-surfaces",
+      "normal-profile-webgpu",
+      "worker-startup",
+      "surfaces",
+      "gpu-contexts",
+      "webgpu-consistency",
+      "combined-math",
+      "webgpu-context-consistency",
+      "audio-math-long-buffer",
+      "retained-array-contexts",
+      "retained-mutation",
+      "large-resource"
+    ],
+    "original_failed_groups": [
+      "gpu-recovery-baseline",
+      "gpu-recovery-ready"
+    ],
+    "originally_passing_groups": 12,
+    "corrected_gpu_groups": 2,
+    "effective_named_coverage": "14/14",
+    "original_report_rewritten": false
+  },
+  "postguards_passed": true,
+  "owned_runtime_processes_remaining": 0,
+  "legacy_audio_repaired": false,
+  "fresh_full_host_after_repairs_verified": false,
+  "fresh_complete_baseline_suite_verified": false,
+  "third_party_antibot_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

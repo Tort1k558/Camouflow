@@ -201,3 +201,65 @@ def test_audio_r8_first_qa_attempt_preserves_failures_and_the_exact_history_fix(
     assert record['all_native_target_attempt']['requested_groups'] == 26
     for flag in ('legacy_audio_repaired', 'full_qa_admitted', 'privacy_admitted', 'production_admitted'):
         assert record[flag] is False
+
+
+def test_audio_r8_all_native_groups_distinguish_executions_from_unique_cases():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
+    assert record['passed'] and record['all_supported_native_targets_verified'] and record['postguards_passed']
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['native_groups'] == 26 and len(record['targets']) == 26
+    assert [row['target'] for row in record['targets']] == list(units.SUPPORTED_TARGETS)
+    identities = []
+    for row in record['targets']:
+        required = units.required_tests(row['target'])
+        assert row['passed'] and row['build_target'] == units.unit_binary_target(row['target'])
+        assert row['required_cases'] == {suite: sorted(cases) for suite, cases in required.items()}
+        assert row['case_executions'] == sum(map(len, required.values()))
+        identities.extend((row['build_target'], suite, case) for suite, cases in required.items() for case in cases)
+    assert len(identities) == record['native_case_executions'] == 554
+    assert len(set(identities)) == record['distinct_binary_suite_cases'] == 397
+    assert record['shared_case_reexecutions'] == 157
+    assert record['unit_binary_build']['configured_jobs'] == 4
+    assert record['unit_binary_build']['siso_steps'] == 71
+    assert record['unit_binary_build']['siso_duration_seconds'] == 627.38
+    assert len(record['unit_binary_build']['targets']) == 6
+    for name, digest in record['source_sha256'].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    for flag in ('full_browser_qa_admitted', 'legacy_audio_repaired', 'third_party_antibot_verified',
+                 'privacy_admitted', 'production_admitted'):
+        assert record[flag] is False
+
+
+def test_audio_r8_controlled_rechecks_preserve_runner_failures_and_admission_limits():
+    candidate = build.load_candidate('upstream-156-audio-r8')
+    record = json.loads((candidate['directory'] / 'controlled-rechecks.json').read_bytes())
+    assert record['measured_rechecks_passed'] and record['postguards_passed']
+    assert record['raw_controller_passed'] is False
+    assert record['owned_runtime_processes_remaining'] == 0
+    hardware = record['hardware']
+    assert [row['name'] for row in hardware['controls']] == [
+        'hardware-r7-before', 'hardware-r8', 'hardware-r7-after']
+    assert all(row['passed'] and row['checks'] == 9 for row in hardware['controls'])
+    assert hardware['close_timeout_seconds'] == 10 and hardware['original_timeout_preserved']
+    assert hardware['deadline_relaxed'] is hardware['root_cause_confirmed'] is False
+    assert hardware['initial_failure_reproduced_in_this_series'] is False
+    ai = record['ai_workflow']
+    assert ai['passed'] and ai['public_cli_executed'] and ai['returncode'] == 0
+    assert len(ai['checks']) == 8 and ai['fixture_provider_only']
+    assert ai['stdout_protocol_validated'] and ai['controller_artifact_path_error_preserved']
+    assert ai['external_ai_model_verified'] is False
+    gpu = record['gpu_recovery']
+    assert [(row['mode'], row['passed'], row['measurement_complete']) for row in gpu['modes']] == [
+        ('baseline', True, True), ('ready', True, True)]
+    assert gpu['collector_bytes_unchanged'] and gpu['original_missing_fixture_failures_preserved']
+    assert gpu['public_watch_sha256'] == hashlib.sha256(
+        (ROOT / 'native/drafts/environment/gpu-process-recovery/watch.js').read_bytes()).hexdigest()
+    followup = record['broader_runtime_followup']
+    assert len(followup['original_passed_groups']) == followup['originally_passing_groups'] == 12
+    assert followup['corrected_gpu_groups'] == 2 and followup['effective_named_coverage'] == '14/14'
+    assert followup['original_report_rewritten'] is False
+    for flag in ('full_qa_admitted', 'legacy_audio_repaired', 'fresh_full_host_after_repairs_verified',
+                 'fresh_complete_baseline_suite_verified', 'third_party_antibot_verified',
+                 'privacy_admitted', 'production_admitted'):
+        assert record[flag] is False
