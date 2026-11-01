@@ -2,12 +2,20 @@
 
 ## 2026-11-01: explicit Audio pipeline pin; host regression passed
 
+The coupled [R8 source recipe](../native/drafts/upstream-156-audio-r8/README.md)
+now includes masker cleanup and context completion ownership. The latter claims
+the resolver before callbacks and clears captured seeds before exposure or
+teardown, blocking late raw completion. All 131 patches replayed forward/reverse;
+four implementation/test translation units passed combined GN-flag syntax checks.
+Seven exact native lifecycle cases are registered but not executed. Build and
+runtime verification remain required; no Legacy Audio algorithm repair is claimed.
+
 The separate [masker cleanup packet](../native/drafts/audio-masker-cleanup/README.md)
 is now prepared and CPU-checked: 12,327 exact real-BoringSSL/Python-reference
 outputs, ASan, injected HMAC failure/length controls and proposed GTest syntax.
 It is unselected; R7 source/binary and sample algorithms remain unchanged.
-Context-owned seed teardown still needs a fail-closed protocol; prematurely
-clearing its optional key must not permit raw completion. Keep this cleanup
+Context-owned seed teardown now has an unverified fail-closed source packet;
+prematurely clearing its optional key must not permit raw completion. Keep this cleanup
 separate from the unresolved legacy graph/analyser/worklet mismatch.
 
 The profile policy now supports an explicit `audio_pipeline_version: 2` pin for

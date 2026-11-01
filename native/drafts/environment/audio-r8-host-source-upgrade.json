@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "patch": "audio-r8-host-source-upgrade.patch",
+  "patch_sha256": "f73ac1907c1ffd8bafd1f56e4099b433f33aa09868471a9622eec69a1ceda2c9",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "fd1d9d54aceaae53587622d21316df4b20d2dcdb1daabfbb6cb7108a6b908cd7",
+      "after_sha256": "932ad27bc1947f2213fb1a6afedc9c91bab91264ed1dd3b3f9ea3b1f0152a565"
+    },
+    {
+      "source": "scripts/verify_native_privacy_units.py",
+      "before_sha256": "b2105105deacc2b6bb56c0f7892d8e45e911343a78313a3457c46295667c7e56",
+      "after_sha256": "2ed50e17ea9cf508bfa09675b7850b12e1f0cf090596d2dd90c856cf8e480fa1"
+    }
+  ],
+  "scope": "Reversible R8 candidate and Audio lifecycle unit registration; exact R7 host sources preserved",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

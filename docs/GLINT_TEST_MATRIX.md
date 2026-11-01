@@ -1,5 +1,14 @@
 # Glint browser test matrix
 
+## 2026-11-01: R8 coupled Audio source recipe
+
+[R8](../native/drafts/upstream-156-audio-r8/README.md) preserves the exact R7
+129-patch prefix and appends both Audio lifetime packets. Full 131-patch forward
+and reverse replay matched 400 composed files and restored 270 upstream files.
+The verifier now selects seven exact `audio-lifecycle` cases only for R8; this
+registration is reversible for historical tooling tests. **No R8 build or native
+test execution yet.** R7 runtime evidence remains separate; Legacy Audio is open.
+
 ## 2026-11-01: next Audio lifecycle packet, not selected
 
 [Context ownership](../native/drafts/audio-context-ownership/README.md) and

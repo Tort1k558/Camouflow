@@ -1,0 +1,123 @@
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -282,7 +282,7 @@
+   policy.policy.identity_mode =
+       glint::candidate::SurfaceIdentityMode::kPartitionedPrivacy;
+   policy.policy.audio.fill(255);
+-  worker_thread_->WaitForInit();
++  reporting_proxy_->WaitUntilDidEvaluateTopLevelScript();
+   worker_thread_->Terminate();
+   worker_thread_->WaitForShutdownForTesting();
+ }
+@@ -329,7 +329,7 @@
+   worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
+       KURL("http://fake.url/"), std::nullopt, policy, true);
+   policy.policy.audio.fill(255);
+-  worker_thread_->WaitForInit();
++  reporting_proxy_->WaitUntilDidEvaluateTopLevelScript();
+   worker_thread_->Terminate();
+   worker_thread_->WaitForShutdownForTesting();
+ }
+@@ -366,7 +366,7 @@
+   EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
+   worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
+       KURL("http://fake.url/"), std::nullopt, policy, true);
+-  worker_thread_->WaitForInit();
++  reporting_proxy_->WaitUntilDidEvaluateTopLevelScript();
+   worker_thread_->Terminate();
+   worker_thread_->WaitForShutdownForTesting();
+ }
+@@ -403,7 +403,7 @@
+   worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
+                                      KURL("http://fake.url/"), seed);
+   seed.fill(255);
+-  worker_thread_->WaitForInit();
++  reporting_proxy_->WaitUntilDidEvaluateTopLevelScript();
+   worker_thread_->Terminate();
+   worker_thread_->WaitForShutdownForTesting();
+ }
+@@ -419,7 +419,7 @@
+   EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
+   EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
+   Start();
+-  worker_thread_->WaitForInit();
++  reporting_proxy_->WaitUntilDidEvaluateTopLevelScript();
+   worker_thread_->Terminate();
+   worker_thread_->WaitForShutdownForTesting();
+ }
+@@ -446,7 +446,7 @@
+     EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
+     worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
+                                        KURL("http://fake.url/"), seed);
+-    worker_thread_->WaitForInit();
++    reporting_proxy_->WaitUntilDidEvaluateTopLevelScript();
+     worker_thread_->Terminate();
+     worker_thread_->WaitForShutdownForTesting();
+     EXPECT_EQ(ExitCode::kGracefullyTerminated, GetExitCode());
+diff --git a/content/browser/camouflow_native/privacy_worker_service_unittest.cc b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
+--- a/content/browser/camouflow_native/privacy_worker_service_unittest.cc
++++ b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
+@@ -237,8 +237,8 @@
+   base::test::ScopedFeatureList legacy;
+   legacy.InitAndDisableFeature(blink::features::kDataUrlWorkerOpaqueOrigin);
+   const GURL script_url("data:text/javascript,void(0)");
+-  const auto partition = CalculateWorkerStorageKey(script_url, Partition());
+-  const auto origin = CalculateWorkerRendererOrigin(script_url, partition);
++  const auto partition = CalculateWorkerStorageKey(script_url, Partition(), false);
++  const auto origin = CalculateWorkerRendererOrigin(script_url, partition, false);
+   ASSERT_NE(partition.origin(), origin);
+   auto remote = ConnectForPartition(partition, origin);
+   int replies = 0;
+@@ -258,8 +258,8 @@
+   base::test::ScopedFeatureList opaque;
+   opaque.InitAndEnableFeature(blink::features::kDataUrlWorkerOpaqueOrigin);
+   const GURL script_url("data:text/javascript,void(0)");
+-  const auto partition = CalculateWorkerStorageKey(script_url, Partition());
+-  const auto origin = CalculateWorkerRendererOrigin(script_url, partition);
++  const auto partition = CalculateWorkerStorageKey(script_url, Partition(), true);
++  const auto origin = CalculateWorkerRendererOrigin(script_url, partition, true);
+   ASSERT_TRUE(origin.opaque());
+   ASSERT_EQ(partition.origin(), origin);
+   const auto expected = DeriveNativePrivacyKey(context_.get(), partition, "canvas");
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc
+--- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc
++++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <algorithm>
+ #include <array>
++#include <cstddef>
+ 
+ #include "base/test/scoped_feature_list.h"
+ #include "gpu/command_buffer/common/glint_readback_metadata.h"
+@@ -245,9 +246,18 @@
+   scoped_features.InitAndDisableFeature(
+       features::kGlintReadbackMetadataCandidate);
+   using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
+-  auto* result = GetSharedMemoryAs<Command::Result*>();
++  struct GuardedResult {
++    Command::Result result;
++    std::array<GLint, kGlintReadbackMetadataValues - 1> remaining_values;
++    GLint guard;
++  };
++  static_assert(offsetof(GuardedResult, guard) ==
++                sizeof(uint32_t) + kGlintReadbackMetadataValues * sizeof(GLint));
++  static_assert(kSharedMemoryOffset + sizeof(GuardedResult) <= kSharedBufferSize);
++  auto* storage = GetSharedMemoryAs<GuardedResult*>();
++  auto* result = &storage->result;
+   result->SetNumResults(0);
+-  result->GetData()[kGlintReadbackMetadataValues] = 0x4c;
++  storage->guard = 0x4c;
+   Command command;
+   command.Init(shared_memory_id_, kSharedMemoryOffset);
+   ASSERT_EQ(error::kNoError, ExecuteCmd(command));
+@@ -255,7 +265,7 @@
+   EXPECT_TRUE(std::equal(kGlintReadbackMetadataUnavailable.begin(),
+                          kGlintReadbackMetadataUnavailable.end(),
+                          result->GetData()));
+-  EXPECT_EQ(result->GetData()[kGlintReadbackMetadataValues], 0x4c);
++  EXPECT_EQ(storage->guard, 0x4c);
+ }
+ 
+ 

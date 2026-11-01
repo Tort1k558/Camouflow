@@ -202,7 +202,7 @@ REQUIRED_GPU_READBACK_TESTS = {
 NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "gpu-metadata", "worker-surfaces", "font-rasterization")
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
-                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics", "screen-widget", "screen-orientation",
+                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "audio-lifecycle", "screen-metrics", "screen-widget", "screen-orientation",
                      "screen-live-main", "screen-dispatch", "screenshot-transaction", "surface-launch")
 
 SCREENSHOT_TRANSACTION_TESTS = {"GlintScreenshotEmulationTest": {
@@ -295,7 +295,24 @@ def snapshot_delivery_sources(source: Path) -> dict[str, str]:
     return checksums
 
 
+AUDIO_LIFECYCLE_TESTS = {
+    "GlintOfflineAudioCandidateTest": {
+        "DestructionCleansOwnedSeedAndDerivedCache",
+        "CopiesAndMovesKeepIndependentOwnedState",
+    },
+    "OfflineAudioContextTest": {
+        "GlintRejectClearsSeedAndBlocksLateCompletion",
+        "GlintDetachClearsSeedWithoutPublishingRawCompletion",
+        "GlintCompletionClaimsResolverAndClearsSeedBeforeCallbacks",
+        "GlintMissingDestinationRejectsAndClearsCapturedSeed",
+        "GlintCopyBudgetRejectsBeforeAllocationOrRenderThread",
+    },
+}
+
+
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "audio-lifecycle":
+        return AUDIO_LIFECYCLE_TESTS
     if target == "surface-launch":
         return {**required_tests("identity-contexts"), "NativeSurfaceLaunchTest": {
             "ExplicitModesUseProductionBootstrap", "RejectsEveryMissingEffectiveFeature",
@@ -524,6 +541,9 @@ def require_target_sources(source: Path, patches: list[dict], target: str) -> di
                                  "0070-native-logical-screen-lifecycle.patch"})
     if target == "screen-metrics":
         required_patches.add("0069-native-logical-screen-inheritance.patch")
+    if target == "audio-lifecycle":
+        required_patches.update({"0130-audio-masker-cleanup.patch",
+                                 "0131-audio-context-ownership.patch"})
     if target == "audio-math":
         required_patches.update({"0067-native-audio-math-context-candidate.patch",
                                  "0068-native-audio-math-fixture-readiness.patch"})
@@ -602,7 +622,7 @@ def unit_binary_target(target: str) -> str:
     return ("blink_common_unittests" if target == "screen-metrics" else
                     "gfx_unittests" if target == "font-rasterization" else
                     "gpu_unittests" if target == "gpu-metadata" else
-                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff", "audio-math", "screen-widget", "screen-orientation"} else
+                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff", "audio-math", "audio-lifecycle", "screen-widget", "screen-orientation"} else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
 
 
@@ -610,8 +630,10 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
            target: str = "keys", candidate_name: str | None = None,
            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
     required = required_tests(target)
-    if target == "surface-launch" and candidate_name not in {"upstream-156-webgpu-r5", "upstream-156-webgpu-r6", "upstream-156-webgpu-r7"}:
-        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 or upstream-156-webgpu-r6 or upstream-156-webgpu-r7 candidate")
+    if target == "audio-lifecycle" and candidate_name != "upstream-156-audio-r8":
+        raise ValueError("Audio lifecycle units require the exact upstream-156-audio-r8 candidate")
+    if target == "surface-launch" and candidate_name not in {"upstream-156-webgpu-r5", "upstream-156-webgpu-r6", "upstream-156-webgpu-r7", "upstream-156-audio-r8"}:
+        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 or upstream-156-webgpu-r6 or upstream-156-webgpu-r7 or upstream-156-audio-r8 candidate")
     if target == "screenshot-transaction" and candidate_name not in CANDIDATES:
         raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
     if target in LIVE_SCREEN_TESTS and candidate_name not in CANDIDATES:
@@ -682,6 +704,8 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
              if target == "screen-widget" else
              "Logical screen calculations, isolation and nullable IPC units; not first-script delivery, geometry or browser admission"
              if target == "screen-metrics" else
+             "OfflineAudioContext completion/key teardown and masker cleanup units; not Legacy Audio repair or browser admission"
+             if target == "audio-lifecycle" else
              "OfflineAudioContext immutable math policy/error/lifetime units; not device-cohort, full DSP fidelity or Audio admission"
              if target == "audio-math" else
              "Windows font policy parsing/field-preservation units; not renderer startup, visual output or capability admission"
