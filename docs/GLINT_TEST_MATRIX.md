@@ -1,5 +1,24 @@
 # Glint browser test matrix
 
+## 2026-11-02: real transferred-frame reproduction and source-only extension
+
+| Gate | Result |
+| --- | --- |
+| [R9 real worker/placeholder probe](../native/drafts/canvas-frame-provenance/r9-observations.json) | Complete, **FAIL**: 16/20 copies disagree with protected GPU readback |
+| Placeholder drawImage / ImageBitmap / toDataURL / toBlob | Raw colours; 94/256 changed channels in this profile/pattern |
+| Source-worker PNG | 4/4 copies exactly match protected readback |
+| Guards / cleanup | Source/core/driver/269 assets unchanged; browser and fixture server closed |
+| [Provenance extension](../native/drafts/canvas-frame-provenance/source-observations.json) | Parent + extension apply/reverse; six C++ translation units type-check |
+| New native cases | Four prepared, eleven with parent; **not executed** |
+| Built extension / runtime repair | Not built / not established |
+
+The [owned probe](../native/drafts/canvas-frame-provenance/probe.js) requires
+actual coloured frame content and measures both WebGL variants/backing requests.
+Its [validator](../native/drafts/canvas-frame-provenance/validate.py) retains exact
+equality and rejects contradictory metrics, malformed data or unmeasured success.
+The extension is unregistered; large-image, retained-frame/owner, mixed-policy
+and package gates remain. No external detector verdict is implied.
+
 ## 2026-11-02: GPU source-image draft, source checks only
 
 [Native draft](../native/drafts/canvas-gpu-image-sources/README.md): six-file

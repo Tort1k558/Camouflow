@@ -1,0 +1,199 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-canvas-r9",
+  "candidate_manifest_sha256": "cc160614d415bec6c71d8fcd29b57d884e406862dbe633d3e51a7300b7fa4b9f",
+  "measurement_complete": true,
+  "passed": false,
+  "scope": "One owned profile/pattern, real dedicated-worker transferred HTML placeholder frames, two GPU APIs and two backing requests",
+  "headless": true,
+  "external_sites_tested": false,
+  "source_provenance_patch_applied": false,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "6e05fbeb872a0ff4a12fc7387268bbdff6e47f7814d28cb68b8432e2d450f8da",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "native_batch_sha256": "5f5b7b6363c3ced223c214c2f49173e8a589f5e4bfa24556c18b3a4bb33c3d34",
+  "measured_runtime_assets": 269,
+  "observations": {
+    "schema": 1,
+    "scope": "Owned worker-backed HTML placeholder copies; no external detector",
+    "rows": [
+      {
+        "api": "webgl",
+        "readyAttempts": 1,
+        "directSha256": "9c38dd9a19538eea51d23051568a6c518a0e693be3bdcfe3e017f7d6e0c14c45",
+        "knownFillChangedChannels": 94,
+        "copies": [
+          {
+            "name": "drawImage",
+            "willReadFrequently": false,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "drawImage",
+            "willReadFrequently": true,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "imageBitmap",
+            "willReadFrequently": false,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "imageBitmap",
+            "willReadFrequently": true,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "toDataURL",
+            "willReadFrequently": false,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "toDataURL",
+            "willReadFrequently": true,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "toBlob",
+            "willReadFrequently": false,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "toBlob",
+            "willReadFrequently": true,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "workerPNG",
+            "willReadFrequently": false,
+            "changedChannels": 0,
+            "knownFillChangedChannels": 94,
+            "sha256": "9c38dd9a19538eea51d23051568a6c518a0e693be3bdcfe3e017f7d6e0c14c45"
+          },
+          {
+            "name": "workerPNG",
+            "willReadFrequently": true,
+            "changedChannels": 0,
+            "knownFillChangedChannels": 94,
+            "sha256": "9c38dd9a19538eea51d23051568a6c518a0e693be3bdcfe3e017f7d6e0c14c45"
+          }
+        ],
+        "passed": false
+      },
+      {
+        "api": "webgl2",
+        "readyAttempts": 1,
+        "directSha256": "9c38dd9a19538eea51d23051568a6c518a0e693be3bdcfe3e017f7d6e0c14c45",
+        "knownFillChangedChannels": 94,
+        "copies": [
+          {
+            "name": "drawImage",
+            "willReadFrequently": false,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "drawImage",
+            "willReadFrequently": true,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "imageBitmap",
+            "willReadFrequently": false,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "imageBitmap",
+            "willReadFrequently": true,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "toDataURL",
+            "willReadFrequently": false,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "toDataURL",
+            "willReadFrequently": true,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "toBlob",
+            "willReadFrequently": false,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "toBlob",
+            "willReadFrequently": true,
+            "changedChannels": 94,
+            "knownFillChangedChannels": 0,
+            "sha256": "468422730864a54d6055f278e2b12a4f53c70509ccf89d8ab3d2222b45ef7ac2"
+          },
+          {
+            "name": "workerPNG",
+            "willReadFrequently": false,
+            "changedChannels": 0,
+            "knownFillChangedChannels": 94,
+            "sha256": "9c38dd9a19538eea51d23051568a6c518a0e693be3bdcfe3e017f7d6e0c14c45"
+          },
+          {
+            "name": "workerPNG",
+            "willReadFrequently": true,
+            "changedChannels": 0,
+            "knownFillChangedChannels": 94,
+            "sha256": "9c38dd9a19538eea51d23051568a6c518a0e693be3bdcfe3e017f7d6e0c14c45"
+          }
+        ],
+        "passed": false
+      }
+    ],
+    "passed": false
+  },
+  "copy_observations": 20,
+  "source_core_driver_asset_postguards_passed": true,
+  "runtime_resources_closed": true,
+  "fixture_thread_closed": true,
+  "report_sha256": "a6e9327634894cf05ad92e13655e69dd15312c9c5a2e8e86c99b3373e7b75e32",
+  "probe_sha256": "23dbb528e90d106b0d55f00ac082021bec67b49bc647feaff6376228b362e6bf",
+  "measured_contract_sha256": "d9a0011db18489e44a72ece76582f006415986ba76198b8736bb359eaad09e89",
+  "published_validator_sha256": "046e9ac84e85634670f299f184e5e4c456c8e710dc85883273810975d3d4f255",
+  "validator_port_scope": "Same exact copy equality; public port adds explicit type and Hamming-metric consistency checks and removes runtime wrapper",
+  "source_provenance_repair_verified": false,
+  "third_party_antibot_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "mismatching_copies": 16,
+  "worker_png_matching_copies": 4,
+  "rendering_preset": "native"
+}

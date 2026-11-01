@@ -1,5 +1,21 @@
 # Glint architecture
 
+## 2026-11-02: frame-owner provenance extension and reproduced R9 bypass
+
+The [frame extension](drafts/canvas-frame-provenance/README.md) binds each
+exported Offscreen resource to its source kind and domain-separated SHA-256
+commitment. The immutable metadata carries no source seed/key and does not
+change compositor pixels. Placeholder draw/bitmap and PNG exports validate
+against the destination's ready owned policy and hold the exact frame resource.
+
+Parent + extension replay/reversal and six translation-unit type checks pass.
+Four new native cases bring the composed draft to eleven; none has executed.
+The separate real R9 worker-backed placeholder fixture completed twenty copies:
+sixteen expose raw colours while four source-worker PNG copies agree with direct
+readback. Source/core/driver/asset guards and cleanup pass. This is an unchanged
+R9 failure, not runtime evidence for the unbuilt extension. Large-image bounds,
+composed native/runtime, lifecycle and full package gates remain open.
+
 ## 2026-11-02: unselected GPU image-source implementation
 
 The [six-file source-image packet](drafts/canvas-gpu-image-sources/README.md)

@@ -4,6 +4,9 @@ native/**/*.patch text eol=lf whitespace=-blank-at-eol,-blank-at-eof
 native/drafts/**/manifest.json text eol=lf
 native/drafts/upstream-156-canvas-r9/*.json text eol=lf
 native/drafts/canvas-gpu-image-sources/*.json text eol=lf
+native/drafts/canvas-frame-provenance/*.json text eol=lf
+native/drafts/canvas-frame-provenance/*.js text eol=lf
+native/drafts/canvas-frame-provenance/*.py text eol=lf
 native/drafts/upstream-156-webgpu-r5/native-units/*.json text eol=lf
 native/drafts/upstream-156-webgpu-r6/native-units/*.json text eol=lf
 native/drafts/**/full-inputs-manifest.json text eol=lf

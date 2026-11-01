@@ -32,8 +32,9 @@ compiler safety warnings.
 
 ## Before any registration or activation
 
-- Transport GPU provenance through transferred Offscreen placeholder frames;
-  a context-less frame is not covered by the direct-context source resolver.
+- The following [frame-provenance extension](../canvas-frame-provenance/README.md)
+  implements transferred-placeholder metadata and has source/type evidence only;
+  the composed browser and ownership/lifecycle cases still need verification.
 - Establish large-image compatibility beyond the existing detached-copy budget.
 - Check taint/error precedence, alpha, sRGB/P3/F16, crop/scale, workers and retained
   ImageBitmap objects in the actual browser; add negative/failure paths.

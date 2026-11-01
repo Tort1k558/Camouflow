@@ -1,5 +1,24 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: transferred-frame provenance implemented as an unselected extension
+
+[Frame-provenance packet](../native/drafts/canvas-frame-provenance/README.md)
+now adds immutable source-kind/hash commitments to exported frames, source-owner
+validation and bound-resource handling for placeholder drawing/PNG exports.
+Raw seeds/keys are not transported and compositor pixels are unchanged.
+Parent + extension apply/reverse and six C++ type checks pass. Four new native
+cases bring the composed draft to eleven; execution remains pending.
+
+The real R9 transferred-worker fixture confirms another part of the original
+bug: **16/20 copies fail**, while four source-worker PNG copies agree with direct
+readback. This is a fully measured failure of the old binary, not a repaired
+extension result. Exact-copy checks are retained, not relaxed.
+
+Next: resolve large-image detached-copy budgets; execute all eleven native cases
+and the composed browser; repeat direct/frame copies, retained/replaced ownership,
+taint/alpha/colour spaces and mixed-policy checks. Protected WebGPU acceptance,
+manager/package/update/rollback and the rest of the full objective remain open.
+
 ## 2026-11-02: GPU image-source implementation prepared, not activated
 
 [Six-file native draft](../native/drafts/canvas-gpu-image-sources/README.md)

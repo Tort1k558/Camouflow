@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "parent_packet": "native/drafts/canvas-gpu-image-sources/canvas-gpu-image-sources.patch",
+  "parent_patch_sha256": "2b0e1cb74f0c71448041e652353cfeea06d1e569faa81b3857e5dd9138df9891",
+  "candidate_base": "upstream-156-canvas-r9",
+  "base_manifest_sha256": "cc160614d415bec6c71d8fcd29b57d884e406862dbe633d3e51a7300b7fa4b9f",
+  "patch_sha256": "39f749a81721dd592398d1f312e29a31ddcc27d3d61c97af15ae2bb58108a533",
+  "source_files": {
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": {
+      "before": "03d1386406e61e1f2bf77a03716b7a567c576c5df9b33b71f10b28c80d89c2a0",
+      "after": "9594347e3a5664609e3e5de9efd038546d75040db8aab2b27e4e0332a18c0d2a"
+    },
+    "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc": {
+      "before": "28beb464aab590a7c8d157e8a00ba875098f0452bf253bf29b70117a635b0508",
+      "after": "6ce84086ba5964f664964fd1bcf5c6ba94f666246d9be6dbea6306c8d9badc89"
+    },
+    "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc": {
+      "before": "acaae658be2cb4c5a2b4fe5b4d857b8fd2627b233c953b127150a2d4644a3998",
+      "after": "96b0790ff20ea20d9fd699642396016831ceda5a66b7c6322d9bf49e4888f0df"
+    },
+    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc": {
+      "before": "850dfa9a1a46f3510115d8565621cad0221439de7e9588416efd0822cbf08fa6",
+      "after": "850dfa9a1a46f3510115d8565621cad0221439de7e9588416efd0822cbf08fa6"
+    },
+    "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc": {
+      "before": "91dd2257d0dcd84cab1ac63aec93e674ca779f6fb24044de1391b7883ce527e1",
+      "after": "91dd2257d0dcd84cab1ac63aec93e674ca779f6fb24044de1391b7883ce527e1"
+    },
+    "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc": {
+      "before": "699a0653179b887303a27acd782eee4ec4f6e3e77791ca460808e857e57e572a",
+      "after": "cb8e70d292580945a3765007bbf933429fcbb7573db8b79c9269db2988af09be"
+    },
+    "third_party/blink/renderer/platform/graphics/exported_canvas_resource.h": {
+      "before": "0a33b4a4c81ae3296efa4a4dff05ff4bb841fbc2d8186876bbf3d01a5d7031cc",
+      "after": "86ccb955e06b028f5bde245d9505bf1175b61cee1f1652a5be6b7c2e31ba6aa9"
+    },
+    "third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc": {
+      "before": "7078515a146b27992c728c5a54fef81f0c5f754ae13782241e88aae8b777423d",
+      "after": "c1e7b46e19be23629647c53e352686cbddc6b1369fc529c76bb0dc84b843dd6a"
+    }
+  },
+  "canonical_source_bindings": {
+    "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h": {
+      "kind": "bound-parent-packet",
+      "sha256": "4475092d669eb167c37053ea9dcebdd582f7f8a0175441ab0b543e2347e867b1",
+      "parent_after_sha256": "03d1386406e61e1f2bf77a03716b7a567c576c5df9b33b71f10b28c80d89c2a0"
+    },
+    "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc": {
+      "kind": "bound-parent-packet",
+      "sha256": "6b67dfb92852544520898d1ee8e4aafdd5f2eec7c0900b4002f83ea7300ff0ac",
+      "parent_after_sha256": "28beb464aab590a7c8d157e8a00ba875098f0452bf253bf29b70117a635b0508"
+    },
+    "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc": {
+      "kind": "bound-parent-packet",
+      "sha256": "a95075ae8cbfee459110ef9e8a9fa95c85e18b159e6a2e553462a3f271719720",
+      "parent_after_sha256": "acaae658be2cb4c5a2b4fe5b4d857b8fd2627b233c953b127150a2d4644a3998"
+    },
+    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc": {
+      "kind": "bound-parent-packet",
+      "sha256": "ddc7964c6212af91754ad800d5cc857a44ace50ff3f4f2591317605e46ebb537",
+      "parent_after_sha256": "850dfa9a1a46f3510115d8565621cad0221439de7e9588416efd0822cbf08fa6"
+    },
+    "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc": {
+      "kind": "bound-parent-packet",
+      "sha256": "70010c2aec7c827ac1bdd7110032d521f3758e2f79680868ffce7ca5b027df0e",
+      "parent_after_sha256": "91dd2257d0dcd84cab1ac63aec93e674ca779f6fb24044de1391b7883ce527e1"
+    },
+    "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc": {
+      "kind": "bound-parent-packet",
+      "sha256": "03a11de6766e1ac55004556a86b32a8c9f7fea2f6d3ebdb7dff0b171e6b69a44",
+      "parent_after_sha256": "699a0653179b887303a27acd782eee4ec4f6e3e77791ca460808e857e57e572a"
+    },
+    "third_party/blink/renderer/platform/graphics/exported_canvas_resource.h": {
+      "kind": "untouched-pinned-upstream-blob",
+      "revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+      "git_blob_oid": "c7f18c0587e8b51ff5c37224665219952ec530dc",
+      "sha256": "0a33b4a4c81ae3296efa4a4dff05ff4bb841fbc2d8186876bbf3d01a5d7031cc"
+    },
+    "third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc": {
+      "kind": "untouched-pinned-upstream-blob",
+      "revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+      "git_blob_oid": "dd8278b73329d31ec05c893eed3f0fac654b59b9",
+      "sha256": "7078515a146b27992c728c5a54fef81f0c5f754ae13782241e88aae8b777423d"
+    }
+  },
+  "changed_files": 6,
+  "overlay_source_files": 8,
+  "composed_forward_reverse_passed": true,
+  "type_checked_translation_units": 6,
+  "syntax_report_sha256": "72928926c324a5636dfcd5be17231eaf771fa6857acb2216c828e84128392ff9",
+  "syntax_targets": [
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+      "returncode": 0,
+      "response_sha256": "c3282ee30e5f764309119e2a32c4937fd2745a4a2c86624949c0d2601749d94e",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+      "returncode": 0,
+      "response_sha256": "9358c3bbcc3fc777f3604506c4d4a8262b883b9033fde6c050a1cb8f79e08b1d",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+      "returncode": 0,
+      "response_sha256": "e65cfa457f60d2dcdbe365b053133a2feebf2ca4a46443e88bcd4f84912a65cf",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_canvas_context.cc",
+      "returncode": 0,
+      "response_sha256": "fa8704369b2ec120879231d1c595dfcfcbf78d0c33ee2500eddd2efaa8b0edc4",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc",
+      "returncode": 0,
+      "response_sha256": "80b218f5891d2362d015233ae2c7544cdf0c88caa348e67c2bfe671ec43edb59",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc",
+      "returncode": 0,
+      "response_sha256": "100f02a2978b46498a1eb91471b327cd4702c7721dd5c8279dfb95b594659566",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "native_new_cases": [
+    "CommitmentBindsBothSourceKindAndOwnerSeed",
+    "MissingAndUnavailableDescriptorsAreNotProofs",
+    "RetainedProofCannotRebindToAnotherOwner",
+    "NativeCanvasDescriptorCannotCarryGpuProof"
+  ],
+  "prepared_native_tests": 4,
+  "composed_prepared_native_tests": 11,
+  "source_seeds_transported": false,
+  "compositor_pixels_modified": false,
+  "source_owner_commitment": "Domain-separated SHA-256 through the existing Blink Digestor; no new dependency",
+  "missing_or_mismatched_proof_rejected_in_code": true,
+  "unselected_constructor_defaults_preserved": true,
+  "selected": false,
+  "active_checkout_modified": false,
+  "compiled_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "original_r9_failure_repaired": false,
+  "remaining_gates": [
+    "Large-image detached-copy budget and compatibility",
+    "Actual composed native/frame runtime, retained objects, taint, alpha and colour spaces",
+    "Protected WebGPU acceptance and mixed-policy/package/recovery checks"
+  ],
+  "privacy_admitted": false,
+  "production_admitted": false
+}
