@@ -170,6 +170,33 @@ def test_surface_r5_windows_build_evidence_does_not_admit_runtime_features():
     assert record['manual_build_output_timestamp_restoration'] is False
 
 
+def test_surface_r5_native_execution_preserves_exact_case_coverage_without_browser_admission():
+    from scripts import native_build as build
+    from scripts import verify_native_privacy_units as units
+
+    candidate = build.load_candidate('upstream-156-webgpu-r5')
+    record = json.loads((candidate['directory'] / 'native-unit-observations.json').read_bytes())
+    assert record['passed'] and record['native_tests_executed'] and record['source_postguards_passed']
+    assert record['browser_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['build_invocations'] == 1 and record['jobs'] == 4
+    assert [(row['target'], row['tests']) for row in record['targets']] == [
+        ('surface-launch', 41), ('identity-transport', 20), ('worker-surfaces', 55)]
+    names = set()
+    binaries = set()
+    for row in record['targets']:
+        path = candidate['directory'] / row['result']
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == row['portable_result_sha256']
+        assert b'\r' not in path.read_bytes()
+        result = json.loads(path.read_bytes())
+        assert row['passed'] and result['errors'] == 0
+        units.validate_results(result, target=row['target'])
+        names.update((suite['name'], case['name']) for suite in result['testsuites'] for case in suite['testsuite'])
+        binaries.add(row['test_binary_sha256'])
+    assert len(names) == record['case_executions'] == record['distinct_suite_case_pairs'] == 116
+    assert len(binaries) == 1
+
+
 def test_surface_launch_unit_target_requires_exact_new_and_existing_test_names():
     from scripts import verify_native_privacy_units as units
 

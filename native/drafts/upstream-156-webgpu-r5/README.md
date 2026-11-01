@@ -1,6 +1,11 @@
 # Glint Chromium 156: normal-profile launch and shared swapchain epochs
 
-**Windows candidate compiled; native tests and browser admission are not proven yet.**
+**Windows candidate compiled; selected native units passed. Browser admission remains unverified.**
+
+[Native unit evidence](native-unit-observations.json): 41 launch/context, 20 transport
+and 55 worker endpoint cases executed successfully. Full original case names and
+statuses are retained in the linked normalized GTest reports. These are not
+real renderer/worker first-script measurements.
 
 [Exact build evidence](windows-build-observations.json): 62 executed Siso steps,
 27m15s build execution, 34m47s complete build stage, maximum j4.

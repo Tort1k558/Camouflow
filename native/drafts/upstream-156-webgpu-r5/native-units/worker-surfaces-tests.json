@@ -1,0 +1,605 @@
+{
+  "tests": 55,
+  "failures": 0,
+  "disabled": 0,
+  "errors": 0,
+  "timestamp": "2026-11-01T09:18:33Z",
+  "time": "0.112s",
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "NativePrivacyWorkerServiceTest",
+      "tests": 12,
+      "failures": 0,
+      "disabled": 0,
+      "errors": 0,
+      "timestamp": "2026-11-01T09:18:33Z",
+      "time": "0.069s",
+      "testsuite": [
+        {
+          "name": "MissingServiceReturnsUnavailable",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 81,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "ReadyPolicyMatchesTrustedPartition",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 94,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "LoadingDoesNotReplyBeforeReadiness",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 116,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "ShutdownSettlesLoadingOnce",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 133,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "DeadlineRejectsLateReadiness",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 153,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "ReceiverOwnerDestructionDropsLoadingReply",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 174,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "PipeDisconnectDropsLoadingReply",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 187,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "DestroyedContextCannotDeliverSeed",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 201,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "UnpartitionedSharedAndServiceWorkersFail",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 215,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "LegacyDataWorkerOriginMismatchIsRejected",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 234,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "MatchingOpaqueDataWorkerUsesOwnedPartition",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 255,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        },
+        {
+          "name": "DuplicateRequestCancelsPendingDelivery",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 280,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerServiceTest"
+        }
+      ]
+    },
+    {
+      "name": "NativePrivacyWorkerSurfaceServiceTest",
+      "tests": 8,
+      "failures": 0,
+      "disabled": 0,
+      "errors": 0,
+      "timestamp": "2026-11-01T09:18:33Z",
+      "time": "0.031s",
+      "testsuite": [
+        {
+          "name": "MissingServiceReturnsNoSnapshot",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 304,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerSurfaceServiceTest"
+        },
+        {
+          "name": "ReadySnapshotMatchesEveryDomainForAllWorkerKinds",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 316,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyWorkerSurfaceServiceTest"
+        },
+        {
+          "name": "LoadingDoesNotReplyWithPrematureSnapshot",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 338,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyWorkerSurfaceServiceTest"
+        },
+        {
+          "name": "WrongWorkerOriginCannotGetSnapshot",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 353,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerSurfaceServiceTest"
+        },
+        {
+          "name": "ShutdownDuringReadinessReturnsNoSnapshot",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 367,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerSurfaceServiceTest"
+        },
+        {
+          "name": "SurfaceThenCanvasCannotRequestTwice",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 383,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerSurfaceServiceTest"
+        },
+        {
+          "name": "CanvasThenSurfaceCannotRequestTwice",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 398,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.003s",
+          "classname": "NativePrivacyWorkerSurfaceServiceTest"
+        },
+        {
+          "name": "UnpartitionedSharedServiceWorkersRejectSnapshot",
+          "file": "..\\..\\content\\browser\\camouflow_native\\privacy_worker_service_unittest.cc",
+          "line": 413,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0.004s",
+          "classname": "NativePrivacyWorkerSurfaceServiceTest"
+        }
+      ]
+    },
+    {
+      "name": "NativePrivacyWorkerBootstrapTest",
+      "tests": 13,
+      "failures": 0,
+      "disabled": 0,
+      "errors": 0,
+      "timestamp": "2026-11-01T09:18:33Z",
+      "time": "0.004s",
+      "testsuite": [
+        {
+          "name": "ReadyPolicyReturnsOwnedSurfaceSeedOnce",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 86,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "UnavailableDoesNotReturnSeed",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 100,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "BrowserTimeoutDoesNotReturnSeed",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 106,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "UnknownVersionIsRejected",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 112,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "ReadyWithoutPolicyIsRejected",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 120,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "FailureWithSeedIsRejected",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 126,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "PeerDisconnectSettlesOnce",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 132,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "DeadlineRejectsLateReadyReply",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 141,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "DestructionDropsPendingReply",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 149,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "MissingPipeReturnsTypedFailure",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 157,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "ReadyCallbackCanDestroyConsumer",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 169,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "FailureCallbackCanDestroyConsumer",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 179,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        },
+        {
+          "name": "DeadlineCallbackCanDestroyConsumer",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 188,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerBootstrapTest"
+        }
+      ]
+    },
+    {
+      "name": "NativePrivacyWorkerSurfaceBootstrapTest",
+      "tests": 22,
+      "failures": 0,
+      "disabled": 0,
+      "errors": 0,
+      "timestamp": "2026-11-01T09:18:33Z",
+      "time": "0.006s",
+      "testsuite": [
+        {
+          "name": "ReadyReturnsOwnedIndependentSnapshotOnce",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 256,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "UnavailableReturnsNoSnapshot",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 271,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "BrowserTimeoutReturnsNoSnapshot",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 276,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "CanvasVersionCannotSatisfySurfaceRequest",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 281,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "ReadyWithoutSnapshotIsRejected",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 288,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "FailureWithSnapshotIsRejected",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 293,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "DifferentPartitionCannotInstallSnapshot",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 298,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "ReusedSurfaceSeedIsRejected",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 306,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "PeerDisconnectSettlesOnce",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 313,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "DeadlineRejectsLateSnapshot",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 321,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "DestructionDropsPendingReply",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 328,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "MissingPipeReturnsTypedFailure",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 335,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "ReadyCallbackCanDestroyConsumer",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 345,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "FailureCallbackCanDestroyConsumer",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 354,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "DeadlineCallbackCanDestroyConsumer",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 360,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "OpaquePartitionPreservesOwnedIdentity",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 368,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "OriginOnlyRequestOwnsBrowserPartition",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 376,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "FlagsSelectExactlyOneExplicitMode",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 384,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "OffModeRejectsUnexpectedBootstrapData",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 391,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "CanvasModeCannotUseSurfaceFallback",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 397,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "SurfaceModeCannotUseCanvasFallback",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 404,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        },
+        {
+          "name": "ConflictAndUnknownModeNeverBecomeReady",
+          "file": "..\\..\\content\\renderer\\worker\\privacy_worker_bootstrap_unittest.cc",
+          "line": 411,
+          "status": "RUN",
+          "result": "COMPLETED",
+          "timestamp": "2026-11-01T09:18:33Z",
+          "time": "0s",
+          "classname": "NativePrivacyWorkerSurfaceBootstrapTest"
+        }
+      ]
+    }
+  ]
+}

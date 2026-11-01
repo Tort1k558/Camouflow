@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "passed": true,
+  "native_tests_executed": true,
+  "scope": "Actual filtered content_unittests execution: context/launch contracts and Mojo endpoints; not Chrome first-script or browser admission",
+  "candidate_manifest_sha256": "faa45bce063499c85acd6ef05d6d8f063a552aa77b59f333cd56002958ffd7c3",
+  "batch_report_sha256": "7188b84e88ba0e1d75fff000d4c48b7f2e068536eb1bbafd3961ecf29b8e429e",
+  "build_log_sha256": "4cb20870332ee9de0cb20af75f2c1961064470032e7ed8c868fa82a842e2a306",
+  "build_invocations": 1,
+  "jobs": 4,
+  "case_executions": 116,
+  "distinct_suite_case_pairs": 116,
+  "targets": [
+    {
+      "target": "surface-launch",
+      "tests": 41,
+      "passed": true,
+      "result": "native-units/surface-launch-tests.json",
+      "portable_result_sha256": "ea7bc8b61c751908dd5611404e6fedb16798de1128697d1aa6244ea8d9ab2614",
+      "original_result_sha256": "aa09ac8af09feb4abcd0d03f27fe96ec34338b6ff1a04bb6928248fe5726a46d",
+      "test_binary_sha256": "7441f0419e363c7d02c4331447bc8e923f1e3d47a4973e79c1e9eafd1d6939b3"
+    },
+    {
+      "target": "identity-transport",
+      "tests": 20,
+      "passed": true,
+      "result": "native-units/identity-transport-tests.json",
+      "portable_result_sha256": "01defa07fb211c5798a8d25ee7e0be373f0d680bf1319238ef7e37fc7126d2ec",
+      "original_result_sha256": "83241b45f43e4711561bb6a06babc81496a81c0498f0cc792aeba31e3109c932",
+      "test_binary_sha256": "7441f0419e363c7d02c4331447bc8e923f1e3d47a4973e79c1e9eafd1d6939b3"
+    },
+    {
+      "target": "worker-surfaces",
+      "tests": 55,
+      "passed": true,
+      "result": "native-units/worker-surfaces-tests.json",
+      "portable_result_sha256": "d835e958223347c3259d581f90f2758ccb52630690934bb03595e9f55d2eefb8",
+      "original_result_sha256": "5c384ae76c8198658d15f99b33a3aeafe3cad34fc051cfd384bb8a7110ea9b10",
+      "test_binary_sha256": "7441f0419e363c7d02c4331447bc8e923f1e3d47a4973e79c1e9eafd1d6939b3"
+    }
+  ],
+  "source_postguards_passed": true,
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "normalization": "Only UTF-8 newline normalization; parsed result objects equal the retained original files"
+}

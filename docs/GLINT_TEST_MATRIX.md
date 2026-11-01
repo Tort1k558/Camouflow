@@ -11,13 +11,17 @@ upstream files; this is source evidence, not a repaired browser result.
 | Next gate | Required evidence |
 | --- | --- |
 | Windows build | Compiled: 62 executed Siso steps, maximum j4; browser QA remains separate |
-| Native launch/context tests | All 41 cases executed, including the four new launch tests |
+| Native launch/context tests | Passed: 41 cases, including the four new launch tests; 20 transport and 55 worker endpoint cases also passed |
 | Normal-profile delivery | Documents/iframe/workers and restarts without diagnostic bootstrap flags |
 | Large Canvas/WebGPU | Repeat the retained failed R4 gate with the actual new binary |
 
 [Exact Windows build evidence](../native/drafts/upstream-156-webgpu-r5/windows-build-observations.json)
 binds the new DLL, unchanged launcher, build receipt, source chain and SDK.
 Siso execution took 27m15s; the complete build stage took 34m47s.
+
+[Native unit evidence](../native/drafts/upstream-156-webgpu-r5/native-unit-observations.json)
+retains exact case names, zero failures/disabled cases and unchanged-source
+postguards. Real Chrome document/worker delivery is a separate gate.
 
 The manager package allowlist is unchanged. Native tests, registration and
 standalone GPU controls do not admit the policy or guarantee CAPTCHA results.
