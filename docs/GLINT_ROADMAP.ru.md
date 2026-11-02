@@ -1,5 +1,15 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: native fixture correction packet prepared
+
+[Four-file test-only correction](../native/drafts/checkpoint-native-fixture-fixes/README.md)
+keeps the complete case declarations and expected failure assertions. It replaces
+invalid SameSite/trigger/drop-response setup with a valid cookie, a reversible
+CHECK guard plus later-write persistence readback, and a late Mojo reply after
+timeout. Isolated replay/reversal and a host SQLite probe pass; Chromium rebuild
+and execution are pending. The selected R12 source tree is unchanged while its
+29-group regression repeat runs. No failed native result is relabelled as passed.
+
 ## 2026-11-02: linked checkpoint test execution
 
 [First native attempt](../native/drafts/upstream-156-checkpoint-r12/native-attempt-observations.json)

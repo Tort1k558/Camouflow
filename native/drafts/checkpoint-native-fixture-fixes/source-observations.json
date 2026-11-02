@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "selected": false,
+  "compiled": false,
+  "native_executed": false,
+  "production_sources_changed": false,
+  "canonical_sources_modified": false,
+  "original_failures_retained": true,
+  "patch_sha256": "93633af2fd3e00f15ee2d98fe6056071df0dc6ef21bc5485b92e7eda26311689",
+  "sources": [
+    {
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "before_sha256": "9d311f2dda242d33ca47e6300aff7ca0c4cdb2d9039a69f722548b5705f216fa",
+      "after_sha256": "62c2df6b58a39eecdc22709fa4ad7d181886cf15d87fe71e5132d3e2b4f9538c"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "before_sha256": "fdc4c8bdbdfa1af77903e525daca1fda51040b780a95b6152e8499ea3c4b3827",
+      "after_sha256": "4dd9f29eb3948bab9afbab82e151e16af91b94a1930c4c126fd20a3ed3e66d94"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "before_sha256": "a74a3a642272e7e34b8f7dce80d031e81492106054c691aaaa5a41e48d61c3cf",
+      "after_sha256": "56c5820ecd2e750e8acb9d82b2e226007403e544ed603e115cfe9c6626b168d7"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/testing/mock_storage_area.h",
+      "before_sha256": "88476ad095847809e36559222cd09168a29bff996aa79483d4905529ceabe78e",
+      "after_sha256": "30298964c6511101820f8b0468b1c5f103cd3cad68bd9a35d3667225fa66a3b2"
+    }
+  ],
+  "scope": "Correct invalid cookie, disabled-trigger injection and illegal Mojo response drop fixtures",
+  "isolated_apply_reverse_passed": true,
+  "test_case_declarations_unchanged": true,
+  "host_sqlite_probe": {
+    "version": "3.42.0",
+    "triggers_explicitly_disabled": true,
+    "legacy_trigger_bypassed": true,
+    "check_constraint_rejected_write": true,
+    "valid_write_after_constraint_removal": true,
+    "chromium_execution": false
+  },
+  "base_candidate": "upstream-156-checkpoint-r12",
+  "base_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "patch": "checkpoint-native-fixture-fixes.patch",
+  "registered": false,
+  "production_admitted": false,
+  "runtime_verified": false,
+  "full_candidate_composition_verified": false,
+  "first_native_attempt_report_sha256": "59fb7efc12e516df6987a827472d87f31b70a3ce017c755c08897e447e53b2dd"
+}
