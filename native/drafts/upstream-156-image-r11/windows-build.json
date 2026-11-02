@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-image-r11",
+  "candidate_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "0e2dc956a173f32017f3756c695a393d7320df606159ebbdbd0b527aacbfe3c9",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "831ba2f123fbb898add7b7b61dd3ad4ed7c4c2b2a697899013f87e144e1b59a2",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "compiled": true,
+  "source_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "build_report_sha256": "73234b5646ebc34387d121704b20c299debdd39f94223942cb12e0a642529a72",
+  "build_log_sha256": "a380dddf2d6fb727584339bbab7c1d5768e289287b652aec90c8bbf7fa931663",
+  "build": {
+    "kind": "Incremental R10-to-R11 build, not a clean Chromium build",
+    "jobs": 4,
+    "configured_link_pool_depth": 1,
+    "stage_duration_seconds": 1062.549,
+    "siso_steps": 52,
+    "siso_duration_seconds": 855.8
+  },
+  "changed_source_files": 2,
+  "build_output_timestamps_modified": false,
+  "browser_runtime_admitted": false,
+  "third_party_antibot_verified": false
+}

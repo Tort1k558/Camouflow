@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-image-r11",
+  "candidate_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "0e2dc956a173f32017f3756c695a393d7320df606159ebbdbd0b527aacbfe3c9",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "831ba2f123fbb898add7b7b61dd3ad4ed7c4c2b2a697899013f87e144e1b59a2",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "passed": false,
+  "graphics_passed": true,
+  "graphics_measurement_complete": true,
+  "width": 4096,
+  "height": 4096,
+  "rgba8_bytes": 67108864,
+  "full_image_copies": 6,
+  "observations": {
+    "schema": 1,
+    "width": 4096,
+    "height": 4096,
+    "byteLength": 67108864,
+    "api": "webgl2",
+    "alpha": false,
+    "copies": [
+      {
+        "name": "drawImage",
+        "willReadFrequently": false,
+        "passed": true,
+        "sha256": "2b9e736ff9fb4c889ce1976c9a66a8566afebe0d40ee9775688a0d0474da2b50"
+      },
+      {
+        "name": "drawImage",
+        "willReadFrequently": true,
+        "passed": true,
+        "sha256": "2b9e736ff9fb4c889ce1976c9a66a8566afebe0d40ee9775688a0d0474da2b50"
+      },
+      {
+        "name": "png",
+        "willReadFrequently": false,
+        "passed": true,
+        "sha256": "2b9e736ff9fb4c889ce1976c9a66a8566afebe0d40ee9775688a0d0474da2b50"
+      },
+      {
+        "name": "png",
+        "willReadFrequently": true,
+        "passed": true,
+        "sha256": "2b9e736ff9fb4c889ce1976c9a66a8566afebe0d40ee9775688a0d0474da2b50"
+      },
+      {
+        "name": "transferToImageBitmap",
+        "willReadFrequently": false,
+        "passed": true,
+        "sha256": "2b9e736ff9fb4c889ce1976c9a66a8566afebe0d40ee9775688a0d0474da2b50"
+      },
+      {
+        "name": "transferToImageBitmap",
+        "willReadFrequently": true,
+        "passed": true,
+        "sha256": "2b9e736ff9fb4c889ce1976c9a66a8566afebe0d40ee9775688a0d0474da2b50"
+      }
+    ],
+    "passed": true,
+    "opaqueAlphaPixels": 16777216,
+    "fixtureChangedChannels": 93,
+    "directSha256": "2b9e736ff9fb4c889ce1976c9a66a8566afebe0d40ee9775688a0d0474da2b50",
+    "afterTransfer": {
+      "pixel": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "error": 0,
+      "lost": false
+    }
+  },
+  "resource_measurement_complete": false,
+  "sampling_errors": [
+    {
+      "type": "ValueError",
+      "error": "Process tree changed during measurement; no complete totals are returned"
+    }
+  ],
+  "sample_count": 20,
+  "maximum_sampled_private_commit_bytes": 1893130240,
+  "maximum_sampled_summed_working_set_bytes": 2017472512,
+  "resource_scope": "Successful process-tree samples only; summed working sets are not unique RSS, exact peaks and GPU VRAM are unmeasured",
+  "original_unavailable_sample_preserved": true,
+  "owned_resources_closed": true,
+  "postguards_passed": true,
+  "source_report_sha256": "29e8b0703c25919b8a67ed22bdafe11dfe84e97284d2e9ca071ec5fc432d73c6",
+  "probe_sha256": "edd6d0b15515433581f2301e9c1bd083e7fc058bf704176027718ac0e7bf655d",
+  "full_resource_gate_passed": false
+}

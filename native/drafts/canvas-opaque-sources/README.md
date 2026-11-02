@@ -1,6 +1,12 @@
 # Opaque GPU image-source normalization
 
-**Unselected source repair. No repaired browser or executed new native cases.**
+**Selected R11 copy/frame repair verified; broad browser/resource admission open.**
+
+[R11 measurements](../upstream-156-image-r11/README.md) now pass all five new native
+cases, 32 direct copy variants, 40 worker-frame copies and the original combined
+copy fixtures. Six full-size 4K copies also pass, but their resource measurement
+remains incomplete. The source-preparation records below are historical: their
+unselected/unexecuted fields have not been rewritten as later runtime evidence.
 
 The [R10 diagnostic matrix](runtime-observations.json) narrows the original errors:
 
@@ -27,14 +33,14 @@ of unnormalized owned rasters and unsupported formats.
 
 [Complete R11 preparation](full-composition-observations.json) replays all 136
 patches forward and backward, matches 406 final files and restores 273 upstream
-inputs. The prepared candidate is not yet registered, built or executed.
+inputs. That preparation predates the later R11 registration and measured build.
 
 [Focused module continuity](module-continuity-observations.json) passed 24 paired
 classic/module shared-worker reads across three launches with the gamma preset.
 It did not reproduce the earlier combined-sequence mismatch; that failure is
 still open and has not been fixed or waived.
 
-The canonical R10 checkout/runtime is unchanged. Next: compose/register the
-complete repair recipe, execute all existing and new native groups, then repeat
-the original fixtures and these alpha variants. The separate shared-worker
-rendering mismatch, large-image/resource/cohort and manager/package gates remain.
+Preparation left the canonical R10 checkout unchanged; its independent runtime
+is still retained. The active source/runtime is now R11. The separate original
+shared-worker mismatch, broader large-image/resource/cohort and manager/package
+gates remain open despite the selected successful checks.

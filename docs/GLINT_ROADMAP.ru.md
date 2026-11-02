@@ -1,5 +1,19 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: R11 native and selected browser repair verified
+
+[R11 measurements](../native/drafts/upstream-156-image-r11/README.md): 52 build steps
+in 14m 15.80s; all 29 native groups passed 586 executions / 429 distinct cases.
+All 14 combined phases passed, plus 32 direct copy variants, 40 worker-frame
+copies, 11 rejected malformed launches and matched GPU profile/restart checks.
+The earlier worker mismatch did not recur; no specific worker source fix is claimed.
+
+Six full-image 4096-square RGBA8 copies pass. Their whole resource gate remains
+failed: process churn invalidated one telemetry sample. Successful private-commit
+samples reached about 1.76 GiB; this is not an exact peak or a 64 MiB browser limit.
+Original failures remain preserved. Broader resource/format/cohort, Legacy Audio,
+manager/package/update/rollback/recovery and full-objective gates remain open.
+
 ## 2026-11-02: R11 registered with exact opaque-source native group
 
 [R11](../native/drafts/upstream-156-image-r11/README.md) registers the complete
