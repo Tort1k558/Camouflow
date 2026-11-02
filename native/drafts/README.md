@@ -12,7 +12,8 @@ source preparation, not repairs admitted in that runtime. See the authoritative
 [architecture](../ARCHITECTURE.md) for current evidence and admission limits.
 The [renderer localStorage fence](renderer-storage-fence/README.md) is another
 unselected source packet: existing mutation replies, explicit deadlines and
-generation checks, not a completed browser/profile checkpoint.
+generation checks. Its [namespace/controller aggregation](storage-aggregate-fence/README.md)
+adds cohort epochs and eviction guards, not a completed browser/profile checkpoint.
 The older checkpoints below describe how the registered components were built;
 they are not the current browser version. Do not modify or reapply promoted
 patches during an active build.

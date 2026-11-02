@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: renderer namespace/controller aggregation prepared
+
+[Aggregate fence](../native/drafts/storage-aggregate-fence/README.md) waits for all
+captured localStorage areas and rechecks a namespace epoch covering locally issued
+mutations, topology and reset. Late writes in an early-completed area invalidate
+the aggregate. Eviction retains pending writes and cannot erase a recorded failure.
+The controller checks lifetime, namespace identity and generations without creating
+a namespace for an empty producer set. Both layers admit at most 64 requests.
+
+Six isolated packets compose/reverse across 37 files; seven C++ units type-check.
+Seventeen native bodies are prepared, **not executed**. R11 is unchanged. Next:
+public Blink facade and browser-owned actor coordination, network/partition
+completion and the manager protocol. GC, timeout/virtual-time, eviction/backpressure,
+real pipes and crash-after-ack require linked/runtime verification before admission.
+
 ## 2026-11-02: renderer localStorage acknowledgment fence prepared
 
 [Renderer fence](../native/drafts/renderer-storage-fence/README.md) tracks existing

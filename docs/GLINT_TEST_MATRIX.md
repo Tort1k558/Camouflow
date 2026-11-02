@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## 2026-11-02: renderer localStorage namespace/controller aggregation
+
+| Gate | Result |
+| --- | --- |
+| Source cohort | Wait for every captured area; epoch recheck rejects early-area changes, topology changes and rebind |
+| Eviction | Pending writes/fences remain cached; removing a failed area retains failure in the namespace |
+| Controller | Weak lifetime, captured namespace identity and both generations; empty scope does not create a namespace |
+| Bounds | Finite caller deadline; 64 pending requests per namespace/controller |
+| Six-packet isolated replay | 37 exact files matched/restored; not complete candidate composition |
+| C++ syntax/type checks | Seven passed: three implementations, mock and three native fixture units |
+| Native preparation | Seventeen new bodies; **not linked or executed**, including the prepared client-pipe case |
+| Browser/profile checkpoint | **Not implemented/admitted**; R11 and recorded write-loss outcomes unchanged |
+| Evidence | [Aggregation packet](../native/drafts/storage-aggregate-fence/README.md) |
+
+Public Blink/browser coordination, network/session/partition semantics, manager
+lifecycle, GC/resource tests and actual crash-after-ack still need verification.
+
 ## 2026-11-02: renderer localStorage mutation-fence source
 
 | Gate | Result |

@@ -45,7 +45,8 @@ runtime failure or a passing linked timeout test.
 
 ## Remaining
 
-- Aggregate localStorage namespaces/controller with actor/topology generations.
+- Validate the [prepared namespace/controller aggregation](../storage-aggregate-fence/README.md)
+  and its local mutation/topology epoch, eviction and weak-owner guards.
 - Coordinate browser-owned renderer and network producer fences.
 - Define session-cookie persistence and capture every owned partition/backend.
 - Bind manager capability, cancellation, lifecycle and partial-write semantics.

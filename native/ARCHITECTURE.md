@@ -30,13 +30,17 @@ completions fail closed. Four packets compose/reverse across 27 files; fourteen
 cookie C++ units type-check, while fifteen additional native cases remain unexecuted.
 [Renderer localStorage acknowledgments](drafts/renderer-storage-fence/README.md)
 now have a separate source fence: track existing mutation replies with serials,
-generation, owner and explicit deadline checks. This is not namespace/controller
-aggregation or a browser-owned actor fence. Five packets compose/reverse across
-32 isolated files; three renderer C++ units type-check and fifteen native bodies
-are prepared, not executed. These drafts still do not establish the renderer/
-network topology barrier, whole-profile session-cookie contract or a checkpoint
-capability in the R11 runtime. Renderer timeout needs an independent browser
-deadline when the renderer is frozen or virtual time is paused.
+generation, owner and explicit deadline checks. Its
+[namespace/controller extension](drafts/storage-aggregate-fence/README.md) aggregates
+every captured area and rechecks an epoch which also includes local mutations,
+topology and reset. Pending-write eviction is prevented; failed eviction retains
+the error. The controller checks namespace identity and both generations.
+Six packets compose/reverse across 37 isolated files; seven renderer units
+type-check and seventeen additional native bodies remain unexecuted. These drafts
+still do not establish browser-owned renderer/network coordination, the
+whole-profile session-cookie contract or a checkpoint capability in R11.
+Renderer timeout needs an independent browser deadline when the renderer is
+frozen or virtual time is paused. GC and stalled-cache backpressure remain gates.
 
 ## 2026-11-02: R11 integration control and selected storage/crash recovery
 
