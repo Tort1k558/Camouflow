@@ -1,5 +1,16 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: R12 regression passed; R13 recipe registered
+
+The [existing R12 regression](../native/drafts/upstream-156-checkpoint-r12/native-all-observations.json)
+passes all 29 groups, 586 executions / 429 distinct cases and final postguards.
+Its original checkpoint-fixture failures remain recorded. The
+[complete R13 source recipe](../native/drafts/upstream-156-checkpoint-r13/README.md)
+adds one test-only correction packet, preserves all 85 bodies and verifies all
+144 patches / 454 final sources / 319 restored originals in isolation. Selection,
+compilation and full native/runtime verification of R13 are pending. The runner
+accepts an explicit candidate without changing the legacy R12 default.
+
 ## 2026-11-02: native fixture correction packet prepared
 
 [Four-file test-only correction](../native/drafts/checkpoint-native-fixture-fixes/README.md)

@@ -1,0 +1,108 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.h b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.h
+--- a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.h
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.h
+@@ -15,6 +15,11 @@
+ class OfflineAudioMasker {
+  public:
+   explicit OfflineAudioMasker(const std::array<uint8_t, 32>& audio_seed);
++  ~OfflineAudioMasker();
++  OfflineAudioMasker(const OfflineAudioMasker&) = default;
++  OfflineAudioMasker& operator=(const OfflineAudioMasker&) = default;
++  OfflineAudioMasker(OfflineAudioMasker&&) = default;
++  OfflineAudioMasker& operator=(OfflineAudioMasker&&) = default;
+   std::optional<float> Transform(float sample);
+ 
+  private:
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc
+--- a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc
+@@ -7,6 +7,7 @@
+ #include <span>
+ 
+ #include "third_party/boringssl/src/include/openssl/hmac.h"
++#include "third_party/boringssl/src/include/openssl/mem.h"
+ 
+ namespace glint::candidate {
+ namespace {
+@@ -17,6 +18,11 @@
+ 
+ OfflineAudioMasker::OfflineAudioMasker(const std::array<uint8_t, 32>& audio_seed)
+     : seed_(audio_seed) {}
++
++OfflineAudioMasker::~OfflineAudioMasker() {
++  OPENSSL_cleanse(seed_.data(), seed_.size());
++  OPENSSL_cleanse(cache_.data(), sizeof(cache_));
++}
+ 
+ std::optional<float> OfflineAudioMasker::Transform(float sample) {
+   const auto bits = std::bit_cast<uint32_t>(sample);
+@@ -40,10 +46,12 @@
+     unsigned length = 0;
+     if (!HMAC(EVP_sha256(), seed_.data(), seed_.size(), message.data(),
+               message.size(), digest.data(), &length) || length != digest.size()) {
++      OPENSSL_cleanse(digest.data(), digest.size());
+       return std::nullopt;
+     }
+     entry.normalized = normalized;
+     entry.bit = digest[0] & 1u;
++    OPENSSL_cleanse(digest.data(), digest.size());
+   }
+   return std::bit_cast<float>(normalized | entry.bit);
+ }
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc
+--- a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc
+@@ -3,8 +3,12 @@
+ #include "offline_audio_candidate.h"
+ #include "offline_audio_limits.h"
+ 
++#include <algorithm>
+ #include <bit>
+ #include <cmath>
++#include <cstddef>
++#include <memory>
++#include <utility>
+ 
+ #include "testing/gtest/include/gtest/gtest.h"
+ 
+@@ -94,6 +98,40 @@
+   }
+ }
+ 
++TEST(GlintOfflineAudioCandidateTest, DestructionCleansOwnedSeedAndDerivedCache) {
++  std::array<uint8_t, 32> seed;
++  seed.fill(27);
++  alignas(OfflineAudioMasker) std::byte storage[sizeof(OfflineAudioMasker)];
++  std::ranges::fill(storage, std::byte{0xa5});
++  auto* masker = std::construct_at(
++      reinterpret_cast<OfflineAudioMasker*>(storage), seed);
++  const auto transformed = masker->Transform(0.1234f);
++  std::destroy_at(masker);
++  EXPECT_TRUE(transformed.has_value());
++  EXPECT_TRUE(std::ranges::all_of(storage, [](std::byte value) {
++    return value == std::byte{0};
++  }));
++  EXPECT_TRUE(std::ranges::all_of(seed, [](uint8_t value) {
++    return value == 27;
++  }));
++}
++
++TEST(GlintOfflineAudioCandidateTest, CopiesAndMovesKeepIndependentOwnedState) {
++  OfflineAudioMasker survivor(kAudioSeed);
++  const auto expected = survivor.Transform(0.1234f);
++  ASSERT_TRUE(expected.has_value());
++  {
++    OfflineAudioMasker original(kAudioSeed);
++    EXPECT_EQ(original.Transform(0.1234f), expected);
++    OfflineAudioMasker copied(original);
++    survivor = copied;
++    OfflineAudioMasker moved(std::move(original));
++    copied = std::move(moved);
++    EXPECT_EQ(copied.Transform(0.1234f), expected);
++  }
++  EXPECT_EQ(survivor.Transform(0.1234f), expected);
++}
++
+ TEST(GlintOfflineAudioCandidateTest, RejectsEmptyAndOverflowingCopySizes) {
+   EXPECT_FALSE(CanCopyOfflineAudio(0, 1));
+   EXPECT_FALSE(CanCopyOfflineAudio(1, 0));

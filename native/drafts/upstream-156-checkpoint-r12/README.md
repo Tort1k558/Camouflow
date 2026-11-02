@@ -22,8 +22,12 @@ SQL trigger injection was ineffective because Chromium disables triggers by
 default; the prepared replacement uses a reversible CHECK constraint and checks
 that a subsequent valid write persists despite the retained earlier error.
 
-The following 29-group regression did not start: post-link free space was below
-the unchanged 180 GiB reserve. Full native, runtime and durability gates remain open.
+The first following regression did not start: post-link free space was below the
+unchanged 180 GiB reserve. After lossless debug-symbol compression, the
+[29-group repeat](native-all-observations.json) passed all 586 executions / 429
+distinct cases and final postguards. This does not repair the checkpoint fixture
+failures. Their complete [R13 correction recipe](../upstream-156-checkpoint-r13/README.md)
+still requires a selected build and native execution. Runtime/durability gates remain open.
 
 ## Windows build passed
 

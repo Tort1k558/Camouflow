@@ -1,0 +1,137 @@
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+index bb8d649..f8ff0a0 100644
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -210,6 +210,99 @@ class WorkerThreadTest : public testing::Test {
+   std::unique_ptr<WorkerThreadForTest> worker_thread_;
+ };
+ 
++TEST_F(WorkerThreadTest, GlintCanvasSeedArrivesBeforeEvaluation) {
++  std::array<uint8_t, 32> seed{};
++  for (uint8_t i = 0; i < seed.size(); ++i) {
++    seed[i] = i;
++  }
++  testing::InSequence sequence;
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([seed](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker_scope = To<WorkerGlobalScope>(scope);
++        EXPECT_EQ(worker_scope->GlintCanvasPartitionSeed(), std::optional(seed));
++        auto copy = worker_scope->GlintCanvasPartitionSeed();
++        ASSERT_TRUE(copy);
++        copy->fill(255);
++        EXPECT_EQ(worker_scope->GlintCanvasPartitionSeed(), std::optional(seed));
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScriptMock(true, _)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++                                     KURL("http://fake.url/"), seed);
++  seed.fill(255);
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++
++TEST_F(WorkerThreadTest, GlintCanvasSeedRemainsAbsentWithoutBootstrap) {
++  testing::InSequence sequence;
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([](WorkerOrWorkletGlobalScope* scope) {
++        EXPECT_FALSE(To<WorkerGlobalScope>(scope)->GlintCanvasPartitionSeed());
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScriptMock(true, _)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  Start();
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++
++TEST_F(WorkerThreadTest, GlintSequentialScopesDoNotReusePreviousCanvasSeed) {
++  std::array<uint8_t, 32> first{};
++  std::array<uint8_t, 32> second{};
++  first.fill(17);
++  second.fill(233);
++  const std::optional<std::array<uint8_t, 32>> seeds[] = {
++      first, second, std::nullopt};
++  for (const auto& seed : seeds) {
++    testing::InSequence sequence;
++    EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++        .WillOnce([seed](WorkerOrWorkletGlobalScope* scope) {
++          EXPECT_EQ(To<WorkerGlobalScope>(scope)->GlintCanvasPartitionSeed(), seed);
++        });
++    EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++    EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScriptMock(true, _)).Times(1);
++    EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++    EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++    worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++                                       KURL("http://fake.url/"), seed);
++    worker_thread_->WaitForInit();
++    worker_thread_->Terminate();
++    worker_thread_->WaitForShutdownForTesting();
++    EXPECT_EQ(ExitCode::kGracefullyTerminated, GetExitCode());
++    worker_thread_.reset();
++    ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(reporting_proxy_.get()));
++    worker_thread_ = std::make_unique<WorkerThreadForTest>(*reporting_proxy_);
++  }
++}
++
++TEST_F(WorkerThreadTest, GlintImmediateTerminationRetainsOwnedCanvasSeed) {
++  std::array<uint8_t, 32> seed{};
++  seed.fill(29);
++  const auto expected = seed;
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([expected](WorkerOrWorkletGlobalScope* scope) {
++        EXPECT_EQ(To<WorkerGlobalScope>(scope)->GlintCanvasPartitionSeed(),
++                  std::optional(expected));
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(AtMost(1));
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScriptMock(_, _)).Times(AtMost(1));
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(AtMost(1));
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++                                     KURL("http://fake.url/"), seed);
++  seed.fill(255);
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++  EXPECT_EQ(ExitCode::kGracefullyTerminated, GetExitCode());
++}
++
+ TEST_F(WorkerThreadTest, ShouldTerminateScriptExecution) {
+   using ThreadState = WorkerThread::ThreadState;
+ 
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test_helper.h b/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
+index e0c68ce..ff16996 100644
+--- a/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
++++ b/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
+@@ -5,7 +5,11 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_WORKERS_WORKER_THREAD_TEST_HELPER_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_WORKERS_WORKER_THREAD_TEST_HELPER_H_
+ 
++#include <array>
++#include <cstdint>
+ #include <memory>
++#include <optional>
++#include <utility>
+ 
+ #include "base/synchronization/waitable_event.h"
+ #include "services/metrics/public/cpp/ukm_source_id.h"
+@@ -154,9 +158,13 @@ class WorkerThreadForTest : public WorkerThread {
+ 
+   void StartWithSourceCode(const SecurityOrigin* security_origin,
+                            const String& source,
+-                           const KURL& script_url = KURL("http://fake.url/")) {
+-    Start(GlobalScopeCreationParams::CreateForWorkerForTesting(security_origin,
+-                                                               script_url),
++                           const KURL& script_url = KURL("http://fake.url/"),
++                           std::optional<std::array<uint8_t, 32>> canvas_seed =
++                               std::nullopt) {
++    auto creation_params = GlobalScopeCreationParams::CreateForWorkerForTesting(
++        security_origin, script_url);
++    creation_params->glint_canvas_partition_seed = std::move(canvas_seed);
++    Start(std::move(creation_params),
+           WorkerBackingThreadStartupData::CreateDefault(),
+           std::make_unique<WorkerDevToolsParams>());
+     EvaluateClassicScript(script_url, source, nullptr /* cached_meta_data */,

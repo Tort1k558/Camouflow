@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "passed": true,
+  "compiled": false,
+  "native_tests_executed": false,
+  "registered": false,
+  "production_admitted": false,
+  "canonical_sources_modified": false,
+  "production_sources_changed": false,
+  "test_sources_changed": 4,
+  "forward_patches": 144,
+  "reverse_patches": 144,
+  "manifest_sha256": "453e2bedc2b9fd6cb59ddf8a2e993d17ff30976fc5661bee5199bac450b81a0b",
+  "final_owned_files_matched": 454,
+  "upstream_files_restored": 319,
+  "derived_native_case_plan_verified": true,
+  "native_case_bodies_preserved": 85
+}

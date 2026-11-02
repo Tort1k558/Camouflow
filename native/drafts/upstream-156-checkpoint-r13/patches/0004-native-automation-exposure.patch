@@ -1,0 +1,28 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator.cc b/third_party/blink/renderer/core/frame/navigator.cc
+index 583f05f..a1f04ad 100644
+--- a/third_party/blink/renderer/core/frame/navigator.cc
++++ b/third_party/blink/renderer/core/frame/navigator.cc
+@@ -98,6 +98,9 @@ bool Navigator::cookieEnabled() const {
+ }
+ 
+ bool Navigator::webdriver() const {
++  if (RuntimeEnabledFeatures::CamouFlowAutomationConcealedEnabled())
++    return false;
++
+   if (RuntimeEnabledFeatures::AutomationControlledEnabled())
+     return true;
+ 
+diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 b/third_party/blink/renderer/platform/runtime_enabled_features.json5
+index be2ad46..21c0ffb 100644
+--- a/third_party/blink/renderer/platform/runtime_enabled_features.json5
++++ b/third_party/blink/renderer/platform/runtime_enabled_features.json5
+@@ -1037,6 +1037,9 @@
+       status: "stable",
+       public: true,
+     },
++    {
++      name: "CamouFlowAutomationConcealed",
++    },
+     {
+       name: "Canvas2dCanvasFilter",
+       status: "experimental",

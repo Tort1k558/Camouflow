@@ -291,3 +291,23 @@ def test_browser_case_requires_its_exact_native_json(tmp_path, monkeypatch):
     runs = units.run_browser_cases(tmp_path / 'content_browsertests.exe', {'BrowserTest': {'A'}},
                                    source=tmp_path, env={}, report_dir=tmp_path, timeout=900)
     assert not runs[0]['passed'] and 'error' in runs[0]
+
+
+def test_fixture_corrected_candidate_preserves_the_derived_checkpoint_cases():
+    original = build.load_candidate('upstream-156-checkpoint-r12')
+    corrected = build.load_candidate('upstream-156-checkpoint-r13')
+    assert len(corrected['manifest']['patches']) == 144
+    assert corrected['manifest']['patches'][:-1] == original['manifest']['patches']
+    assert units.load_plan(corrected)['cases'] == units.load_plan(original)['cases']
+    assert corrected['manifest_sha256'] != original['manifest_sha256']
+
+
+@pytest.mark.parametrize('candidate', ('upstream-156-checkpoint-r12', 'upstream-156-checkpoint-r13'))
+def test_checkpoint_cli_forwards_explicit_candidate(tmp_path, monkeypatch, candidate):
+    execute = Mock(return_value={'passed': True})
+    monkeypatch.setattr(units, 'verify', execute)
+    monkeypatch.setattr(units.sys, 'argv', ['checkpoint', '--workspace', str(tmp_path),
+                                           '--report-dir', str(tmp_path / 'reports'),
+                                           '--candidate', candidate])
+    assert units.main() == 0
+    assert execute.call_args.kwargs['candidate_name'] == candidate

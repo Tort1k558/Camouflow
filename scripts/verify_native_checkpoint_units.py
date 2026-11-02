@@ -1,4 +1,4 @@
-"""Build and execute the complete R12 checkpoint test plan; not runtime admission."""
+"""Build and execute a complete checkpoint candidate test plan; not runtime admission."""
 
 from __future__ import annotations
 
@@ -170,14 +170,15 @@ def run_browser_cases(executable: Path, required: dict, *, source: Path, env: di
     return runs
 
 
-def verify(workspace: Path, report_dir: Path, *, jobs: int = 4, timeout_seconds: int = 900) -> dict:
+def verify(workspace: Path, report_dir: Path, *, jobs: int = 4, timeout_seconds: int = 900,
+           candidate_name: str = CANDIDATE) -> dict:
     if sys.platform != 'win32':
         raise ValueError('Checkpoint native execution currently supports Windows only')
     if type(jobs) is not int or not 1 <= jobs <= 4:
         raise ValueError('Checkpoint compilation requires 1..4 jobs')
     if type(timeout_seconds) is not int or not 1 <= timeout_seconds <= 900:
         raise ValueError('Checkpoint case deadline must be between 1 and 900 seconds')
-    candidate = build.load_candidate(CANDIDATE)
+    candidate = build.load_candidate(candidate_name)
     plan = load_plan(candidate)
     source = workspace / 'chromium/src'
     if (workspace.drive.upper() != 'D:' or workspace != workspace.resolve()
@@ -199,7 +200,7 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
                    jobs: int, timeout: int) -> dict:
     source = workspace / 'chromium/src'
     output = source / 'out/CamouFlowNative'
-    report = dict(schema=1, passed=False, candidate=CANDIDATE,
+    report = dict(schema=1, passed=False, candidate=candidate['name'],
                   scope='All discovered checkpoint test instances; not whole-profile durability or browser admission',
                   candidate_manifest_sha256=candidate['manifest_sha256'], jobs=jobs,
                   prepared_body_count=85, targets=[], build_invocations=0,
@@ -311,9 +312,11 @@ def main() -> int:
     parser.add_argument('--report-dir', type=Path, required=True)
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=4)
     parser.add_argument('--timeout-seconds', type=int, default=900)
+    parser.add_argument('--candidate', choices=build.CANDIDATES, default=CANDIDATE)
     args = parser.parse_args()
     try:
-        result = verify(args.workspace, args.report_dir, jobs=args.jobs, timeout_seconds=args.timeout_seconds)
+        result = verify(args.workspace, args.report_dir, jobs=args.jobs, timeout_seconds=args.timeout_seconds,
+                        candidate_name=args.candidate)
     except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
         print(f'Checkpoint verification failed: {error}', file=sys.stderr)
         return 1

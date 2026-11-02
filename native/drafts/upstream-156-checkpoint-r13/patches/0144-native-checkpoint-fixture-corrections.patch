@@ -1,0 +1,98 @@
+diff --git a/net/cookies/cookie_monster_unittest.cc b/net/cookies/cookie_monster_unittest.cc
+--- a/net/cookies/cookie_monster_unittest.cc
++++ b/net/cookies/cookie_monster_unittest.cc
+@@ -8770,8 +8770,8 @@
+   const auto now = base::Time::Now();
+   auto cookie = CanonicalCookie::CreateUnsafeCookieForTesting(
+       "checkpoint", "value", "example.test", "/", now, now + base::Days(1), now,
+-      now, false, false, CookieSameSite::NO_RESTRICTION,
+-      COOKIE_PRIORITY_DEFAULT, CookieSourceType::kOther);
++      now, false, false, CookieSameSite::LAX_MODE, COOKIE_PRIORITY_DEFAULT,
++      CookieSourceType::kOther);
+   cm->SetCanonicalCookieAsync(std::move(cookie), GURL("http://example.test/"),
+                               CookieOptions::MakeAllInclusive(),
+                               write.GetCallback(), std::nullopt);
+@@ -8783,7 +8783,8 @@
+             store->commands()[1].type);
+   EXPECT_EQ(0, store->checkpoints);
+   store->TakeCallbackAt(0).Run(std::vector<std::unique_ptr<CanonicalCookie>>());
+-  EXPECT_TRUE(write.Get().status.IsInclude());
++  EXPECT_TRUE(write.Get().status.IsInclude())
++      << write.Get().status.GetDebugString();
+   ASSERT_EQ(1, store->checkpoints);
+   EXPECT_TRUE(store->saw_add_at_checkpoint);
+   ASSERT_TRUE(store->pending);
+diff --git a/net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc b/net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc
+--- a/net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc
++++ b/net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc
+@@ -2717,15 +2717,16 @@
+     sql::Database database(sql::test::kTestTag);
+     ASSERT_TRUE(database.Open(temp_dir_.GetPath().Append(kCookieFilename)));
+     ASSERT_TRUE(database.Execute(
+-        "CREATE TRIGGER reject_checkpoint BEFORE INSERT ON cookies BEGIN "
+-        "SELECT RAISE(FAIL,'checkpoint injection'); END"));
++        "ALTER TABLE cookies ADD COLUMN checkpoint_guard INTEGER "
++        "CHECK (name != 'lost')"));
+   }
+   AddCookie("lost", "value", "example.test", "/", base::Time::Now());
+   Flush();
+   {
+     sql::Database database(sql::test::kTestTag);
+     ASSERT_TRUE(database.Open(temp_dir_.GetPath().Append(kCookieFilename)));
+-    ASSERT_TRUE(database.Execute("DROP TRIGGER reject_checkpoint"));
++    ASSERT_TRUE(
++        database.Execute("ALTER TABLE cookies DROP COLUMN checkpoint_guard"));
+   }
+   AddCookie("later", "value", "example.test", "/", base::Time::Now());
+   base::test::TestFuture<bool> result;
+@@ -2735,6 +2736,12 @@
+   store_->FlushForCheckpoint(empty.GetCallback());
+   EXPECT_FALSE(empty.Get());
+   EXPECT_TRUE(errors.SawExpectedErrors());
++  sql::Database database(sql::test::kTestTag);
++  ASSERT_TRUE(database.Open(temp_dir_.GetPath().Append(kCookieFilename)));
++  sql::Statement query(database.GetUniqueStatement(
++      "SELECT value FROM cookies WHERE name='later'"));
++  ASSERT_TRUE(query.Step());
++  EXPECT_EQ("value", query.ColumnString(0));
+ }
+ 
+ TEST_F(SQLitePersistentCookieStoreTest, CheckpointReportsNewWriteError) {
+@@ -2745,8 +2752,8 @@
+     sql::Database database(sql::test::kTestTag);
+     ASSERT_TRUE(database.Open(temp_dir_.GetPath().Append(kCookieFilename)));
+     ASSERT_TRUE(database.Execute(
+-        "CREATE TRIGGER reject_checkpoint BEFORE INSERT ON cookies BEGIN "
+-        "SELECT RAISE(FAIL,'checkpoint injection'); END"));
++        "ALTER TABLE cookies ADD COLUMN checkpoint_guard INTEGER "
++        "CHECK (name != 'lost')"));
+   }
+   AddCookie("lost", "value", "example.test", "/", base::Time::Now());
+   base::test::TestFuture<bool> result;
+diff --git a/third_party/blink/renderer/modules/storage/cached_storage_area_test.cc b/third_party/blink/renderer/modules/storage/cached_storage_area_test.cc
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area_test.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area_test.cc
+@@ -983,7 +983,9 @@
+   base::test::TestFuture<bool> result;
+   cached_area_->FenceMutationsForCheckpoint(
+       base::TimeTicks::Now() + base::Milliseconds(1), result.GetCallback());
+-  mock_storage_area_.DropCheckpointMutationAt(0);
++  EXPECT_FALSE(result.Get());
++  mock_storage_area_.CompleteCheckpointMutationAt(0, true);
++  test::RunPendingTasks();
+   EXPECT_FALSE(result.Get());
+ }
+ 
+diff --git a/third_party/blink/renderer/modules/storage/testing/mock_storage_area.h b/third_party/blink/renderer/modules/storage/testing/mock_storage_area.h
+--- a/third_party/blink/renderer/modules/storage/testing/mock_storage_area.h
++++ b/third_party/blink/renderer/modules/storage/testing/mock_storage_area.h
+@@ -106,9 +106,6 @@
+   void CompleteCheckpointMutationAt(wtf_size_t index, bool success) {
+     std::move(checkpoint_callbacks_[index]).Run(success);
+   }
+-  void DropCheckpointMutationAt(wtf_size_t index) {
+-    checkpoint_callbacks_[index].Reset();
+-  }
+ 
+   // Methods and members for use by test fixtures.
+   bool HasBindings() { return !receivers_.empty(); }

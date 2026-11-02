@@ -1,0 +1,378 @@
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+--- a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
++++ b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+@@ -6,7 +6,11 @@
+ #include "base/feature_list.h"
+ #include "canvas_partition_seed.h"
+ #include "canvas_readback_image.h"
+-
++#include "third_party/blink/renderer/platform/crypto.h"
++#include "third_party/blink/renderer/platform/graphics/exported_canvas_resource.h"
++
++#include <algorithm>
++#include <string_view>
+ #include <utility>
+ #include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+ #include "canvas_readback_candidate.h"
+@@ -70,19 +74,150 @@
+   }
+   return seed;
+ }
++inline bool ComputeCanvasFrameCommitment(
++    blink::GlintCanvasFrameSourceKind kind,
++    const std::array<uint8_t, 32>& seed,
++    std::array<uint8_t, 32>& commitment) {
++  std::string_view domain;
++  switch (kind) {
++    case blink::GlintCanvasFrameSourceKind::kWebGL:
++      domain = "Glint.CanvasFrame.WebGL.v1";
++      break;
++    case blink::GlintCanvasFrameSourceKind::kWebGPU:
++      domain = "Glint.CanvasFrame.WebGPU.v1";
++      break;
++    default:
++      return false;
++  }
++  blink::Digestor digestor(blink::kHashAlgorithmSha256);
++  blink::DigestValue digest;
++  if (!digestor.Update(base::as_byte_span(domain)) ||
++      !digestor.Update(seed) || !digestor.Finish(digest) ||
++      digest.size() != commitment.size()) {
++    return false;
++  }
++  std::copy(digest.begin(), digest.end(), commitment.begin());
++  return true;
++}
++
++inline bool MatchesCanvasFrameCommitment(
++    const blink::GlintCanvasFrameSource& source,
++    const std::array<uint8_t, 32>& seed) {
++  std::array<uint8_t, 32> commitment{};
++  return ComputeCanvasFrameCommitment(source.kind, seed, commitment) &&
++         commitment == source.seed_commitment;
++}
++
++inline bool IsNativeCanvasFrameSource(
++    const blink::GlintCanvasFrameSource& source) {
++  return source.kind == blink::GlintCanvasFrameSourceKind::kNativeCanvas &&
++         std::all_of(source.seed_commitment.begin(), source.seed_commitment.end(),
++                     [](uint8_t value) { return value == 0; });
++}
++
++inline SurfaceSeedResult CanvasFrameImageSourcePartitionSeed(
++    blink::ExecutionContext* owner,
++    const blink::GlintCanvasFrameSource& source) {
++  // Explicit v2 requires a ready, owned profile-identity policy even when the
++  // source is 2D and its validated rendering result is intentionally raw.
++  auto canvas = CanvasPartitionSeed(owner);
++  if (!canvas.has_value() || canvas.value()) {
++    return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++  }
++  if (IsNativeCanvasFrameSource(source)) {
++    return canvas;
++  }
++  CanvasExportSurface surface;
++  switch (source.kind) {
++    case blink::GlintCanvasFrameSourceKind::kWebGL:
++      surface = CanvasExportSurface::kWebGL;
++      break;
++    case blink::GlintCanvasFrameSourceKind::kWebGPU:
++      surface = CanvasExportSurface::kWebGPU;
++      break;
++    default:
++      return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++  }
++  auto seed = CanvasExportPartitionSeed(owner, surface);
++  if (!seed.has_value() || !seed.value() ||
++      !MatchesCanvasFrameCommitment(source, *seed.value())) {
++    return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++  }
++  return seed;
++}
++
+ // Resolve against the source owner before detaching a GPU image. Canvas v1 and
+ // ordinary 2D sources retain their existing drawing behaviour.
+ inline SurfaceSeedResult CanvasImageSourcePartitionSeed(
+     blink::ExecutionContext* owner,
++    const blink::CanvasRenderingContext* source_context,
++    const blink::ExportedCanvasResource* frame = nullptr) {
++  const auto rendering = CanvasRenderingPolicyForCommand(
++      *base::CommandLine::ForCurrentProcess());
++  if (!rendering) {
++    return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++  }
++  if (rendering->pipeline != CanvasPipeline::kRenderingV2) {
++    return std::optional<std::array<uint8_t, 32>>{};
++  }
++  if (frame) {
++    return CanvasFrameImageSourcePartitionSeed(owner, frame->GlintImageSource());
++  }
++  if (!source_context ||
++      (!source_context->IsWebGL() && !source_context->IsWebGPU())) {
++    return std::optional<std::array<uint8_t, 32>>{};
++  }
++  return CanvasExportPartitionSeed(
++      owner, CanvasExportSurfaceForContext(source_context));
++}
++
++inline blink::GlintCanvasFrameSource CaptureCanvasFrameImageSource(
++    blink::ExecutionContext* owner,
+     const blink::CanvasRenderingContext* source_context) {
+   const auto rendering = CanvasRenderingPolicyForCommand(
+       *base::CommandLine::ForCurrentProcess());
++  if (rendering && rendering->pipeline == CanvasPipeline::kReadbackV1) {
++    return {};
++  }
++  blink::GlintCanvasFrameSource source{
++      blink::GlintCanvasFrameSourceKind::kUnavailable, {}};
++  if (!rendering || !source_context) {
++    return source;
++  }
++  const auto canvas = CanvasPartitionSeed(owner);
++  if (!canvas.has_value() || canvas.value()) {
++    return source;
++  }
++  if (!source_context->IsWebGL() && !source_context->IsWebGPU()) {
++    source.kind = blink::GlintCanvasFrameSourceKind::kNativeCanvas;
++    return source;
++  }
++  const auto seed = CanvasImageSourcePartitionSeed(owner, source_context);
++  if (!seed.has_value() || !seed.value()) {
++    return source;
++  }
++  source.kind = source_context->IsWebGL()
++                    ? blink::GlintCanvasFrameSourceKind::kWebGL
++                    : blink::GlintCanvasFrameSourceKind::kWebGPU;
++  if (!ComputeCanvasFrameCommitment(source.kind, *seed.value(),
++                                    source.seed_commitment)) {
++    source.kind = blink::GlintCanvasFrameSourceKind::kUnavailable;
++    source.seed_commitment.fill(0);
++  }
++  return source;
++}
++
++inline SurfaceSeedResult CanvasImageExportPartitionSeed(
++    blink::ExecutionContext* owner,
++    const blink::CanvasRenderingContext* source_context,
++    const blink::ExportedCanvasResource* frame = nullptr) {
++  const auto rendering = CanvasRenderingPolicyForCommand(
++      *base::CommandLine::ForCurrentProcess());
+   if (!rendering) {
+     return base::unexpected(SurfaceSeedError::kInvalidPolicy);
+   }
+-  if (rendering->pipeline != CanvasPipeline::kRenderingV2 || !source_context ||
+-      (!source_context->IsWebGL() && !source_context->IsWebGPU())) {
+-    return std::optional<std::array<uint8_t, 32>>{};
++  if (frame && rendering->pipeline == CanvasPipeline::kRenderingV2) {
++    return CanvasFrameImageSourcePartitionSeed(owner, frame->GlintImageSource());
+   }
+   return CanvasExportPartitionSeed(
+       owner, CanvasExportSurfaceForContext(source_context));
+diff --git a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+@@ -1461,11 +1461,13 @@
+   ImageEncodingMimeType encoding_mime_type =
+       ImageEncoderUtils::ToEncodingMimeType(mime_type);
+ 
+-  scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(source_buffer);
++  const scoped_refptr<ExportedCanvasResource> glint_frame(OffscreenCanvasFrame());
++  scoped_refptr<StaticBitmapImage> image_bitmap =
++      glint_frame && !Size().IsEmpty() ? glint_frame->Bitmap()
++                                     : Snapshot(source_buffer);
+   if (image_bitmap && export_exception) {
+-    const auto seed = glint::candidate::CanvasExportPartitionSeed(
+-        GetExecutionContext(),
+-        glint::candidate::CanvasExportSurfaceForContext(RenderingContext()));
++    const auto seed = glint::candidate::CanvasImageExportPartitionSeed(
++        GetExecutionContext(), RenderingContext(), glint_frame.get());
+     if (!seed.has_value()) {
+       export_exception->ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+@@ -1587,11 +1589,13 @@
+       ImageEncoderUtils::ToEncodingMimeType(mime_type);
+ 
+   CanvasAsyncBlobCreator* async_creator = nullptr;
+-  scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(kBackBuffer);
++  const scoped_refptr<ExportedCanvasResource> glint_frame(OffscreenCanvasFrame());
++  scoped_refptr<StaticBitmapImage> image_bitmap =
++      glint_frame && !Size().IsEmpty() ? glint_frame->Bitmap()
++                                     : Snapshot(kBackBuffer);
+   if (image_bitmap) {
+-    const auto seed = glint::candidate::CanvasExportPartitionSeed(
+-        GetExecutionContext(),
+-        glint::candidate::CanvasExportSurfaceForContext(RenderingContext()));
++    const auto seed = glint::candidate::CanvasImageExportPartitionSeed(
++        GetExecutionContext(), RenderingContext(), glint_frame.get());
+     if (!seed.has_value()) {
+       exception_state.ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+@@ -2070,8 +2074,9 @@
+     return nullptr;
+   }
+ 
++  const scoped_refptr<ExportedCanvasResource> glint_frame(OffscreenCanvasFrame());
+   const auto glint_source_seed = glint::candidate::CanvasImageSourcePartitionSeed(
+-      GetExecutionContext(), RenderingContext());
++      GetExecutionContext(), RenderingContext(), glint_frame.get());
+   if (!glint_source_seed.has_value()) {
+     *status = kInvalidSourceImageStatus;
+     return nullptr;
+@@ -2079,13 +2084,13 @@
+ 
+   scoped_refptr<StaticBitmapImage> image;
+ 
+-  if (HasOffscreenCanvasFrame()) {
++  if (glint_frame) {
+     // This may be false to set status to normal if a valid image can be got
+     // even if this HTMLCanvasElement has been transferred
+     // control to an offscreenCanvas. As offscreencanvas with the
+     // TransferControlToOffscreen is asynchronous, this will need to finish the
+     // first Frame in order to have a first OffscreenCanvasFrame.
+-    image = OffscreenCanvasFrame()->Bitmap();
++    image = glint_frame->Bitmap();
+   } else {
+     if (IsWebGL() || IsWebGPU()) {
+       // TODO(https://crbug.com/672299): Canvas should produce sRGB images.
+diff --git a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+--- a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
++++ b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+@@ -850,7 +850,10 @@
+   }
+ 
+   auto exported_resource =
+-      base::MakeRefCounted<ExportedCanvasResource>(std::move(canvas_resource));
++      base::MakeRefCounted<ExportedCanvasResource>(
++          std::move(canvas_resource),
++          glint::candidate::CaptureCanvasFrameImageSource(
++              GetTopExecutionContext(), RenderingContext()));
+ 
+   auto* dispatcher = GetOrCreateResourceDispatcher();
+   if (placeholder_client_) {
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+--- a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+@@ -313,5 +313,50 @@
+   EXPECT_FALSE(result.value()->OriginClean());
+ }
+ 
++TEST(GlintCanvasFrameSourceTest, CommitmentBindsBothSourceKindAndOwnerSeed) {
++  std::array<uint8_t, 32> seed{};
++  blink::GlintCanvasFrameSource source{
++      blink::GlintCanvasFrameSourceKind::kWebGL, {}};
++  ASSERT_TRUE(ComputeCanvasFrameCommitment(source.kind, seed,
++                                          source.seed_commitment));
++  EXPECT_TRUE(MatchesCanvasFrameCommitment(source, seed));
++  auto wrong_kind = source;
++  wrong_kind.kind = blink::GlintCanvasFrameSourceKind::kWebGPU;
++  EXPECT_FALSE(MatchesCanvasFrameCommitment(wrong_kind, seed));
++  seed[0] = 1;
++  EXPECT_FALSE(MatchesCanvasFrameCommitment(source, seed));
++}
++
++TEST(GlintCanvasFrameSourceTest, MissingAndUnavailableDescriptorsAreNotProofs) {
++  const std::array<uint8_t, 32> seed{};
++  blink::GlintCanvasFrameSource source;
++  EXPECT_FALSE(MatchesCanvasFrameCommitment(source, seed));
++  source.kind = blink::GlintCanvasFrameSourceKind::kUnavailable;
++  EXPECT_FALSE(MatchesCanvasFrameCommitment(source, seed));
++}
++
++TEST(GlintCanvasFrameSourceTest, RetainedProofCannotRebindToAnotherOwner) {
++  const std::array<uint8_t, 32> old_seed{};
++  blink::GlintCanvasFrameSource retained{
++      blink::GlintCanvasFrameSourceKind::kWebGPU, {}};
++  ASSERT_TRUE(ComputeCanvasFrameCommitment(retained.kind, old_seed,
++                                          retained.seed_commitment));
++  const auto original = retained.seed_commitment;
++  auto new_seed = old_seed;
++  new_seed[31] = 1;
++  EXPECT_FALSE(MatchesCanvasFrameCommitment(retained, new_seed));
++  EXPECT_EQ(retained.seed_commitment, original);
++  EXPECT_TRUE(MatchesCanvasFrameCommitment(retained, old_seed));
++}
++
++TEST(GlintCanvasFrameSourceTest, NativeCanvasDescriptorCannotCarryGpuProof) {
++  blink::GlintCanvasFrameSource source;
++  EXPECT_FALSE(IsNativeCanvasFrameSource(source));
++  source.kind = blink::GlintCanvasFrameSourceKind::kNativeCanvas;
++  EXPECT_TRUE(IsNativeCanvasFrameSource(source));
++  source.seed_commitment[0] = 1;
++  EXPECT_FALSE(IsNativeCanvasFrameSource(source));
++}
++
+ }  // namespace
+ }  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/platform/graphics/exported_canvas_resource.h b/third_party/blink/renderer/platform/graphics/exported_canvas_resource.h
+--- a/third_party/blink/renderer/platform/graphics/exported_canvas_resource.h
++++ b/third_party/blink/renderer/platform/graphics/exported_canvas_resource.h
+@@ -4,6 +4,9 @@
+ 
+ #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_EXPORTED_CANVAS_RESOURCE_H_
+ #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_EXPORTED_CANVAS_RESOURCE_H_
++
++#include <array>
++#include <cstdint>
+ 
+ #include "base/memory/scoped_refptr.h"
+ #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
+@@ -16,10 +19,27 @@
+ class CanvasResource;
+ class StaticBitmapImage;
+ 
++enum class GlintCanvasFrameSourceKind : uint8_t {
++  kUnspecified,
++  kNativeCanvas,
++  kWebGL,
++  kWebGPU,
++  kUnavailable,
++};
++
++// Immutable per-export provenance: a domain-separated digest, never a seed or
++// profile key. It travels with the resource without changing compositor pixels.
++struct GlintCanvasFrameSource {
++  GlintCanvasFrameSourceKind kind = GlintCanvasFrameSourceKind::kUnspecified;
++  std::array<uint8_t, 32> seed_commitment{};
++};
++
+ class PLATFORM_EXPORT ExportedCanvasResource
+     : public ThreadSafeRefCounted<ExportedCanvasResource> {
+  public:
+-  explicit ExportedCanvasResource(scoped_refptr<CanvasResource> resource);
++  explicit ExportedCanvasResource(
++      scoped_refptr<CanvasResource> resource,
++      GlintCanvasFrameSource glint_source = {});
+   ~ExportedCanvasResource();
+ 
+   static void OnPlaceholderReleasedResource(
+@@ -28,6 +48,7 @@
+   gfx::Size Size() const;
+   bool OriginClean() const;
+   scoped_refptr<StaticBitmapImage> Bitmap();
++  const GlintCanvasFrameSource& GlintImageSource() const { return glint_source_; }
+   void EndDisplayCompositorAccess(gpu::SharedImageExportResult export_result,
+                                   bool is_lost);
+   void EndDisplayCompositorAccess(gpu::SyncToken export_result, bool is_lost);
+@@ -37,6 +58,7 @@
+ 
+  private:
+   scoped_refptr<CanvasResource> resource_;
++  const GlintCanvasFrameSource glint_source_;
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc b/third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc
+--- a/third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc
++++ b/third_party/blink/renderer/platform/graphics/exported_canvas_resource.cc
+@@ -11,8 +11,9 @@
+ namespace blink {
+ 
+ ExportedCanvasResource::ExportedCanvasResource(
+-    scoped_refptr<CanvasResource> resource)
+-    : resource_(std::move(resource)) {
++    scoped_refptr<CanvasResource> resource,
++    GlintCanvasFrameSource glint_source)
++    : resource_(std::move(resource)), glint_source_(std::move(glint_source)) {
+   CHECK(resource_);
+   CHECK(!resource_->is_cross_thread());
+ }

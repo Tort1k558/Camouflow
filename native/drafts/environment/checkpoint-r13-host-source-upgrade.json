@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "patch": "checkpoint-r13-host-source-upgrade.patch",
+  "patch_sha256": "6114b62e53f00ec3647e5f1e18643e7c345c125a6a71d2a30b9e9e189c4e0935",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "dfa3f3912a192f5a840515872f21cf868341e8ed011bfa3f9f0688bb7614dda2",
+      "after_sha256": "977022bee0547838fac6a957a0629ca99bbdc2107aa225113ab149d4fa893e1e"
+    }
+  ],
+  "scope": "Reverse R13 candidate registration to exact measured R12 host source; no native runtime admission",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

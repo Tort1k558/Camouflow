@@ -132,3 +132,16 @@ def test_checkpoint_failed_native_attempt_and_browser_repeat_remain_distinct():
     assert not any(record[k] for k in ('native_suite_passed', 'browser_runtime_verified',
                                       'whole_profile_checkpoint_verified', 'production_admitted',
                                       'fixture_corrections_compiled', 'fixture_corrections_executed'))
+
+
+def test_checkpoint_existing_regression_pass_is_not_a_checkpoint_suite_pass():
+    candidate = build.load_candidate('upstream-156-checkpoint-r12')
+    record = json.loads((candidate['directory'] / 'native-all-observations.json').read_bytes())
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['passed'] and record['postguards_passed']
+    assert len(record['targets']) == len(record['requested_targets']) == 29
+    assert all(row['native_cases_passed'] and row['returncode'] == 0 for row in record['targets'])
+    assert sum(row['tests'] for row in record['targets']) == record['executed_cases'] == 586
+    assert record['distinct_test_cases'] == 429
+    assert not any(record[k] for k in ('whole_checkpoint_suite_passed', 'browser_runtime_verified',
+                                      'production_admitted'))
