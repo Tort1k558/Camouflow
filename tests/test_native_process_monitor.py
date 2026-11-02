@@ -1,10 +1,38 @@
 import asyncio
+import hashlib
+import json
+from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 import pytest
 
 from app.core.native import process_monitor as module
 ProcessSample = module.ProcessSample
+
+
+def test_historical_monitor_archive_roundtrip_preserves_current_gap_reset(
+        tmp_path, host_sources_before_monitor_gap_reset):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'process-monitor-gap-host-source-upgrade.json').read_bytes())
+    assert len(record['sources']) == 1
+    row = record['sources'][0]
+    assert row['source'] == 'app/core/native/process_monitor.py'
+    assert record['isolated_reverse_forward_passed'] and not record['old_observations_modified']
+    assert not record['native_runtime_verified'] and not record['production_admitted']
+    current = (root / row['source']).read_bytes()
+    previous = host_sources_before_monitor_gap_reset[row['source']]
+    target = tmp_path / 'forward' / row['source']
+    target.parent.mkdir(parents=True)
+    target.write_bytes(previous)
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
+                    str(directory / record['patch'])], cwd=tmp_path / 'forward',
+                   check=True, capture_output=True, timeout=15)
+    assert target.read_bytes() == current
+    assert hashlib.sha256(current).hexdigest() == row['after_sha256']
+    assert b'except BaseException:' not in previous
+    assert b'except BaseException:' in current
 
 
 def anchor():

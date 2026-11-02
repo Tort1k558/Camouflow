@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "patch": "process-monitor-gap-host-source-upgrade.patch",
+  "patch_sha256": "fa76f78f511ffc97b0d50f2297c08c335dc3a93bed729cae7f26c3ffa5cb4944",
+  "sources": [
+    {
+      "source": "app/core/native/process_monitor.py",
+      "before_sha256": "5f89483f61e166babf6457ad5319c9d64be92659bdb28bccb70baa3c51c0812f",
+      "after_sha256": "2c8eeed4b0340e24a5c74701c0586d5051f452eda0212372f0750646a64532bd"
+    }
+  ],
+  "scope": "Reconstruct pre-gap-reset telemetry source for old native runtime evidence only",
+  "isolated_reverse_forward_passed": true,
+  "old_observations_modified": false,
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

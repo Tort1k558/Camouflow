@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-02: R13 historical host-source regression repair
+
+| Gate | Result |
+| --- | --- |
+| First full host run | **6125 passed, 6 failed, 1 skipped**; input postguards passed |
+| Failure diagnosis | Four historical monitor-source hash mismatches; two historical GPU input snapshots included a newly added checkpoint CLI |
+| Repair | Hash-checked reverse/forward monitor source archive; explicitly reconstruct the original GPU input set; historical observations unchanged |
+| Affected host suites | **595 passed in 76.36s** |
+| Monitor archive and behavior | **29 passed in 0.30s**, including an exact forward roundtrip to the current gap-reset implementation |
+| Full host retry | Pending; targeted results do not establish a full-suite pass |
+| Native R13 / browser runtime | Not compiled or executed by these host checks; R11 remains the latest runtime-tested browser |
+
+Evidence: [host regression attempt](../native/drafts/upstream-156-checkpoint-r13/host-regression-attempt.json).
+
 ## 2026-11-02: R12 Windows compile/link passed
 
 | Gate | Result |

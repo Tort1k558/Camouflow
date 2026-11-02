@@ -22,6 +22,8 @@ def historical_probe_inputs():
     sources = probe_inputs(candidate_name='upstream-156')
     # This CLI was added after the frozen 226-file GPU recovery measurements.
     del sources['scripts/verify_native_audio_lifecycle.py']
+    # The checkpoint runner also postdates these frozen measurements.
+    del sources['scripts/verify_native_checkpoint_units.py']
     return sources
 
 
@@ -42,8 +44,11 @@ def test_gpu_recovery_control_binds_public_sources_and_exact_runtime(host_source
 
 def test_gpu_recovery_complete_input_digest_preserves_measured_newlines(historical_source_newlines,
                                                                      native_build_before_index_mtime_fix,
-                                                                     host_sources_before_webgpu_r2, host_sources_before_profile_surface):
+                                                                     host_sources_before_webgpu_r2, host_sources_before_profile_surface,
+                                                                     host_sources_before_monitor_gap_reset):
     sources = historical_probe_inputs()
+    sources.update({name: hashlib.sha256(value).hexdigest()
+                    for name, value in host_sources_before_monitor_gap_reset.items()})
     sources.update({name: hashlib.sha256(value).hexdigest() for name, value in host_sources_before_webgpu_r2.items()})
     sources.update({name: value for name, value in host_sources_before_profile_surface['sha256'].items()
                     if name in sources})
@@ -152,9 +157,12 @@ def test_gpu_recovery_ready_control_keeps_old_policy_inconsistency_failed():
 
 def test_gpu_recovery_ready_control_binds_its_staged_source_layout(historical_source_newlines,
                                                                 native_build_before_index_mtime_fix,
-                                                                host_sources_before_webgpu_r2, host_sources_before_profile_surface):
+                                                                host_sources_before_webgpu_r2, host_sources_before_profile_surface,
+                                                                host_sources_before_monitor_gap_reset):
     record = json.loads((MODULE / 'ready-mode-observations.json').read_bytes())
     sources = historical_probe_inputs()
+    sources.update({name: hashlib.sha256(value).hexdigest()
+                    for name, value in host_sources_before_monitor_gap_reset.items()})
     sources.update({name: hashlib.sha256(value).hexdigest() for name, value in host_sources_before_webgpu_r2.items()})
     sources.update({name: value for name, value in host_sources_before_profile_surface['sha256'].items()
                     if name in sources})

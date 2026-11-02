@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "head": "d36839ea2bc60f6974307399896f71cd7abde678",
+  "candidate": "upstream-156-checkpoint-r13",
+  "candidate_manifest_sha256": "453e2bedc2b9fd6cb59ddf8a2e993d17ff30976fc5661bee5199bac450b81a0b",
+  "full_suite_executed": true,
+  "passed": false,
+  "returncode": 1,
+  "counts": {
+    "passed": 6125,
+    "failed": 6,
+    "skipped": 1
+  },
+  "duration_seconds": 670.781,
+  "input_postguards_passed": true,
+  "changed_inputs": [],
+  "log_sha256": "1fdc3d9993b65ae2c01690ea36f955dbf900415641a53a8c6b54209d2a179862",
+  "production_admitted": false,
+  "scope": "Full host test suite, not browser or release admission",
+  "private_report_sha256": "1130d5ce836fe1051fc0320e515dd21c9a65557be8eb627baeb329decd5663d1",
+  "failed_cases": [
+    "tests/test_native_client_hello.py::test_owned_tls_runtime_evidence_is_negotiation_not_general_trust_or_impersonation",
+    "tests/test_native_environment_capture.py::test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates",
+    "tests/test_native_environment_capture.py::test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime",
+    "tests/test_native_gpu.py::test_large_attachment_runtime_evidence_keeps_loaded_timings_and_memory_scope_explicit",
+    "tests/test_native_gpu_process_recovery.py::test_gpu_recovery_complete_input_digest_preserves_measured_newlines",
+    "tests/test_native_gpu_process_recovery.py::test_gpu_recovery_ready_control_binds_its_staged_source_layout"
+  ],
+  "historical_observations_modified": false,
+  "targeted_recheck": {
+    "passed": 595,
+    "failed": 0,
+    "seconds": 76.36
+  },
+  "monitor_archive_recheck": {
+    "passed": 29,
+    "failed": 0,
+    "seconds": 0.3
+  },
+  "full_host_retry_passed": false,
+  "native_runtime_verified": false
+}

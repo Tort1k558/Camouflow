@@ -346,3 +346,6 @@ native/drafts/environment/webgpu-r7-host-source-upgrade.json text eol=lf
 native/drafts/environment/webgpu-r7-host-source-upgrade.patch text eol=lf
 native/drafts/environment/serial-links-args-upgrade.json text eol=lf
 native/drafts/upstream-156-webgpu-r7/windows-build-attempt*.json text eol=lf
+native/drafts/environment/process-monitor-gap-host-source-upgrade.patch text eol=lf
+native/drafts/environment/process-monitor-gap-host-source-upgrade.json text eol=lf
+native/drafts/upstream-156-checkpoint-r13/host-regression-attempt.json text eol=lf

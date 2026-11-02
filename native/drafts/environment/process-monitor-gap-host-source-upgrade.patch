@@ -1,0 +1,13 @@
+diff --git a/app/core/native/process_monitor.py b/app/core/native/process_monitor.py
+--- a/app/core/native/process_monitor.py
++++ b/app/core/native/process_monitor.py
+@@ -127,5 +127,9 @@
+                     "private_commit_sum_bytes": current.summed_private_commit_bytes,
+                     "capture_duration_ns": current.measured_ns - current.capture_started_ns,
+                     "cpu": cpu}
++        except BaseException:
++            with self._state_lock:
++                self._previous = None
++            raise
+         finally:
+             self._sampling_lock.release()

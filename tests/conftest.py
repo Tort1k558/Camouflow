@@ -80,6 +80,28 @@ def host_sources_before_profile_surface(tmp_path, native_args_before_serial_link
 
 
 @pytest.fixture
+def host_sources_before_monitor_gap_reset(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'process-monitor-gap-host-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-monitor-gap-reset'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        value = (root / row['source']).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == row['after_sha256']
+        target.write_bytes(value)
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources = {row['source']: (base / row['source']).read_bytes() for row in record['sources']}
+    assert all(hashlib.sha256(sources[row['source']]).hexdigest() == row['before_sha256']
+               for row in record['sources'])
+    return sources
+
+
+@pytest.fixture
 def host_sources_before_checkpoint_r13(tmp_path):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -658,7 +680,8 @@ def qml_before_delivery_diagnostics_sha256(tmp_path):
 def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256,
                                      storage_before_read_lock_sha256, surface_sources_before_retained,
                                      native_tooling_before_dawn, diagnostic_sources_before_candidate,
-                                     historical_source_newlines, host_sources_before_profile_surface):
+                                     historical_source_newlines, host_sources_before_profile_surface,
+                                     host_sources_before_monitor_gap_reset):
     root = Path(__file__).resolve().parents[1]
     return {
         **{name: row['measured_sha256'] for name, row in historical_source_newlines.items()},
@@ -671,6 +694,8 @@ def native70_historical_source_hashes(native_units_before_orientation, recorder_
         "scripts/verify_native_privacy_units.py": native_units_before_orientation["source_sha256"],
         "app/services/scenario_recorder.py": recorder_before_document_open_sha256,
         "app/storage/db.py": storage_before_read_lock_sha256,
+        **{name: hashlib.sha256(value).hexdigest()
+           for name, value in host_sources_before_monitor_gap_reset.items()},
     }
 
 
@@ -821,7 +846,7 @@ def historical_source_newlines():
 @pytest.fixture
 def historical_surface_source_sha256(surface_sources_before_retained, native_tooling_before_dawn,
                                     diagnostic_sources_before_candidate, historical_source_newlines,
-                                    host_sources_before_profile_surface):
+                                    host_sources_before_profile_surface, host_sources_before_monitor_gap_reset):
     """Hash reconstructed Audio/GPU and tooling sources used by older runtime records."""
     root = Path(__file__).resolve().parents[1]
     names = {'scripts/verify_native_audio.py', 'scripts/verify_native_gpu.py',
@@ -829,6 +854,11 @@ def historical_surface_source_sha256(surface_sources_before_retained, native_too
 
     def source_sha256(relative, *, normalized=False):
         name = Path(relative).as_posix()
+        if name in host_sources_before_monitor_gap_reset:
+            value = host_sources_before_monitor_gap_reset[name]
+            if normalized:
+                value = value.decode('utf-8-sig').replace('\r\n', '\n').encode('utf-8')
+            return hashlib.sha256(value).hexdigest()
         if name in native_tooling_before_dawn['sources']:
             value = native_tooling_before_dawn['sources'][name]
             if normalized:
