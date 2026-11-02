@@ -21,7 +21,7 @@
     {
       "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
       "before_sha256": null,
-      "after_sha256": "df37c6aebb6683d3433758f8440decb3861f698761ba2da46c4fefed99181619"
+      "after_sha256": "6f38da4dd6973bb9ad4a0ac630e487f90c299bee970f261d04528723fa8d67f1"
     },
     {
       "source": "content/test/BUILD.gn",
@@ -31,13 +31,13 @@
   ],
   "changed_files": 5,
   "patch": "profile-producer-cohort.patch",
-  "patch_sha256": "45e0cc3a0abb2e0d561d273fb636a9e493035077f1d5d08c46a4f48eff56eafc",
+  "patch_sha256": "859294b9a9174dc7f25da8770193b48ba82628c67b40a7671d24f4c4b6034867",
   "isolated_forward_reverse_passed": true,
   "full_candidate_composition_verified": false,
   "type_checked": false,
   "gn_generation_verified": false,
   "canonical_sources_modified": false,
-  "native_bodies_prepared": 17,
+  "native_bodies_prepared": 20,
   "native_tests_executed": false,
   "registered": false,
   "compiled_browser": false,
@@ -66,7 +66,10 @@
     "ContextDestructionRejectsQueuedSuccess",
     "HostDestructionRejectsPendingCohort",
     "NewReadyRendererInvalidatesQueuedEmptyScope",
-    "UnreadyRendererDoesNotReceiveFence"
+    "UnreadyRendererDoesNotReceiveFence",
+    "RendererExitRejectsLateProducerAcknowledgment",
+    "NewPartitionInvalidatesPostedEmptySuccess",
+    "RendererLimitRejectsBeforeAnyProducerRequest"
   ],
   "gn_files_parsed": [
     {

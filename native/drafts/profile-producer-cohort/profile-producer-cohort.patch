@@ -353,7 +353,7 @@ diff --git a/content/browser/camouflow_native/glint/profile_producer_fence_unitt
 new file mode 100644
 --- /dev/null
 +++ b/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc
-@@ -0,0 +1,233 @@
+@@ -0,0 +1,269 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +
@@ -363,6 +363,7 @@ new file mode 100644
 +#include <memory>
 +#include <optional>
 +#include <utility>
++#include <vector>
 +
 +#include "base/check.h"
 +#include "base/test/task_environment.h"
@@ -583,6 +584,41 @@ new file mode 100644
 +  auto operation =
 +      ProfileProducerFence::Start(&context_, Deadline(), result.GetCallback());
 +  EXPECT_EQ(result.Get().status, Status::kNotReady);
++}
++
++TEST_F(ProfileProducerFenceTest,
++       RendererExitRejectsLateProducerAcknowledgment) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation =
++      ProfileProducerFence::Start(&context_, Deadline(), result.GetCallback());
++  host.SimulateCrash();
++  EXPECT_EQ(result.Get().status, Status::kTopologyChanged);
++  host.Reply(true);
++  environment_.RunUntilIdle();
++}
++
++TEST_F(ProfileProducerFenceTest, NewPartitionInvalidatesPostedEmptySuccess) {
++  base::test::TestFuture<Result> result;
++  auto operation =
++      ProfileProducerFence::Start(&context_, Deadline(), result.GetCallback());
++  ASSERT_NE(context_.GetDefaultStoragePartition(), nullptr);
++  EXPECT_EQ(result.Get().status, Status::kTopologyChanged);
++}
++
++TEST_F(ProfileProducerFenceTest, RendererLimitRejectsBeforeAnyProducerRequest) {
++  std::vector<std::unique_ptr<CheckpointHost>> hosts;
++  hosts.reserve(513);
++  for (size_t index = 0; index < 513; ++index) {
++    hosts.push_back(std::make_unique<CheckpointHost>(&context_));
++  }
++  base::test::TestFuture<Result> result;
++  auto operation =
++      ProfileProducerFence::Start(&context_, Deadline(), result.GetCallback());
++  EXPECT_EQ(result.Get().status, Status::kTooManyActors);
++  for (const auto& host : hosts) {
++    EXPECT_EQ(host->requests, 0);
++  }
 +}
 +
 +}  // namespace

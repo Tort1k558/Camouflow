@@ -8,7 +8,7 @@ captures loaded partition configurations by value and rejects lifecycle/topology
 changes through posted delivery. It does not start actors or partitions.
 
 Five-file replay/reversal and two GN parse checks passed; both R12-owned GN inputs
-were reconstructed from 106 filtered root patches. **C++ type checks and all 17
+were reconstructed from 106 filtered root patches. **C++ type checks and all 20
 prepared mock-host fixtures remain unexecuted.** The draft is not selected or
 applied to the live R12 build. Global mutation/cut semantics, network producers,
 backend completion, session-cookie persistence and manager coordination remain open.

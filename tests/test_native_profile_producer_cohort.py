@@ -49,7 +49,13 @@ def test_profile_cohort_has_two_reconstructed_gn_inputs_and_three_new_files():
 
 
 def test_profile_cohort_declares_weak_scope_value_partitions_and_bounded_lifecycle():
-    _, _, added = packet()
+    _, patch, _ = packet()
+    production = [block for block in patch.read_text(encoding='utf-8-sig').split('diff --git ')[1:]
+                  if block.split(' b/', 1)[0].endswith(
+                      ('/profile_producer_fence.cc', '/profile_producer_fence.h'))]
+    assert len(production) == 2
+    added = '\n'.join(line[1:] for block in production for line in block.splitlines()
+                      if line.startswith('+') and not line.startswith('+++'))
     assert 'base::WeakPtr<content::BrowserContext> context_' in added
     assert 'std::set<content::StoragePartitionConfig> partitions_' in added
     assert 'kMaxRenderers = 512' in added and 'kMaxPartitions = 128' in added
@@ -68,10 +74,13 @@ def test_profile_cohort_prepared_mock_cases_are_not_real_ipc_results():
     record, _, added = packet()
     cases = re.findall(r'TEST_F\(ProfileProducerFenceTest,\s*(\w+)', added)
     assert cases == record['native_case_bodies_prepared']
-    assert len(cases) == len(set(cases)) == record['native_bodies_prepared'] == 17
+    assert len(cases) == len(set(cases)) == record['native_bodies_prepared'] == 20
     assert {'WaitsForAllCapturedRenderers', 'DoesNotContactOtherBrowserContext',
             'CancelQueuedSuccessCannotBecomeAcknowledged', 'ContextDestructionRejectsQueuedSuccess',
-            'NewReadyRendererInvalidatesQueuedEmptyScope', 'UnansweredProducerUsesBrowserDeadline'} <= set(cases)
+            'NewReadyRendererInvalidatesQueuedEmptyScope', 'UnansweredProducerUsesBrowserDeadline',
+            'RendererExitRejectsLateProducerAcknowledgment',
+            'NewPartitionInvalidatesPostedEmptySuccess',
+            'RendererLimitRejectsBeforeAnyProducerRequest'} <= set(cases)
     assert 'public content::MockRenderProcessHost' in added
     assert not record['type_checked'] and not record['native_tests_executed']
 

@@ -24,8 +24,10 @@ is not evidence that any data reached disk.
   filtered to those two paths. This is not full follow-up candidate composition.
 - Both changed GN files parse with the pinned GN executable. **Parsing is not GN
   generation, target/dependency validation, C++ type checking or linking.**
-- Seventeen fixture bodies are prepared using TestBrowserContext and mock renderer
+- Twenty fixture bodies are prepared using TestBrowserContext and mock renderer
   hosts. **They have not been compiled or executed; they are not real IPC tests.**
+  These include a new loaded partition before posted completion, renderer exit
+  followed by a late acknowledgment, and rejection of 513 actors before any RPC.
 
 Exact hashes and remaining gates:
 [source-observations.json](source-observations.json).

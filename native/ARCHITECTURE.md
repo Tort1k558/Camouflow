@@ -9,7 +9,7 @@ Creation/launch/exit, owner loss, deadline and cancellation reject stale success
 It does not retain partition pointers or create actors/backends.
 
 Only five-file isolated replay/reversal and GN parsing are verified. C++ type
-checks and 17 prepared mock-host tests are pending; the live R12 build is unchanged.
+checks and 20 prepared mock-host tests are pending; the live R12 build is unchanged.
 This is not a global mutation barrier or disk checkpoint. Backend/service lifetime,
 network ordering, session-cookie semantics and manager completion remain required.
 
