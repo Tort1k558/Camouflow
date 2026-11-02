@@ -1,5 +1,16 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: resource gap localized to navigation, not waived
+
+[Two timestamped full 4K follow-ups](../native/drafts/upstream-156-image-r11/large-image-resource-timeline.json)
+again pass all six image-copy paths. Each unavailable process-tree capture occurs
+during navigation, before the image workload. The whole resource gate remains
+failed; no missing sample is replaced, retried or excluded. Original evidence is
+unchanged. The portable collector is public and executed against the same R11
+binary; sampled private commit reached about 1.77 / 1.95 GiB, not exact peaks.
+Next: lifecycle/resource coverage including process creation/exit and recovery,
+then broader formats and manager/package integration; no release admission.
+
 ## 2026-11-02: R11 native and selected browser repair verified
 
 [R11 measurements](../native/drafts/upstream-156-image-r11/README.md): 52 build steps

@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-02: 4K resource timeline follow-up
+
+| Check | Observed result |
+| --- | --- |
+| Full image workload | Six exact copies passed in each of two additional R11 runs |
+| Missing telemetry | One capture per run, during navigation before image evaluation |
+| Sampled private commit maxima | About 1.77 / 1.95 GiB; not exact peaks or GPU VRAM |
+| Whole resource gate | **Failed/incomplete**, navigation not excluded |
+| Evidence | [Timelines and original-record binding](../native/drafts/upstream-156-image-r11/large-image-resource-timeline.json) |
+| Public collector | [Source](../native/drafts/upstream-156-image-r11/measure_large_rgba.py); exact bytes executed in the second follow-up |
+
+Missing captures remain errors. Original failed results and broader admission
+requirements are unchanged; no new detector or production result is claimed.
+
 ## 2026-11-02: R11 native and selected browser repair verified
 
 [R11 measurements](../native/drafts/upstream-156-image-r11/README.md): 52 build steps

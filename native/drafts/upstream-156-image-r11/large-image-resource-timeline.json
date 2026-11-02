@@ -1,0 +1,868 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-image-r11",
+  "candidate_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "0e2dc956a173f32017f3756c695a393d7320df606159ebbdbd0b527aacbfe3c9",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "831ba2f123fbb898add7b7b61dd3ad4ed7c4c2b2a697899013f87e144e1b59a2",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "passed": false,
+  "full_resource_gate_passed": false,
+  "original_resource_record_sha256": "2ee7a2854d81419208da48d25c414efaf10ba7a6b9217fbcf640d628261ef21b",
+  "original_failure_preserved": true,
+  "collector_sha256": "978bc650cfab8284257fc300175cbc7e5cd9f3c827385e494cd25c3676ea5aad",
+  "validator_sha256": "f5a93f5af97d1003eedc3590699462a4a01d1837b7dd1e59cbfd849b25984dfa",
+  "probe_sha256": "edd6d0b15515433581f2301e9c1bd083e7fc058bf704176027718ac0e7bf655d",
+  "runs": [
+    {
+      "name": "image-r11-large-rgba-timeline-20261102-v1",
+      "passed": false,
+      "graphics_passed": true,
+      "graphics_measurement_complete": true,
+      "resource_measurement_complete": false,
+      "full_resource_gate_passed": false,
+      "source_report_sha256": "4baa837db6ff5ae83413b0e05e1d62d027138e4c46ff9780dad41e94a5908864",
+      "measured_contract_sha256": "5adbb073c42c1b80b46e82bbd511f82555a60bcf2de86feb8cc7aa891bfb9fd2",
+      "observations": {
+        "schema": 1,
+        "width": 4096,
+        "height": 4096,
+        "byteLength": 67108864,
+        "api": "webgl2",
+        "alpha": false,
+        "copies": [
+          {
+            "name": "drawImage",
+            "willReadFrequently": false,
+            "passed": true,
+            "sha256": "66a9d93321dfbe06ab24b63f1e844f2cdba87b4f62c3ae3b63d8c6983c9f7459"
+          },
+          {
+            "name": "drawImage",
+            "willReadFrequently": true,
+            "passed": true,
+            "sha256": "66a9d93321dfbe06ab24b63f1e844f2cdba87b4f62c3ae3b63d8c6983c9f7459"
+          },
+          {
+            "name": "png",
+            "willReadFrequently": false,
+            "passed": true,
+            "sha256": "66a9d93321dfbe06ab24b63f1e844f2cdba87b4f62c3ae3b63d8c6983c9f7459"
+          },
+          {
+            "name": "png",
+            "willReadFrequently": true,
+            "passed": true,
+            "sha256": "66a9d93321dfbe06ab24b63f1e844f2cdba87b4f62c3ae3b63d8c6983c9f7459"
+          },
+          {
+            "name": "transferToImageBitmap",
+            "willReadFrequently": false,
+            "passed": true,
+            "sha256": "66a9d93321dfbe06ab24b63f1e844f2cdba87b4f62c3ae3b63d8c6983c9f7459"
+          },
+          {
+            "name": "transferToImageBitmap",
+            "willReadFrequently": true,
+            "passed": true,
+            "sha256": "66a9d93321dfbe06ab24b63f1e844f2cdba87b4f62c3ae3b63d8c6983c9f7459"
+          }
+        ],
+        "passed": true,
+        "opaqueAlphaPixels": 16777216,
+        "fixtureChangedChannels": 109,
+        "directSha256": "66a9d93321dfbe06ab24b63f1e844f2cdba87b4f62c3ae3b63d8c6983c9f7459",
+        "afterTransfer": {
+          "pixel": [
+            0,
+            0,
+            0,
+            255
+          ],
+          "error": 0,
+          "lost": false
+        }
+      },
+      "phase_events": [
+        {
+          "phase": "navigation",
+          "offset_ns": 0
+        },
+        {
+          "phase": "measurement",
+          "offset_ns": 5094000000
+        },
+        {
+          "phase": "after",
+          "offset_ns": 7891000000
+        }
+      ],
+      "sampling_errors": [
+        {
+          "phase": "navigation",
+          "type": "ValueError",
+          "error": "Process tree changed during measurement; no complete totals are returned",
+          "started_offset_ns": 2891000000,
+          "finished_offset_ns": 2907000000
+        }
+      ],
+      "samples": [
+        {
+          "phase": "before",
+          "schema": 1,
+          "process_count": 8,
+          "working_set_sum_bytes": 662261760,
+          "private_commit_sum_bytes": 309608448,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "warming"
+          },
+          "started_offset_ns": 2891000000,
+          "finished_offset_ns": 2891000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 752287744,
+          "private_commit_sum_bytes": 352727040,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "unavailable",
+            "reason": "Process-tree membership changed; a complete CPU interval is unavailable"
+          },
+          "started_offset_ns": 3172000000,
+          "finished_offset_ns": 3172000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 754135040,
+          "private_commit_sum_bytes": 353132544,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.1875,
+            "mean_cpu_cores": 0.7048872180451128
+          },
+          "started_offset_ns": 3438000000,
+          "finished_offset_ns": 3438000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 755527680,
+          "private_commit_sum_bytes": 353570816,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.015625,
+            "mean_cpu_cores": 0.05896226415094339
+          },
+          "started_offset_ns": 3703000000,
+          "finished_offset_ns": 3703000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 756199424,
+          "private_commit_sum_bytes": 353787904,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.0,
+            "mean_cpu_cores": 0.0
+          },
+          "started_offset_ns": 3953000000,
+          "finished_offset_ns": 3969000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 756551680,
+          "private_commit_sum_bytes": 353902592,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.0,
+            "mean_cpu_cores": 0.0
+          },
+          "started_offset_ns": 4219000000,
+          "finished_offset_ns": 4235000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 756789248,
+          "private_commit_sum_bytes": 353939456,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.0,
+            "mean_cpu_cores": 0.0
+          },
+          "started_offset_ns": 4485000000,
+          "finished_offset_ns": 4500000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 756940800,
+          "private_commit_sum_bytes": 353955840,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.015625,
+            "mean_cpu_cores": 0.0587406015037594
+          },
+          "started_offset_ns": 4750000000,
+          "finished_offset_ns": 4766000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 777920512,
+          "private_commit_sum_bytes": 358617088,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.281,
+            "cpu_seconds": 0.234375,
+            "mean_cpu_cores": 0.8340747330960854
+          },
+          "started_offset_ns": 5032000000,
+          "finished_offset_ns": 5047000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1123504128,
+          "private_commit_sum_bytes": 883367936,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.25,
+            "cpu_seconds": 0.375,
+            "mean_cpu_cores": 1.5
+          },
+          "started_offset_ns": 5297000000,
+          "finished_offset_ns": 5297000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1202900992,
+          "private_commit_sum_bytes": 885608448,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.28125,
+            "mean_cpu_cores": 1.0573308270676691
+          },
+          "started_offset_ns": 5563000000,
+          "finished_offset_ns": 5563000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1341812736,
+          "private_commit_sum_bytes": 1024004096,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.25,
+            "mean_cpu_cores": 0.9433962264150942
+          },
+          "started_offset_ns": 5828000000,
+          "finished_offset_ns": 5828000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1676161024,
+          "private_commit_sum_bytes": 1168326656,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.25,
+            "mean_cpu_cores": 0.9398496240601504
+          },
+          "started_offset_ns": 6094000000,
+          "finished_offset_ns": 6094000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1743544320,
+          "private_commit_sum_bytes": 1235447808,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.25,
+            "mean_cpu_cores": 0.9398496240601504
+          },
+          "started_offset_ns": 6344000000,
+          "finished_offset_ns": 6360000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1743798272,
+          "private_commit_sum_bytes": 1303252992,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.25,
+            "mean_cpu_cores": 0.9433962264150942
+          },
+          "started_offset_ns": 6610000000,
+          "finished_offset_ns": 6625000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1745686528,
+          "private_commit_sum_bytes": 1304109056,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.34375,
+            "mean_cpu_cores": 1.2922932330827066
+          },
+          "started_offset_ns": 6875000000,
+          "finished_offset_ns": 6891000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1819643904,
+          "private_commit_sum_bytes": 1524350976,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.25,
+            "mean_cpu_cores": 0.9398496240601504
+          },
+          "started_offset_ns": 7141000000,
+          "finished_offset_ns": 7157000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 2015170560,
+          "private_commit_sum_bytes": 1659531264,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.203125,
+            "mean_cpu_cores": 0.7665094339622641
+          },
+          "started_offset_ns": 7407000000,
+          "finished_offset_ns": 7422000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 2015227904,
+          "private_commit_sum_bytes": 1895456768,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.234375,
+            "mean_cpu_cores": 0.8811090225563909
+          },
+          "started_offset_ns": 7672000000,
+          "finished_offset_ns": 7688000000
+        },
+        {
+          "phase": "after",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 2009976832,
+          "private_commit_sum_bytes": 1895784448,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.219,
+            "cpu_seconds": 0.28125,
+            "mean_cpu_cores": 1.2842465753424657
+          },
+          "started_offset_ns": 7891000000,
+          "finished_offset_ns": 7907000000
+        }
+      ],
+      "maximum_sampled_private_commit_bytes": 1895784448,
+      "maximum_sampled_summed_working_set_bytes": 2015227904,
+      "owned_resources_closed": true,
+      "postguards_passed": true
+    },
+    {
+      "name": "image-r11-large-rgba-public-20261102-v1",
+      "passed": false,
+      "graphics_passed": true,
+      "graphics_measurement_complete": true,
+      "resource_measurement_complete": false,
+      "full_resource_gate_passed": false,
+      "source_report_sha256": "29a4080c797aa612bfd484fde0482da0e78ac3836e63ee255c6962faf21090c2",
+      "measured_contract_sha256": "978bc650cfab8284257fc300175cbc7e5cd9f3c827385e494cd25c3676ea5aad",
+      "observations": {
+        "schema": 1,
+        "width": 4096,
+        "height": 4096,
+        "byteLength": 67108864,
+        "api": "webgl2",
+        "alpha": false,
+        "copies": [
+          {
+            "name": "drawImage",
+            "willReadFrequently": false,
+            "passed": true,
+            "sha256": "4917e2bbaab6d517de8fa6e4d9227f3634bd37263a5f16d4a9ef18c38e67e061"
+          },
+          {
+            "name": "drawImage",
+            "willReadFrequently": true,
+            "passed": true,
+            "sha256": "4917e2bbaab6d517de8fa6e4d9227f3634bd37263a5f16d4a9ef18c38e67e061"
+          },
+          {
+            "name": "png",
+            "willReadFrequently": false,
+            "passed": true,
+            "sha256": "4917e2bbaab6d517de8fa6e4d9227f3634bd37263a5f16d4a9ef18c38e67e061"
+          },
+          {
+            "name": "png",
+            "willReadFrequently": true,
+            "passed": true,
+            "sha256": "4917e2bbaab6d517de8fa6e4d9227f3634bd37263a5f16d4a9ef18c38e67e061"
+          },
+          {
+            "name": "transferToImageBitmap",
+            "willReadFrequently": false,
+            "passed": true,
+            "sha256": "4917e2bbaab6d517de8fa6e4d9227f3634bd37263a5f16d4a9ef18c38e67e061"
+          },
+          {
+            "name": "transferToImageBitmap",
+            "willReadFrequently": true,
+            "passed": true,
+            "sha256": "4917e2bbaab6d517de8fa6e4d9227f3634bd37263a5f16d4a9ef18c38e67e061"
+          }
+        ],
+        "passed": true,
+        "opaqueAlphaPixels": 16777216,
+        "fixtureChangedChannels": 93,
+        "directSha256": "4917e2bbaab6d517de8fa6e4d9227f3634bd37263a5f16d4a9ef18c38e67e061",
+        "afterTransfer": {
+          "pixel": [
+            0,
+            0,
+            0,
+            255
+          ],
+          "error": 0,
+          "lost": false
+        }
+      },
+      "phase_events": [
+        {
+          "phase": "navigation",
+          "offset_ns": 0
+        },
+        {
+          "phase": "measurement",
+          "offset_ns": 5391000000
+        },
+        {
+          "phase": "after",
+          "offset_ns": 8172000000
+        }
+      ],
+      "sampling_errors": [
+        {
+          "phase": "navigation",
+          "type": "ValueError",
+          "error": "Process tree changed during measurement; no complete totals are returned",
+          "started_offset_ns": 3079000000,
+          "finished_offset_ns": 3079000000
+        }
+      ],
+      "samples": [
+        {
+          "phase": "before",
+          "schema": 1,
+          "process_count": 8,
+          "working_set_sum_bytes": 660238336,
+          "private_commit_sum_bytes": 310661120,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "warming"
+          },
+          "started_offset_ns": 3063000000,
+          "finished_offset_ns": 3079000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 750235648,
+          "private_commit_sum_bytes": 353558528,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "unavailable",
+            "reason": "Process-tree membership changed; a complete CPU interval is unavailable"
+          },
+          "started_offset_ns": 3329000000,
+          "finished_offset_ns": 3344000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 754438144,
+          "private_commit_sum_bytes": 354279424,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.078125,
+            "mean_cpu_cores": 0.29370300751879697
+          },
+          "started_offset_ns": 3594000000,
+          "finished_offset_ns": 3610000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 754933760,
+          "private_commit_sum_bytes": 354500608,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.03125,
+            "mean_cpu_cores": 0.11792452830188678
+          },
+          "started_offset_ns": 3860000000,
+          "finished_offset_ns": 3875000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 756023296,
+          "private_commit_sum_bytes": 354873344,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.015625,
+            "mean_cpu_cores": 0.0587406015037594
+          },
+          "started_offset_ns": 4125000000,
+          "finished_offset_ns": 4141000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 756482048,
+          "private_commit_sum_bytes": 356110336,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.25,
+            "cpu_seconds": 0.125,
+            "mean_cpu_cores": 0.5
+          },
+          "started_offset_ns": 4391000000,
+          "finished_offset_ns": 4391000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 756658176,
+          "private_commit_sum_bytes": 356196352,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.109375,
+            "mean_cpu_cores": 0.41118421052631576
+          },
+          "started_offset_ns": 4657000000,
+          "finished_offset_ns": 4657000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 756838400,
+          "private_commit_sum_bytes": 356270080,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.03125,
+            "mean_cpu_cores": 0.11792452830188678
+          },
+          "started_offset_ns": 4922000000,
+          "finished_offset_ns": 4922000000
+        },
+        {
+          "phase": "navigation",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 760463360,
+          "private_commit_sum_bytes": 357384192,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.015625,
+            "mean_cpu_cores": 0.0587406015037594
+          },
+          "started_offset_ns": 5172000000,
+          "finished_offset_ns": 5188000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 881901568,
+          "private_commit_sum_bytes": 524357632,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.28125,
+            "mean_cpu_cores": 1.0573308270676691
+          },
+          "started_offset_ns": 5438000000,
+          "finished_offset_ns": 5454000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1122713600,
+          "private_commit_sum_bytes": 883912704,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.21875,
+            "mean_cpu_cores": 0.8254716981132075
+          },
+          "started_offset_ns": 5704000000,
+          "finished_offset_ns": 5719000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1340796928,
+          "private_commit_sum_bytes": 1024258048,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.281,
+            "cpu_seconds": 0.3125,
+            "mean_cpu_cores": 1.1120996441281137
+          },
+          "started_offset_ns": 5985000000,
+          "finished_offset_ns": 6000000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1358045184,
+          "private_commit_sum_bytes": 1024643072,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.25,
+            "cpu_seconds": 0.296875,
+            "mean_cpu_cores": 1.1875
+          },
+          "started_offset_ns": 6250000000,
+          "finished_offset_ns": 6266000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1742639104,
+          "private_commit_sum_bytes": 1236041728,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.21875,
+            "mean_cpu_cores": 0.8223684210526315
+          },
+          "started_offset_ns": 6516000000,
+          "finished_offset_ns": 6516000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1683079168,
+          "private_commit_sum_bytes": 1236119552,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.265625,
+            "mean_cpu_cores": 0.9985902255639098
+          },
+          "started_offset_ns": 6782000000,
+          "finished_offset_ns": 6782000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1743269888,
+          "private_commit_sum_bytes": 1304006656,
+          "capture_duration_ns": 0,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.21875,
+            "mean_cpu_cores": 0.8254716981132075
+          },
+          "started_offset_ns": 7047000000,
+          "finished_offset_ns": 7047000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1748037632,
+          "private_commit_sum_bytes": 1458733056,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.296875,
+            "mean_cpu_cores": 1.1160714285714286
+          },
+          "started_offset_ns": 7297000000,
+          "finished_offset_ns": 7313000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1948790784,
+          "private_commit_sum_bytes": 1592832000,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.203125,
+            "mean_cpu_cores": 0.7636278195488722
+          },
+          "started_offset_ns": 7563000000,
+          "finished_offset_ns": 7579000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 2016030720,
+          "private_commit_sum_bytes": 1660186624,
+          "capture_duration_ns": 15000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.265,
+            "cpu_seconds": 0.234375,
+            "mean_cpu_cores": 0.8844339622641509
+          },
+          "started_offset_ns": 7829000000,
+          "finished_offset_ns": 7844000000
+        },
+        {
+          "phase": "measurement",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 2225205248,
+          "private_commit_sum_bytes": 2097946624,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.266,
+            "cpu_seconds": 0.234375,
+            "mean_cpu_cores": 0.8811090225563909
+          },
+          "started_offset_ns": 8094000000,
+          "finished_offset_ns": 8110000000
+        },
+        {
+          "phase": "after",
+          "schema": 1,
+          "process_count": 9,
+          "working_set_sum_bytes": 1983635456,
+          "private_commit_sum_bytes": 1829269504,
+          "capture_duration_ns": 16000000,
+          "cpu": {
+            "state": "ready",
+            "elapsed_seconds": 0.078,
+            "cpu_seconds": 0.078125,
+            "mean_cpu_cores": 1.001602564102564
+          },
+          "started_offset_ns": 8172000000,
+          "finished_offset_ns": 8188000000
+        }
+      ],
+      "maximum_sampled_private_commit_bytes": 2097946624,
+      "maximum_sampled_summed_working_set_bytes": 2225205248,
+      "owned_resources_closed": true,
+      "postguards_passed": true
+    }
+  ],
+  "diagnosis": "Both new unavailable captures occurred during navigation, before 4K evaluation; no missing sample was replaced or retried.",
+  "limitations": "Sampled complete trees are not continuous coverage, exact peaks, unique RSS or GPU VRAM. These runs do not close full lifecycle/resource admission."
+}

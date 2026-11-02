@@ -13,6 +13,24 @@
 | 4096-square RGBA8 | [All six full-image copies passed](large-image-resources.json) |
 | Resource measurement | **Incomplete**: a process-tree transition invalidated one sample; original failure retained |
 
+### Resource follow-up: navigation transition isolated
+
+Two additional full 4K runs retain all six exact image-copy results, but each
+has one unavailable tree capture **during navigation, before image evaluation**.
+The [timestamped observations](large-image-resource-timeline.json) preserve both
+failures, every successful sample and the original resource-record hash.
+Their sampled private-commit maxima were about 1.77 and 1.95 GiB; neither is an
+exact peak. The whole resource gate still fails: navigation is not excluded.
+
+The public [collector](measure_large_rgba.py) uses the existing creation-bound
+process monitor and [image validator](validate_large_rgba.py). It takes an owned
+runtime factory and explicit configuration through `await measure(make, configuration)`;
+the factory receives a fixture name and configuration. Callers must select and
+verify their binary/receipt/driver before supplying that factory. No credentials,
+runtime discovery, fallback, topology retry or admission override is provided.
+The second recorded run executed these exact public collector bytes. Separate
+injected tests cover missing samples and cleanup; they are not browser results.
+
 The measured 4K private-commit maximum is a successful **sample**, not an exact
 peak or a memory limit. The 64 MiB raster budget does not bound whole-browser
 memory. Legacy Audio, device cohorts, broader formats/resources and package/
