@@ -1,5 +1,17 @@
 # Glint browser test matrix
 
+## 2026-11-02: R14 explicit source registration and complete runner
+
+The source catalog accepts R14 explicitly. Its runner requires all **163 bodies**
+derived from every checkpoint/producer patch, exact six-binary coverage, runtime
+listing of parameter instances and unchanged source/SDK/binary postguards. R12
+remains the default; R12/R13 still require 85 bodies. Unknown plans and changed,
+missing, duplicate, foreign or non-integer coverage are rejected.
+
+**256 targeted host checks passed in 37.36 seconds.** Full host retry and native
+R14 execution remain pending. Registration does not select an installed browser,
+modify the R13 checkout or admit runtime/privacy/production behavior.
+
 ## 2026-11-02: R13 native execution failed; connected R14 source packet prepared
 
 | Gate | Actual result |
@@ -11,7 +23,7 @@
 | Blink | Existing timeout fixture now passes; later aggregation teardown aborts on a dangling namespace/controller pointer |
 | Final native postguards | Passed; the overall native result remains **failed** |
 | R14 preparation | **152 forward/reverse patches, 471 final sources, 332 restored originals, 163 prepared bodies** |
-| R14 admission | Unregistered/uncompiled; no runtime, whole-profile checkpoint or production admission |
+| R14 admission | Explicit source candidate registered; canonical checkout still R13, R14 uncompiled/unadmitted |
 
 Evidence: [host run](../native/drafts/upstream-156-checkpoint-r13/host-regression.json),
 [native attempt](../native/drafts/upstream-156-checkpoint-r13/native-attempt-observations.json),

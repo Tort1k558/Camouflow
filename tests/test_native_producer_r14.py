@@ -2,10 +2,8 @@ import hashlib
 import json
 from pathlib import Path
 
-import pytest
-
 from scripts import native_build as build
-from scripts.verify_native_checkpoint_units import CASE_PATTERN
+from scripts.verify_native_checkpoint_units import CASE_PATTERN, load_plan
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,10 +62,24 @@ def test_producer_r14_plan_accounts_for_every_added_body_without_parameter_guess
     assert not any(plan[k] for k in ('parameter_instances_discovered', 'built', 'executed', 'production_admitted'))
 
 
-def test_producer_r14_remains_unregistered_until_its_complete_native_gate_exists():
-    assert 'upstream-156-producer-r14' not in build.CANDIDATES
-    with pytest.raises(ValueError, match='Unknown Native build candidate'):
-        build.load_candidate('upstream-156-producer-r14')
+def test_producer_r14_registration_requires_the_complete_native_plan_not_runtime_admission():
+    candidate = build.load_candidate('upstream-156-producer-r14')
+    assert len(load_plan(candidate)['cases']) == 163
+    assert candidate['lock']['minimum_free_gib'] == 180
+    assert candidate['lock']['build_jobs'] == 4
+    assert not candidate['manifest']['compiled'] and not candidate['manifest']['runtime_verified']
+
+
+def test_producer_r14_host_archive_recovers_exact_pre_registration_source(host_sources_before_checkpoint_r14):
+    directory = ROOT / 'native/drafts/environment'
+    upgrade = json.loads((directory / 'checkpoint-r14-host-source-upgrade.json').read_bytes())
+    prior = json.loads((directory / 'checkpoint-r13-host-source-upgrade.json').read_bytes())
+    assert len(upgrade['sources']) == 1
+    row = upgrade['sources'][0]
+    assert row['source'] == 'scripts/native_build.py'
+    assert row['before_sha256'] == prior['sources'][0]['after_sha256']
+    assert hashlib.sha256(host_sources_before_checkpoint_r14[row['source']]).hexdigest() == row['before_sha256']
+    assert not upgrade['native_runtime_verified'] and not upgrade['production_admitted']
 
 
 def test_cookie_cohort_binding_proof_preserves_browser_only_versioned_wire():

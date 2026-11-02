@@ -27,6 +27,11 @@ CANDIDATE = 'upstream-156-checkpoint-r12'
 BINARIES = ('blink_unittests', 'components_unittests', 'content_browsertests',
             'content_unittests', 'net_unittests', 'services_unittests')
 CASE_PATTERN = re.compile(r'\b(TEST(?:_F|_P)?|IN_PROC_BROWSER_TEST_F)\(\s*(\w+),\s*(\w+)')
+PLAN_SPECS = {
+    'upstream-156-checkpoint-r12': (136, 85),
+    'upstream-156-checkpoint-r13': (136, 85),
+    'upstream-156-producer-r14': (136, 163),
+}
 
 
 def checksum(path: Path) -> str:
@@ -35,14 +40,18 @@ def checksum(path: Path) -> str:
 
 
 def load_plan(candidate: dict) -> dict:
+    if candidate.get('name') not in PLAN_SPECS:
+        raise ValueError('Unknown checkpoint candidate plan')
+    first_patch, body_count = PLAN_SPECS[candidate['name']]
     plan = read_record(candidate['directory'] / 'native-case-plan.json')
     if (plan.get('candidate_manifest_sha256') != candidate['manifest_sha256']
             or plan.get('binaries') != list(BINARIES)
-            or plan.get('native_case_bodies_prepared') != 85
-            or not isinstance(plan.get('cases'), list) or len(plan['cases']) != 85):
+            or type(plan.get('native_case_bodies_prepared')) is not int
+            or plan.get('native_case_bodies_prepared') != body_count
+            or not isinstance(plan.get('cases'), list) or len(plan['cases']) != body_count):
         raise ValueError('Checkpoint case plan differs from the complete candidate')
     expected = []
-    for patch in candidate['manifest']['patches'][136:]:
+    for patch in candidate['manifest']['patches'][first_patch:]:
         path = candidate['directory'] / 'patches' / patch['file']
         if checksum(path) != patch['sha256']:
             raise ValueError('Checkpoint source patch changed')
@@ -65,7 +74,7 @@ def load_plan(candidate: dict) -> dict:
                     raise ValueError('Unrecognized checkpoint test source')
                 expected.append(dict(binary=binary, source=source, fixture=fixture,
                                      case=case, kind=kind, patch=patch['file']))
-    if plan['cases'] != expected or len(expected) != 85:
+    if plan['cases'] != expected or len(expected) != body_count:
         raise ValueError('Checkpoint plan does not account for every source test body')
     return plan
 
@@ -203,7 +212,7 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
     report = dict(schema=1, passed=False, candidate=candidate['name'],
                   scope='All discovered checkpoint test instances; not whole-profile durability or browser admission',
                   candidate_manifest_sha256=candidate['manifest_sha256'], jobs=jobs,
-                  prepared_body_count=85, targets=[], build_invocations=0,
+                  prepared_body_count=len(plan['cases']), targets=[], build_invocations=0,
                   postguards_passed=False, browser_runtime_verified=False,
                   privacy_admitted=False, production_admitted=False)
     inputs, initial, binaries = {}, {}, {}

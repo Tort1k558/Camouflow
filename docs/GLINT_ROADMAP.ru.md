@@ -12,8 +12,13 @@ pass. These are retained failures, not a completed checkpoint or runtime gate.
 corrections. Isolated full replay/reversal passes and all 85 old bodies remain
 within the 163-body plan. C++ execution and production admission remain open.
 
-Next: full host recheck; explicit 163-body runner/registration; guarded source
-transition; memory-safe compile; every discovered native instance and 29 legacy
+The explicit source catalog and complete 163-body runner are now connected;
+256 targeted host checks pass. Historical host hashes are recovered through a
+new checked reverse archive, not changed to match current code. R12 remains the
+runner default and R12/R13 retain their original 85-body contracts.
+
+Next: full host recheck; guarded source transition; memory-safe compile;
+every discovered native instance and 29 legacy
 groups; independent browser QA. Do not activate checkpoint support before its
 remaining global mutation, network/worker and backend/session persistence gates.
 

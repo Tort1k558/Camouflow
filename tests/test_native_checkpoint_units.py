@@ -21,15 +21,20 @@ def result(required):
                     for suite, cases in required.items()])
 
 
-def test_native_plan_is_derived_from_all_seven_registered_packets():
-    candidate = build.load_candidate(units.CANDIDATE)
+@pytest.mark.parametrize('candidate_name,count', [
+    ('upstream-156-checkpoint-r12', 85), ('upstream-156-checkpoint-r13', 85),
+    ('upstream-156-producer-r14', 163),
+])
+def test_native_plan_is_derived_from_every_registered_packet(candidate_name, count):
+    candidate = build.load_candidate(candidate_name)
     plan = units.load_plan(candidate)
-    assert len(plan['cases']) == 85 and plan['binaries'] == list(units.BINARIES)
+    assert len(plan['cases']) == count and plan['binaries'] == list(units.BINARIES)
 
 
-@pytest.mark.parametrize('change', ('missing', 'duplicate', 'binary', 'source', 'hash'))
-def test_native_plan_rejects_weakened_or_foreign_coverage(monkeypatch, change):
-    candidate = build.load_candidate(units.CANDIDATE)
+@pytest.mark.parametrize('change', ('missing', 'duplicate', 'binary', 'source', 'hash', 'count-type'))
+@pytest.mark.parametrize('candidate_name', tuple(units.PLAN_SPECS))
+def test_native_plan_rejects_weakened_or_foreign_coverage(monkeypatch, change, candidate_name):
+    candidate = build.load_candidate(candidate_name)
     plan = units.load_plan(candidate)
     if change == 'missing':
         plan['cases'].pop()
@@ -39,11 +44,21 @@ def test_native_plan_rejects_weakened_or_foreign_coverage(monkeypatch, change):
         plan['cases'][0]['binary'] = 'content_unittests'
     elif change == 'source':
         plan['cases'][0]['source'] = 'foreign.cc'
+    elif change == 'count-type':
+        plan['native_case_bodies_prepared'] = float(len(plan['cases']))
     else:
         plan['candidate_manifest_sha256'] = '0' * 64
     monkeypatch.setattr(units, 'read_record', lambda _: plan)
     with pytest.raises(ValueError, match='plan'):
         units.load_plan(candidate)
+
+
+def test_native_plan_rejects_unknown_candidates_before_reading_files(monkeypatch):
+    read = Mock()
+    monkeypatch.setattr(units, 'read_record', read)
+    with pytest.raises(ValueError, match='Unknown checkpoint candidate plan'):
+        units.load_plan({'name': 'unregistered'})
+    read.assert_not_called()
 
 
 def test_listing_discovers_every_parameter_and_ignores_unrelated_cases():

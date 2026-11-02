@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "patch": "checkpoint-r14-host-source-upgrade.patch",
+  "patch_sha256": "4c9ba5f7185ae1648d267c873c41daae3fc4f82d2b020cedb5356a05cc3ea906",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "977022bee0547838fac6a957a0629ca99bbdc2107aa225113ab149d4fa893e1e",
+      "after_sha256": "4304f8f906181f99b8172b346c504555c01fb42411eaff51f6b4e0f2f1e7c00e"
+    }
+  ],
+  "scope": "Reconstruct exact pre-R14 host source for historical evidence only",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

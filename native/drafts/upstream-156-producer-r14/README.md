@@ -1,6 +1,7 @@
 # Glint R14: connected producer-stage source packet
 
-**Unselected and uncompiled. The runtime registry still selects R13.**
+**Registered for explicit source builds, but unselected and uncompiled.**
+The canonical checkout and build receipt remain R13; no installed runtime changes.
 
 | Preparation | Verified scope |
 | --- | --- |
@@ -30,5 +31,12 @@ This is **not a working whole-profile checkpoint**: global mutation coordination
 worker/HTTP producers, backend/session-cookie persistence, manager completion,
 full C++/GN/native/runtime checks and release admission remain open.
 
+The checkpoint runner accepts `--candidate upstream-156-producer-r14` and requires
+all 163 bodies, their discovered parameter instances and all six binaries. The
+legacy R12 default and R12/R13 85-body contracts remain unchanged. Source transition
+still requires the full host gate and an exact rollback backup; do not apply this
+recipe blindly over an already patched checkout.
+
 See [preparation.json](preparation.json), [native-case-plan.json](native-case-plan.json)
-and [manifest.json](manifest.json). No build command is advertised before registration.
+and [manifest.json](manifest.json). Preparation flags describe the earlier isolated
+replay, not later registration or native execution.
