@@ -1,5 +1,15 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: localStorage backend owner source draft
+
+[Browser-owned localStorage completion](../native/drafts/local-storage-checkpoint-owner/README.md)
+uses only the existing versioned connection, with a 30-second deadline, 64 retained
+wire slots and shutdown/rebind invalidation through posted caller delivery.
+Three-file isolated apply/reverse and nine host artifact checks passed. Seven
+native mock-backend bodies are prepared, not type-checked or executed. This draft
+is unselected; the active R12 build is unchanged. It is not a whole-profile
+checkpoint, a producer fence or crash-durability admission.
+
 ## 2026-11-02: complete R12 Windows build passed
 
 [R12 compilation](../native/drafts/upstream-156-checkpoint-r12/windows-build.json)

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "selected": false,
+  "type_checked": false,
+  "compiled": false,
+  "native_executed": false,
+  "whole_profile_checkpoint": false,
+  "patch_sha256": "149da7831631599ef386993418dfd5a01f1ec13b258c1345c2e2dc2618f20594",
+  "scope": "Existing local-storage control connection only; no producer fence or global cut",
+  "native_fixture_bodies_prepared": 7,
+  "fixtures_executed": false,
+  "isolated_apply_reverse_passed": true,
+  "files": 3,
+  "observed_patch_sha256": "149da7831631599ef386993418dfd5a01f1ec13b258c1345c2e2dc2618f20594",
+  "limitations": [
+    "No native type check, build or test execution",
+    "Unselected public source draft; canonical source unchanged",
+    "Backend acknowledgment only; not a profile checkpoint"
+  ],
+  "base_candidate": "upstream-156-checkpoint-r12",
+  "base_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "sources": [
+    {
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "before_sha256": "0504e43e25a2e91876f4460a3e97da585792afd5c8ae2518688ac1540ebd0055",
+      "after_sha256": "2232539a417486fefbd272c84ebd4b85f0ac752556a8218891981bf4138bb62b"
+    },
+    {
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper.h",
+      "before_sha256": "97b0c2602e6f328d1e8f1e3f35f22627ba3e67683d4550c6f59200b32f9a52c5",
+      "after_sha256": "9873e252a6d06c6ccf638028d47e47ac3445ec2224024c34b567ec3869446023"
+    },
+    {
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "before_sha256": "3a19b30863d1b909991bd0608a926a5e7245bd018542f69ef4287e5917fba1ea",
+      "after_sha256": "dba95330be4a27c1709f2489f11367115d3fad7042d59f4a87c222152837808b"
+    }
+  ],
+  "patch": "local-storage-checkpoint-owner.patch",
+  "formatted_with_pinned_clang_format": true,
+  "registered": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "canonical_sources_modified": false,
+  "full_candidate_composition_verified": false
+}
