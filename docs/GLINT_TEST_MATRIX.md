@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-03: R14 build failed; connected R15 registered
+
+R14 completed 851 build actions, then CookieJar failed because MainThread was
+only forward-declared. The failed result is retained; no R14 native/runtime
+success is claimed. A private corrected translation unit compiles with the
+original failed CXX flags, without modifying canonical source or build outputs.
+
+[R15](../native/drafts/upstream-156-document-r15/README.md) combines that include
+correction with explicit localStorage/cookie/combined document producer scopes.
+Its complete 154-patch isolated replay/reversal passes; all 163 R14 bodies remain
+within the 175-body plan. 88 targeted host checks pass. Full host verification,
+source transition, complete compilation/native execution and browser QA remain
+pending. No global mutation cut, worker/HTTP or persistence admission is implied.
+
 ## 2026-11-02: R14 explicit source registration and complete runner
 
 The source catalog accepts R14 explicitly. Its runner requires all **163 bodies**

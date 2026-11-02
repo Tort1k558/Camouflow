@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "patch": "document-r15-host-source-upgrade.patch",
+  "patch_sha256": "5ea646662e024f62b822c46e7d7d80f3f59035ac4581b6e19270c05c1d3047a7",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "4304f8f906181f99b8172b346c504555c01fb42411eaff51f6b4e0f2f1e7c00e",
+      "after_sha256": "30679293697de412d95b406638b74faaa2002a374e873366c984909b40be508f"
+    }
+  ],
+  "scope": "Recover exact pre-R15 host source for historical evidence; no hash rewriting",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

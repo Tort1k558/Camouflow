@@ -1,0 +1,130 @@
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
+@@ -15,6 +15,7 @@
+ bool IsSupportedCanvasCopyFormat(const SkImageInfo& info) {
+   const auto type = info.colorType();
+   if ((type != kRGBA_8888_SkColorType && type != kBGRA_8888_SkColorType &&
++       type != kRGB_888x_SkColorType &&
+        type != kRGBA_F16_SkColorType && type != kRGBA_F16Norm_SkColorType) ||
+       (info.alphaType() != kOpaque_SkAlphaType &&
+        info.alphaType() != kUnpremul_SkAlphaType &&
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+--- a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+@@ -522,5 +522,115 @@
+   EXPECT_FALSE(result.value()->OriginClean());
+ }
+ 
++scoped_refptr<blink::StaticBitmapImage> MakeOpaqueRGBXImageSource(
++    sk_sp<SkColorSpace> color_space,
++    bool origin_clean,
++    blink::ImageOrientation orientation) {
++  std::array<uint8_t, 64> pixels{};
++  for (size_t y = 0; y < 4; ++y) {
++    for (size_t x = 0; x < 4; ++x) {
++      const size_t offset = (y * 4 + x) * 4;
++      pixels[offset] = static_cast<uint8_t>(x + 1);
++      pixels[offset + 1] = static_cast<uint8_t>(y + 1);
++      pixels[offset + 2] = 85;
++      pixels[offset + 3] = static_cast<uint8_t>(17 + x + y);
++    }
++  }
++  const auto info = SkImageInfo::Make(4, 4, kRGB_888x_SkColorType,
++      kOpaque_SkAlphaType, std::move(color_space));
++  auto image = blink::UnacceleratedStaticBitmapImage::Create(
++      SkImages::RasterFromPixmapCopy(SkPixmap(info, pixels.data(), 16)),
++      orientation);
++  if (image) {
++    image->SetOriginClean(origin_clean);
++  }
++  return image;
++}
++
++TEST(GlintOpaqueCanvasImageSourceTest, NormalizesRGBXToTheExistingRGBAOracle) {
++  auto source = MakeOpaqueRGBXImageSource(SkColorSpace::MakeSRGB(), true,
++      blink::ImageOrientationEnum::kOriginTopLeft);
++  ASSERT_TRUE(source);
++  const auto source_info = source->PaintImageForCurrentFrame().GetSkImageInfo();
++  ASSERT_EQ(source_info.colorType(), kRGB_888x_SkColorType);
++  EXPECT_TRUE(IsSupportedCanvasCopyFormat(source_info));
++  std::array<uint8_t, 64> expected{}, observed{};
++  ASSERT_TRUE(ReadGPUCanvasImageSource(source, expected));
++  const std::array<uint8_t, 32> seed{};
++  ASSERT_TRUE(TransformEdgeCoherentCanvas(expected, 4, 4, seed));
++  auto result = ProtectGPUCanvasImageSource(source, seed);
++  ASSERT_TRUE(result.has_value());
++  ASSERT_TRUE(ReadGPUCanvasImageSource(result.value(), observed));
++  EXPECT_EQ(observed, expected);
++  EXPECT_EQ(result.value()->PaintImageForCurrentFrame().GetSkImageInfo().colorType(),
++            kRGBA_8888_SkColorType);
++}
++
++TEST(GlintOpaqueCanvasImageSourceTest, KeepsOpaqueAlphaOriginOrientationAndSource) {
++  const auto p3 = SkColorSpace::MakeRGB(SkNamedTransferFn::kSRGB,
++                                       SkNamedGamut::kDisplayP3);
++  ASSERT_TRUE(p3);
++  const std::array<uint8_t, 32> seed{};
++  for (const auto& space : {SkColorSpace::MakeSRGB(), p3}) {
++    for (const bool clean : {false, true}) {
++      for (const auto orientation : {blink::ImageOrientationEnum::kOriginTopLeft,
++                                    blink::ImageOrientationEnum::kOriginBottomLeft}) {
++        auto source = MakeOpaqueRGBXImageSource(space, clean, orientation);
++        ASSERT_TRUE(source);
++        std::array<uint8_t, 64> before{}, after{}, first{}, second{};
++        ASSERT_TRUE(ReadGPUCanvasImageSource(source, before));
++        auto one = ProtectGPUCanvasImageSource(source, seed);
++        auto two = ProtectGPUCanvasImageSource(source, seed);
++        ASSERT_TRUE(one.has_value());
++        ASSERT_TRUE(two.has_value());
++        ASSERT_TRUE(ReadGPUCanvasImageSource(one.value(), first));
++        ASSERT_TRUE(ReadGPUCanvasImageSource(two.value(), second));
++        ASSERT_TRUE(ReadGPUCanvasImageSource(source, after));
++        EXPECT_EQ(before, after);
++        EXPECT_EQ(first, second);
++        for (size_t offset = 3; offset < first.size(); offset += 4) {
++          EXPECT_EQ(first[offset], 255);
++        }
++        EXPECT_EQ(one.value()->OriginClean(), clean);
++        EXPECT_EQ(source->OriginClean(), clean);
++        EXPECT_EQ(one.value()->Orientation(), source->Orientation());
++        EXPECT_TRUE(SkColorSpace::Equals(
++            one.value()->PaintImageForCurrentFrame().GetSkImageInfo().colorSpace(),
++            space.get()));
++      }
++    }
++  }
++}
++
++TEST(GlintOpaqueCanvasImageSourceTest, RetainsTheExactDetachedCopyBudget) {
++  auto source = MakeOpaqueRGBXImageSource(SkColorSpace::MakeSRGB(), true,
++      blink::ImageOrientationEnum::kOriginTopLeft);
++  ASSERT_TRUE(source);
++  const std::array<uint8_t, 32> seed{};
++  auto rejected = ProtectGPUCanvasImageSource(source, seed, 63);
++  ASSERT_FALSE(rejected.has_value());
++  EXPECT_EQ(rejected.error(), CanvasCopyError::kMemoryLimit);
++  EXPECT_TRUE(ProtectGPUCanvasImageSource(source, seed, 64).has_value());
++}
++
++TEST(GlintOpaqueCanvasImageSourceTest, OwnedRGBXStillRequiresNormalization) {
++  SkBitmap owned;
++  ASSERT_TRUE(owned.tryAllocPixels(SkImageInfo::Make(4, 4,
++      kRGB_888x_SkColorType, kOpaque_SkAlphaType, SkColorSpace::MakeSRGB()), 16));
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(owned), seed, true);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), CanvasCopyError::kUnsupportedFormat);
++}
++
++TEST(GlintOpaqueCanvasImageSourceTest, DoesNotAdmitUnknownFormatsOrColourSpaces) {
++  EXPECT_FALSE(IsSupportedCanvasCopyFormat(SkImageInfo::Make(4, 4,
++      kRGB_888x_SkColorType, kOpaque_SkAlphaType, nullptr)));
++  for (const auto type : {kRGB_565_SkColorType, kRGBA_1010102_SkColorType}) {
++    EXPECT_FALSE(IsSupportedCanvasCopyFormat(SkImageInfo::Make(4, 4, type,
++        kOpaque_SkAlphaType, SkColorSpace::MakeSRGB())));
++  }
++}
++
+ }  // namespace
+ }  // namespace glint::candidate

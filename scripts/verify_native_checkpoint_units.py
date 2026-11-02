@@ -31,6 +31,7 @@ PLAN_SPECS = {
     'upstream-156-checkpoint-r12': (136, 85),
     'upstream-156-checkpoint-r13': (136, 85),
     'upstream-156-producer-r14': (136, 163),
+    'upstream-156-document-r15': (136, 175),
 }
 
 

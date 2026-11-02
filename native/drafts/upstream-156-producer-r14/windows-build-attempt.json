@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "passed": false,
+  "candidate": "upstream-156-producer-r14",
+  "candidate_manifest_sha256": "22a1cfb94850724679bdb5627f014507db0f63127b9051220a058495870fa752",
+  "source_report_sha256": "765ea7fb72ac9f8bcb44f0428344e15ff8158c0821b7cf0ebe58220e0fd9b309",
+  "build_log_sha256": "9bf3455d349363c0aebed0c9bc203c1b64c74e23a4b2826a9fc7a349157cbf97",
+  "completed_actions": 851,
+  "failed_actions": 1,
+  "remaining_actions": 5577,
+  "failure_source": "third_party/blink/renderer/core/loader/cookie_jar.cc",
+  "failure": "Member access into incomplete blink::MainThread; missing definition include",
+  "jobs": 1,
+  "build_duration_seconds": 9967.45,
+  "compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "postguards": "Not promoted from preflight or isolated source checks",
+  "scope": "Failed full R14 compilation; retain the original result, not runtime evidence"
+}

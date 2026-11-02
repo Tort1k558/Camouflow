@@ -1,5 +1,9 @@
 # Glint
 
+## Current source candidate: R15
+
+[R15](drafts/upstream-156-document-r15/README.md) contains 154 source patches and a 175-body native test plan. It is registered but not compiled or runtime-verified. R14 failed compilation; its original failure is preserved. A separate CookieJar CXX check is not full browser admission.
+
 CamouFlow's independent Chromium-based development engine. It is not a
 Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 

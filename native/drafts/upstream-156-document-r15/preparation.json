@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "passed": true,
+  "forward_patches": 154,
+  "reverse_patches": 154,
+  "cpp_typechecked": false,
+  "native_executed": false,
+  "canonical_sources_modified": false,
+  "production_admitted": false,
+  "registered": false,
+  "manifest_sha256": "1d822b95e9677d4bdefda4679e6d8bdc355e875fb55bdf306e48db4064b444ad",
+  "final_owned_files_matched": 471,
+  "upstream_files_restored": 332,
+  "active_source_postguards_passed": true,
+  "retained_r14_prepared_bodies": 163,
+  "additional_prepared_bodies": 12,
+  "additional_browser_cases": [
+    "ProfileDocumentCheckpointCombinedHungRendererDeadline",
+    "ProfileDocumentCheckpointExpiredCombinedPreservesRenderer",
+    "ProfileDocumentCheckpointLiveCombinedProducers",
+    "ProfileDocumentCheckpointLiveCookieOnly"
+  ],
+  "additional_unit_cases": [
+    "CombinedCookieFailureRejectsLocalSuccess",
+    "CombinedDroppedCookieReplyFailsClosed",
+    "CombinedLocalFailureRejectsCookieSuccess",
+    "CombinedSharesOriginalDeadline",
+    "CombinedWaitsForBothKindsAcrossRenderers",
+    "CookieOnlyNeverContactsLocalStorage",
+    "LegacyDefaultNeverContactsCookies",
+    "UnknownScopeNeverContactsProducers"
+  ],
+  "native_case_bodies_prepared": 175,
+  "baseline_native_bodies_preserved": 163,
+  "added_case_bodies": 12,
+  "compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "whole_profile_checkpoint": false,
+  "isolated_cookie_translation_unit_compiled": true
+}

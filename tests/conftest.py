@@ -102,7 +102,29 @@ def host_sources_before_monitor_gap_reset(tmp_path):
 
 
 @pytest.fixture
-def host_sources_before_checkpoint_r14(tmp_path):
+def host_sources_before_document_r15(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'document-r15-host-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-document-r15'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        value = (root / row['source']).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == row['after_sha256']
+        target.write_bytes(value)
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources = {row['source']: (base / row['source']).read_bytes() for row in record['sources']}
+    assert all(hashlib.sha256(sources[row['source']]).hexdigest() == row['before_sha256']
+               for row in record['sources'])
+    return sources
+
+
+@pytest.fixture
+def host_sources_before_checkpoint_r14(tmp_path, host_sources_before_document_r15):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'checkpoint-r14-host-source-upgrade.json').read_bytes())
@@ -110,7 +132,7 @@ def host_sources_before_checkpoint_r14(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        value = (root / row['source']).read_bytes()
+        value = host_sources_before_document_r15[row['source']]
         assert hashlib.sha256(value).hexdigest() == row['after_sha256']
         target.write_bytes(value)
     patch = directory / record['patch']

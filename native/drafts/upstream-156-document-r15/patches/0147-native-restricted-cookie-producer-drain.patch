@@ -1,0 +1,489 @@
+diff --git a/services/network/restricted_cookie_manager.h b/services/network/restricted_cookie_manager.h
+--- a/services/network/restricted_cookie_manager.h
++++ b/services/network/restricted_cookie_manager.h
+@@ -6,6 +6,9 @@
+ #define SERVICES_NETWORK_RESTRICTED_COOKIE_MANAGER_H_
+ 
+ #include <atomic>
++#include <cstdint>
++#include <map>
++#include <memory>
+ #include <set>
+ #include <string>
+ #include <tuple>
+@@ -114,6 +117,12 @@
+ 
+   ~RestrictedCookieManager() override;
+ 
++  // Waits for accepted write dispatches on this instance to finish in
++  // CookieStore. No disk commit or cross-pipe producer ordering is implied. New
++  // writes before posted delivery invalidate success. No web API or Mojo
++  // capability is added.
++  void DrainCookieWritesForCheckpoint(base::OnceCallback<void(bool)> callback);
++
+   void OverrideOriginForTesting(const url::Origin& new_origin) {
+     origin_ = new_origin;
+   }
+@@ -311,6 +320,14 @@
+ 
+   void CallCookiesAccessed();
+ 
++  friend class RestrictedCookieManagerTest;
++  struct CookieWriteDrainRequest;
++  uint64_t BeginCheckpointCookieWrite();
++  void CompleteCheckpointCookieWrite(uint64_t serial);
++  void FinishCookieWriteDrain(uint64_t request_id, bool success);
++  void RejectCookieWriteDrains();
++  void BreakCookieWriteTracking();
++
+   const mojom::RestrictedCookieManagerRole role_;
+   const raw_ptr<net::CookieStore> cookie_store_;
+   const raw_ref<const CookieSettings> cookie_settings_;
+@@ -375,6 +392,13 @@
+   mojo::SharedMemoryVersionController shared_memory_version_controller_;
+   base::OneShotTimer shared_memory_invalidation_timer_;
+ 
++  uint64_t checkpoint_cookie_write_serial_ = 0;
++  uint64_t next_cookie_write_drain_id_ = 0;
++  bool checkpoint_cookie_tracking_broken_ = false;
++  std::set<uint64_t> pending_checkpoint_cookie_writes_;
++  std::map<uint64_t, std::unique_ptr<CookieWriteDrainRequest>>
++      cookie_write_drains_;
++
+   base::WeakPtrFactory<RestrictedCookieManager> weak_ptr_factory_{this};
+ };
+ 
+diff --git a/services/network/restricted_cookie_manager.cc b/services/network/restricted_cookie_manager.cc
+--- a/services/network/restricted_cookie_manager.cc
++++ b/services/network/restricted_cookie_manager.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <algorithm>
+ #include <cstdint>
++#include <limits>
+ #include <memory>
+ #include <utility>
+ #include <vector>
+@@ -366,6 +367,15 @@
+   mojo::Remote<mojom::CookieChangeListener> mojo_listener_;
+ 
+   SEQUENCE_CHECKER(sequence_checker_);
++};
++
++struct RestrictedCookieManager::CookieWriteDrainRequest {
++  CookieWriteDrainRequest(uint64_t epoch, base::OnceCallback<void(bool)> done)
++      : epoch(epoch), callback(std::move(done)) {}
++
++  const uint64_t epoch;
++  base::OnceCallback<void(bool)> callback;
++  base::OneShotTimer deadline;
+ };
+ 
+ RestrictedCookieManager::RestrictedCookieManager(
+@@ -413,12 +423,13 @@
+   CHECK(kAllowedDevToolsCookieSettingOverrides.HasAll(
+       devtools_cookie_setting_overrides_));
+   if (role == mojom::RestrictedCookieManagerRole::SCRIPT) {
+-      CHECK(origin_.IsSameOriginWith(isolation_info_.frame_origin().value()));
++    CHECK(origin_.IsSameOriginWith(isolation_info_.frame_origin().value()));
+   }
+ }
+ 
+ RestrictedCookieManager::~RestrictedCookieManager() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  RejectCookieWriteDrains();
+ 
+   if (cookies_access_timer_.IsRunning()) {
+     // There are cookie accesses which haven't been reported. Tell the observer
+@@ -433,6 +444,98 @@
+     // The entire list is going away, no need to remove nodes from it.
+     delete listener_reference;
+   }
++}
++
++void RestrictedCookieManager::DrainCookieWritesForCheckpoint(
++    base::OnceCallback<void(bool)> callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  CHECK(callback);
++  if (checkpoint_cookie_tracking_broken_ || cookie_write_drains_.size() >= 64 ||
++      next_cookie_write_drain_id_ == std::numeric_limits<uint64_t>::max()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(callback), false));
++    return;
++  }
++  const uint64_t id = ++next_cookie_write_drain_id_;
++  auto request = std::make_unique<CookieWriteDrainRequest>(
++      checkpoint_cookie_write_serial_, std::move(callback));
++  request->deadline.Start(
++      FROM_HERE, base::Seconds(30),
++      base::BindOnce(&RestrictedCookieManager::FinishCookieWriteDrain,
++                     weak_ptr_factory_.GetWeakPtr(), id, false));
++  cookie_write_drains_.emplace(id, std::move(request));
++  if (pending_checkpoint_cookie_writes_.empty()) {
++    FinishCookieWriteDrain(id, true);
++  }
++}
++
++uint64_t RestrictedCookieManager::BeginCheckpointCookieWrite() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  RejectCookieWriteDrains();
++  if (checkpoint_cookie_tracking_broken_) {
++    return 0;
++  }
++  if (pending_checkpoint_cookie_writes_.size() >= 4096 ||
++      checkpoint_cookie_write_serial_ == std::numeric_limits<uint64_t>::max()) {
++    BreakCookieWriteTracking();
++    return 0;
++  }
++  const uint64_t serial = ++checkpoint_cookie_write_serial_;
++  pending_checkpoint_cookie_writes_.insert(serial);
++  return serial;
++}
++
++void RestrictedCookieManager::CompleteCheckpointCookieWrite(uint64_t serial) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (checkpoint_cookie_tracking_broken_ || serial == 0) {
++    return;
++  }
++  if (pending_checkpoint_cookie_writes_.erase(serial) != 1) {
++    BreakCookieWriteTracking();
++    return;
++  }
++  if (pending_checkpoint_cookie_writes_.empty()) {
++    while (!cookie_write_drains_.empty()) {
++      FinishCookieWriteDrain(cookie_write_drains_.begin()->first, true);
++    }
++  }
++}
++
++void RestrictedCookieManager::FinishCookieWriteDrain(uint64_t request_id,
++                                                     bool success) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  auto it = cookie_write_drains_.find(request_id);
++  if (it == cookie_write_drains_.end()) {
++    return;
++  }
++  const uint64_t epoch = it->second->epoch;
++  auto callback = std::move(it->second->callback);
++  cookie_write_drains_.erase(it);
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE,
++      base::BindOnce(
++          [](base::WeakPtr<RestrictedCookieManager> owner, uint64_t epoch,
++             bool success, base::OnceCallback<void(bool)> callback) {
++            std::move(callback).Run(
++                success && owner &&
++                !owner->checkpoint_cookie_tracking_broken_ &&
++                owner->checkpoint_cookie_write_serial_ == epoch &&
++                owner->pending_checkpoint_cookie_writes_.empty());
++          },
++          weak_ptr_factory_.GetWeakPtr(), epoch, success, std::move(callback)));
++}
++
++void RestrictedCookieManager::RejectCookieWriteDrains() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  while (!cookie_write_drains_.empty()) {
++    FinishCookieWriteDrain(cookie_write_drains_.begin()->first, false);
++  }
++}
++
++void RestrictedCookieManager::BreakCookieWriteTracking() {
++  checkpoint_cookie_tracking_broken_ = true;
++  pending_checkpoint_cookie_writes_.clear();
++  RejectCookieWriteDrains();
+ }
+ 
+ void RestrictedCookieManager::OnCookieSettingsChanged() {
+@@ -556,8 +659,9 @@
+   CookieAccesses* cookie_accesses =
+       GetCookieAccessesForURLAndSite(url, site_for_cookies);
+ 
+-  if (!maybe_included_cookies.empty())
++  if (!maybe_included_cookies.empty()) {
+     result.reserve(maybe_included_cookies.size());
++  }
+   mojom::CookieMatchType match_type = options->match_type;
+   const std::string& match_name = options->name;
+   for (net::CookieWithAccessResult& cookie_item : maybe_included_cookies) {
+@@ -566,8 +670,9 @@
+     const std::string& cookie_name = cookie.Name();
+ 
+     if (match_type == mojom::CookieMatchType::EQUALS) {
+-      if (cookie_name != match_name)
++      if (cookie_name != match_name) {
+         continue;
++      }
+     } else if (match_type == mojom::CookieMatchType::STARTS_WITH) {
+       if (!base::StartsWith(cookie_name, match_name,
+                             base::CompareCase::SENSITIVE)) {
+@@ -841,6 +946,16 @@
+       role_, url, site_for_cookies, top_frame_origin, cookie_settings());
+ 
+   net::CookieAccessResult cookie_access_result(status);
++  const uint64_t checkpoint_serial = BeginCheckpointCookieWrite();
++  callback = base::BindOnce(
++      [](base::WeakPtr<RestrictedCookieManager> owner, uint64_t serial,
++         SetCanonicalCookieCallback callback, bool accepted) {
++        if (owner) {
++          owner->CompleteCheckpointCookieWrite(serial);
++        }
++        std::move(callback).Run(accepted);
++      },
++      weak_ptr_factory_.GetWeakPtr(), checkpoint_serial, std::move(callback));
+   cookie_store_->SetCanonicalCookieAsync(
+       std::move(sanitized_cookie), origin_url, options,
+       base::BindOnce(&RestrictedCookieManager::SetCanonicalCookieResult,
+@@ -1160,8 +1275,9 @@
+     }
+   }
+ 
+-  if (origin_.IsSameOriginWith(url))
++  if (origin_.IsSameOriginWith(url)) {
+     return true;
++  }
+ 
+   receiver_.ReportBadMessage("Incorrect url origin");
+   return false;
+diff --git a/services/network/restricted_cookie_manager_unittest.cc b/services/network/restricted_cookie_manager_unittest.cc
+--- a/services/network/restricted_cookie_manager_unittest.cc
++++ b/services/network/restricted_cookie_manager_unittest.cc
+@@ -254,8 +254,9 @@
+   void OnCookieChange(const net::CookieChangeInfo& change) override {
+     observed_changes_.emplace_back(change);
+ 
+-    if (run_loop_)  // Set in WaitForChange().
++    if (run_loop_) {  // Set in WaitForChange().
+       run_loop_->Quit();
++    }
+   }
+ 
+  private:
+@@ -273,8 +274,13 @@
+           std::tuple<mojom::RestrictedCookieManagerRole,
+                      net::CookieSettingOverrides>> {
+  public:
+-  RestrictedCookieManagerTest()
+-      : cookie_monster_(/*store=*/nullptr,
++  explicit RestrictedCookieManagerTest(
++      base::test::TaskEnvironment::TimeSource time_source =
++          base::test::TaskEnvironment::TimeSource::SYSTEM_TIME)
++      : task_environment_(
++            base::test::SingleThreadTaskEnvironment::MainThreadType::IO,
++            time_source),
++        cookie_monster_(/*store=*/nullptr,
+                         /*net_log=*/nullptr),
+         isolation_info_(kDefaultIsolationInfo),
+         service_(std::make_unique<RestrictedCookieManager>(
+@@ -332,8 +338,9 @@
+               SameSiteCookieContext::ContextType::CROSS_SITE) {
+     net::ResultSavingCookieCallback<net::CookieAccessResult> callback;
+     net::CookieOptions options;
+-    if (can_modify_httponly)
++    if (can_modify_httponly) {
+       options.set_include_httponly();
++    }
+     net::CookieOptions::SameSiteCookieContext same_site_cookie_context(
+         same_site_cookie_context_type, same_site_cookie_context_type);
+     options.set_same_site_cookie_context(same_site_cookie_context);
+@@ -417,6 +424,19 @@
+   mojom::RestrictedCookieManager* backend() { return service_remote_.get(); }
+ 
+  protected:
++  uint64_t BeginCheckpointWrite() {
++    return service_->BeginCheckpointCookieWrite();
++  }
++  void CompleteCheckpointWrite(uint64_t serial) {
++    service_->CompleteCheckpointCookieWrite(serial);
++  }
++  size_t PendingCheckpointWrites() const {
++    return service_->pending_checkpoint_cookie_writes_.size();
++  }
++  uint64_t IssuedCheckpointWrites() const {
++    return service_->checkpoint_cookie_write_serial_;
++  }
++
+   void OnBadMessage(const std::string& reason) {
+     EXPECT_EQ(expecting_bad_message_, reason)
+         << "Unexpected bad message: " << reason;
+@@ -456,8 +476,7 @@
+                                  kDefaultOrigin,
+                                  net::SiteForCookies());
+ 
+-  base::test::SingleThreadTaskEnvironment task_environment_{
+-      base::test::SingleThreadTaskEnvironment::MainThreadType::IO};
++  base::test::SingleThreadTaskEnvironment task_environment_;
+   net::CookieMonster cookie_monster_;
+   CookieSettings cookie_settings_;
+   net::IsolationInfo isolation_info_;
+@@ -2608,4 +2627,171 @@
+       return ss.str();
+     });
+ 
++class RestrictedCookieManagerCheckpointDrainTest
++    : public RestrictedCookieManagerTest {
++ public:
++  RestrictedCookieManagerCheckpointDrainTest()
++      : RestrictedCookieManagerTest(
++            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
++};
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainEmptyPostsSuccess) {
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainWaitsForAllOutOfOrderWrites) {
++  const auto first = BeginCheckpointWrite();
++  const auto second = BeginCheckpointWrite();
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  CompleteCheckpointWrite(second);
++  task_environment_.RunUntilIdle();
++  EXPECT_FALSE(done.IsReady());
++  CompleteCheckpointWrite(first);
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainNewWriteRejectsPending) {
++  const auto first = BeginCheckpointWrite();
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  const auto second = BeginCheckpointWrite();
++  EXPECT_FALSE(done.Get());
++  CompleteCheckpointWrite(first);
++  CompleteCheckpointWrite(second);
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainQueuedSuccessChecksEpoch) {
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  const auto serial = BeginCheckpointWrite();
++  CompleteCheckpointWrite(serial);
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainQueuedSuccessChecksOwner) {
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  receiver_.reset();
++  service_.reset();
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainTimeoutDoesNotForgetWrite) {
++  const auto serial = BeginCheckpointWrite();
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  task_environment_.FastForwardBy(base::Seconds(30));
++  EXPECT_FALSE(done.Get());
++  EXPECT_EQ(PendingCheckpointWrites(), 1u);
++  CompleteCheckpointWrite(serial);
++  base::test::TestFuture<bool> next;
++  service_->DrainCookieWritesForCheckpoint(next.GetCallback());
++  EXPECT_TRUE(next.Get());
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainDestroyedOwnerRejectsPending) {
++  BeginCheckpointWrite();
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  receiver_.reset();
++  service_.reset();
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainWriteLimitPoisonsOnlyDrain) {
++  for (int i = 0; i < 4096; ++i) {
++    EXPECT_NE(BeginCheckpointWrite(), 0u);
++  }
++  EXPECT_EQ(BeginCheckpointWrite(), 0u);
++  EXPECT_EQ(PendingCheckpointWrites(), 0u);
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  EXPECT_FALSE(done.Get());
++  // Real write dispatch is not rejected when tracking fails closed.
++  EXPECT_EQ(BeginCheckpointWrite(), 0u);
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainUnknownCompletionFailsClosed) {
++  CompleteCheckpointWrite(17);
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest, CheckpointDrainWaiterLimit) {
++  const auto serial = BeginCheckpointWrite();
++  int successes = 0;
++  for (int i = 0; i < 64; ++i) {
++    service_->DrainCookieWritesForCheckpoint(base::BindOnce([&](bool success) {
++      EXPECT_TRUE(success);
++      ++successes;
++    }));
++  }
++  base::test::TestFuture<bool> overflow;
++  service_->DrainCookieWritesForCheckpoint(overflow.GetCallback());
++  EXPECT_FALSE(overflow.Get());
++  CompleteCheckpointWrite(serial);
++  task_environment_.RunUntilIdle();
++  EXPECT_EQ(successes, 64);
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainTracksActualStringDispatch) {
++  service_->SetCookieFromString(
++      kDefaultUrlWithPath, kDefaultSiteForCookies, kDefaultOrigin,
++      net::StorageAccessApiStatus::kNone, false, false,
++      "checkpoint=stored;path=/;Secure;SameSite=None");
++  EXPECT_GT(IssuedCheckpointWrites(), 0u);
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  EXPECT_TRUE(done.Get());
++  EXPECT_EQ(PendingCheckpointWrites(), 0u);
++  auto cookies = sync_service_->GetAllForUrl(
++      kDefaultUrlWithPath, kDefaultSiteForCookies, kDefaultOrigin,
++      net::StorageAccessApiStatus::kNone, GetAllCookiesOptions());
++  EXPECT_THAT(cookies, testing::Contains(net::MatchesCookieNameValue(
++                           "checkpoint", "stored")));
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainBrokenTrackerPreservesWrites) {
++  CompleteCheckpointWrite(999);
++  service_->SetCookieFromString(
++      kDefaultUrlWithPath, kDefaultSiteForCookies, kDefaultOrigin,
++      net::StorageAccessApiStatus::kNone, false, false,
++      "checkpoint=unaffected;path=/;Secure;SameSite=None");
++  auto cookies = sync_service_->GetAllForUrl(
++      kDefaultUrlWithPath, kDefaultSiteForCookies, kDefaultOrigin,
++      net::StorageAccessApiStatus::kNone, GetAllCookiesOptions());
++  EXPECT_THAT(cookies, testing::Contains(net::MatchesCookieNameValue(
++                           "checkpoint", "unaffected")));
++  base::test::TestFuture<bool> done;
++  service_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  EXPECT_FALSE(done.Get());
++}
++
++INSTANTIATE_TEST_SUITE_P(
++    AllCheckpointDrains,
++    RestrictedCookieManagerCheckpointDrainTest,
++    testing::Combine(
++        testing::Values(mojom::RestrictedCookieManagerRole::SCRIPT,
++                        mojom::RestrictedCookieManagerRole::NETWORK),
++        testing::Values(net::CookieSettingOverrides(),
++                        net::CookieSettingOverrides(
++                            {net::CookieSettingOverride::
++                                 kForceDisableThirdPartyCookies}))));
++
+ }  // namespace network

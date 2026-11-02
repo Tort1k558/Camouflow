@@ -1,0 +1,150 @@
+diff --git a/include/dawn/native/DawnNative.h b/include/dawn/native/DawnNative.h
+--- a/include/dawn/native/DawnNative.h
++++ b/include/dawn/native/DawnNative.h
+@@ -57,6 +57,7 @@
+ enum class GlintReadbackFormat { Unsupported, Rgba8Unorm, Bgra8Unorm };
+ 
+ namespace d3d12 {
++class CommandBuffer;
+ class GlintTextureProjector;
+ class GlintGpuPixelSnapshot;
+ }  // namespace d3d12
+@@ -141,6 +142,21 @@
+     uint64_t policyGeneration = 0;
+     uint64_t sequence = 0;
+     std::vector<GlintGpuInputRegion> regions;
++};
++
++// Native command-recording receipt, not proof of GPU completion. Output snapshots
++// still require their existing submission/fence checks before CPU bytes are exposed.
++class DAWN_NATIVE_EXPORT GlintGpuInputReceipt final {
++  public:
++    GlintGpuInputReceipt(const GlintGpuInputReceipt&) = delete;
++    GlintGpuInputReceipt& operator=(const GlintGpuInputReceipt&) = delete;
++    const std::shared_ptr<const GlintGpuInputPlan>& GetPlan() const { return mPlan; }
++
++  private:
++    friend class d3d12::CommandBuffer;
++    explicit GlintGpuInputReceipt(std::shared_ptr<const GlintGpuInputPlan> plan)
++        : mPlan(std::move(plan)) {}
++    const std::shared_ptr<const GlintGpuInputPlan> mPlan;
+ };
+ 
+ class DAWN_NATIVE_EXPORT GlintByteReadbackSnapshot {
+@@ -217,6 +233,11 @@
+     // Projection readiness is backend-owned, never supplied by renderer commands.
+     virtual GlintShaderBytePlan BeginShaderByteScope(const GlintShaderScope& scope,
+                                                      bool sampledInputsProjected) = 0;
++    // Unsupported/invalid receipts are denied, never retried through legacy eligibility.
++    // Existing native observers need not implement this new optional capability.
++    virtual GlintShaderBytePlan BeginShaderByteScopeWithGpuInputs(
++        const GlintShaderScope&, bool,
++        const std::shared_ptr<const GlintGpuInputReceipt>&) { return {0, {}, true}; }
+     virtual bool CommitShaderByteScope(uint64_t ticket,
+                                        std::vector<GlintShaderByteResult> results) = 0;
+     virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
+diff --git a/src/dawn/native/d3d12/CommandBufferD3D12.cpp b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+--- a/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -891,6 +891,16 @@
+         return {};
+     }
+ 
++    ResultOrError<std::shared_ptr<const GlintGpuInputPlan>> GetGlintGpuInputPlanForCapture() {
++        static_assert(std::is_same_v<PipelineType, ComputePipeline>);
++        if (!mDevice->GetGlintReadbackObserver()) return std::shared_ptr<const GlintGpuInputPlan>{};
++        DAWN_INTERNAL_ERROR_IF(!mGlintComputeScope || !mGlintComputeProjectedReady ||
++            !mGlintComputeBindingsApplied || !mGlintComputeCopiedBack || !mGlintComputeBuffers,
++            "Glint GPU input receipt precedes binding installation or copyback.");
++        if (mGlintComputeBuffers->buffers.empty()) return std::shared_ptr<const GlintGpuInputPlan>{};
++        return mGlintComputeBuffers->plan;
++    }
++
+     MaybeError CopyBackGlintComputeBuffers(CommandRecordingContext* context) {
+         static_assert(std::is_same_v<PipelineType, ComputePipeline>);
+         DAWN_INTERNAL_ERROR_IF(mGlintComputeCopiedBack,
+@@ -927,6 +937,7 @@
+     }
+ 
+     MaybeError CaptureGlintComputeScope(CommandRecordingContext* context,
++                                        std::shared_ptr<const GlintGpuInputReceipt> receipt = nullptr,
+                                         BufferBase* indirectBuffer = nullptr,
+                                         uint64_t indirectOffset = 0,
+                                         const GlintIndirectInputs* originalInputs = nullptr) {
+@@ -943,19 +954,22 @@
+         (void)originalInputs;
+         auto bound = std::move(mGlintComputeScope);
+         mGlintComputeScope.reset();
+-        return CaptureGlintBoundScope(context, std::move(bound), mGlintComputeProjectedReady);
++        return CaptureGlintBoundScope(context, std::move(bound), mGlintComputeProjectedReady, receipt);
+     }
+ 
+     MaybeError CaptureGlintBoundScope(CommandRecordingContext* context,
+                                       std::optional<GlintBoundScope> bound,
+-                                      bool inputsProjected) {
++                                      bool inputsProjected,
++                                      const std::shared_ptr<const GlintGpuInputReceipt>& receipt = nullptr) {
+         auto observer = mDevice->GetGlintReadbackObserver();
+         if (!observer) {
+             return {};
+         }
+         DAWN_INTERNAL_ERROR_IF(!bound, "Invalid Glint capture binding scope.");
+         const GlintShaderScope scope{bound->uses, bound->textureInputs, true};
+-        const auto plan = observer->BeginShaderByteScope(scope, inputsProjected);
++        const auto plan = receipt
++            ? observer->BeginShaderByteScopeWithGpuInputs(scope, inputsProjected, receipt)
++            : observer->BeginShaderByteScope(scope, inputsProjected);
+         DAWN_INTERNAL_ERROR_IF(plan.failed, "Glint shader capture controller failed.");
+         if (!plan.ticket) {
+             observer->OnShaderScope(scope);
+@@ -1117,6 +1131,9 @@
+         }
+ 
+         AfterApply();
++        if constexpr (kIsComputePipeline) {
++            if (mGlintComputeBuffers) mGlintComputeBindingsApplied = true;
++        }
+ 
+         return {};
+     }
+@@ -1156,6 +1173,7 @@
+         mGlintComputeScope.reset();
+         mGlintComputeBuffers.reset();
+         mGlintComputeCopiedBack = false;
++        mGlintComputeBindingsApplied = false;
+     }
+ 
+     MaybeError ValidateGlintInputGroup(BindGroupBase* group, wgpu::ShaderStage stages) {
+@@ -1445,6 +1463,7 @@
+     std::optional<GlintBoundScope> mGlintComputeScope;
+     std::unique_ptr<GlintBufferProjectionBatch> mGlintComputeBuffers;
+     bool mGlintComputeCopiedBack = false;
++    bool mGlintComputeBindingsApplied = false;
+     PerBindGroup<std::vector<GlintBufferViewOverride>> mGlintBufferViews;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+@@ -2203,7 +2222,14 @@
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
+                 DAWN_TRY(bindingTracker->CopyBackGlintComputeBuffers(commandContext));
+-                DAWN_TRY(bindingTracker->CaptureGlintComputeScope(commandContext));
++                std::shared_ptr<const GlintGpuInputPlan> inputPlan;
++                DAWN_TRY_ASSIGN(inputPlan, bindingTracker->GetGlintGpuInputPlanForCapture());
++                std::shared_ptr<const GlintGpuInputReceipt> receipt;
++                if (inputPlan) {
++                    receipt = std::shared_ptr<const GlintGpuInputReceipt>(
++                        new GlintGpuInputReceipt(std::move(inputPlan)));
++                }
++                DAWN_TRY(bindingTracker->CaptureGlintComputeScope(commandContext, std::move(receipt)));
+                 break;
+             }
+ 
+@@ -2228,7 +2254,7 @@
+                     dispatch->indirectOffset, nullptr, 0);
+                 DAWN_TRY(bindingTracker->CopyBackGlintComputeBuffers(commandContext));
+                 DAWN_TRY(bindingTracker->CaptureGlintComputeScope(
+-                    commandContext, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
++                    commandContext, nullptr, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
+                     &dispatch->glintInputs));
+                 break;
+             }

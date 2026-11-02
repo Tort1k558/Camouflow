@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Source preparation and isolated apply/reverse only",
+  "baseline_manifest_sha256": "22a1cfb94850724679bdb5627f014507db0f63127b9051220a058495870fa752",
+  "prepared_native_bodies": 12,
+  "prepared_unit_bodies": 8,
+  "prepared_browser_bodies": 4,
+  "retained_native_bodies": 20,
+  "additional_native_cases": [
+    "CombinedCookieFailureRejectsLocalSuccess",
+    "CombinedDroppedCookieReplyFailsClosed",
+    "CombinedLocalFailureRejectsCookieSuccess",
+    "CombinedSharesOriginalDeadline",
+    "CombinedWaitsForBothKindsAcrossRenderers",
+    "CookieOnlyNeverContactsLocalStorage",
+    "LegacyDefaultNeverContactsCookies",
+    "UnknownScopeNeverContactsProducers"
+  ],
+  "additional_browser_cases": [
+    "ProfileDocumentCheckpointCombinedHungRendererDeadline",
+    "ProfileDocumentCheckpointExpiredCombinedPreservesRenderer",
+    "ProfileDocumentCheckpointLiveCombinedProducers",
+    "ProfileDocumentCheckpointLiveCookieOnly"
+  ],
+  "cpp_typechecked": false,
+  "native_executed": false,
+  "whole_profile_checkpoint": false,
+  "production_admitted": false,
+  "active_source_modified": false,
+  "patch_sha256": "abae8a6d582583aa0682e449dccd1e2503027549d0fd61c377d27d862527a0a2",
+  "final_source_sha256": {
+    "content/browser/camouflow_native/glint/profile_producer_fence.h": "29250167f31d4f5cc251813ae1270bbf20a578ee148ac84457dd3d1441a0cd75",
+    "content/browser/camouflow_native/glint/profile_producer_fence.cc": "bd468fa1da37ab2f4c052d91ab13825dcf40fa38caae30a3a0c8563820ca6966",
+    "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc": "9f1bf63e4c393230aa33111384a5f0608043e9e7831b3ad69b1383a634157454",
+    "content/browser/renderer_host/render_process_host_browsertest.cc": "f4adf7a706b7e750fba0165e703a01ec8d2bd66a14ddd8223acddd3784bf5d82"
+  }
+}

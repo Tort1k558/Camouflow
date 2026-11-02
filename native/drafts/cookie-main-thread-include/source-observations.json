@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "One corrected CookieJar translation unit compiled with the original failed R14 CXX flags; not full candidate or browser verification",
+  "canonical_source_modified": false,
+  "browser_runtime_verified": false,
+  "production_admitted": false,
+  "patch_sha256": "c8f45eb0d010dbc44063f69919a80c9db53d68df8f3fb432217cc454f9e73fd5",
+  "returncode": 0,
+  "source_postguard_passed": true,
+  "object_sha256": "390bd67a5babb1f42c37b259eaf8af15a2162735a9e7549480dcf2653f83f7c2",
+  "command_sha256": "390dc9d3c30ded21002c008708d032e1946e7fc9c747db307d0cfe2d9b0e2d68",
+  "compile_log_sha256": "4f05a9674307520ed2f46452e11ffe2eb2f348e223b0f9765243ee37d1f85b0d"
+}

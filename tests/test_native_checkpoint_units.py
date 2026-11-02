@@ -24,6 +24,7 @@ def result(required):
 @pytest.mark.parametrize('candidate_name,count', [
     ('upstream-156-checkpoint-r12', 85), ('upstream-156-checkpoint-r13', 85),
     ('upstream-156-producer-r14', 163),
+    ('upstream-156-document-r15', 175),
 ])
 def test_native_plan_is_derived_from_every_registered_packet(candidate_name, count):
     candidate = build.load_candidate(candidate_name)

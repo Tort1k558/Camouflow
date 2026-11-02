@@ -1,7 +1,10 @@
 # Glint R14: connected producer-stage source packet
 
-**Registered for explicit source builds, but unselected and uncompiled.**
-The canonical checkout and build receipt remain R13; no installed runtime changes.
+**Selected for a Windows build, which failed; no R14 runtime admission.**
+The build completed 851 actions before CookieJar failed on an incomplete MainThread
+type. The prior R13 core does not represent this R14 source tree. See
+[windows-build-attempt.json](windows-build-attempt.json) and the connected
+[R15 correction](../upstream-156-document-r15/README.md). No installed runtime changes.
 
 | Preparation | Verified scope |
 | --- | --- |

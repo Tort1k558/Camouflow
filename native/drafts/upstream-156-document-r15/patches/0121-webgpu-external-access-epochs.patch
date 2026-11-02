@@ -1,0 +1,91 @@
+diff --git a/src/dawn/native/d3d12/TextureD3D12.h b/src/dawn/native/d3d12/TextureD3D12.h
+--- a/src/dawn/native/d3d12/TextureD3D12.h
++++ b/src/dawn/native/d3d12/TextureD3D12.h
+@@ -70,6 +70,9 @@
+         const GlintTextureProjector* owner, DXGI_FORMAT format) const;
+     void CacheGlintProjection(const GlintTextureProjector* owner, DXGI_FORMAT format,
+         const std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture>& projection);
++
++    void OnBeginAccess() override;
++    ExecutionSerial OnEndAccess() override;
+ 
+     DXGI_FORMAT GetD3D12Format() const;
+     ID3D12Resource* GetD3D12Resource() const;
+@@ -117,6 +120,9 @@
+     D3D12_RESOURCE_STATES GetCurrentStateForSwapChain() const;
+ 
+   private:
++    bool CanCacheGlintProjection() const;
++    void ClearGlintProjection();
++
+     using Base = TextureBase;
+ 
+     Texture(Device* device, const UnpackedPtr<TextureDescriptor>& descriptor);
+diff --git a/src/dawn/native/d3d12/TextureD3D12.cpp b/src/dawn/native/d3d12/TextureD3D12.cpp
+--- a/src/dawn/native/d3d12/TextureD3D12.cpp
++++ b/src/dawn/native/d3d12/TextureD3D12.cpp
+@@ -349,8 +349,7 @@
+ Texture::~Texture() = default;
+ 
+ void Texture::DestroyImpl(DestroyReason reason) {
+-    mGlintProjection.reset();
+-    mGlintProjectionOwner = nullptr;
++    ClearGlintProjection();
+     TextureBase::DestroyImpl(reason);
+     ToBackend(GetDevice())->DeallocateMemory(mResourceAllocation);
+     // Set mIsExternalSwapChainTexture to false to prevent ever calling
+@@ -358,18 +357,40 @@
+     mIsExternalSwapChainTexture = false;
+ }
+ 
++void Texture::ClearGlintProjection() {
++    mGlintProjection.reset();
++    mGlintProjectionOwner = nullptr;
++    mGlintProjectionFormat = DXGI_FORMAT_UNKNOWN;
++}
++
++void Texture::OnBeginAccess() {
++    ClearGlintProjection();
++    TextureBase::OnBeginAccess();
++}
++
++ExecutionSerial Texture::OnEndAccess() {
++    ClearGlintProjection();
++    return TextureBase::OnEndAccess();
++}
++
++bool Texture::CanCacheGlintProjection() const {
++    if (mIsExternalSwapChainTexture || !HasAccess()) return false;
++    if (mResourceAllocation.GetInfo().mMethod != AllocationMethod::kExternal) return true;
++    // Only explicit, exclusive shared-memory epochs can authorize cache reuse.
++    auto* contents = GetSharedResourceMemoryContents();
++    return contents && (contents->HasWriteAccess() || contents->HasExclusiveReadAccess());
++}
++
+ std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture> Texture::GetGlintProjection(
+     const GlintTextureProjector* owner, DXGI_FORMAT format) const {
+     if (!owner || owner != mGlintProjectionOwner || format != mGlintProjectionFormat ||
+-        mResourceAllocation.GetInfo().mMethod == AllocationMethod::kExternal ||
+-        mIsExternalSwapChainTexture || !HasAccess()) return nullptr;
++        !CanCacheGlintProjection()) return nullptr;
+     return mGlintProjection.lock();
+ }
+ 
+ void Texture::CacheGlintProjection(const GlintTextureProjector* owner, DXGI_FORMAT format,
+     const std::shared_ptr<const glint::candidate::d3d12::ProjectedTexture>& projection) {
+-    if (mResourceAllocation.GetInfo().mMethod == AllocationMethod::kExternal ||
+-        mIsExternalSwapChainTexture || !HasAccess()) return;
++    if (!CanCacheGlintProjection()) return;
+     mGlintProjectionOwner = owner;
+     mGlintProjectionFormat = format;
+     mGlintProjection = projection;
+@@ -521,8 +542,7 @@
+                             D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_RESOLVE_DEST |
+                             D3D12_RESOURCE_STATE_DEPTH_WRITE;
+     if ((newState & writes) != 0) {
+-        mGlintProjection.reset();
+-        mGlintProjectionOwner = nullptr;
++        ClearGlintProjection();
+     }
+     D3D12_RESOURCE_STATES lastState = state->lastState;
+ 

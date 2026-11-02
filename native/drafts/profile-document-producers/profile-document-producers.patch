@@ -1,0 +1,367 @@
+diff --git a/content/browser/camouflow_native/glint/profile_producer_fence.cc b/content/browser/camouflow_native/glint/profile_producer_fence.cc
+--- a/content/browser/camouflow_native/glint/profile_producer_fence.cc
++++ b/content/browser/camouflow_native/glint/profile_producer_fence.cc
+@@ -20,21 +20,24 @@
+ std::unique_ptr<ProfileProducerFence> ProfileProducerFence::Start(
+     content::BrowserContext* context,
+     base::TimeTicks deadline,
+-    Callback callback) {
++    Callback callback,
++    ProducerScope producers) {
+   CHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   CHECK(callback);
+   auto operation = std::unique_ptr<ProfileProducerFence>(
+-      new ProfileProducerFence(context, deadline, std::move(callback)));
++      new ProfileProducerFence(context, deadline, std::move(callback), producers));
+   operation->Begin();
+   return operation;
+ }
+ 
+ ProfileProducerFence::ProfileProducerFence(content::BrowserContext* context,
+                                            base::TimeTicks deadline,
+-                                           Callback callback)
++                                           Callback callback,
++                                           ProducerScope producers)
+     : context_(context ? context->GetWeakPtr()
+                        : base::WeakPtr<content::BrowserContext>()),
+       deadline_(deadline),
++      producers_(producers),
+       callback_(std::move(callback)) {}
+ 
+ ProfileProducerFence::~ProfileProducerFence() {
+@@ -83,6 +86,12 @@
+ }
+ 
+ void ProfileProducerFence::Begin() {
++  if (producers_ != ProducerScope::kLocalStorage &&
++      producers_ != ProducerScope::kDocumentCookies &&
++      producers_ != ProducerScope::kDocumentStorage) {
++    Finish(Status::kInvalidScope);
++    return;
++  }
+   if (deadline_.is_max() || deadline_ <= base::TimeTicks::Now()) {
+     Finish(Status::kTimedOut);
+     return;
+@@ -92,7 +101,8 @@
+     Finish(captured);
+     return;
+   }
+-  remaining_ = renderers_.size();
++  remaining_ = renderers_.size() *
++               (producers_ == ProducerScope::kDocumentStorage ? 2u : 1u);
+   for (auto id : renderers_) {
+     auto* host = content::RenderProcessHost::FromID(id);
+     if (!host) {
+@@ -120,12 +130,19 @@
+       Finish(Status::kTopologyChanged);
+       return;
+     }
+-    host->FenceLocalStorageForCheckpoint(
+-        deadline_, mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+-                       base::BindPostTaskToCurrentDefault(base::BindOnce(
+-                           &ProfileProducerFence::ProducerReplied,
+-                           weak_factory_.GetWeakPtr())),
+-                       false));
++    auto reply = [this]() {
++      return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindPostTaskToCurrentDefault(base::BindOnce(
++              &ProfileProducerFence::ProducerReplied,
++              weak_factory_.GetWeakPtr())),
++          false);
++    };
++    if (producers_ != ProducerScope::kDocumentCookies) {
++      host->FenceLocalStorageForCheckpoint(deadline_, reply());
++    }
++    if (producers_ != ProducerScope::kLocalStorage) {
++      host->FenceDocumentCookiesForCheckpoint(deadline_, reply());
++    }
+   }
+ }
+ 
+diff --git a/content/browser/camouflow_native/glint/profile_producer_fence.h b/content/browser/camouflow_native/glint/profile_producer_fence.h
+--- a/content/browser/camouflow_native/glint/profile_producer_fence.h
++++ b/content/browser/camouflow_native/glint/profile_producer_fence.h
+@@ -31,6 +31,12 @@
+     : public content::RenderProcessHostObserver,
+       public content::RenderProcessHostCreationObserver {
+  public:
++  enum class ProducerScope {
++    kLocalStorage,
++    kDocumentCookies,
++    kDocumentStorage,
++  };
++
+   enum class Status {
+     kAcknowledged,
+     kInvalidScope,
+@@ -56,7 +62,8 @@
+   static std::unique_ptr<ProfileProducerFence> Start(
+       content::BrowserContext* context,
+       base::TimeTicks deadline,
+-      Callback callback);
++      Callback callback,
++      ProducerScope producers = ProducerScope::kLocalStorage);
+   ~ProfileProducerFence() override;
+ 
+   ProfileProducerFence(const ProfileProducerFence&) = delete;
+@@ -68,7 +75,8 @@
+ 
+   ProfileProducerFence(content::BrowserContext* context,
+                        base::TimeTicks deadline,
+-                       Callback callback);
++                       Callback callback,
++                       ProducerScope producers);
+   void Begin();
+   Status Capture(std::set<content::ChildProcessId>& renderers,
+                  std::set<content::StoragePartitionConfig>& partitions);
+@@ -88,6 +96,7 @@
+ 
+   base::WeakPtr<content::BrowserContext> context_;
+   const base::TimeTicks deadline_;
++  const ProducerScope producers_;
+   Callback callback_;
+   std::set<content::ChildProcessId> renderers_;
+   std::set<content::StoragePartitionConfig> partitions_;
+diff --git a/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc b/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc
+--- a/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc
++++ b/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc
+@@ -42,6 +42,20 @@
+     }
+   }
+ 
++  void FenceDocumentCookiesForCheckpoint(
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback) override {
++    ++cookie_requests;
++    cookie_replies.push_back(std::move(callback));
++  }
++
++  void CookieReply(bool success) {
++    CHECK(!cookie_replies.empty());
++    auto callback = std::move(cookie_replies.front());
++    cookie_replies.pop_front();
++    std::move(callback).Run(success);
++  }
++
+   void Reply(bool success) {
+     CHECK(!replies.empty());
+     auto callback = std::move(replies.front());
+@@ -50,6 +64,8 @@
+   }
+ 
+   int requests = 0;
++  int cookie_requests = 0;
++  std::deque<base::OnceCallback<void(bool)>> cookie_replies;
+   std::optional<bool> inline_reply;
+   std::deque<base::OnceCallback<void(bool)>> replies;
+ };
+@@ -63,6 +79,111 @@
+       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+   content::TestBrowserContext context_;
+ };
++
++TEST_F(ProfileProducerFenceTest, CombinedWaitsForBothKindsAcrossRenderers) {
++  CheckpointHost first(&context_);
++  CheckpointHost second(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kDocumentStorage);
++  EXPECT_EQ(first.requests, 1);
++  EXPECT_EQ(second.requests, 1);
++  EXPECT_EQ(first.cookie_requests, 1);
++  EXPECT_EQ(second.cookie_requests, 1);
++  first.Reply(true);
++  second.CookieReply(true);
++  second.Reply(true);
++  environment_.RunUntilIdle();
++  EXPECT_FALSE(result.IsReady());
++  first.CookieReply(true);
++  EXPECT_EQ(result.Get().status, Status::kAcknowledged);
++  EXPECT_EQ(result.Get().renderer_count, 2u);
++}
++
++TEST_F(ProfileProducerFenceTest, CookieOnlyNeverContactsLocalStorage) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kDocumentCookies);
++  EXPECT_EQ(host.requests, 0);
++  EXPECT_EQ(host.cookie_requests, 1);
++  host.CookieReply(true);
++  EXPECT_EQ(result.Get().status, Status::kAcknowledged);
++}
++
++TEST_F(ProfileProducerFenceTest, LegacyDefaultNeverContactsCookies) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback());
++  EXPECT_EQ(host.requests, 1);
++  EXPECT_EQ(host.cookie_requests, 0);
++  host.Reply(true);
++  EXPECT_EQ(result.Get().status, Status::kAcknowledged);
++}
++
++TEST_F(ProfileProducerFenceTest, CombinedLocalFailureRejectsCookieSuccess) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kDocumentStorage);
++  host.CookieReply(true);
++  host.Reply(false);
++  EXPECT_EQ(result.Get().status, Status::kProducerRejected);
++}
++
++TEST_F(ProfileProducerFenceTest, CombinedCookieFailureRejectsLocalSuccess) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kDocumentStorage);
++  host.Reply(true);
++  host.CookieReply(false);
++  EXPECT_EQ(result.Get().status, Status::kProducerRejected);
++}
++
++TEST_F(ProfileProducerFenceTest, CombinedDroppedCookieReplyFailsClosed) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kDocumentStorage);
++  host.Reply(true);
++  host.cookie_replies.clear();
++  EXPECT_EQ(result.Get().status, Status::kProducerRejected);
++}
++
++TEST_F(ProfileProducerFenceTest, CombinedSharesOriginalDeadline) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kDocumentStorage);
++  environment_.FastForwardBy(base::Seconds(4));
++  host.Reply(true);
++  environment_.RunUntilIdle();
++  EXPECT_FALSE(result.IsReady());
++  environment_.FastForwardBy(base::Seconds(1));
++  EXPECT_EQ(result.Get().status, Status::kTimedOut);
++  host.CookieReply(true);
++  environment_.RunUntilIdle();
++}
++
++TEST_F(ProfileProducerFenceTest, UnknownScopeNeverContactsProducers) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      static_cast<ProfileProducerFence::ProducerScope>(-1));
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Status::kInvalidScope);
++  EXPECT_EQ(host.requests, 0);
++  EXPECT_EQ(host.cookie_requests, 0);
++}
+ 
+ TEST_F(ProfileProducerFenceTest, EmptyScopeIsPostedAndDoesNotCreatePartition) {
+   const auto partitions = context_.GetLoadedStoragePartitionCount();
+diff --git a/content/browser/renderer_host/render_process_host_browsertest.cc b/content/browser/renderer_host/render_process_host_browsertest.cc
+--- a/content/browser/renderer_host/render_process_host_browsertest.cc
++++ b/content/browser/renderer_host/render_process_host_browsertest.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "content/public/browser/render_process_host.h"
++
++#include "content/browser/camouflow_native/glint/profile_producer_fence.h"
+ 
+ #include <memory>
+ #include <optional>
+@@ -3240,4 +3242,85 @@
+   )"));
+ }
+ 
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       ProfileDocumentCheckpointLiveCombinedProducers) {
++  using Fence = camouflow::native::ProfileProducerFence;
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  ASSERT_TRUE(ExecJs(shell(), R"(
++    document.cookie = 'profile-checkpoint=one; SameSite=Lax';
++    localStorage.setItem('profile-checkpoint', 'one');
++  )"));
++  auto* context = shell()->web_contents()->GetPrimaryMainFrame()
++                      ->GetProcess()->GetBrowserContext();
++  base::test::TestFuture<Fence::Result> result;
++  auto operation = Fence::Start(context, base::TimeTicks::Now() + base::Seconds(10),
++                                result.GetCallback(),
++                                Fence::ProducerScope::kDocumentStorage);
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Fence::Status::kAcknowledged);
++  EXPECT_GE(result.Get().renderer_count, 1u);
++  EXPECT_EQ(true, EvalJs(shell(), R"(
++    document.cookie.includes('profile-checkpoint=one') &&
++    localStorage.getItem('profile-checkpoint') === 'one'
++  )"));
++}
++
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       ProfileDocumentCheckpointLiveCookieOnly) {
++  using Fence = camouflow::native::ProfileProducerFence;
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  ASSERT_TRUE(ExecJs(shell(), "document.cookie = 'profile-cookie=one; SameSite=Lax'"));
++  auto* context = shell()->web_contents()->GetPrimaryMainFrame()
++                      ->GetProcess()->GetBrowserContext();
++  base::test::TestFuture<Fence::Result> result;
++  auto operation = Fence::Start(context, base::TimeTicks::Now() + base::Seconds(10),
++                                result.GetCallback(),
++                                Fence::ProducerScope::kDocumentCookies);
++  EXPECT_EQ(result.Get().status, Fence::Status::kAcknowledged);
++  EXPECT_EQ("profile-cookie=one", EvalJs(shell(), "document.cookie"));
++}
++
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       ProfileDocumentCheckpointExpiredCombinedPreservesRenderer) {
++  using Fence = camouflow::native::ProfileProducerFence;
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  auto* context = shell()->web_contents()->GetPrimaryMainFrame()
++                      ->GetProcess()->GetBrowserContext();
++  base::test::TestFuture<Fence::Result> result;
++  auto operation = Fence::Start(context, base::TimeTicks::Now(), result.GetCallback(),
++                                Fence::ProducerScope::kDocumentStorage);
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Fence::Status::kTimedOut);
++  EXPECT_EQ(2, EvalJs(shell(), "1 + 1"));
++}
++
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       ProfileDocumentCheckpointCombinedHungRendererDeadline) {
++  using Fence = camouflow::native::ProfileProducerFence;
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  ScopedAllowRendererCrashes allow(host);
++  DOMMessageQueue messages(shell()->web_contents());
++  ExecuteScriptAsync(shell(),
++      "domAutomationController.send('profile-busy'); while (true) {}");
++  std::string message;
++  ASSERT_TRUE(messages.WaitForMessage(&message));
++  ASSERT_EQ(JsReplace("$1", "profile-busy"), message);
++  base::test::TestFuture<Fence::Result> result;
++  auto operation = Fence::Start(host->GetBrowserContext(),
++      base::TimeTicks::Now() + base::Milliseconds(100), result.GetCallback(),
++      Fence::ProducerScope::kDocumentStorage);
++  const auto status = result.Get().status;
++  // Both browser and aggregate timers use the same deadline; either may win.
++  EXPECT_TRUE(status == Fence::Status::kTimedOut ||
++              status == Fence::Status::kProducerRejected);
++  RenderProcessHostWatcher exit(host, RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
++  ASSERT_TRUE(host->Shutdown(0));
++  exit.Wait();
++}
++
+ }  // namespace content
