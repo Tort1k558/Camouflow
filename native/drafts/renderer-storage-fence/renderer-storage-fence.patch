@@ -1,0 +1,564 @@
+diff --git a/third_party/blink/renderer/modules/storage/cached_storage_area.h b/third_party/blink/renderer/modules/storage/cached_storage_area.h
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.h
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.h
+@@ -5,6 +5,9 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_STORAGE_CACHED_STORAGE_AREA_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_STORAGE_CACHED_STORAGE_AREA_H_
+ 
++#include "base/memory/weak_ptr.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
+ #include "base/token.h"
+ #include "base/trace_event/memory_dump_provider.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+@@ -22,6 +25,7 @@
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+ #include "third_party/blink/renderer/platform/wtf/deque.h"
+ #include "third_party/blink/renderer/platform/wtf/hash_map.h"
++#include "third_party/blink/renderer/platform/wtf/hash_set.h"
+ #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+ 
+ namespace blink {
+@@ -84,6 +88,13 @@
+   void RemoveItem(const String& key, Source* source);
+   void Clear(Source* source);
+ 
++  // Waits for successful replies to previously issued localStorage mutations.
++  // New mutations, rebind, owner loss or rejected writes invalidate the reply.
++  // This is a producer fence, not a database commit or whole-profile
++  // checkpoint.
++  void FenceMutationsForCheckpoint(base::TimeTicks deadline,
++                                   base::OnceCallback<void(bool)> callback);
++
+   // Allow this object to keep track of the Source instances corresponding to
+   // it, which is needed for mutation event notifications.
+   // Returns the (unique) id allocated for this source for testing purposes.
+@@ -116,6 +127,7 @@
+ 
+   void SetRemoteAreaForTesting(
+       mojo::PendingRemote<mojom::blink::StorageArea> area) {
++    InvalidateCheckpointConnection();
+     remote_area_.Bind(std::move(area));
+   }
+ 
+@@ -138,6 +150,12 @@
+   };
+ 
+   LocalDOMWindow* GetBestCurrentDOMWindow();
++  base::OnceCallback<void(bool)> MakeCheckpointMutationCallback(Source* source);
++  void OnCheckpointMutationAck(uint64_t generation,
++                               uint64_t serial,
++                               bool success);
++  void CompleteCheckpointWaiters();
++  void InvalidateCheckpointConnection();
+ 
+   void BindStorageArea(
+       mojo::PendingRemote<mojom::blink::StorageArea> new_area = {},
+@@ -251,6 +269,20 @@
+   mojo::Receiver<mojom::blink::StorageAreaObserver> receiver_{this};
+ 
+   Persistent<GCedHeapHashMap<WeakMember<Source>, base::Token>> areas_;
++
++  struct CheckpointWaiter {
++    uint64_t serial;
++    base::TimeTicks deadline;
++    base::OnceCallback<void(bool)> callback;
++  };
++  uint64_t checkpoint_generation_ = 0;
++  uint64_t checkpoint_issued_ = 0;
++  uint64_t checkpoint_acknowledged_ = 0;
++  bool checkpoint_write_failed_ = false;
++  HashSet<uint64_t> checkpoint_pending_;
++  Vector<CheckpointWaiter> checkpoint_waiters_;
++  base::OneShotTimer checkpoint_timeout_;
++  base::WeakPtrFactory<CachedStorageArea> checkpoint_weak_factory_{this};
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/modules/storage/cached_storage_area.cc b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+@@ -7,6 +7,7 @@
+ #include <inttypes.h>
+ 
+ #include <algorithm>
++#include <limits>
+ 
+ #include "base/compiler_specific.h"
+ #include "base/feature_list.h"
+@@ -15,8 +16,10 @@
+ #include "base/metrics/field_trial_params.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/numerics/safe_conversions.h"
++#include "base/task/bind_post_task.h"
+ #include "base/time/time.h"
+ #include "base/trace_event/memory_dump_manager.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/platform/scheduler/public/main_thread.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+@@ -56,6 +59,118 @@
+ 
+ }  // namespace
+ 
++base::OnceCallback<void(bool)>
++CachedStorageArea::MakeCheckpointMutationCallback(Source* source) {
++  auto pauser = MakeVirtualTimePauserCallback(source);
++  if (IsSessionStorage()) {
++    return base::IgnoreArgs<bool>(std::move(pauser));
++  }
++  // HashSet reserves both zero and the maximum integer value as sentinels.
++  CHECK_LT(checkpoint_issued_, std::numeric_limits<uint64_t>::max() - 1);
++  const uint64_t serial = ++checkpoint_issued_;
++  CHECK(checkpoint_pending_.insert(serial).is_new_entry);
++  return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      base::BindOnce(
++          [](base::WeakPtr<CachedStorageArea> owner, uint64_t generation,
++             uint64_t serial, base::OnceClosure pauser, bool success) {
++            std::move(pauser).Run();
++            if (owner) {
++              owner->OnCheckpointMutationAck(generation, serial, success);
++            }
++          },
++          checkpoint_weak_factory_.GetWeakPtr(), checkpoint_generation_, serial,
++          std::move(pauser)),
++      false);
++}
++
++void CachedStorageArea::OnCheckpointMutationAck(uint64_t generation,
++                                                uint64_t serial,
++                                                bool success) {
++  if (generation != checkpoint_generation_) {
++    return;
++  }
++  CHECK(checkpoint_pending_.Contains(serial));
++  checkpoint_pending_.erase(serial);
++  checkpoint_write_failed_ |= !success;
++  while (checkpoint_acknowledged_ < checkpoint_issued_ &&
++         !checkpoint_pending_.Contains(checkpoint_acknowledged_ + 1)) {
++    ++checkpoint_acknowledged_;
++  }
++  CompleteCheckpointWaiters();
++}
++
++void CachedStorageArea::FenceMutationsForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  CHECK(callback);
++  const uint64_t serial = checkpoint_issued_;
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](base::WeakPtr<CachedStorageArea> owner, uint64_t generation,
++         uint64_t serial, base::TimeTicks deadline,
++         base::OnceCallback<void(bool)> callback, bool success) {
++        std::move(callback).Run(success && base::TimeTicks::Now() < deadline &&
++                                owner &&
++                                owner->checkpoint_generation_ == generation &&
++                                owner->checkpoint_issued_ == serial &&
++                                !owner->checkpoint_write_failed_ &&
++                                owner->remote_area_.is_bound() &&
++                                owner->remote_area_.is_connected());
++      },
++      checkpoint_weak_factory_.GetWeakPtr(), checkpoint_generation_, serial,
++      deadline, std::move(callback)));
++  if (deadline.is_max() || deadline <= base::TimeTicks::Now() ||
++      IsSessionStorage() || is_session_storage_for_prerendering_ ||
++      !remote_area_.is_bound() || !remote_area_.is_connected() ||
++      checkpoint_write_failed_ || checkpoint_waiters_.size() >= 256) {
++    std::move(reply).Run(false);
++    return;
++  }
++  checkpoint_waiters_.push_back(
++      CheckpointWaiter{serial, deadline, std::move(reply)});
++  CompleteCheckpointWaiters();
++}
++
++void CachedStorageArea::CompleteCheckpointWaiters() {
++  checkpoint_timeout_.Stop();
++  Vector<CheckpointWaiter> pending;
++  pending.swap(checkpoint_waiters_);
++  for (auto& waiter : pending) {
++    if (checkpoint_write_failed_ || base::TimeTicks::Now() >= waiter.deadline ||
++        waiter.serial <= checkpoint_acknowledged_) {
++      std::move(waiter.callback)
++          .Run(!checkpoint_write_failed_ &&
++               base::TimeTicks::Now() < waiter.deadline);
++    } else {
++      checkpoint_waiters_.push_back(std::move(waiter));
++    }
++  }
++  if (!checkpoint_waiters_.empty()) {
++    auto earliest = base::TimeTicks::Max();
++    for (const auto& waiter : checkpoint_waiters_) {
++      earliest = std::min(earliest, waiter.deadline);
++    }
++    checkpoint_timeout_.Start(
++        FROM_HERE,
++        std::max(base::TimeDelta(), earliest - base::TimeTicks::Now()),
++        base::BindOnce(&CachedStorageArea::CompleteCheckpointWaiters,
++                       checkpoint_weak_factory_.GetWeakPtr()));
++  }
++}
++
++void CachedStorageArea::InvalidateCheckpointConnection() {
++  checkpoint_timeout_.Stop();
++  CHECK_LT(checkpoint_generation_, std::numeric_limits<uint64_t>::max());
++  ++checkpoint_generation_;
++  checkpoint_write_failed_ |= !checkpoint_pending_.empty();
++  checkpoint_pending_.clear();
++  checkpoint_acknowledged_ = checkpoint_issued_;
++  Vector<CheckpointWaiter> pending;
++  pending.swap(checkpoint_waiters_);
++  for (auto& waiter : pending) {
++    std::move(waiter.callback).Run(false);
++  }
++}
++
+ unsigned CachedStorageArea::GetLength() {
+   EnsureLoaded();
+   return map_->GetLength();
+@@ -96,11 +211,11 @@
+   base::Token source_id = areas_->at(source);
+ 
+   if (!is_session_storage_for_prerendering_) {
+-    remote_area_->Put(
+-        StringToUint8Vector(key, GetKeyFormat()),
+-        StringToUint8Vector(value, value_format), optional_old_value,
+-        mojom::blink::StorageAreaSource::New(page_url, source_id),
+-        base::IgnoreArgs<bool>(MakeVirtualTimePauserCallback(source)));
++    remote_area_->Put(StringToUint8Vector(key, GetKeyFormat()),
++                      StringToUint8Vector(value, value_format),
++                      optional_old_value,
++                      mojom::blink::StorageAreaSource::New(page_url, source_id),
++                      MakeCheckpointMutationCallback(source));
+   }
+   if (!IsSessionStorage())
+     EnqueuePendingMutation(key, value, old_value, source_id);
+@@ -126,7 +241,7 @@
+     remote_area_->Delete(
+         StringToUint8Vector(key, GetKeyFormat()), optional_old_value,
+         mojom::blink::StorageAreaSource::New(page_url, source_id),
+-        MakeVirtualTimePauserCallback(source));
++        base::BindOnce(MakeCheckpointMutationCallback(source), true));
+   }
+   if (!IsSessionStorage())
+     EnqueuePendingMutation(key, String(), old_value, source_id);
+@@ -164,7 +279,8 @@
+   if (!is_session_storage_for_prerendering_) {
+     remote_area_->DeleteAll(
+         mojom::blink::StorageAreaSource::New(page_url, source_id),
+-        std::move(new_observer), MakeVirtualTimePauserCallback(source));
++        std::move(new_observer),
++        base::BindOnce(MakeCheckpointMutationCallback(source), true));
+   }
+   if (!IsSessionStorage())
+     EnqueuePendingMutation(String(), String(), String(), source_id);
+@@ -198,6 +314,7 @@
+ }
+ 
+ CachedStorageArea::~CachedStorageArea() {
++  InvalidateCheckpointConnection();
+   base::trace_event::MemoryDumpManager::GetInstance()->UnregisterDumpProvider(
+       this);
+ }
+@@ -252,6 +369,7 @@
+ void CachedStorageArea::ResetConnection(
+     mojo::PendingRemote<mojom::blink::StorageArea> new_area) {
+   DCHECK(!is_session_storage_for_prerendering_);
++  InvalidateCheckpointConnection();
+   remote_area_.reset();
+   BindStorageArea(std::move(new_area));
+ 
+diff --git a/third_party/blink/renderer/modules/storage/cached_storage_area_test.cc b/third_party/blink/renderer/modules/storage/cached_storage_area_test.cc
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area_test.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area_test.cc
+@@ -7,6 +7,7 @@
+ #include <tuple>
+ 
+ #include "base/memory/scoped_refptr.h"
++#include "base/test/test_future.h"
+ #include "base/token.h"
+ #include "testing/gmock/include/gmock/gmock.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+@@ -919,4 +920,203 @@
+   EXPECT_EQ(0u, cached_area->GetLength());
+ }
+ 
++TEST_F(CachedStorageAreaTest, CheckpointEmptyFenceIsAsynchronous) {
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_TRUE(result.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointWaitsForAllOutOfOrderMutationReplies) {
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue2, source_area_));
++  mock_storage_area_.Flush();
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  mock_storage_area_.CompleteCheckpointMutationAt(1, true);
++  test::RunPendingTasks();
++  EXPECT_FALSE(result.IsReady());
++  mock_storage_area_.CompleteCheckpointMutationAt(0, true);
++  EXPECT_TRUE(result.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointNewMutationInvalidatesCapturedFence) {
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  mock_storage_area_.Flush();
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue2, source_area_));
++  mock_storage_area_.Flush();
++  mock_storage_area_.CompleteCheckpointMutationAt(0, true);
++  EXPECT_FALSE(result.Get());
++  base::test::TestFuture<bool> later;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), later.GetCallback());
++  mock_storage_area_.CompleteCheckpointMutationAt(1, true);
++  EXPECT_TRUE(later.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointRejectedPutRemainsFailed) {
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  mock_storage_area_.Flush();
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  mock_storage_area_.CompleteCheckpointMutationAt(0, false);
++  EXPECT_FALSE(result.Get());
++  base::test::TestFuture<bool> empty;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), empty.GetCallback());
++  EXPECT_FALSE(empty.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointUnansweredMutationExpires) {
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  mock_storage_area_.Flush();
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Milliseconds(1), result.GetCallback());
++  mock_storage_area_.DropCheckpointMutationAt(0);
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointTracksDeleteAndDeleteAllReplies) {
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  mock_storage_area_.Flush();
++  test::RunPendingTasks();
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  cached_area_->RemoveItem(kKey, source_area_);
++  cached_area_->Clear(source_area_);
++  mock_storage_area_.Flush();
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  mock_storage_area_.CompleteCheckpointMutationAt(1, true);
++  test::RunPendingTasks();
++  EXPECT_FALSE(result.IsReady());
++  mock_storage_area_.CompleteCheckpointMutationAt(0, true);
++  EXPECT_TRUE(result.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointRebindRejectsAlreadyPostedSuccess) {
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  MockStorageArea replacement;
++  cached_area_->ResetConnection(replacement.GetInterfaceRemote());
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CachedStorageAreaTest,
++       CheckpointRebindWithUnacknowledgedWritesFailsClosed) {
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  mock_storage_area_.Flush();
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  MockStorageArea replacement;
++  cached_area_->ResetConnection(replacement.GetInterfaceRemote());
++  EXPECT_FALSE(result.Get());
++  mock_storage_area_.CompleteCheckpointMutationAt(0, true);
++  base::test::TestFuture<bool> later;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), later.GetCallback());
++  EXPECT_FALSE(later.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointOwnerLossRejectsPostedSuccess) {
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  cached_area_ = nullptr;
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointDisconnectFailsPendingMutationFence) {
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  mock_storage_area_.Flush();
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  mock_storage_area_.CloseAllBindings();
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointPendingFenceQueueIsBounded) {
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  mock_storage_area_.Flush();
++  Vector<std::unique_ptr<base::test::TestFuture<bool>>> waiting;
++  for (int i = 0; i < 256; ++i) {
++    auto result = std::make_unique<base::test::TestFuture<bool>>();
++    cached_area_->FenceMutationsForCheckpoint(
++        base::TimeTicks::Now() + base::Seconds(5), result->GetCallback());
++    waiting.push_back(std::move(result));
++  }
++  base::test::TestFuture<bool> overflow;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), overflow.GetCallback());
++  EXPECT_FALSE(overflow.Get());
++  mock_storage_area_.CompleteCheckpointMutationAt(0, true);
++  for (auto& result : waiting) {
++    EXPECT_TRUE(result->Get());
++  }
++}
++
++TEST_P(CachedStorageAreaTestWithParam, CheckpointRejectsSessionStorage) {
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  EXPECT_EQ(!IsSessionStorage(), result.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointExpiredDeadlineIsAsynchronousFailure) {
++  base::test::TestFuture<bool> result;
++  cached_area_->FenceMutationsForCheckpoint(base::TimeTicks::Now(),
++                                            result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointRejectsUnboundAreaWithoutRebinding) {
++  auto detached = base::MakeRefCounted<CachedStorageArea>(
++      CachedStorageArea::AreaType::kLocalStorage, kRootStorageKey, nullptr,
++      nullptr, false);
++  base::test::TestFuture<bool> result;
++  detached->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  EXPECT_FALSE(result.Get());
++  EXPECT_FALSE(detached->RemoteArea().is_bound());
++}
++
++TEST_F(CachedStorageAreaTest, CheckpointDoesNotWaitForNeighbourArea) {
++  mock_storage_area_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(cached_area_->SetItem(kKey, kValue, source_area_));
++  mock_storage_area_.Flush();
++  base::test::TestFuture<bool> waiting;
++  cached_area_->FenceMutationsForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), waiting.GetCallback());
++  MockStorageArea neighbour;
++  auto other = base::MakeRefCounted<CachedStorageArea>(
++      CachedStorageArea::AreaType::kLocalStorage, kRootStorageKey,
++      source_area_->GetDOMWindow(), nullptr, false,
++      neighbour.GetInterfaceRemote());
++  base::test::TestFuture<bool> independent;
++  other->FenceMutationsForCheckpoint(base::TimeTicks::Now() + base::Seconds(5),
++                                     independent.GetCallback());
++  EXPECT_TRUE(independent.Get());
++  EXPECT_FALSE(waiting.IsReady());
++  mock_storage_area_.CompleteCheckpointMutationAt(0, true);
++  EXPECT_TRUE(waiting.Get());
++}
++
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/modules/storage/testing/mock_storage_area.h b/third_party/blink/renderer/modules/storage/testing/mock_storage_area.h
+--- a/third_party/blink/renderer/modules/storage/testing/mock_storage_area.h
++++ b/third_party/blink/renderer/modules/storage/testing/mock_storage_area.h
+@@ -102,6 +102,14 @@
+       mojo::PendingRemote<mojom::blink::StorageAreaObserver> new_observer,
+       GetAllCallback callback) override;
+ 
++  void HoldCheckpointMutationCallbacks() { hold_checkpoint_callbacks_ = true; }
++  void CompleteCheckpointMutationAt(wtf_size_t index, bool success) {
++    std::move(checkpoint_callbacks_[index]).Run(success);
++  }
++  void DropCheckpointMutationAt(wtf_size_t index) {
++    checkpoint_callbacks_[index].Reset();
++  }
++
+   // Methods and members for use by test fixtures.
+   bool HasBindings() { return !receivers_.empty(); }
+ 
+@@ -134,6 +142,9 @@
+   size_t observer_count() const { return observer_count_; }
+ 
+  private:
++  void ReplyToCheckpointMutation(base::OnceCallback<void(bool)> callback);
++  bool hold_checkpoint_callbacks_ = false;
++  Vector<base::OnceCallback<void(bool)>> checkpoint_callbacks_;
+   int observed_get_alls_ = 0;
+   Vector<ObservedPut> observed_puts_;
+   Vector<ObservedDelete> observed_deletes_;
+diff --git a/third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc b/third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc
+--- a/third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc
++++ b/third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc
+@@ -40,7 +40,7 @@
+     mojom::blink::StorageAreaSourcePtr source,
+     PutCallback callback) {
+   observed_puts_.push_back(ObservedPut(key, value, std::move(source)));
+-  std::move(callback).Run(true);
++  ReplyToCheckpointMutation(std::move(callback));
+ }
+ 
+ void MockStorageArea::Delete(
+@@ -49,7 +49,13 @@
+     mojom::blink::StorageAreaSourcePtr source,
+     DeleteCallback callback) {
+   observed_deletes_.push_back(ObservedDelete(key, std::move(source)));
+-  std::move(callback).Run();
++  ReplyToCheckpointMutation(base::BindOnce(
++      [](base::OnceClosure callback, bool success) {
++        if (success) {
++          std::move(callback).Run();
++        }
++      },
++      std::move(callback)));
+ }
+ 
+ void MockStorageArea::DeleteAll(
+@@ -58,7 +64,22 @@
+     DeleteAllCallback callback) {
+   observed_delete_alls_.push_back(std::move(source));
+   ++observer_count_;
+-  std::move(callback).Run();
++  ReplyToCheckpointMutation(base::BindOnce(
++      [](base::OnceClosure callback, bool success) {
++        if (success) {
++          std::move(callback).Run();
++        }
++      },
++      std::move(callback)));
++}
++
++void MockStorageArea::ReplyToCheckpointMutation(
++    base::OnceCallback<void(bool)> callback) {
++  if (hold_checkpoint_callbacks_) {
++    checkpoint_callbacks_.push_back(std::move(callback));
++  } else {
++    std::move(callback).Run(true);
++  }
+ }
+ 
+ void MockStorageArea::GetAll(

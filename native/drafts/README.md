@@ -10,6 +10,9 @@ and [cookie completion](cookie-checkpoint/README.md) with its
 source preparation, not repairs admitted in that runtime. See the authoritative
 [test matrix](../../docs/GLINT_TEST_MATRIX.md) and
 [architecture](../ARCHITECTURE.md) for current evidence and admission limits.
+The [renderer localStorage fence](renderer-storage-fence/README.md) is another
+unselected source packet: existing mutation replies, explicit deadlines and
+generation checks, not a completed browser/profile checkpoint.
 The older checkpoints below describe how the registered components were built;
 they are not the current browser version. Do not modify or reapply promoted
 patches during an active build.

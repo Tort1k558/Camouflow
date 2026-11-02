@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: renderer localStorage acknowledgment fence prepared
+
+[Renderer fence](../native/drafts/renderer-storage-fence/README.md) tracks existing
+Put/Delete/DeleteAll replies without another Mojo or JavaScript API. Outstanding
+serials, connection generation and posted owner checks reject missing earlier
+replies, new mutations during a fence and stale success after rebind. An explicit
+finite monotonic deadline and 256-waiter limit bound pending requests.
+
+Five source packets compose/reverse across 32 files; three C++ units type-check.
+Fifteen native bodies are prepared, **not executed**. R11 remains unchanged.
+Next: namespace/controller and topology aggregation, browser-owned renderer/network
+coordination, whole-profile persistence semantics and manager lifecycle, then
+linked tests and crash-after-ack. A frozen/virtual-time-paused renderer still
+needs an independent browser deadline; this area fence does not commit a database.
+
 ## 2026-11-02: cookie completion reaches privileged IPC in source
 
 [Cookie forwarding extension](../native/drafts/cookie-checkpoint-ipc/README.md)

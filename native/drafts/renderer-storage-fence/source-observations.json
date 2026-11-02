@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "scope": "Unselected renderer localStorage acknowledgment fence, not a profile checkpoint",
+  "base_candidate": "upstream-156-image-r11",
+  "base_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "patch": "renderer-storage-fence.patch",
+  "patch_sha256": "a7cbdfbfaf46e46ca78e80cda7831ac13fdd440262dbe12bff5079b667863328",
+  "sources": [
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "before_sha256": "b6df0ff16d24659ff46e1a7334c592140e6cefacb46f6d0398c56bccd8ef9e90",
+      "after_sha256": "f91695f4dc45cd546fadd5326800a429d34bd5f70178e6ff7c06e8935e67e782"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "before_sha256": "92a53b484ce3276c3155890549c8d38cfe91129996550a29c1d82f7c5f744e21",
+      "after_sha256": "94cdf2939654de6d387a077ab9ce3d4888052dda006e133cc6bfc9d00980b51b"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "before_sha256": "70d2cca5be3f17c46515e53528edf5de9835eb02bb7e26f1567c44e51701f9c2",
+      "after_sha256": "a74a3a642272e7e34b8f7dce80d031e81492106054c691aaaa5a41e48d61c3cf"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/testing/mock_storage_area.h",
+      "before_sha256": "4d354b6d985314971f7a255826702549eaaf7a06662f45aa67f72c2499d97cfa",
+      "after_sha256": "88476ad095847809e36559222cd09168a29bff996aa79483d4905529ceabe78e"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc",
+      "before_sha256": "6552bbb91b6b135dd5985b490c332898d6bc772d4742bbc7b08980205fcbf2b2",
+      "after_sha256": "dc576236e383d52f84e5c0fa41621592deb186b63723f708cfe20496ac419558"
+    }
+  ],
+  "changed_files": 5,
+  "composed_patch_chain": [
+    {
+      "path": "native/drafts/storage-commit-barrier/storage-commit-barrier.patch",
+      "sha256": "f5eaa604f66cd72a5179d66dfd12b17fa52daafa96eb4be01c6ec478a80f6406"
+    },
+    {
+      "path": "native/drafts/storage-checkpoint-ipc/storage-checkpoint-ipc.patch",
+      "sha256": "700c6335d80ca73e0cc81e0a311707770b66c0b7d298fc6cef62e4fe14775d05"
+    },
+    {
+      "path": "native/drafts/cookie-checkpoint/cookie-checkpoint.patch",
+      "sha256": "a28316435d7b1cb5f3456d8cc01bb735e1eac5e48812486805f5777456e015e5"
+    },
+    {
+      "path": "native/drafts/cookie-checkpoint-ipc/cookie-checkpoint-ipc.patch",
+      "sha256": "d42360d08e503f8fc026376728665a44b1c88ec834d8e9e6c0f8df8b4c4a6368"
+    }
+  ],
+  "composed_files": 32,
+  "forward_reverse_passed": true,
+  "full_candidate_composition_verified": false,
+  "no_new_mojo_schema": true,
+  "no_javascript_surface": true,
+  "required_monotonic_deadline": true,
+  "pending_fence_limit": 256,
+  "mutations_during_fence_invalidate_reply": true,
+  "type_checked_translation_units": 3,
+  "syntax_targets": [
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "returncode": 0,
+      "response_sha256": "6a009f72b50ba035a3a5ae95c0b067608d1271242ef3fccf58ca9ab9fcdc9401",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "returncode": 0,
+      "response_sha256": "56669663dc74d26e7dbda7a25101b879af7d5bcc5c579b357de4fc0422e6b71a",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc",
+      "returncode": 0,
+      "response_sha256": "0eb8a3fa4fc4c944d920b65c39d93f488011ca82a50023785f60335004e670ca",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "e79332913e73a16ef03cc894ac8c726138df62a3f9351661b7a892e7ffba6c4b",
+  "input_postguards_passed": true,
+  "active_core_unchanged": true,
+  "native_case_bodies_prepared": [
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointEmptyFenceIsAsynchronous"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointWaitsForAllOutOfOrderMutationReplies"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointNewMutationInvalidatesCapturedFence"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointRejectedPutRemainsFailed"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointUnansweredMutationExpires"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointTracksDeleteAndDeleteAllReplies"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointRebindRejectsAlreadyPostedSuccess"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointRebindWithUnacknowledgedWritesFailsClosed"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointOwnerLossRejectsPostedSuccess"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointDisconnectFailsPendingMutationFence"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointPendingFenceQueueIsBounded"
+    },
+    {
+      "kind": "P",
+      "fixture": "CachedStorageAreaTestWithParam",
+      "name": "CheckpointRejectsSessionStorage"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointExpiredDeadlineIsAsynchronousFailure"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointRejectsUnboundAreaWithoutRebinding"
+    },
+    {
+      "kind": "F",
+      "fixture": "CachedStorageAreaTest",
+      "name": "CheckpointDoesNotWaitForNeighbourArea"
+    }
+  ],
+  "native_cases_executed": false,
+  "selected": false,
+  "canonical_sources_modified": false,
+  "compiled_browser": false,
+  "runtime_verified": false,
+  "database_commit_implemented": false,
+  "namespace_aggregation_implemented": false,
+  "network_producer_fence_implemented": false,
+  "profile_checkpoint_implemented": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "source_review_correction": {
+    "previous_preparation_sha256": "3dc94c6b5b4e816a2174b48a753b995359077f99406f3c9d098b264c8be9c4e0",
+    "previous_syntax_report_sha256": "2e5fa2591f9781001709223338c873ee95b01ab8184e057d033f6e98979fcae5",
+    "reason": "A dropped server responder on a live pipe does not settle the client request; explicit deadlines and an expiration fixture were added before selection or execution.",
+    "runtime_failure_measured": false
+  },
+  "remaining": [
+    "LocalStorage namespace/controller aggregation and actor/topology generation fencing",
+    "Browser-owned renderer/network producer coordination and session-cookie persistence contract",
+    "Whole-profile partition/backend capture and checkpoint protocol",
+    "Manager capability, lifecycle, cancellation and partial-write semantics",
+    "Linked native tests, live IPC/timeout/virtual-time/error and crash-after-ack checks",
+    "Complete candidate replay/build, resources and guarded package delivery"
+  ]
+}

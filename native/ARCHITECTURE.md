@@ -28,8 +28,15 @@ chain through the cleanup wrapper and CookieMonster's existing load/task queue
 to a version-1 browser-only CookieManager method. Late replies and discarded
 completions fail closed. Four packets compose/reverse across 27 files; fourteen
 cookie C++ units type-check, while fifteen additional native cases remain unexecuted.
-These drafts do not fence renderer/network producers, establish the whole-profile
-session-cookie contract or activate a checkpoint capability in the R11 runtime.
+[Renderer localStorage acknowledgments](drafts/renderer-storage-fence/README.md)
+now have a separate source fence: track existing mutation replies with serials,
+generation, owner and explicit deadline checks. This is not namespace/controller
+aggregation or a browser-owned actor fence. Five packets compose/reverse across
+32 isolated files; three renderer C++ units type-check and fifteen native bodies
+are prepared, not executed. These drafts still do not establish the renderer/
+network topology barrier, whole-profile session-cookie contract or a checkpoint
+capability in the R11 runtime. Renderer timeout needs an independent browser
+deadline when the renderer is frozen or virtual time is paused.
 
 ## 2026-11-02: R11 integration control and selected storage/crash recovery
 

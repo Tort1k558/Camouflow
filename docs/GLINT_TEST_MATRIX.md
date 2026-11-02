@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## 2026-11-02: renderer localStorage mutation-fence source
+
+| Gate | Result |
+| --- | --- |
+| Received mutation replies | Track Put/Delete/DeleteAll with contiguous acknowledgments; new writes and rebind invalidate a captured fence |
+| Deadline / owner / queue | Finite caller deadline, late-owner check and 256 pending requests; renderer hang still needs browser timeout |
+| Public surface | No new Mojo schema or JavaScript API; no test-only flush substitution |
+| Five-packet isolated replay | 32 files matched/restored; not complete candidate composition |
+| C++ syntax/type checks | Three passed: implementation, native fixture and extended existing mock |
+| Native case preparation | Fifteen bodies, including one existing parameterized fixture; **not executed** |
+| Profile checkpoint / R11 | **Not implemented/admitted**; runtime and recorded no-checkpoint losses unchanged |
+| Evidence | [Renderer fence packet](../native/drafts/renderer-storage-fence/README.md) |
+
+Namespace/topology aggregation, network producers, all profile stores, manager
+cancellation, linked tests and real timeout/virtual-time/crash-after-ack remain open.
+
 ## 2026-11-02: cookie completion forwarding and privileged IPC
 
 | Gate | Result |
