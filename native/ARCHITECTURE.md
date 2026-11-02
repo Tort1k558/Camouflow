@@ -1,5 +1,19 @@
 # Glint architecture
 
+## 2026-11-02: R11 integration control and selected storage/crash recovery
+
+[Runtime measurements](drafts/upstream-156-image-r11/runtime-gate-observations.json)
+pass the complete existing 18-check source-runtime gate with experimental policies
+off. The reviewed controller driver chain is separately verified after detecting
+an installed-package import shadow in the initial environment. An isolated D:
+Python venv avoids that shadow without modifying installed dependencies.
+
+The existing concurrent restart gate also passes for two selected research
+presets: three profiles, three rounds each, six checkpointed browser crashes and
+five persistent stores. No manager policy capability was admitted. Renderer
+crashes, uncheckpointed durability, selected integration combinations, installed
+packages and complete resource coverage remain independent unfinished gates.
+
 ## 2026-11-02: R11 runtime repair and selected GPU recovery measured
 
 The [complete R11 candidate](drafts/upstream-156-image-r11/README.md) is now built:

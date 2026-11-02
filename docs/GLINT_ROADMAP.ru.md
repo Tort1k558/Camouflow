@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: source-runtime integration and protected profile restarts verified
+
+[R11 runtime gates](../native/drafts/upstream-156-image-r11/runtime-gate-observations.json):
+all 18 existing integration checks pass with experimental policies off, including
+scenarios, Recorder/replay, backup/restore, proxy, permissions, locks, controller
+failure and storage recovery. A driver-import shadow in the initial controller
+environment was exposed and retained; an isolated D: interpreter repeat verifies
+the selected driver chain without changing installed packages.
+
+Two selected research presets each pass three rounds with three concurrent
+profiles: six browser crashes after checkpoints, all five stores preserved and
+no remaining observed owned processes. This is not unsaved-write durability,
+renderer recovery, selected-policy proxy/Recorder coverage or installed-package
+admission. Those gates, Legacy Audio and continuous resource coverage remain open.
+
 ## 2026-11-02: selected protected GPU-process recovery verified
 
 [R11 recovery](../native/drafts/upstream-156-image-r11/gpu-recovery-observations.json)

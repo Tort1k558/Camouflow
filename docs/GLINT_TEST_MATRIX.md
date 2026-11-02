@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-02: source-runtime integration / selected profile restarts
+
+| Scope | Result |
+| --- | --- |
+| Existing runtime gate, experimental policies off | 18 checks passed: storage/locks, permissions/proxy, scenarios, Recorder/replay, backup/restore and lifecycle |
+| Controller driver chain | Verified in an isolated D: Python environment; initial shadowed-driver control retained |
+| Selected research presets | Native and gamma-1400/contrast-300, three concurrent profiles, three rounds each |
+| Selected browser crashes | Six, each after a checkpoint; five stores preserved, no remaining observed owned processes |
+| Evidence | [Receipt-bound records](../native/drafts/upstream-156-image-r11/runtime-gate-observations.json) |
+
+Not established: renderer crash, unsaved writes, selected-policy controller/
+permissions/proxy/Recorder combinations, installed-package admission or continuous
+resource coverage. Mobile checks are Web Emulation, not native Android/iOS.
+
 ## 2026-11-02: protected GPU-process recovery
 
 | Check | Observed result |

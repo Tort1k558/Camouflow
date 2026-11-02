@@ -1,0 +1,205 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-image-r11",
+  "candidate_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "0e2dc956a173f32017f3756c695a393d7320df606159ebbdbd0b527aacbfe3c9",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "831ba2f123fbb898add7b7b61dd3ad4ed7c4c2b2a697899013f87e144e1b59a2",
+  "passed": true,
+  "measurement_complete": true,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "full_objective_passed": false,
+  "installed_package_verified": false,
+  "renderer_crash_tested": false,
+  "uncheckpointed_browser_crash_durability_tested": false,
+  "selected_controller_crash_tested": false,
+  "selected_policy_permissions_and_proxy_verified": false,
+  "baseline": {
+    "scope": "Existing complete source-runtime compatibility gate with experimental policies off",
+    "source_report_sha256": "d07de2c9c2a260a84a104c7a1899777782f9413855d197e6ac58664a69e132b0",
+    "collector_sha256": "42e8b0cb827b6eaab779a31d079537a8421bd0971eeaf18e33a69f4d088bb5c9",
+    "source_sha256": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "passed": true,
+    "checks": [
+      "concurrent-profile-isolation",
+      "cross-process-owner-exclusion",
+      "navigation-tabs-fill-click-extract-screenshot",
+      "mobile-web-viewport-dpr-touch",
+      "native-document-worker-configuration-diagnostics",
+      "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+      "configured-permissions-isolation-revocation-and-restart",
+      "dead-owner-profile-lock-recovery",
+      "browser-crash-restart-preserves-committed-storage",
+      "authenticated-http-proxy-no-direct-dns-route",
+      "existing-browser-interface-and-scenario-executor",
+      "existing-recorder-capture-and-replay",
+      "native-profile-backup-restore-storage-and-engine-isolation",
+      "native-binary-headless-health-and-disposable-profile-cleanup",
+      "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+      "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+      "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+      "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+    ],
+    "checks_passed": 18,
+    "controller_driver_selection_verified": true,
+    "controller_descendants_observed": 10,
+    "permission_states": {
+      "configured_empty": {
+        "geolocation": "denied",
+        "notifications": "denied"
+      },
+      "configured_grants": {
+        "geolocation": "granted",
+        "notifications": "granted"
+      },
+      "after_clear": {
+        "geolocation": "prompt",
+        "notifications": "prompt"
+      }
+    },
+    "mobile_environment": "Desktop Chromium Mobile Web viewport/touch emulation, not Android/iOS",
+    "multi_profile_restart_rounds": [
+      {
+        "round": 1,
+        "concurrent_profiles": 3,
+        "independent_drivers": 3,
+        "crashed_profile": 0,
+        "checkpoint_before_crash": true,
+        "policy_capabilities": [],
+        "processes_observed": 52,
+        "remaining_owned_processes": 0
+      },
+      {
+        "round": 2,
+        "concurrent_profiles": 3,
+        "independent_drivers": 3,
+        "crashed_profile": 1,
+        "checkpoint_before_crash": true,
+        "policy_capabilities": [],
+        "processes_observed": 52,
+        "remaining_owned_processes": 0
+      },
+      {
+        "round": 3,
+        "concurrent_profiles": 3,
+        "independent_drivers": 3,
+        "crashed_profile": 2,
+        "checkpoint_before_crash": true,
+        "policy_capabilities": [],
+        "processes_observed": 49,
+        "remaining_owned_processes": 0
+      }
+    ],
+    "fixture_threads_closed": true,
+    "postguards_passed": true
+  },
+  "selected": {
+    "scope": "Research Canvas-v2/Audio-v2 configuration; manager capabilities remain unadmitted",
+    "source_report_sha256": "7f5e5edb98df466dfadf0ddbc5da58f16a7e2fe17a9cdbd43a8ec5048702c964",
+    "collector_sha256": "3305bd0aee6a5a2b719acbe16f899f8dfc207ee3670d2b62314aaa3cbf5ec8c7",
+    "research_configuration_sha256": "f02b72fe80d00e9ffd9b5975a26caad0f85304b4a1327b45d50c0e0bf1a372b0",
+    "passed": true,
+    "phases": [
+      {
+        "preset": "native",
+        "passed": true,
+        "rounds": [
+          {
+            "round": 1,
+            "concurrent_profiles": 3,
+            "independent_drivers": 3,
+            "crashed_profile": 0,
+            "checkpoint_before_crash": true,
+            "policy_capabilities": [],
+            "processes_observed": 58,
+            "remaining_owned_processes": 0
+          },
+          {
+            "round": 2,
+            "concurrent_profiles": 3,
+            "independent_drivers": 3,
+            "crashed_profile": 1,
+            "checkpoint_before_crash": true,
+            "policy_capabilities": [],
+            "processes_observed": 61,
+            "remaining_owned_processes": 0
+          },
+          {
+            "round": 3,
+            "concurrent_profiles": 3,
+            "independent_drivers": 3,
+            "crashed_profile": 2,
+            "checkpoint_before_crash": true,
+            "policy_capabilities": [],
+            "processes_observed": 59,
+            "remaining_owned_processes": 0
+          }
+        ]
+      },
+      {
+        "preset": "gamma-1400-contrast-300",
+        "passed": true,
+        "rounds": [
+          {
+            "round": 1,
+            "concurrent_profiles": 3,
+            "independent_drivers": 3,
+            "crashed_profile": 0,
+            "checkpoint_before_crash": true,
+            "policy_capabilities": [],
+            "processes_observed": 61,
+            "remaining_owned_processes": 0
+          },
+          {
+            "round": 2,
+            "concurrent_profiles": 3,
+            "independent_drivers": 3,
+            "crashed_profile": 1,
+            "checkpoint_before_crash": true,
+            "policy_capabilities": [],
+            "processes_observed": 61,
+            "remaining_owned_processes": 0
+          },
+          {
+            "round": 3,
+            "concurrent_profiles": 3,
+            "independent_drivers": 3,
+            "crashed_profile": 2,
+            "checkpoint_before_crash": true,
+            "policy_capabilities": [],
+            "processes_observed": 59,
+            "remaining_owned_processes": 0
+          }
+        ]
+      }
+    ],
+    "browser_crashes": 6,
+    "profile_round_executions": 18,
+    "storage_scope": [
+      "cookies",
+      "localStorage",
+      "IndexedDB",
+      "CacheStorage",
+      "service-worker registrations"
+    ],
+    "checkpoint_before_every_crash": true,
+    "fixture_thread_closed": true,
+    "postguards_passed": true
+  },
+  "earlier_attempt": {
+    "source_report_sha256": "4a6b61e3530c67a2e94c6e426160d3deb01a7d4cef9e4d79b52c5492d42c100e",
+    "compatibility_checks_passed": 18,
+    "reviewed_controller_driver_selected": false,
+    "driver_audit_sha256": "08752805f81987bf7043f4b273a6d65246396313361c8bdf910d76252f585eef",
+    "observed_bundle_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+    "observed_page_module_sha256": "ea1efb87c9e0aed59afa8e48986b1dcbb28155f02c70678ea01ea14b88d65c0a",
+    "pinned_bundle_sha256": "26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c",
+    "pinned_page_module_sha256": "69c114049896668607bb4abd255d42e86785153bb5101e2f00193186001a8207",
+    "original_result_preserved": true
+  },
+  "remaining": "Renderer crash, unsaved-write durability, selected-policy controller/permissions/proxy/Recorder combinations, installed-package/update/rollback, continuous resource coverage and remaining fidelity/security gates."
+}

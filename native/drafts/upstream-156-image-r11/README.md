@@ -13,6 +13,35 @@
 | 4096-square RGBA8 | [All six full-image copies passed](large-image-resources.json) |
 | Resource measurement | **Incomplete**: a process-tree transition invalidated one sample; original failure retained |
 
+### Source-runtime integration and selected profile recovery
+
+[Runtime gate observations](runtime-gate-observations.json) separate two scopes:
+
+| Scope | Measured result |
+| --- | --- |
+| Experimental policies off | All 18 existing source-runtime checks pass: concurrent storage, locks, permissions, local authenticated proxy, automation, Recorder/replay, backup/restore, cancellation and crash recovery |
+| Two research rendering presets | Three concurrent profiles over three rounds each; six browser crashes with pre-crash checkpoints, five stores preserved and zero remaining observed owned processes |
+
+The [full-gate collector](measure_runtime_gate.py) verifies that the base-interpreter
+controller imports the same reviewed Playwright package before starting fixtures.
+The first compatibility attempt passed its checks but shadowed the selected
+driver through the parent interpreter's `purelib`; its result and import audit
+are preserved, not used as proof of the reviewed controller chain.
+
+The authoritative repeat used a fresh D: Python venv created with `--without-pip`.
+The reviewed driver precedes existing dependency packages on `PYTHONPATH`; no
+installed Python/Playwright package was modified. Set `CAMOUFLOW_DATA_DIR` to the
+factory profile root's `workspace` before importing application services. Callers
+still verify the explicit runtime/receipt/driver; the collector does not discover
+or admit them. The [selected-profile collector](measure_profile_restarts.py)
+reuses the existing multi-profile gate with explicit research configurations.
+
+The source-runtime integration control does **not** establish those same
+permissions/proxy/Recorder combinations with selected policies, an installed
+package, renderer-crash recovery or durability of writes without a checkpoint.
+Mobile coverage is viewport/touch Web Emulation, not Android/iOS identity.
+Manager capabilities, continuous resource coverage and full admission stay open.
+
 ### GPU-process recovery: selected protected modes passed
 
 [Actual recovery observations](gpu-recovery-observations.json) cover three
