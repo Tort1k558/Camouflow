@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "selected": false,
+  "type_checked": false,
+  "compiled": false,
+  "native_executed": false,
+  "mojo_exposed": false,
+  "renderer_integrated": false,
+  "whole_profile_checkpoint": false,
+  "fixture_bodies_prepared": 12,
+  "patch_sha256": "f28c636baf7c0b0440fccec755e7261f30ae4523f1cb07ffd8dfbe871907d499",
+  "scope": "One live RestrictedCookieManager write-dispatch drain; not disk persistence",
+  "base_candidate": "upstream-156-checkpoint-r12",
+  "base_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "sources": [
+    {
+      "source": "services/network/restricted_cookie_manager.cc",
+      "before_sha256": "87b6d11b3b86f9c87eeaf92ef2ae4ddb8ddc6f3f0a448274a01a29ab77bd113e",
+      "after_sha256": "73deea07fc9682cc665965d174ca8e8824ef202752b9b20ea939b32b38324b12"
+    },
+    {
+      "source": "services/network/restricted_cookie_manager.h",
+      "before_sha256": "00b65da8fcd623266bc95fb9c7fc27c08d34a7f6371a95f919b246792b2f2593",
+      "after_sha256": "9d9ffa19ddd556379744c7b826d4f5f0fa819c4a82d8d0a168378a99a084fd71"
+    },
+    {
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "before_sha256": "6f8aa5a522a7b6800b779c0bfaf2475cd967e9bd7c83386138971902011d7e54",
+      "after_sha256": "d18cba187cc46f76d7882208d342f9514b484ca54548697734fbe47732a689d8"
+    }
+  ],
+  "patch": "restricted-cookie-producer-drain.patch",
+  "fixture_case_bodies": [
+    "CheckpointDrainEmptyPostsSuccess",
+    "CheckpointDrainWaitsForAllOutOfOrderWrites",
+    "CheckpointDrainNewWriteRejectsPending",
+    "CheckpointDrainQueuedSuccessChecksEpoch",
+    "CheckpointDrainQueuedSuccessChecksOwner",
+    "CheckpointDrainTimeoutDoesNotForgetWrite",
+    "CheckpointDrainDestroyedOwnerRejectsPending",
+    "CheckpointDrainWriteLimitPoisonsOnlyDrain",
+    "CheckpointDrainUnknownCompletionFailsClosed",
+    "CheckpointDrainWaiterLimit",
+    "CheckpointDrainTracksActualStringDispatch",
+    "CheckpointDrainBrokenTrackerPreservesWrites"
+  ],
+  "canonical_sources_modified": false,
+  "production_admitted": false,
+  "runtime_verified": false,
+  "registered": false,
+  "full_candidate_composition_verified": false,
+  "isolated_three_packet_composition_passed": true,
+  "composed_final_files": 11,
+  "composed_original_files_restored": 8,
+  "composed_new_files_removed_on_reverse": 3,
+  "composed_packets": [
+    {
+      "patch": "profile-producer-cohort.patch",
+      "sha256": "859294b9a9174dc7f25da8770193b48ba82628c67b40a7671d24f4c4b6034867"
+    },
+    {
+      "patch": "local-storage-checkpoint-owner.patch",
+      "sha256": "149da7831631599ef386993418dfd5a01f1ec13b258c1345c2e2dc2618f20594"
+    },
+    {
+      "patch": "restricted-cookie-producer-drain.patch",
+      "sha256": "f28c636baf7c0b0440fccec755e7261f30ae4523f1cb07ffd8dfbe871907d499"
+    }
+  ],
+  "formatted_with_pinned_clang_format": true
+}

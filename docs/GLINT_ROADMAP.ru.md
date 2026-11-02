@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: restricted-cookie producer drain source draft
+
+[Per-manager cookie write tracking](../native/drafts/restricted-cookie-producer-drain/README.md)
+waits for actual CookieStore mutation callbacks and checks owner/epoch on posted
+delivery. New writes, missing completions, timeout and bounded-tracker failure
+cannot become success; ordinary cookie results remain unchanged. Twelve native
+fixture bodies are prepared, not executed. Legacy fixtures retain system time;
+only the new drain fixture uses mock time. No Mojo endpoint or Blink integration
+is included yet. Three follow-up packets compose/reverse across 11 files with
+eight exact canonical prerequisites restored; this is not full candidate/type/
+runtime verification. The active R12 build remains unchanged.
+
 ## 2026-11-02: localStorage backend owner source draft
 
 [Browser-owned localStorage completion](../native/drafts/local-storage-checkpoint-owner/README.md)
