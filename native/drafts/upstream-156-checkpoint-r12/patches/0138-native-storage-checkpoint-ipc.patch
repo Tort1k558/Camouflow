@@ -1,0 +1,444 @@
+diff --git a/components/services/storage/dom_storage/storage_area_impl.h b/components/services/storage/dom_storage/storage_area_impl.h
+--- a/components/services/storage/dom_storage/storage_area_impl.h
++++ b/components/services/storage/dom_storage/storage_area_impl.h
+@@ -154,6 +154,10 @@
+   // waiting on the result of initializing our map the commit won't happen
+   // until the load has finished.
+   void ScheduleImmediateCommit();
++
++  // Waits for previously queued write loads to finish. Does not commit to disk
++  // or fence producer messages that have not reached this area yet.
++  void FencePendingWrites(AsyncDomStorageDatabase::StatusCallback callback);
+ 
+   // Clears the in-memory cache if currently no changes are pending. If there
+   // are uncommitted changes this method does nothing.
+diff --git a/components/services/storage/dom_storage/storage_area_impl.cc b/components/services/storage/dom_storage/storage_area_impl.cc
+--- a/components/services/storage/dom_storage/storage_area_impl.cc
++++ b/components/services/storage/dom_storage/storage_area_impl.cc
+@@ -7,8 +7,10 @@
+ #include <memory>
+ 
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/logging.h"
+ #include "base/metrics/histogram_functions.h"
++#include "base/task/bind_post_task.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/trace_event/memory_dump_manager.h"
+ #include "base/trace_event/process_memory_dump.h"
+@@ -180,6 +182,37 @@
+     return;
+   }
+   CommitChanges();
++}
++
++void StorageAreaImpl::FencePendingWrites(
++    AsyncDomStorageDatabase::StatusCallback callback) {
++  CHECK(callback);
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](base::WeakPtr<StorageAreaImpl> owner,
++         AsyncDomStorageDatabase::StatusCallback callback, DbStatus status) {
++        std::move(callback).Run(owner ? std::move(status)
++                                      : DbStatus::IOError("storage area lost"));
++      },
++      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
++  auto replies = base::SplitOnceCallback(std::move(reply));
++  base::ScopedClosureRunner abandoned(base::BindOnce(
++      std::move(replies.second), DbStatus::IOError("write fence abandoned")));
++  auto completed = base::BindOnce(
++      [](base::ScopedClosureRunner abandoned,
++         AsyncDomStorageDatabase::StatusCallback callback, DbStatus status) {
++        abandoned.Release().Reset();
++        std::move(callback).Run(std::move(status));
++      },
++      std::move(abandoned), std::move(replies.first));
++  if (has_pending_load_read_write_tasks()) {
++    LoadMap(OnLoadCompleteTask(
++        base::BindOnce(&StorageAreaImpl::FencePendingWrites,
++                       weak_ptr_factory_.GetWeakPtr(), std::move(completed)),
++        AccessMode::ReadWrite));
++    return;
++  }
++  std::move(completed).Run(
++      database_ ? DbStatus::OK() : DbStatus::IOError("no storage database"));
+ }
+ 
+ void StorageAreaImpl::OnMemoryDump(const std::string& name,
+diff --git a/components/services/storage/dom_storage/local_storage_impl.h b/components/services/storage/dom_storage/local_storage_impl.h
+--- a/components/services/storage/dom_storage/local_storage_impl.h
++++ b/components/services/storage/dom_storage/local_storage_impl.h
+@@ -90,6 +90,7 @@
+                      DeleteStorageCallback callback) override;
+   void CleanUpStorage(CleanUpStorageCallback callback) override;
+   void Flush() override;
++  void FlushForCheckpoint(FlushForCheckpointCallback callback) override;
+   void PurgeMemory() override;
+   void ApplyPolicyUpdates(
+       std::vector<mojom::StoragePolicyUpdatePtr> policy_updates) override;
+@@ -127,6 +128,11 @@
+   // delays running |callback| untill after a connection has been established.
+   // Initiates connecting to the database if no connection is in progress yet.
+   void RunWhenConnected(base::OnceClosure callback);
++  void AdvanceCheckpointGeneration();
++  void OnCheckpointAreasFenced(uint64_t generation,
++                               FlushForCheckpointCallback callback,
++                               std::vector<DbStatus> statuses);
++  uint64_t checkpoint_generation_ = 0;
+ 
+   // Part of asynchronous database opening called from `RunWhenConnected()`. If
+   // opening the database on disk fails twice, falls back to in memory. If
+diff --git a/components/services/storage/dom_storage/local_storage_impl.cc b/components/services/storage/dom_storage/local_storage_impl.cc
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -7,20 +7,24 @@
+ #include <inttypes.h>
+ 
+ #include <algorithm>
++#include <limits>
+ #include <optional>
+ #include <set>
+ #include <string>
+ #include <string_view>
+ #include <utility>
+ 
++#include "base/barrier_callback.h"
+ #include "base/byte_size.h"
+ #include "base/files/file_path.h"
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/strings/strcat.h"
+ #include "base/strings/stringprintf.h"
+ #include "base/system/sys_info.h"
++#include "base/task/bind_post_task.h"
+ #include "base/task/thread_pool.h"
+ #include "base/trace_event/memory_dump_manager.h"
+ #include "build/build_config.h"
+@@ -272,6 +276,82 @@
+     it.second->storage_area()->ScheduleImmediateCommit();
+ }
+ 
++void LocalStorageImpl::AdvanceCheckpointGeneration() {
++  CHECK_NE(checkpoint_generation_, std::numeric_limits<uint64_t>::max());
++  ++checkpoint_generation_;
++}
++
++void LocalStorageImpl::FlushForCheckpoint(FlushForCheckpointCallback callback) {
++  CHECK(callback);
++  if (connection_state_ != CONNECTION_FINISHED) {
++    auto replies = base::SplitOnceCallback(std::move(callback));
++    base::ScopedClosureRunner abandoned(
++        base::BindOnce(std::move(replies.second), false));
++    RunWhenConnected(base::BindOnce(
++        [](base::ScopedClosureRunner abandoned,
++           base::WeakPtr<LocalStorageImpl> owner,
++           FlushForCheckpointCallback callback) {
++          abandoned.Release().Reset();
++          if (owner) {
++            owner->FlushForCheckpoint(std::move(callback));
++          } else {
++            std::move(callback).Run(false);
++          }
++        },
++        std::move(abandoned), weak_ptr_factory_.GetWeakPtr(),
++        std::move(replies.first)));
++    return;
++  }
++  if (in_memory_ || !database_) {
++    std::move(callback).Run(false);
++    return;
++  }
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](base::WeakPtr<LocalStorageImpl> owner, uint64_t generation,
++         FlushForCheckpointCallback callback, bool success) {
++        std::move(callback).Run(success && owner &&
++                                owner->checkpoint_generation_ == generation &&
++                                !owner->in_memory_);
++      },
++      weak_ptr_factory_.GetWeakPtr(), checkpoint_generation_,
++      std::move(callback)));
++  auto replies = base::SplitOnceCallback(std::move(reply));
++  base::ScopedClosureRunner abandoned(
++      base::BindOnce(std::move(replies.second), false));
++  auto completed = base::BindOnce(
++      [](base::ScopedClosureRunner abandoned,
++         FlushForCheckpointCallback callback, bool success) {
++        abandoned.Release().Reset();
++        std::move(callback).Run(success);
++      },
++      std::move(abandoned), std::move(replies.first));
++  auto fenced = base::BarrierCallback<DbStatus>(
++      areas_.size(),
++      base::BindOnce(&LocalStorageImpl::OnCheckpointAreasFenced,
++                     weak_ptr_factory_.GetWeakPtr(), checkpoint_generation_,
++                     std::move(completed)));
++  for (const auto& [key, holder] : areas_) {
++    holder->storage_area()->FencePendingWrites(fenced);
++  }
++}
++
++void LocalStorageImpl::OnCheckpointAreasFenced(
++    uint64_t generation,
++    FlushForCheckpointCallback callback,
++    std::vector<DbStatus> statuses) {
++  if (generation != checkpoint_generation_ || in_memory_ || !database_ ||
++      !std::ranges::all_of(
++          statuses, [](const DbStatus& status) { return status.ok(); })) {
++    std::move(callback).Run(false);
++    return;
++  }
++  database_->CommitPendingMaps(base::BindOnce(
++      [](FlushForCheckpointCallback callback, DbStatus status) {
++        std::move(callback).Run(status.ok());
++      },
++      std::move(callback)));
++}
++
+ StorageAreaImpl* LocalStorageImpl::GetStorageAreaForTesting(
+     const blink::StorageKey& storage_key) {
+   if (connection_state_ != CONNECTION_FINISHED) {
+@@ -294,6 +374,7 @@
+ }
+ 
+ void LocalStorageImpl::ShutDown() {
++  AdvanceCheckpointGeneration();
+   control_receiver_.reset();
+ 
+   // Nothing to do if no connection to the database was ever finished.
+@@ -453,6 +534,7 @@
+     bool in_memory_only,
+     bool destroy_existing_db_for_recovery) {
+   CHECK_EQ(connection_state_, CONNECTION_IN_PROGRESS);
++  AdvanceCheckpointGeneration();
+ 
+   // Use an in-memory database unless we were given a usable (absolute)
+   // subdirectory and weren't asked to stay in memory.
+@@ -529,6 +611,7 @@
+ 
+ void LocalStorageImpl::DeleteAndRecreateDatabase(
+     DomStorageRecoveryReason reason) {
++  AdvanceCheckpointGeneration();
+   CHECK(database_);
+   const DatabaseMetricsType metrics_type = database_->metrics_type();
+ 
+diff --git a/components/services/storage/dom_storage/storage_area_impl_unittest.cc b/components/services/storage/dom_storage/storage_area_impl_unittest.cc
+--- a/components/services/storage/dom_storage/storage_area_impl_unittest.cc
++++ b/components/services/storage/dom_storage/storage_area_impl_unittest.cc
+@@ -25,6 +25,7 @@
+ #include "base/test/metrics/histogram_tester.h"
+ #include "base/test/scoped_feature_list.h"
+ #include "base/test/task_environment.h"
++#include "base/test/test_future.h"
+ #include "base/test/test_simple_task_runner.h"
+ #include "base/threading/thread.h"
+ #include "base/token.h"
+@@ -1587,4 +1588,45 @@
+   EXPECT_EQ("", GetSyncStrUsingGetAll(fork.get(), test_key1_));
+ }
+ 
++TEST_P(StorageAreaImplTest, CheckpointFenceWaitsForPendingPut) {
++  base::test::TestFuture<bool> written;
++  storage_area_impl()->Put(test_key1_bytes_, test_value2_bytes_, std::nullopt,
++                           test::MakeStorageAreaSource(),
++                           written.GetCallback());
++  base::test::TestFuture<DbStatus> fenced;
++  storage_area_impl()->FencePendingWrites(fenced.GetCallback());
++  EXPECT_FALSE(fenced.IsReady());
++  EXPECT_TRUE(fenced.Get().ok());
++  EXPECT_TRUE(written.IsReady());
++  EXPECT_TRUE(written.Get());
++  EXPECT_FALSE(storage_area_impl()->has_pending_load_read_write_tasks());
++}
++
++TEST_P(StorageAreaImplTest, CheckpointFenceRejectsDetachedCache) {
++  MockDelegate delegate;
++  StorageAreaImpl area(
++      nullptr, test_map_locator_, &delegate,
++      GetDefaultTestingOptions(CacheMode::KEYS_ONLY_WHEN_POSSIBLE));
++  base::test::TestFuture<DbStatus> fenced;
++  area.FencePendingWrites(fenced.GetCallback());
++  EXPECT_FALSE(fenced.Get().ok());
++}
++
++TEST_P(StorageAreaImplTest, CheckpointFenceRejectsAreaLossBeforeDelivery) {
++  auto area = std::make_unique<StorageAreaImpl>(
++      database(), test_map_locator_, delegate(),
++      GetDefaultTestingOptions(CacheMode::KEYS_ONLY_WHEN_POSSIBLE));
++  base::test::TestFuture<DbStatus> fenced;
++  area->FencePendingWrites(fenced.GetCallback());
++  area.reset();
++  EXPECT_FALSE(fenced.Get().ok());
++}
++
++TEST_P(StorageAreaImplTest, CheckpointFenceCleanAreaRepliesAsynchronously) {
++  base::test::TestFuture<DbStatus> fenced;
++  storage_area_impl()->FencePendingWrites(fenced.GetCallback());
++  EXPECT_FALSE(fenced.IsReady());
++  EXPECT_TRUE(fenced.Get().ok());
++}
++
+ }  // namespace storage
+diff --git a/components/services/storage/dom_storage/local_storage_impl_unittest.cc b/components/services/storage/dom_storage/local_storage_impl_unittest.cc
+--- a/components/services/storage/dom_storage/local_storage_impl_unittest.cc
++++ b/components/services/storage/dom_storage/local_storage_impl_unittest.cc
+@@ -198,6 +198,8 @@
+     InitializeStorage(path);
+   }
+ 
++  void DrainCheckpointTasksForTesting() { task_environment_->RunUntilIdle(); }
++
+   void WaitForDatabaseOpen() {
+     base::RunLoop loop;
+     context()->SetDatabaseOpenCallbackForTesting(loop.QuitClosure());
+@@ -452,6 +454,10 @@
+   ~LocalStorageImplTest() override = default;
+ 
+   bool IsSqliteEnabled() const { return GetParam(); }
++
++  void InvalidateCheckpointGenerationForTesting() {
++    context()->AdvanceCheckpointGeneration();
++  }
+ 
+   base::FilePath GetDatabasePath() {
+     return IsSqliteEnabled() ? DomStorageDatabase::GetSqlitePath(
+@@ -2741,4 +2747,124 @@
+   }
+ }
+ 
++TEST_P(LocalStorageImplTest, CheckpointEmptyDiskBackendCompletes) {
++  base::test::TestFuture<bool> completed;
++  context()->FlushForCheckpoint(completed.GetCallback());
++  EXPECT_FALSE(completed.IsReady());
++  EXPECT_TRUE(completed.Get());
++}
++
++TEST_P(LocalStorageImplTest, CheckpointRejectsMemoryOnlyBackend) {
++  ResetStorage(base::FilePath());
++  base::test::TestFuture<bool> completed;
++  context()->FlushForCheckpoint(completed.GetCallback());
++  EXPECT_FALSE(completed.Get());
++}
++
++TEST_P(LocalStorageImplTest, CheckpointWaitsForReceivedPutAndPersistsIt) {
++  WaitForDatabaseOpen();
++  const auto key = StdStringToUint8Vector("checkpoint-key");
++  const auto value = StdStringToUint8Vector("checkpoint-value");
++  const auto storage_key = StorageKeyForExampleHost(901);
++  mojo::Remote<blink::mojom::StorageArea> area;
++  context()->BindStorageArea(storage_key, area.BindNewPipeAndPassReceiver());
++  base::test::TestFuture<bool> written, completed;
++  auto* impl = context()->GetStorageAreaForTesting(storage_key);
++  ASSERT_TRUE(impl);
++  impl->Put(key, value, std::nullopt, test::MakeStorageAreaSource(),
++            written.GetCallback());
++  context()->FlushForCheckpoint(completed.GetCallback());
++  EXPECT_TRUE(completed.Get());
++  EXPECT_TRUE(written.IsReady());
++  EXPECT_TRUE(written.Get());
++  std::map<DomStorageDatabase::Key, DomStorageDatabase::Value> actual;
++  ReadMapKeyValuesSync(*context()->GetDatabaseForTesting(),
++                       DomStorageDatabase::MapLocator(storage_key), &actual);
++  EXPECT_EQ(actual.at(key), value);
++}
++
++TEST_P(LocalStorageImplTest, CheckpointReturnsThroughPrivilegedControlPipe) {
++  ShutDownStorage();
++  mojo::Remote<mojom::LocalStorageControl> control;
++  auto owned =
++      std::make_unique<LocalStorageImpl>(storage_path(), base::NullCallback(),
++                                         control.BindNewPipeAndPassReceiver());
++  base::test::TestFuture<bool> completed;
++  base::test::TestFuture<uint32_t> version;
++  control.QueryVersion(version.GetCallback());
++  EXPECT_EQ(version.Get(), 1u);
++  control->FlushForCheckpoint(completed.GetCallback());
++  EXPECT_TRUE(completed.Get());
++  control.reset();
++  owned.reset();
++  DrainCheckpointTasksForTesting();
++}
++
++TEST_P(LocalStorageImplTest, CheckpointOwnerLossDuringOpenFailsClosed) {
++  base::test::TestFuture<bool> completed;
++  context()->FlushForCheckpoint(completed.GetCallback());
++  ResetStorage();
++  EXPECT_FALSE(completed.Get());
++  DrainCheckpointTasksForTesting();
++}
++
++TEST_P(LocalStorageImplTest, CheckpointGenerationChangeRejectsOldReply) {
++  WaitForDatabaseOpen();
++  base::test::TestFuture<bool> completed;
++  context()->FlushForCheckpoint(completed.GetCallback());
++  InvalidateCheckpointGenerationForTesting();
++  EXPECT_FALSE(completed.Get());
++}
++
++TEST_P(LocalStorageImplTest, CheckpointWriteErrorCannotBecomeSuccess) {
++  WaitForDatabaseOpen();
++  const auto key = StdStringToUint8Vector("checkpoint-error-key");
++  const auto value = StdStringToUint8Vector("checkpoint-error-value");
++  mojo::Remote<blink::mojom::StorageArea> area;
++  context()->BindStorageArea(StorageKeyForExampleHost(902),
++                             area.BindNewPipeAndPassReceiver());
++  base::test::TestFuture<bool> written, completed;
++  context()->GetDatabaseForTesting()->database().PostTaskWithThisObject(
++      base::BindOnce([](DomStorageDatabase* database) {
++        database->MakeAllCommitsFailForTesting();
++      }));
++  area->Put(key, value, std::nullopt, test::MakeStorageAreaSource(),
++            written.GetCallback());
++  EXPECT_TRUE(written.Get());
++  context()->FlushForCheckpoint(completed.GetCallback());
++  EXPECT_FALSE(completed.Get());
++}
++
++TEST_P(LocalStorageImplTest, CheckpointCoversTwoStorageKeysInOnePartition) {
++  WaitForDatabaseOpen();
++  const auto key = StdStringToUint8Vector("partition-key");
++  const auto first_value = StdStringToUint8Vector("first-value");
++  const auto second_value = StdStringToUint8Vector("second-value");
++  const auto first_key = StorageKeyForExampleHost(903);
++  const auto second_key = StorageKeyForExampleHost(904);
++  mojo::Remote<blink::mojom::StorageArea> first_area, second_area;
++  context()->BindStorageArea(first_key,
++                             first_area.BindNewPipeAndPassReceiver());
++  context()->BindStorageArea(second_key,
++                             second_area.BindNewPipeAndPassReceiver());
++  base::test::TestFuture<bool> first_written, second_written;
++  first_area->Put(key, first_value, std::nullopt, test::MakeStorageAreaSource(),
++                  first_written.GetCallback());
++  second_area->Put(key, second_value, std::nullopt,
++                   test::MakeStorageAreaSource(), second_written.GetCallback());
++  EXPECT_TRUE(first_written.Get());
++  EXPECT_TRUE(second_written.Get());
++  base::test::TestFuture<bool> completed;
++  context()->FlushForCheckpoint(completed.GetCallback());
++  EXPECT_TRUE(completed.Get());
++  std::map<DomStorageDatabase::Key, DomStorageDatabase::Value> actual;
++  ReadMapKeyValuesSync(*context()->GetDatabaseForTesting(),
++                       DomStorageDatabase::MapLocator(first_key), &actual);
++  EXPECT_EQ(actual.at(key), first_value);
++  actual.clear();
++  ReadMapKeyValuesSync(*context()->GetDatabaseForTesting(),
++                       DomStorageDatabase::MapLocator(second_key), &actual);
++  EXPECT_EQ(actual.at(key), second_value);
++}
++
+ }  // namespace storage
+diff --git a/components/services/storage/public/mojom/local_storage_control.mojom b/components/services/storage/public/mojom/local_storage_control.mojom
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -47,4 +47,11 @@
+   // called, that behavior is overridden and Local Storage data is persisted
+   // for all StorageKeys.
+   ForceKeepSessionState();
++
++  // Privileged completion for already received writes in this partition.
++  // Fences pending write loads, then waits for database commit completion.
++  // False includes memory-only fallback, write errors and connection replacement.
++  // Callers must separately fence renderer producers; not a power-loss guarantee.
++  [MinVersion=1]
++  FlushForCheckpoint() => (bool success);
+ };

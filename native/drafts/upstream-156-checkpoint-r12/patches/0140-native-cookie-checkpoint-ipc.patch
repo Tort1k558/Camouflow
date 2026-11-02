@@ -1,0 +1,555 @@
+diff --git a/net/cookies/cookie_store.h b/net/cookies/cookie_store.h
+--- a/net/cookies/cookie_store.h
++++ b/net/cookies/cookie_store.h
+@@ -151,6 +151,11 @@
+   // done.
+   virtual void FlushStore(base::OnceClosure callback) = 0;
+ 
++  // Reports commit completion for received mutations. Unsupported or
++  // memory-only stores return false; never infer persistence from the legacy
++  // FlushStore API.
++  virtual void FlushStoreForCheckpoint(base::OnceCallback<void(bool)> callback);
++
+   // Protects session cookies from deletion on shutdown, if the underlying
+   // CookieStore implemention is currently configured to store them to disk.
+   // Otherwise, does nothing.
+diff --git a/net/cookies/cookie_store.cc b/net/cookies/cookie_store.cc
+--- a/net/cookies/cookie_store.cc
++++ b/net/cookies/cookie_store.cc
+@@ -8,12 +8,18 @@
+ 
+ #include "base/functional/bind.h"
+ #include "base/functional/callback.h"
++#include "base/task/bind_post_task.h"
+ 
+ namespace net {
+ 
+ CookieStore::CookieStore() = default;
+ 
+ CookieStore::~CookieStore() = default;
++
++void CookieStore::FlushStoreForCheckpoint(
++    base::OnceCallback<void(bool)> callback) {
++  base::BindPostTaskToCurrentDefault(std::move(callback)).Run(false);
++}
+ 
+ // Default implementation which returns a default vector of UNKNOWN
+ // CookieAccessSemantics.
+diff --git a/net/cookies/cookie_monster.h b/net/cookies/cookie_monster.h
+--- a/net/cookies/cookie_monster.h
++++ b/net/cookies/cookie_monster.h
+@@ -242,6 +242,8 @@
+   void DeleteMatchingCookiesAsync(DeletePredicate predicate,
+                                   DeleteCallback callback) override;
+   void FlushStore(base::OnceClosure callback) override;
++  void FlushStoreForCheckpoint(
++      base::OnceCallback<void(bool)> callback) override;
+   void SetForceKeepSessionState() override;
+   CookieChangeDispatcher& GetChangeDispatcher() override;
+   void SetCookieableSchemes(std::vector<std::string> schemes,
+@@ -972,6 +974,9 @@
+   // NULL.
+   virtual void Flush(base::OnceClosure callback) = 0;
+ 
++  // Default is an explicit unsupported result, not a call to legacy Flush.
++  virtual void FlushForCheckpoint(base::OnceCallback<void(bool)> callback);
++
+  protected:
+   PersistentCookieStore() = default;
+   virtual ~PersistentCookieStore() = default;
+diff --git a/net/cookies/cookie_monster.cc b/net/cookies/cookie_monster.cc
+--- a/net/cookies/cookie_monster.cc
++++ b/net/cookies/cookie_monster.cc
+@@ -77,6 +77,7 @@
+ #include "base/strings/strcat.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/stringprintf.h"
++#include "base/task/bind_post_task.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/threading/thread_checker.h"
+ #include "base/time/time.h"
+@@ -521,6 +522,44 @@
+   }
+ }
+ 
++void CookieMonster::PersistentCookieStore::FlushForCheckpoint(
++    base::OnceCallback<void(bool)> callback) {
++  base::BindPostTaskToCurrentDefault(std::move(callback)).Run(false);
++}
++
++void CookieMonster::FlushStoreForCheckpoint(
++    base::OnceCallback<void(bool)> callback) {
++  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
++  CHECK(callback);
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](base::WeakPtr<CookieMonster> owner,
++         base::OnceCallback<void(bool)> callback,
++         bool success) { std::move(callback).Run(owner && success); },
++      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
++  auto split = base::SplitOnceCallback(std::move(reply));
++  base::ScopedClosureRunner abandoned(
++      base::BindOnce(std::move(split.second), false));
++  // The existing global task queue drains received per-key mutations first.
++  // Keeping the guard in that queue rejects owner loss during asynchronous
++  // load.
++  DoCookieCallback(base::BindOnce(
++      [](CookieMonster* owner, base::OnceCallback<void(bool)> callback,
++         base::ScopedClosureRunner abandoned) {
++        if (!owner->store_) {
++          abandoned.RunAndReset();
++          return;
++        }
++        owner->store_->FlushForCheckpoint(base::BindOnce(
++            [](base::OnceCallback<void(bool)> callback,
++               base::ScopedClosureRunner abandoned, bool success) {
++              abandoned.Release().Reset();
++              std::move(callback).Run(success);
++            },
++            std::move(callback), std::move(abandoned)));
++      },
++      base::Unretained(this), std::move(split.first), std::move(abandoned)));
++}
++
+ void CookieMonster::SetForceKeepSessionState() {
+   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+ 
+diff --git a/net/cookies/cookie_monster_unittest.cc b/net/cookies/cookie_monster_unittest.cc
+--- a/net/cookies/cookie_monster_unittest.cc
++++ b/net/cookies/cookie_monster_unittest.cc
+@@ -8678,4 +8678,128 @@
+            EXCLUDE_AMBIGUOUS_SERIALIZATION}));
+ }
+ 
++class CheckpointPersistentStore : public MockPersistentCookieStore {
++ public:
++  void FlushForCheckpoint(base::OnceCallback<void(bool)> callback) override {
++    pending = std::move(callback);
++    ++checkpoints;
++    saw_add_at_checkpoint = std::any_of(
++        commands().begin(), commands().end(), [](const auto& command) {
++          return command.type == CookieStoreCommand::ADD;
++        });
++  }
++  base::OnceCallback<void(bool)> pending;
++  int checkpoints = 0;
++  bool saw_add_at_checkpoint = false;
++
++ protected:
++  ~CheckpointPersistentStore() override = default;
++};
++
++TEST_F(CookieMonsterTest, CheckpointRejectsMemoryOnlyStoreAsynchronously) {
++  auto cm = std::make_unique<CookieMonster>(nullptr, net::NetLog::Get());
++  base::test::TestFuture<bool> result;
++  cm->FlushStoreForCheckpoint(result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CookieMonsterTest, CheckpointUnsupportedStoreDoesNotUseLegacyFlush) {
++  auto store = base::MakeRefCounted<FlushablePersistentStore>();
++  auto cm = std::make_unique<CookieMonster>(store, net::NetLog::Get());
++  base::test::TestFuture<bool> result;
++  cm->FlushStoreForCheckpoint(result.GetCallback());
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(0, store->flush_count());
++}
++
++TEST_F(CookieMonsterTest, CheckpointForwardsSuccessAfterLoad) {
++  auto store = base::MakeRefCounted<CheckpointPersistentStore>();
++  auto cm = std::make_unique<CookieMonster>(store, net::NetLog::Get());
++  base::test::TestFuture<bool> result;
++  cm->FlushStoreForCheckpoint(result.GetCallback());
++  base::RunLoop().RunUntilIdle();
++  ASSERT_EQ(1, store->checkpoints);
++  ASSERT_TRUE(store->pending);
++  std::move(store->pending).Run(true);
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_TRUE(result.Get());
++}
++
++TEST_F(CookieMonsterTest, CheckpointLateSuccessAfterOwnerLossIsFailure) {
++  auto store = base::MakeRefCounted<CheckpointPersistentStore>();
++  auto cm = std::make_unique<CookieMonster>(store, net::NetLog::Get());
++  base::test::TestFuture<bool> result;
++  cm->FlushStoreForCheckpoint(result.GetCallback());
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(store->pending);
++  cm.reset();
++  std::move(store->pending).Run(true);
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CookieMonsterTest, CheckpointDroppedBackingCompletionIsFailure) {
++  auto store = base::MakeRefCounted<CheckpointPersistentStore>();
++  auto cm = std::make_unique<CookieMonster>(store, net::NetLog::Get());
++  base::test::TestFuture<bool> result;
++  cm->FlushStoreForCheckpoint(result.GetCallback());
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(store->pending);
++  store->pending.Reset();
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CookieMonsterTest, CheckpointLoadQueueOwnerLossFailsClosed) {
++  auto store = base::MakeRefCounted<CheckpointPersistentStore>();
++  store->set_store_load_commands(true);
++  auto cm = std::make_unique<CookieMonster>(store, net::NetLog::Get());
++  base::test::TestFuture<bool> result;
++  cm->FlushStoreForCheckpoint(result.GetCallback());
++  EXPECT_EQ(0, store->checkpoints);
++  EXPECT_FALSE(result.IsReady());
++  cm.reset();
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(0, store->checkpoints);
++}
++
++TEST_F(CookieMonsterTest, CheckpointDrainsPreviouslyReceivedHostWrite) {
++  auto store = base::MakeRefCounted<CheckpointPersistentStore>();
++  store->set_store_load_commands(true);
++  auto cm = std::make_unique<CookieMonster>(store, net::NetLog::Get());
++  base::test::TestFuture<CookieAccessResult> write;
++  const auto now = base::Time::Now();
++  auto cookie = CanonicalCookie::CreateUnsafeCookieForTesting(
++      "checkpoint", "value", "example.test", "/", now, now + base::Days(1), now,
++      now, false, false, CookieSameSite::NO_RESTRICTION,
++      COOKIE_PRIORITY_DEFAULT, CookieSourceType::kOther);
++  cm->SetCanonicalCookieAsync(std::move(cookie), GURL("http://example.test/"),
++                              CookieOptions::MakeAllInclusive(),
++                              write.GetCallback(), std::nullopt);
++  base::test::TestFuture<bool> result;
++  cm->FlushStoreForCheckpoint(result.GetCallback());
++  ASSERT_EQ(2u, store->commands().size());
++  EXPECT_EQ(CookieStoreCommand::LOAD, store->commands()[0].type);
++  EXPECT_EQ(CookieStoreCommand::LOAD_COOKIES_FOR_KEY,
++            store->commands()[1].type);
++  EXPECT_EQ(0, store->checkpoints);
++  store->TakeCallbackAt(0).Run(std::vector<std::unique_ptr<CanonicalCookie>>());
++  EXPECT_TRUE(write.Get().status.IsInclude());
++  ASSERT_EQ(1, store->checkpoints);
++  EXPECT_TRUE(store->saw_add_at_checkpoint);
++  ASSERT_TRUE(store->pending);
++  std::move(store->pending).Run(true);
++  EXPECT_TRUE(result.Get());
++}
++
++TEST_F(CookieMonsterTest, CheckpointPropagatesBackingFailure) {
++  auto store = base::MakeRefCounted<CheckpointPersistentStore>();
++  auto cm = std::make_unique<CookieMonster>(store, net::NetLog::Get());
++  base::test::TestFuture<bool> result;
++  cm->FlushStoreForCheckpoint(result.GetCallback());
++  base::RunLoop().RunUntilIdle();
++  ASSERT_TRUE(store->pending);
++  std::move(store->pending).Run(false);
++  EXPECT_FALSE(result.Get());
++}
++
+ }  // namespace net
+diff --git a/net/extras/sqlite/sqlite_persistent_cookie_store.h b/net/extras/sqlite/sqlite_persistent_cookie_store.h
+--- a/net/extras/sqlite/sqlite_persistent_cookie_store.h
++++ b/net/extras/sqlite/sqlite_persistent_cookie_store.h
+@@ -83,7 +83,7 @@
+   // unavailable persistence or any previous write failure returns false. This
+   // does not fence producer messages, other stores, or guarantee power-loss
+   // safety.
+-  void FlushForCheckpoint(base::OnceCallback<void(bool)> callback);
++  void FlushForCheckpoint(base::OnceCallback<void(bool)> callback) override;
+ 
+   // Returns how many operations are currently queued. For test use only;
+   // and the background thread needs to be wedged for accessing this to be
+diff --git a/services/network/session_cleanup_cookie_store.h b/services/network/session_cleanup_cookie_store.h
+--- a/services/network/session_cleanup_cookie_store.h
++++ b/services/network/session_cleanup_cookie_store.h
+@@ -7,12 +7,14 @@
+ 
+ #include <stddef.h>
+ 
++#include <atomic>
+ #include <string>
+ #include <vector>
+ 
+ #include "base/compiler_specific.h"
+ #include "base/component_export.h"
+ #include "base/functional/callback_forward.h"
++#include "base/memory/ref_counted.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "net/cookies/cookie_monster.h"
+ #include "net/extras/sqlite/sqlite_persistent_cookie_store.h"
+@@ -54,6 +56,7 @@
+   void SetForceKeepSessionState() override;
+   void SetBeforeCommitCallback(base::RepeatingClosure callback) override;
+   void Flush(base::OnceClosure callback) override;
++  void FlushForCheckpoint(base::OnceCallback<void(bool)> callback) override;
+ 
+   // Should be called at the end of a session. Deletes all cookies that
+   // |delete_cookie_predicate| returns true for.
+@@ -79,6 +82,9 @@
+   bool force_keep_session_state_ = false;
+ 
+   net::NetLogWithSource net_log_;
++  const scoped_refptr<base::RefCountedData<std::atomic<bool>>>
++      checkpoint_closed_ =
++          base::MakeRefCounted<base::RefCountedData<std::atomic<bool>>>();
+ };
+ 
+ }  // namespace network
+diff --git a/services/network/session_cleanup_cookie_store.cc b/services/network/session_cleanup_cookie_store.cc
+--- a/services/network/session_cleanup_cookie_store.cc
++++ b/services/network/session_cleanup_cookie_store.cc
+@@ -11,6 +11,7 @@
+ #include "base/functional/bind.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/ref_counted.h"
++#include "base/task/bind_post_task.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/values.h"
+ #include "net/cookies/canonical_cookie.h"
+@@ -40,6 +41,7 @@
+     : persistent_store_(cookie_store) {}
+ 
+ SessionCleanupCookieStore::~SessionCleanupCookieStore() {
++  checkpoint_closed_->data.store(true, std::memory_order_release);
+   net_log_.AddEventWithStringParams(
+       net::NetLogEventType::COOKIE_PERSISTENT_STORE_CLOSED, "type",
+       "SessionCleanupCookieStore");
+@@ -127,6 +129,18 @@
+   persistent_store_->Flush(std::move(callback));
+ }
+ 
++void SessionCleanupCookieStore::FlushForCheckpoint(
++    base::OnceCallback<void(bool)> callback) {
++  persistent_store_->FlushForCheckpoint(
++      base::BindPostTaskToCurrentDefault(base::BindOnce(
++          [](scoped_refptr<base::RefCountedData<std::atomic<bool>>> closed,
++             base::OnceCallback<void(bool)> callback, bool success) {
++            std::move(callback).Run(
++                !closed->data.load(std::memory_order_acquire) && success);
++          },
++          checkpoint_closed_, std::move(callback))));
++}
++
+ void SessionCleanupCookieStore::OnLoad(
+     LoadedCallback loaded_callback,
+     std::vector<std::unique_ptr<net::CanonicalCookie>> cookies) {
+diff --git a/services/network/session_cleanup_cookie_store_unittest.cc b/services/network/session_cleanup_cookie_store_unittest.cc
+--- a/services/network/session_cleanup_cookie_store_unittest.cc
++++ b/services/network/session_cleanup_cookie_store_unittest.cc
+@@ -12,10 +12,14 @@
+ #include "base/task/thread_pool.h"
+ #include "base/task/thread_pool/thread_pool_instance.h"
+ #include "base/test/task_environment.h"
++#include "base/test/test_future.h"
+ #include "base/time/time.h"
+ #include "net/log/net_log_capture_mode.h"
+ #include "net/log/test_net_log.h"
+ #include "net/log/test_net_log_util.h"
++#include "sql/database.h"
++#include "sql/statement.h"
++#include "sql/test/test_helpers.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "url/gurl.h"
+ 
+@@ -260,4 +264,35 @@
+ }
+ 
+ }  // namespace
++
++TEST_F(SessionCleanupCookieStoreTest, CheckpointForwardsDiskCommit) {
++  ASSERT_TRUE(CreateAndLoad().empty());
++  AddCookie("checkpoint", "value", "example.test", "/", base::Time::Now());
++  base::test::TestFuture<bool> result;
++  store_->FlushForCheckpoint(result.GetCallback());
++  ASSERT_TRUE(result.Get());
++  sql::Database database(sql::test::kTestTag);
++  ASSERT_TRUE(database.Open(temp_dir_.GetPath().Append(kTestCookiesFilename)));
++  sql::Statement query(database.GetUniqueStatement(
++      "SELECT value FROM cookies WHERE name='checkpoint'"));
++  ASSERT_TRUE(query.Step());
++  EXPECT_EQ("value", query.ColumnString(0));
++}
++
++TEST_F(SessionCleanupCookieStoreTest, CheckpointWrapperLossRejectsLateSuccess) {
++  auto persistent = base::MakeRefCounted<net::SQLitePersistentCookieStore>(
++      temp_dir_.GetPath().Append(kTestCookiesFilename),
++      base::SequencedTaskRunner::GetCurrentDefault(), background_task_runner_,
++      true, nullptr, false);
++  store_ = base::MakeRefCounted<SessionCleanupCookieStore>(persistent);
++  ASSERT_TRUE(Load().empty());
++  base::test::TestFuture<bool> result;
++  store_->FlushForCheckpoint(result.GetCallback());
++  store_ = nullptr;
++  EXPECT_FALSE(result.Get());
++  base::test::TestFuture<bool> alive;
++  persistent->FlushForCheckpoint(alive.GetCallback());
++  EXPECT_TRUE(alive.Get());
++}
++
+ }  // namespace network
+diff --git a/services/network/cookie_manager.h b/services/network/cookie_manager.h
+--- a/services/network/cookie_manager.h
++++ b/services/network/cookie_manager.h
+@@ -103,6 +103,8 @@
+   }
+ 
+   void FlushCookieStore(FlushCookieStoreCallback callback) override;
++  void FlushCookieStoreForCheckpoint(
++      FlushCookieStoreForCheckpointCallback callback) override;
+   void AllowFileSchemeCookies(bool allow,
+                               AllowFileSchemeCookiesCallback callback) override;
+   void SetForceKeepSessionState() override;
+diff --git a/services/network/cookie_manager.cc b/services/network/cookie_manager.cc
+--- a/services/network/cookie_manager.cc
++++ b/services/network/cookie_manager.cc
+@@ -13,10 +13,12 @@
+ #include "base/functional/callback.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/process/process.h"
++#include "base/task/bind_post_task.h"
+ #include "base/threading/platform_thread.h"
+ #include "build/build_config.h"
+ #include "components/content_settings/core/common/content_settings_pattern.h"
+ #include "components/content_settings/core/common/content_settings_types.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
+ #include "net/cookies/canonical_cookie.h"
+ #include "net/cookies/cookie_constants.h"
+@@ -339,6 +341,20 @@
+   cookie_store_->FlushStore(std::move(callback));
+ }
+ 
++void CookieManager::FlushCookieStoreForCheckpoint(
++    FlushCookieStoreForCheckpointCallback callback) {
++  // This manager's cookie-store binding is immutable. Its weak lifetime also
++  // prevents a reply from acknowledging a replacement manager/context.
++  cookie_store_->FlushStoreForCheckpoint(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindPostTaskToCurrentDefault(base::BindOnce(
++              [](base::WeakPtr<CookieManager> owner,
++                 FlushCookieStoreForCheckpointCallback callback,
++                 bool success) { std::move(callback).Run(owner && success); },
++              weak_factory_.GetWeakPtr(), std::move(callback))),
++          false));
++}
++
+ void CookieManager::AllowFileSchemeCookies(
+     bool allow,
+     AllowFileSchemeCookiesCallback callback) {
+diff --git a/services/network/cookie_manager_unittest.cc b/services/network/cookie_manager_unittest.cc
+--- a/services/network/cookie_manager_unittest.cc
++++ b/services/network/cookie_manager_unittest.cc
+@@ -2766,4 +2766,66 @@
+ }
+ 
+ }  // namespace
++
++TEST_F(CookieManagerTest, CheckpointRejectsMemoryStoreOverPrivilegedPipe) {
++  base::test::TestFuture<bool> result;
++  cookie_service_client()->FlushCookieStoreForCheckpoint(result.GetCallback());
++  EXPECT_FALSE(result.Get());
++  EXPECT_FALSE(connection_error_seen());
++}
++
++TEST_F(CookieManagerTest, CheckpointVersionOneAndLegacyMethodRemainAvailable) {
++  mojo::Remote<mojom::CookieManager> cloned;
++  service()->AddReceiver(cloned.BindNewPipeAndPassReceiver());
++  base::test::TestFuture<uint32_t> version;
++  cloned.QueryVersion(version.GetCallback());
++  EXPECT_EQ(1u, version.Get());
++  base::test::TestFuture<void> legacy;
++  cloned->FlushCookieStore(legacy.GetCallback());
++  EXPECT_TRUE(legacy.Wait());
++  base::test::TestFuture<bool> result;
++  cloned->FlushCookieStoreForCheckpoint(result.GetCallback());
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CookieManagerTest, CheckpointOwnerLossRejectsPostedReply) {
++  base::test::TestFuture<bool> result;
++  service()->FlushCookieStoreForCheckpoint(result.GetCallback());
++  NukeService();
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CookieManagerTest, CheckpointPersistentStoreThroughCleanupWrapper) {
++  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
++  auto persistent = base::MakeRefCounted<net::SQLitePersistentCookieStore>(
++      temp_dir_.GetPath().Append(kTestCookiesFilename),
++      base::SequencedTaskRunner::GetCurrentDefault(),
++      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}), false,
++      nullptr, false);
++  auto cleanup = base::MakeRefCounted<SessionCleanupCookieStore>(persistent);
++  InitializeCookieService(cleanup, cleanup);
++  base::test::TestFuture<bool> result;
++  cookie_service_client()->FlushCookieStoreForCheckpoint(result.GetCallback());
++  EXPECT_TRUE(result.Get());
++}
++
++TEST_F(CookieManagerTest, CheckpointPersistentOwnerLossRejectsLateSuccess) {
++  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
++  auto persistent = base::MakeRefCounted<net::SQLitePersistentCookieStore>(
++      temp_dir_.GetPath().Append(kTestCookiesFilename),
++      base::SequencedTaskRunner::GetCurrentDefault(),
++      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}), false,
++      nullptr, false);
++  auto cleanup = base::MakeRefCounted<SessionCleanupCookieStore>(persistent);
++  InitializeCookieService(cleanup, cleanup);
++  EXPECT_TRUE(service_wrapper()->GetAllCookies().empty());
++  base::test::TestFuture<bool> result;
++  service()->FlushCookieStoreForCheckpoint(result.GetCallback());
++  NukeService();
++  EXPECT_FALSE(result.Get());
++  base::test::TestFuture<bool> alive;
++  persistent->FlushForCheckpoint(alive.GetCallback());
++  EXPECT_TRUE(alive.Get());
++}
++
+ }  // namespace network
+diff --git a/services/network/public/mojom/cookie_manager.mojom b/services/network/public/mojom/cookie_manager.mojom
+--- a/services/network/public/mojom/cookie_manager.mojom
++++ b/services/network/public/mojom/cookie_manager.mojom
+@@ -534,4 +534,9 @@
+   // This delay occurs before every commit and blocks the background task
+   // runner.
+   SetPreCommitCallbackDelayForTesting(mojo_base.mojom.TimeDelta delay);
+-};
++
++  // Privileged commit completion for this bound store, not a producer fence or
++  // power-loss guarantee. Query version before use; no legacy Flush fallback.
++  [MinVersion=1, AllowedContext=sandbox.mojom.Context.kBrowser]
++  FlushCookieStoreForCheckpoint() => (bool success);
++};
+diff --git a/services/network/test/test_cookie_manager.h b/services/network/test/test_cookie_manager.h
+--- a/services/network/test/test_cookie_manager.h
++++ b/services/network/test/test_cookie_manager.h
+@@ -54,6 +54,8 @@
+   void CloneInterface(mojo::PendingReceiver<network::mojom::CookieManager>
+                           new_interface) override {}
+   void FlushCookieStore(FlushCookieStoreCallback callback) override {}
++  void FlushCookieStoreForCheckpoint(
++      FlushCookieStoreForCheckpointCallback callback) override;
+   void AllowFileSchemeCookies(
+       bool allow,
+       AllowFileSchemeCookiesCallback callback) override {}
+diff --git a/services/network/test/test_cookie_manager.cc b/services/network/test/test_cookie_manager.cc
+--- a/services/network/test/test_cookie_manager.cc
++++ b/services/network/test/test_cookie_manager.cc
+@@ -7,6 +7,7 @@
+ #include <utility>
+ 
+ #include "base/functional/callback.h"
++#include "base/task/bind_post_task.h"
+ #include "net/cookies/canonical_cookie.h"
+ #include "net/cookies/cookie_inclusion_status.h"
+ 
+@@ -15,6 +16,11 @@
+ TestCookieManager::TestCookieManager() = default;
+ 
+ TestCookieManager::~TestCookieManager() = default;
++
++void TestCookieManager::FlushCookieStoreForCheckpoint(
++    FlushCookieStoreForCheckpointCallback callback) {
++  base::BindPostTaskToCurrentDefault(std::move(callback)).Run(false);
++}
+ 
+ void TestCookieManager::SetCanonicalCookie(
+     const net::CanonicalCookie& cookie,

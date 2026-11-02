@@ -2,6 +2,12 @@
 
 ## 2026-11-02: browser-owned producer IPC prepared
 
+Follow-up: the [complete R12 recipe](../native/drafts/upstream-156-checkpoint-r12/README.md)
+now composes all 143 patches across all three repositories in isolation. All 454
+final owned files match; reversal restores 319 upstream originals. This removes
+the partial-composition limitation for that explicit recipe, not GN/build/runtime
+gates. The canonical checkout and measured browser remain R11.
+
 [Browser producer fence](../native/drafts/browser-storage-fence/README.md) connects
 the existing Blink controller to a separate normal Mojo endpoint. Version 1 is
 required without changing the primordial Renderer protocol. An independent browser

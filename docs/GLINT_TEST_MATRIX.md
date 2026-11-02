@@ -1,5 +1,16 @@
 # Glint browser test matrix
 
+## 2026-11-02: complete checkpoint R12 recipe composed
+
+| Gate | Result |
+| --- | --- |
+| Complete isolated candidate | All 143 patches applied/reversed across Chromium, V8 and Dawn |
+| Exact source checks | 454 final owned files matched; 319 upstream originals restored |
+| Registration | Explicit build candidate; original R11 prefix and resource limits retained |
+| Canonical checkout / binary | Still R11; no R12 transition or compilation claimed |
+| Runtime / durability admission | None; whole-profile checkpoint remains unfinished |
+| Evidence | [R12 recipe](../native/drafts/upstream-156-checkpoint-r12/README.md) |
+
 ## 2026-11-02: browser-owned renderer producer IPC prepared
 
 | Gate | Result |

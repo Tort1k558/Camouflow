@@ -101,7 +101,8 @@ def test_r11_replay_and_case_registration_are_not_execution_results():
 
 
 def test_r11_retains_all_28_old_groups_and_exact_measured_host_sources(native_units_before_image_r11,
-                                                                   host_sources_before_image_r11):
+                                                                   host_sources_before_image_r11,
+                                                                   host_sources_before_checkpoint_r12):
     previous = native_units_before_image_r11
     assert len(previous['SUPPORTED_TARGETS']) == 28
     assert units.SUPPORTED_TARGETS == (*previous['SUPPORTED_TARGETS'], 'gpu-opaque-sources')
@@ -111,7 +112,8 @@ def test_r11_retains_all_28_old_groups_and_exact_measured_host_sources(native_un
     record = json.loads((ROOT / 'native/drafts/environment/image-r11-host-source-upgrade.json').read_bytes())
     native = json.loads((ROOT / 'native/drafts/upstream-156-image-r10/native-all-observations.json').read_bytes())
     for row in record['sources']:
-        assert hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest() == row['after_sha256']
+        value = host_sources_before_checkpoint_r12.get(row['source'], (ROOT / row['source']).read_bytes())
+        assert hashlib.sha256(value).hexdigest() == row['after_sha256']
         assert hashlib.sha256(host_sources_before_image_r11[row['source']]).hexdigest() == row['before_sha256']
         assert row['before_sha256'] == native['source_sha256'][row['source']]
 

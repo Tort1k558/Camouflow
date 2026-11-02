@@ -1,0 +1,54 @@
+diff --git a/include/dawn/native/DawnNative.h b/include/dawn/native/DawnNative.h
+--- a/include/dawn/native/DawnNative.h
++++ b/include/dawn/native/DawnNative.h
+@@ -30,6 +30,7 @@
+ 
+ #include <webgpu/webgpu_cpp.h>
+ 
++#include <array>
+ #include <cstdint>
+ #include <memory>
+ #include <span>
+@@ -133,6 +134,7 @@
+     uint32_t sourceY = 0;
+     GlintReadbackFormat format = GlintReadbackFormat::Unsupported;
+     std::shared_ptr<const GlintGpuReadbackSnapshot> snapshot;
++    std::array<uint32_t, 16> mapping{};
+ };
+ struct GlintGpuInputPlan {
+     uint64_t deviceEpoch = 0;
+diff --git a/src/dawn/native/d3d12/BufferD3D12.h b/src/dawn/native/d3d12/BufferD3D12.h
+--- a/src/dawn/native/d3d12/BufferD3D12.h
++++ b/src/dawn/native/d3d12/BufferD3D12.h
+@@ -70,6 +70,7 @@
+     bool CheckIsResidentForTesting() const;
+ 
+     MaybeError EnsureDataInitialized(CommandRecordingContext* commandContext);
++    MaybeError EnsureGlintAllocationInitialized(CommandRecordingContext* commandContext);
+     ResultOrError<bool> EnsureDataInitializedAsDestination(CommandRecordingContext* commandContext,
+                                                            uint64_t offset,
+                                                            uint64_t size);
+diff --git a/src/dawn/native/d3d12/BufferD3D12.cpp b/src/dawn/native/d3d12/BufferD3D12.cpp
+--- a/src/dawn/native/d3d12/BufferD3D12.cpp
++++ b/src/dawn/native/d3d12/BufferD3D12.cpp
+@@ -631,6 +631,20 @@
+     return mResourceAllocation.GetInfo().mMethod == allocationMethod;
+ }
+ 
++MaybeError Buffer::EnsureGlintAllocationInitialized(CommandRecordingContext* commandContext) {
++    DAWN_INTERNAL_ERROR_IF(!commandContext || !HasAccess() || !HasPrivateGlintReadbackBacking() ||
++        GetAllocatedSize() < GetSize() || GetAllocatedSize() != GetD3D12Resource()->GetDesc().Width ||
++        !GetDevice()->IsToggleEnabled(Toggle::LazyClearResourceOnFirstUse),
++        "Glint full allocation initialization requires private secure buffer backing.");
++    DAWN_ASSERT(GetDevice()->IsLockedByCurrentThreadIfNeeded());
++    DAWN_TRY(EnsureDataInitialized(commandContext));
++    // Logical full-overwrite initialization does not itself prove initialized padding.
++    if (GetAllocatedSize() > GetSize()) {
++        DAWN_TRY(ClearBuffer(commandContext, 0, GetSize(), GetAllocatedSize() - GetSize()));
++    }
++    return {};
++}
++
+ MaybeError Buffer::EnsureDataInitialized(CommandRecordingContext* commandContext) {
+     if (!NeedsInitialization()) {
+         return {};

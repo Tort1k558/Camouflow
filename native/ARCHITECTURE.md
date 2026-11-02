@@ -2,6 +2,11 @@
 
 ## 2026-11-02: source-only browser/renderer producer bridge
 
+The [complete R12 recipe](drafts/upstream-156-checkpoint-r12/README.md) extends
+R11 with all seven prerequisites. Full isolated replay/reversal covers 143 patches,
+454 final owned files and 319 restored upstream originals. Registration is not
+canonical source transition, GN graph validation, compilation or runtime admission.
+
 The [browser producer fence](drafts/browser-storage-fence/README.md) adds a public
 Blink facade and a dedicated normal Mojo endpoint, leaving the primordial
 Renderer protocol unchanged. The browser requires endpoint version 1, owns a

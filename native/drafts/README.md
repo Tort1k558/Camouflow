@@ -18,6 +18,9 @@ The [browser-owned producer bridge](browser-storage-fence/README.md) adds a
 separate versioned Mojo endpoint and independent browser deadline. Its seven-packet
 50-file replay and 16 type checks are source evidence, not runtime or durability
 admission; eight additional native bodies remain unexecuted.
+The explicit [R12 recipe](upstream-156-checkpoint-r12/README.md) now composes
+the complete 143-patch batch across all repositories. It is not yet applied to
+the canonical R11 checkout or compiled.
 The older checkpoints below describe how the registered components were built;
 they are not the current browser version. Do not modify or reapply promoted
 patches during an active build.
