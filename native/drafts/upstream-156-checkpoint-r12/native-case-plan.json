@@ -1,0 +1,730 @@
+{
+  "schema": 1,
+  "candidate_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "native_case_bodies_prepared": 85,
+  "cases": [
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsCompletesLoadedMapsBeforeAck",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsEmptyBatchIsAsynchronous",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsRejectsMemoryOnlyDatabase",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsRejectsUnopenedDatabase",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsOwnerLossNeverAcknowledgesSuccess",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsCommitterCanDestroyOwner",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsPriorLegacyErrorRemainsSticky",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsNewCommitErrorIsReported",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsDoesNotCommitNeighbourDatabase",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "fixture": "StorageAreaImplTest",
+      "case": "CheckpointFenceWaitsForPendingPut",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "fixture": "StorageAreaImplTest",
+      "case": "CheckpointFenceRejectsDetachedCache",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "fixture": "StorageAreaImplTest",
+      "case": "CheckpointFenceRejectsAreaLossBeforeDelivery",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "fixture": "StorageAreaImplTest",
+      "case": "CheckpointFenceCleanAreaRepliesAsynchronously",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointEmptyDiskBackendCompletes",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointRejectsMemoryOnlyBackend",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointWaitsForReceivedPutAndPersistsIt",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointReturnsThroughPrivilegedControlPipe",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointOwnerLossDuringOpenFailsClosed",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointGenerationChangeRejectsOldReply",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointWriteErrorCannotBecomeSuccess",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointCoversTwoStorageKeysInOnePartition",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointEmptyStoreRepliesAsynchronously",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointPersistsReceivedCookieBeforeAck",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointOwnerLossNeverRepliesSuccess",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointRejectsUnopenedStore",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointLegacyWriteErrorRemainsSticky",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointReportsNewWriteError",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointPersistsEncryptedCookieBeforeAck",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointReportsEncryptionFailure",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointReportsAbandonedBackgroundTask",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointRejectsMemoryOnlyStoreAsynchronously",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointUnsupportedStoreDoesNotUseLegacyFlush",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointForwardsSuccessAfterLoad",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointLateSuccessAfterOwnerLossIsFailure",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointDroppedBackingCompletionIsFailure",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointLoadQueueOwnerLossFailsClosed",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointDrainsPreviouslyReceivedHostWrite",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointPropagatesBackingFailure",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/session_cleanup_cookie_store_unittest.cc",
+      "fixture": "SessionCleanupCookieStoreTest",
+      "case": "CheckpointForwardsDiskCommit",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/session_cleanup_cookie_store_unittest.cc",
+      "fixture": "SessionCleanupCookieStoreTest",
+      "case": "CheckpointWrapperLossRejectsLateSuccess",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointRejectsMemoryStoreOverPrivilegedPipe",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointVersionOneAndLegacyMethodRemainAvailable",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointOwnerLossRejectsPostedReply",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointPersistentStoreThroughCleanupWrapper",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointPersistentOwnerLossRejectsLateSuccess",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointEmptyFenceIsAsynchronous",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointWaitsForAllOutOfOrderMutationReplies",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointNewMutationInvalidatesCapturedFence",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointRejectedPutRemainsFailed",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointUnansweredMutationExpires",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointTracksDeleteAndDeleteAllReplies",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointRebindRejectsAlreadyPostedSuccess",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointRebindWithUnacknowledgedWritesFailsClosed",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointOwnerLossRejectsPostedSuccess",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointDisconnectFailsPendingMutationFence",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointPendingFenceQueueIsBounded",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTestWithParam",
+      "case": "CheckpointRejectsSessionStorage",
+      "kind": "TEST_P",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointExpiredDeadlineIsAsynchronousFailure",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointRejectsUnboundAreaWithoutRebinding",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointDoesNotWaitForNeighbourArea",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointEmptyNamespaceIsAsynchronous",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointWaitsForBothAreas",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointEarlyAreaMutationRejectsAggregate",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointNewAreaRejectsCapturedTopology",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointRemovalRejectsCapturedTopology",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointEvictionPreservesUnacknowledgedWrites",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointFailedEvictionCannotEraseWriteFailure",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointNamespaceResetRejectsPostedEmptySuccess",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointSessionNamespaceIsRejected",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointNamespaceDeadlineIsRequired",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointNamespaceQueueIsBounded",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerEmptyScopeIsAsynchronous",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerNewNamespaceRejectsOldReply",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerOwnerLossRejectsLateReply",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerResetOverRealClientPipeFailsClosed",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerPropagatesAreaFailure",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerQueueIsBounded",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "StorageControllerTest",
+      "case": "CheckpointFacadeRejectsExpiredDeadlineWithoutCreation",
+      "kind": "TEST",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "StorageControllerTest",
+      "case": "CheckpointFacadeRejectsUnboundedDeadlineWithoutCreation",
+      "kind": "TEST",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "RenderThreadImplUnittest",
+      "case": "CheckpointRendererInterfaceHasVersionOne",
+      "kind": "TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/renderer_host/render_process_host_unittest.cc",
+      "fixture": "RenderProcessHostUnitTest",
+      "case": "CheckpointUnsupportedHostRejectsWithoutStartingRenderer",
+      "kind": "TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "CheckpointLiveRendererProducerFence",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "CheckpointExpiredDeadlinePreservesRenderer",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "CheckpointRendererExitRejectsInflightFence",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "CheckpointHungRendererUsesBrowserDeadline",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    }
+  ],
+  "packets": [
+    {
+      "patch": "0137-native-storage-commit-barrier.patch",
+      "bodies": 9
+    },
+    {
+      "patch": "0138-native-storage-checkpoint-ipc.patch",
+      "bodies": 12
+    },
+    {
+      "patch": "0139-native-cookie-checkpoint.patch",
+      "bodies": 9
+    },
+    {
+      "patch": "0140-native-cookie-checkpoint-ipc.patch",
+      "bodies": 15
+    },
+    {
+      "patch": "0141-native-renderer-storage-fence.patch",
+      "bodies": 15
+    },
+    {
+      "patch": "0142-native-storage-aggregate-fence.patch",
+      "bodies": 17
+    },
+    {
+      "patch": "0143-native-browser-storage-fence.patch",
+      "bodies": 8
+    }
+  ],
+  "binaries": [
+    "blink_unittests",
+    "components_unittests",
+    "content_browsertests",
+    "content_unittests",
+    "net_unittests",
+    "services_unittests"
+  ],
+  "parameter_instances_discovered": false,
+  "built": false,
+  "executed": false,
+  "production_admitted": false,
+  "remaining": "Build all six binaries; list actual cases, require every body and parameter instance, execute and validate exact results without skipped cases"
+}

@@ -1,5 +1,15 @@
 # Glint architecture
 
+## 2026-11-02: R12 canonical source transition
+
+The [R12 transition](drafts/upstream-156-checkpoint-r12/source-transition-observations.json)
+completed sync/hooks/patch with all 143 patches and 454 matching owned source
+hashes. The measured runtime remains the preserved R11, not the now-modified
+source checkout. Full GN generation, compilation and the 85 new prepared native
+bodies still need verification before any R12 runtime claim. The committed
+[host run](drafts/upstream-156-checkpoint-r12/host-observations.json) passed 6037
+tests with one skip at its exact recorded commit.
+
 ## 2026-11-02: source-only browser/renderer producer bridge
 
 The [complete R12 recipe](drafts/upstream-156-checkpoint-r12/README.md) extends

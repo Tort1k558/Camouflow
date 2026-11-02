@@ -2,6 +2,12 @@
 
 ## 2026-11-02: browser-owned producer IPC prepared
 
+Latest: [R12 source transition](../native/drafts/upstream-156-checkpoint-r12/source-transition-observations.json)
+passed sync/hooks/patch; all 454 owned files match the complete recipe. The
+committed host run passed 6037 tests, one skipped. Full GN/build, execution of the
+85 new native bodies and runtime checks remain pending; preserved R11 is still
+the last measured browser.
+
 Follow-up: the [complete R12 recipe](../native/drafts/upstream-156-checkpoint-r12/README.md)
 now composes all 143 patches across all three repositories in isolation. All 454
 final owned files match; reversal restores 319 upstream originals. This removes

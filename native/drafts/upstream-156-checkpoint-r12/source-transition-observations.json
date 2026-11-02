@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "source_transition_passed": true,
+  "candidate_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "baseline_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "measured_build_start_commit": "369d39f6a1db91abe4210180b42a1032d58d61b4",
+  "canonical_source_patch_count": 143,
+  "owned_sources_matched": 454,
+  "changed_sources": 50,
+  "byte_identical_source_timestamps_restored": 381,
+  "stages": [
+    {
+      "action": "sync",
+      "started_unix": 1793603316.6556804,
+      "terminal": true,
+      "pid": 22252,
+      "returncode": 0,
+      "duration_seconds": 140.89,
+      "log_sha256": "c5933f8944472f8cd88c78733b6ca9c67b6da85ef40e53b4ab2b88b6d5a10cf1"
+    },
+    {
+      "action": "hooks",
+      "started_unix": 1793603457.546002,
+      "terminal": true,
+      "pid": 28464,
+      "returncode": 0,
+      "duration_seconds": 50.637,
+      "log_sha256": "71044b7ef24de7feff18a0ddebb95fb9665c39a0ad93e0cc01eadbf1ff927d32"
+    },
+    {
+      "action": "patch",
+      "started_unix": 1793603508.1838534,
+      "terminal": true,
+      "pid": 18992,
+      "returncode": 0,
+      "duration_seconds": 96.967,
+      "log_sha256": "dc5c5b15d4d92d3c85a004575b3793a10240e6f2b9f5ef4404ac6c53f6d81cd4"
+    }
+  ],
+  "preserved_r11_runtime_assets": 269,
+  "full_source_backup_verified": true,
+  "compiled_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Completed sync/hooks/patch and exact source postguards only; not GN generation, compilation or runtime admission"
+}

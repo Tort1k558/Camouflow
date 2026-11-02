@@ -1,5 +1,17 @@
 # Glint browser test matrix
 
+## 2026-11-02: R12 applied; compilation and native execution pending
+
+| Gate | Result |
+| --- | --- |
+| Committed host suite | 6037 passed, one skipped at 369d39f; not proof for later changes |
+| Source transition | Sync/hooks/patch stages passed; 143 patches applied; 454 owned source hashes matched |
+| Changed sources | 50 files; timestamps restored only for 381 byte-identical files |
+| R11 preservation | All 269 independent runtime assets verified; source rollback material retained |
+| New native coverage | 85 prepared bodies across six binaries; parameter discovery/execution pending |
+| R12 build/runtime | **Not yet verified**; no durability or release admission |
+| Evidence | [Host](../native/drafts/upstream-156-checkpoint-r12/host-observations.json), [transition](../native/drafts/upstream-156-checkpoint-r12/source-transition-observations.json), [native plan](../native/drafts/upstream-156-checkpoint-r12/native-case-plan.json) |
+
 ## 2026-11-02: complete checkpoint R12 recipe composed
 
 | Gate | Result |

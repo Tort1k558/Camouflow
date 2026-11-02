@@ -1,6 +1,7 @@
 import hashlib
 import json
 from pathlib import Path
+import re
 
 from scripts import native_build as build
 
@@ -49,3 +50,48 @@ def test_checkpoint_complete_replay_is_not_compilation_or_execution():
     assert proof['upstream_files_restored'] == 319
     for key in ('compiled', 'native_tests_executed', 'canonical_sources_modified', 'production_admitted'):
         assert proof[key] is False
+
+
+def test_checkpoint_host_measurement_binds_the_measured_commit_only():
+    candidate = build.load_candidate('upstream-156-checkpoint-r12')
+    record = json.loads((candidate['directory'] / 'host-observations.json').read_bytes())
+    assert record['passed'] and record['input_postguards_passed'] and record['full_suite_executed']
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['measured_commit'] == '369d39f6a1db91abe4210180b42a1032d58d61b4'
+    assert record['counts'] == {'passed': 6037, 'failed': 0, 'skipped': 1}
+    assert not any(record[k] for k in ('native_tests_executed', 'compiled_browser',
+                                      'runtime_verified', 'privacy_admitted', 'production_admitted'))
+
+
+def test_checkpoint_native_plan_accounts_for_every_added_test_body():
+    candidate = build.load_candidate('upstream-156-checkpoint-r12')
+    plan = json.loads((candidate['directory'] / 'native-case-plan.json').read_bytes())
+    assert plan['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    expected = []
+    for patch in candidate['manifest']['patches'][136:]:
+        text = (candidate['directory'] / 'patches' / patch['file']).read_text(encoding='utf-8-sig')
+        added = '\n'.join(line[1:] for line in text.splitlines()
+                          if line.startswith('+') and not line.startswith('+++'))
+        expected.extend((patch['file'], kind, fixture, case)
+                        for kind, fixture, case in re.findall(
+                            r'\b(TEST(?:_F|_P)?|IN_PROC_BROWSER_TEST_F)\(\s*(\w+),\s*(\w+)', added))
+    assert expected == [(r['patch'], r['kind'], r['fixture'], r['case']) for r in plan['cases']]
+    assert len(expected) == plan['native_case_bodies_prepared'] == 85
+    assert plan['binaries'] == ['blink_unittests', 'components_unittests', 'content_browsertests',
+                                 'content_unittests', 'net_unittests', 'services_unittests']
+    assert not any(plan[k] for k in ('parameter_instances_discovered', 'built', 'executed',
+                                    'production_admitted'))
+
+
+def test_checkpoint_source_transition_does_not_claim_a_built_browser():
+    candidate = build.load_candidate('upstream-156-checkpoint-r12')
+    record = json.loads((candidate['directory'] / 'source-transition-observations.json').read_bytes())
+    assert record['source_transition_passed'] and record['full_source_backup_verified']
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['canonical_source_patch_count'] == 143
+    assert record['owned_sources_matched'] == 454 and record['changed_sources'] == 50
+    assert record['preserved_r11_runtime_assets'] == 269
+    assert [r['action'] for r in record['stages']] == ['sync', 'hooks', 'patch']
+    assert all(r['terminal'] and r['returncode'] == 0 for r in record['stages'])
+    assert not any(record[k] for k in ('compiled_browser', 'native_tests_executed',
+                                      'runtime_verified', 'privacy_admitted', 'production_admitted'))

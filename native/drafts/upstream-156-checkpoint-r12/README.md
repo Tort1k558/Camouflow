@@ -1,7 +1,15 @@
 # R12: combined checkpoint prerequisites
 
-**Build candidate only. No compiled R12 browser, native execution or runtime
-admission is claimed. R11 remains the measured runtime.**
+## Committed host verification
+
+The [complete host suite](host-observations.json) passed **6037 tests, one skipped**
+in 612.219 seconds at commit 369d39f. This is not evidence for later source changes
+or any linked Chromium test. The [native case plan](native-case-plan.json) accounts
+for all **85 added test bodies** across six native binaries; actual parameter
+instances and execution remain unverified.
+
+**R12 sources applied; build pending. No compiled R12 browser, native execution
+or runtime admission is claimed. R11 remains the measured runtime.**
 
 | Evidence | Result |
 | --- | --- |
@@ -9,13 +17,18 @@ admission is claimed. R11 remains the measured runtime.**
 | All repositories | 143 patches applied and reversed in an isolated tree |
 | Final source comparison | 454 owned files matched |
 | Upstream restoration | 319 original files restored; added files removed |
-| Active checkout | Not changed by this preparation |
+| Active checkout | Transitioned to all 143 R12 patches; 454 owned source hashes matched |
 | Build policy | Windows, maximum j4, existing 180 GiB reserve retained |
 
 This combines the database completion, storage-service IPC, cookie completion
 and forwarding, renderer mutation/aggregate fences and browser-owned producer
 bridge. See the [bridge packet](../browser-storage-fence/README.md) for its
 limitations and prerequisite links.
+
+The [source transition](source-transition-observations.json) completed sync,
+hooks and patch stages. All 269 preserved R11 runtime assets were verified.
+Fifty source files changed; 381 byte-identical files regained their original
+timestamps. This does not establish successful GN generation or compilation.
 
 The completed composition is recorded in [preparation.json](preparation.json).
 [manifest.json](manifest.json) binds the complete patch sequence, exact upstream
@@ -28,8 +41,8 @@ are not fixed merely by registering this candidate.
 
 ## Next
 
-1. Verify host regressions and preserve the measured R11 runtime/source state.
-2. Perform guarded source transition and full GN generation.
+1. Host regressions and R11 preservation passed for the recorded inputs.
+2. Guarded source transition passed; complete full GN generation and compilation.
 3. Build and execute the prepared database, cookie, storage and real IPC cases.
 4. Complete whole-profile coordination and manager integration; then repeat
    crash-after-ack and the existing privacy/compatibility/resource/runtime matrix.

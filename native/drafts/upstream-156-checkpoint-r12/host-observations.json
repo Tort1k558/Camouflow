@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "passed": true,
+  "full_suite_executed": true,
+  "input_postguards_passed": true,
+  "measured_commit": "369d39f6a1db91abe4210180b42a1032d58d61b4",
+  "candidate_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "counts": {
+    "passed": 6037,
+    "failed": 0,
+    "skipped": 1
+  },
+  "duration_seconds": 612.219,
+  "full_report_sha256": "0246d6eb7de497a8b5b99101982e9a4d22b1f8f3a4346a4fdaa60b3b75a0ca67",
+  "log_sha256": "0b51b17b6030bfd6fafac3d82701425038741ef1bf277d612d0b4a2533cb99ce",
+  "native_tests_executed": false,
+  "compiled_browser": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Complete host suite for the exact recorded commit; not linked Chromium tests or future source changes"
+}
