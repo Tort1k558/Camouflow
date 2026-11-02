@@ -21,6 +21,10 @@ admission; eight additional native bodies remain unexecuted.
 The explicit [R12 recipe](upstream-156-checkpoint-r12/README.md) now composes
 the complete 143-patch batch across all repositories. It is not yet applied to
 the canonical R11 checkout or compiled.
+The next [profile producer cohort](profile-producer-cohort/README.md) is a
+separate unselected draft, not part of R12: five-file replay and GN parsing only;
+17 mock-host fixture bodies are not type-checked or executed. It is not a
+whole-profile checkpoint.
 The older checkpoints below describe how the registered components were built;
 they are not the current browser version. Do not modify or reapply promoted
 patches during an active build.

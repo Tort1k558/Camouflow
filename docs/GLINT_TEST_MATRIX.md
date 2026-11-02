@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## 2026-11-02: unselected profile producer cohort
+
+| Gate | Result |
+| --- | --- |
+| Source scope | One BrowserContext; existing renderer IPC, loaded partition value set, lifecycle/deadline/cancellation checks |
+| Isolated patch | Five files apply/reverse; three added files removed |
+| R12 inputs | Two GN files reconstructed using 106 filtered root patches |
+| GN | Two files parsed only; no follow-up target graph verified |
+| C++ / native cases | **Not type-checked, linked or executed**; 17 mock-host bodies prepared |
+| Current build | R12 recipe and canonical sources unchanged |
+| Whole-profile checkpoint | **Not implemented**: no global mutation cut, backend/network/session-cookie or manager completion |
+| Evidence | [Public draft](../native/drafts/profile-producer-cohort/README.md) |
+
 ## 2026-11-02: telemetry failure intervals
 
 Host regression tests reproduced a retained CPU baseline after a failed process-

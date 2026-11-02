@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "base_candidate": "upstream-156-checkpoint-r12",
+  "base_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "sources": [
+    {
+      "source": "content/browser/BUILD.gn",
+      "before_sha256": "15f99cda3f34450fa3498a3c85ca928223c20909de423508e5c6e1ec1cbb4e33",
+      "after_sha256": "382a7eb963427118e3ab84008148bf56ead48dcea071cb48a54c0f5d98ad3bd9"
+    },
+    {
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence.cc",
+      "before_sha256": null,
+      "after_sha256": "9ff2cbf780c003573484898eef9975dee83d6017b60f113d1976d678805de7ed"
+    },
+    {
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence.h",
+      "before_sha256": null,
+      "after_sha256": "53e30887389c333cb432aee22953ddd8ad4e3d66d67a59ed39f30b064f50de71"
+    },
+    {
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "before_sha256": null,
+      "after_sha256": "df37c6aebb6683d3433758f8440decb3861f698761ba2da46c4fefed99181619"
+    },
+    {
+      "source": "content/test/BUILD.gn",
+      "before_sha256": "079083572a70d7daa1e51632dfd583869a0780c6588b41f2866dff18584463b9",
+      "after_sha256": "06245408e030adc1cca03c09e7a51596b9e9357d9ce9e2d35997bfa0388ddfb8"
+    }
+  ],
+  "changed_files": 5,
+  "patch": "profile-producer-cohort.patch",
+  "patch_sha256": "45e0cc3a0abb2e0d561d273fb636a9e493035077f1d5d08c46a4f48eff56eafc",
+  "isolated_forward_reverse_passed": true,
+  "full_candidate_composition_verified": false,
+  "type_checked": false,
+  "gn_generation_verified": false,
+  "canonical_sources_modified": false,
+  "native_bodies_prepared": 17,
+  "native_tests_executed": false,
+  "registered": false,
+  "compiled_browser": false,
+  "profile_checkpoint_implemented": false,
+  "production_admitted": false,
+  "scope": "Unselected BrowserContext producer cohort only; no storage commit, mutation freeze or profile checkpoint",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "new_files": 3,
+  "selected": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "native_case_bodies_prepared": [
+    "EmptyScopeIsPostedAndDoesNotCreatePartition",
+    "NullContextFailsWithoutInlineReply",
+    "OffTheRecordScopeIsRejected",
+    "ExpiredDeadlineNeverContactsRenderer",
+    "UnboundedDeadlineNeverContactsRenderer",
+    "WaitsForAllCapturedRenderers",
+    "DoesNotContactOtherBrowserContext",
+    "InlineProducerCannotInvokeCallerInline",
+    "ProducerRejectionIsNotSuccess",
+    "DroppedProducerReplyFailsClosed",
+    "UnansweredProducerUsesBrowserDeadline",
+    "CancelPendingOperationPostsFailure",
+    "CancelQueuedSuccessCannotBecomeAcknowledged",
+    "ContextDestructionRejectsQueuedSuccess",
+    "HostDestructionRejectsPendingCohort",
+    "NewReadyRendererInvalidatesQueuedEmptyScope",
+    "UnreadyRendererDoesNotReceiveFence"
+  ],
+  "gn_files_parsed": [
+    {
+      "source": "content/browser/BUILD.gn",
+      "ast_sha256": "2f33835365679ee456edcfa5c7d6e4d18d9ad3fc4046454d6b20d225dd6e9643",
+      "parsed": true
+    },
+    {
+      "source": "content/test/BUILD.gn",
+      "ast_sha256": "7c929df58f64654d2782d73bc7983d61fe596e9183cee2bad7be60f50b8bd9db",
+      "parsed": true
+    }
+  ],
+  "r12_root_patches_replayed_for_owned_inputs": 106,
+  "r12_owned_inputs_reconstructed": true,
+  "cohort_source_implemented": true,
+  "network_producer_fence_implemented": false,
+  "backend_coordination_implemented": false,
+  "manager_checkpoint_implemented": false,
+  "remaining": [
+    "Native C++ type checks and linked execution of all prepared cases",
+    "Loaded partition changes, bounds, renderer restart and actual cross-process fixtures",
+    "Global mutation/cut semantics, network producer ordering and session-cookie contract",
+    "Versioned backend completion, manager lifecycle/cancellation and crash-after-ack",
+    "Complete follow-up recipe and browser/resource/package admission"
+  ]
+}

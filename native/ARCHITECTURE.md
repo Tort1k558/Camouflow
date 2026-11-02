@@ -1,5 +1,18 @@
 # Glint architecture
 
+## 2026-11-02: follow-up producer cohort draft
+
+The [unselected cohort draft](drafts/profile-producer-cohort/README.md) connects
+existing renderer acknowledgments within one weakly owned BrowserContext and
+compares the full loaded partition configuration set at posted completion.
+Creation/launch/exit, owner loss, deadline and cancellation reject stale success.
+It does not retain partition pointers or create actors/backends.
+
+Only five-file isolated replay/reversal and GN parsing are verified. C++ type
+checks and 17 prepared mock-host tests are pending; the live R12 build is unchanged.
+This is not a global mutation barrier or disk checkpoint. Backend/service lifetime,
+network ordering, session-cookie semantics and manager completion remain required.
+
 ## 2026-11-02: R12 canonical source transition
 
 The [R12 transition](drafts/upstream-156-checkpoint-r12/source-transition-observations.json)

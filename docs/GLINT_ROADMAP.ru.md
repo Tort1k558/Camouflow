@@ -1,5 +1,18 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: profile producer cohort source draft
+
+The [public cohort draft](../native/drafts/profile-producer-cohort/README.md)
+collects existing per-renderer acknowledgments for one weakly owned BrowserContext,
+captures loaded partition configurations by value and rejects lifecycle/topology
+changes through posted delivery. It does not start actors or partitions.
+
+Five-file replay/reversal and two GN parse checks passed; both R12-owned GN inputs
+were reconstructed from 106 filtered root patches. **C++ type checks and all 17
+prepared mock-host fixtures remain unexecuted.** The draft is not selected or
+applied to the live R12 build. Global mutation/cut semantics, network producers,
+backend completion, session-cookie persistence and manager coordination remain open.
+
 ## 2026-11-02: browser-owned producer IPC prepared
 
 Latest: [R12 source transition](../native/drafts/upstream-156-checkpoint-r12/source-transition-observations.json)
