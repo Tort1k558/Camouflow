@@ -1,5 +1,18 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: checkpoint database completion prerequisite prepared
+
+[Storage commit barrier](../native/drafts/storage-commit-barrier/README.md) adds
+an unselected completion API for pending database map batches. It reports owner
+loss and write failures, retains earlier errors, rejects memory-only/unopened
+databases and preserves the old InitiateCommit interface. Isolated forward/reverse
+replay and two real-target C++ type checks pass; nine native cases are prepared,
+not executed. Canonical R11 sources/runtime remain unchanged.
+
+This is not a profile checkpoint or a repair of the reproduced last-write loss.
+Producer/pending-load fences, privileged IPC, cookie write status, browser/manager
+lifecycle binding and crash-after-ack tests still must be implemented together.
+
 ## 2026-11-02: renderer recovery verified; browser last-write loss reproduced
 
 [Complete six-case matrix](../native/drafts/upstream-156-image-r11/crash-recovery-observations.json):

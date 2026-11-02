@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## 2026-11-02: database commit-completion source prerequisite
+
+| Gate | Result |
+| --- | --- |
+| Isolated patch replay | Three pristine upstream files, forward/reverse hashes matched |
+| C++ syntax/type checks | Implementation and native fixture translation units passed with real generated target flags |
+| Native cases | Nine prepared; **not linked or executed** |
+| Current runtime | Unchanged R11; checkpoint and durability repair **not implemented** |
+| Evidence | [Source packet](../native/drafts/storage-commit-barrier/README.md) |
+
+Requires producer/load fences, acknowledged IPC, cookie error status, ownership,
+manager binding and crash-after-ack checks before any checkpoint admission.
+
 ## 2026-11-02: renderer/browser crashes without graceful checkpoint
 
 | Check | Result |
