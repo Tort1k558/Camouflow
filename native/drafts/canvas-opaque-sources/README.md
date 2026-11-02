@@ -25,6 +25,15 @@ flags. Five native cases are prepared for exact RGBA-oracle agreement, opaque
 alpha/origin/orientation/colour space, the same budget boundary, and rejection
 of unnormalized owned rasters and unsupported formats.
 
+[Complete R11 preparation](full-composition-observations.json) replays all 136
+patches forward and backward, matches 406 final files and restores 273 upstream
+inputs. The prepared candidate is not yet registered, built or executed.
+
+[Focused module continuity](module-continuity-observations.json) passed 24 paired
+classic/module shared-worker reads across three launches with the gamma preset.
+It did not reproduce the earlier combined-sequence mismatch; that failure is
+still open and has not been fixed or waived.
+
 The canonical R10 checkout/runtime is unchanged. Next: compose/register the
 complete repair recipe, execute all existing and new native groups, then repeat
 the original fixtures and these alpha variants. The separate shared-worker

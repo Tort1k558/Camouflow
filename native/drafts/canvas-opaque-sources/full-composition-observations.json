@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "passed": true,
+  "compiled": false,
+  "native_tests_executed": false,
+  "registered": false,
+  "production_admitted": false,
+  "forward_patches": 136,
+  "reverse_patches": 136,
+  "manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "canonical_sources_modified": false,
+  "final_owned_files_matched": 406,
+  "upstream_files_restored": 273,
+  "prepared_candidate": "upstream-156-image-r11",
+  "base_manifest_sha256": "3a1472a565328348b1cf4ae0038fbf905d2bd547f594f2cc4664b4143a1d7c48",
+  "source_report_sha256": "e730fdcedc37835616935c8a087eed2c244e15de4e5beec77eca910ebab37d95"
+}

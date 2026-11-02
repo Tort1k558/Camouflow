@@ -1,5 +1,13 @@
 # Glint browser test matrix
 
+## 2026-11-02: complete R11 source preparation, not a new runtime
+
+[Full repair-chain replay](../native/drafts/canvas-opaque-sources/full-composition-observations.json)
+passes 136 forward/reverse patches, 406 final files and 273 restored upstream inputs.
+R11 is prepared but not registered or built. Focused gamma module continuity also
+passes 24 classic/module pairs over three launches; it does not reproduce or close
+the original combined-sequence shared-worker mismatch.
+
 ## 2026-11-02: opaque GPU source failure isolated; normalization repair prepared
 
 [Opaque-source packet](../native/drafts/canvas-opaque-sources/README.md): R10 passes

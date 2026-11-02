@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "passed": true,
+  "candidate": "upstream-156-image-r10",
+  "candidate_manifest_sha256": "3a1472a565328348b1cf4ae0038fbf905d2bd547f594f2cc4664b4143a1d7c48",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "7fb4b5776c989fa462b99821cb6a6f3b9adad0b2499dc3ca5f1fd2ab40437156",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "source_report_sha256": "512a6045f246acbf49abe20af81d11e26feade39b72d842f52f2b6192afc520b",
+  "rendering_preset": "gamma-1400-contrast-300",
+  "runtime_launches": 3,
+  "classic_context_observations": 192,
+  "module_shared_worker_observations": 24,
+  "compared_pairs": 24,
+  "mismatch_cycles": 0,
+  "source_core_driver_asset_postguards_passed": true,
+  "owned_resources_closed": true,
+  "scope": "Focused 2D classic/module continuity over three launches; not the original full combined sequence",
+  "original_combined_failure_reproduced": false,
+  "original_combined_failure_closed": false,
+  "source_repair_applied": false,
+  "production_admitted": false
+}

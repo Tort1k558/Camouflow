@@ -61,3 +61,19 @@ def test_diagnostics_preserve_failed_opaque_paths_without_discarding_successful_
     assert record['original_failures_preserved'] and not record['production_admitted']
     for name, digest in record['probe_sha256'].items():
         assert hashlib.sha256((PACKET / name).read_bytes()).hexdigest() == digest
+
+
+def test_full_replay_remains_source_only_and_module_stress_does_not_close_the_original_failure():
+    replay = json.loads((PACKET / 'full-composition-observations.json').read_bytes())
+    assert replay['passed'] and replay['prepared_candidate'] == 'upstream-156-image-r11'
+    assert replay['forward_patches'] == replay['reverse_patches'] == 136
+    assert replay['final_owned_files_matched'] == 406 and replay['upstream_files_restored'] == 273
+    assert not replay['registered'] and not replay['compiled'] and not replay['native_tests_executed']
+    assert not replay['canonical_sources_modified'] and not replay['production_admitted']
+    continuity = json.loads((PACKET / 'module-continuity-observations.json').read_bytes())
+    assert continuity['passed'] and continuity['compared_pairs'] == 24
+    assert continuity['runtime_launches'] == 3 and continuity['mismatch_cycles'] == 0
+    assert not continuity['original_combined_failure_reproduced']
+    assert not continuity['original_combined_failure_closed'] and not continuity['source_repair_applied']
+    original = json.loads((ROOT / 'native/drafts/upstream-156-image-r10/runtime-observations.json').read_bytes())
+    assert any(error['stage'] == 'contexts' for phase in original['phases'] for error in phase['validation_errors'])
