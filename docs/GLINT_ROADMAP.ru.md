@@ -8,9 +8,11 @@ with version negotiation, owner/generation/write-epoch checks, retained wire
 bounds and deadline state independent of Oilpan/Mojo callback lifetime. No
 connection is created by the drain. Four packets compose/reverse across 19
 files; the pinned Mojo grammar parser accepts the interface. Eight additional
-native bodies are prepared, not executed. Generated bindings, C++ types, all
-implementers, renderer document-cohort aggregation, workers, HTTP producers,
-backend/manager completion and runtime admission remain open. R12 is unchanged.
+native bodies are prepared, not executed. Windows parser/import checks and
+normal/Blink/shared generation now pass (18 artifacts), preserving the six
+existing wire methods. C++ types, all implementers, renderer document-cohort
+aggregation, workers, HTTP producers, backend/manager completion and runtime
+admission remain open. R12 is unchanged.
 
 ## 2026-11-02: restricted-cookie producer drain source draft
 

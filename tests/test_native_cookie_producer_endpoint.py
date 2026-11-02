@@ -29,10 +29,11 @@ def test_cookie_endpoint_is_source_preparation_not_binding_or_runtime_admission(
     for key in ('selected', 'registered', 'type_checked', 'compiled', 'native_executed',
                 'renderer_cohort_integrated', 'worker_integrated', 'whole_profile_checkpoint',
                 'canonical_sources_modified', 'production_admitted', 'runtime_verified',
-                'full_candidate_composition_verified', 'generated_bindings_verified',
+                'full_candidate_composition_verified', 'generated_bindings_cpp_type_checked',
                 'all_implementers_verified', 'http_producers_fenced'):
         assert record[key] is False
     assert record['mojo_grammar_parsed']
+    assert record['generated_bindings_verified']
     assert record['mojo_endpoint_source_prepared']
     assert record['document_drain_source_prepared']
 
@@ -87,3 +88,25 @@ def test_cookie_endpoint_fixture_declarations_and_file_scope_are_explicit():
     paths = {line.split('\t', 2)[2] for line in result.stdout.splitlines()}
     assert paths == {row['source'] for row in record['sources']}
     assert len(paths) == 10
+
+
+def test_cookie_endpoint_generated_bindings_preserve_existing_wire_methods():
+    record, _, _ = packet()
+    observed = json.loads((DIRECTORY / record['binding_observations']).read_bytes())
+    assert observed['passed'] and observed['input_postguards_passed']
+    assert observed['patch_sha256'] == record['patch_sha256']
+    assert observed['import_metadata_checked']
+    assert observed['existing_six_method_wire_shapes_unchanged']
+    assert observed['transitive_import_modules'] == 16
+    assert len(observed['primary_input_hashes']) == 32
+    assert len(observed['generated_artifacts']) == 18
+    assert [row['name'] for row in observed['commands']] == ['parse', 'cpp', 'blink', 'shared']
+    assert all(row['returncode'] == 0 for row in observed['commands'])
+    method = observed['added_method']
+    assert method['name'] == 'DrainCookieWritesForCheckpoint'
+    assert method['ordinal'] == 6 and method['min_version'] == 1
+    assert method['parameters'] == []
+    assert [p['spec'] for p in method['response_parameters']] == ['b']
+    for key in ('cpp_type_checked', 'native_executed', 'gn_graph_verified',
+                'canonical_sources_modified'):
+        assert observed[key] is False

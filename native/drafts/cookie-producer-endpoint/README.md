@@ -1,7 +1,8 @@
 # Document cookie producer endpoint
 
-**Unselected source preparation. No generated-binding validation, C++ type check,
-linking or native execution. Not a working whole-profile checkpoint. The active
+**Unselected source preparation. Windows import checks and binding generation
+passed; C++ type checks, linking and native execution remain unverified. This is
+not a working whole-profile checkpoint. The active
 R12 source tree and build recipe are unchanged.**
 
 Requires the [restricted-cookie drain](../restricted-cookie-producer-drain/README.md).
@@ -25,8 +26,12 @@ when a renderer is frozen or busy.
 
 - Four follow-up source packets compose across 19 final files in isolation.
   Reversal restores 16 exact canonical prerequisites and removes three new files.
-- Official pinned Mojo grammar parser accepts the updated interface. **This is not
-  dependency resolution, generated-binding validation or C++ compatibility.**
+- Official Windows parser/import checks and normal/Blink/shared generators pass:
+  18 generated artifacts, 16 transitive modules and 32 measured inputs unchanged
+  through completion. Existing six method wire shapes/ordinals remain unchanged;
+  the new bool-response method is ordinal 6 at minimum version 1.
+- **Binding generation is not C++ type checking, linking, IPC execution or full
+  GN/dependency-graph validation.** See [binding-observations.json](binding-observations.json).
 - Prepared C++ formatted with the pinned formatter.
 - Eight additional native fixture bodies prepared, **not executed**: two network
   pipe cases, two HeapMojoRemote query/reset cases and four document lifecycle/
@@ -39,7 +44,7 @@ eventually selected. Batch it with the complete follow-up recipe, not a running 
 
 ## Still required
 
-1. Generated bindings, all implementers, linked/native and GC/lifecycle tests.
+1. C++ type checks, all implementers, linked/native and GC/lifecycle tests.
 2. Enumerate document producer cohorts without creating documents or connections;
    integrate the browser-owned aggregate and reject topology changes.
 3. Fence worker/CookieStore and HTTP/network producers; define cross-pipe ordering.

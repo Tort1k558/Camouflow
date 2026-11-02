@@ -137,9 +137,12 @@
   ],
   "formatted_with_pinned_clang_format": true,
   "mojo_grammar_parsed": true,
-  "generated_bindings_verified": false,
+  "generated_bindings_verified": true,
   "all_implementers_verified": false,
   "mojo_endpoint_source_prepared": true,
   "document_drain_source_prepared": true,
-  "http_producers_fenced": false
+  "http_producers_fenced": false,
+  "generated_bindings_cpp_type_checked": false,
+  "binding_observations": "binding-observations.json",
+  "generated_bindings_verification_scope": "Windows parser import checks and normal/Blink/shared binding generation only; no C++ type, link or runtime verification"
 }

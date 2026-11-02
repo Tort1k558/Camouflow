@@ -1,0 +1,227 @@
+{
+  "schema": 1,
+  "passed": true,
+  "native_executed": false,
+  "cpp_type_checked": false,
+  "gn_graph_verified": false,
+  "canonical_sources_modified": false,
+  "commands": [
+    {
+      "name": "parse",
+      "args": [
+        "D:\\Glint156Candidate\\chromium\\src\\mojo\\public\\tools\\mojom\\mojom_parser.py",
+        "--input-root",
+        "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source",
+        "--input-root",
+        "D:\\Glint156Candidate\\chromium\\src",
+        "--module-root",
+        "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen",
+        "--output-root",
+        "D:\\GlintManagerQA\\cookie-producer-bindings-20261102-v3\\generated",
+        "--check-imports",
+        "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\cookies_mojom.build_metadata",
+        "--enable-feature",
+        "is_win",
+        "--mojoms",
+        "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source\\services\\network\\public\\mojom\\restricted_cookie_manager.mojom"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "cpp",
+      "args": [
+        "D:\\Glint156Candidate\\chromium\\src\\mojo\\public\\tools\\bindings\\mojom_bindings_generator.py",
+        "--use_bundled_pylibs",
+        "-o",
+        "D:\\GlintManagerQA\\cookie-producer-bindings-20261102-v3\\generated",
+        "generate",
+        "-d",
+        "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source",
+        "--bytecode_path",
+        "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\tools\\bindings",
+        "-g",
+        "c++",
+        "--typemap",
+        "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\cookies_mojom__type_mappings",
+        "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source\\services\\network\\public\\mojom\\restricted_cookie_manager.mojom"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "blink",
+      "args": [
+        "D:\\Glint156Candidate\\chromium\\src\\mojo\\public\\tools\\bindings\\mojom_bindings_generator.py",
+        "--use_bundled_pylibs",
+        "-o",
+        "D:\\GlintManagerQA\\cookie-producer-bindings-20261102-v3\\generated",
+        "generate",
+        "-d",
+        "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source",
+        "--bytecode_path",
+        "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\tools\\bindings",
+        "-g",
+        "c++",
+        "--export_attribute",
+        "BLINK_PLATFORM_EXPORT",
+        "--export_header",
+        "third_party/blink/public/platform/web_common.h",
+        "--variant",
+        "blink",
+        "--for_blink",
+        "--typemap",
+        "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\cookies_mojom_blink__type_mappings",
+        "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source\\services\\network\\public\\mojom\\restricted_cookie_manager.mojom"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "shared",
+      "args": [
+        "D:\\Glint156Candidate\\chromium\\src\\mojo\\public\\tools\\bindings\\mojom_bindings_generator.py",
+        "--use_bundled_pylibs",
+        "-o",
+        "D:\\GlintManagerQA\\cookie-producer-bindings-20261102-v3\\generated",
+        "generate",
+        "-d",
+        "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source",
+        "--bytecode_path",
+        "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\tools\\bindings",
+        "-g",
+        "c++",
+        "--generate_non_variant_code",
+        "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source\\services\\network\\public\\mojom\\restricted_cookie_manager.mojom"
+      ],
+      "returncode": 0
+    }
+  ],
+  "patch_sha256": "d32e0c64935586a08e85ffb5db8bcf7711b94fcfe2b80520b1d369aa3c19513e",
+  "primary_input_hashes": {
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\mojom\\base\\unguessable_token.mojom-module": "291e7a83e2cc1b9da1ee117fbfa1aa2aca585053d83872e9006837118c11623e",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\cookies_mojom__type_mappings": "393c05f12590ff5063536cc5711ae6540b0193230e3a3795fa477125ceefb350",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\components\\content_settings\\core\\common\\content_settings.mojom-module": "d428120a74a7993c055db8535839292141bde8a90eb79e397496c4bff7b8bc3b",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\sandbox\\policy\\mojom\\mojom.build_metadata": "d05b7aaf26d1d6eb08fac9540d69acf848c1143dfc2be8fc4ca611c2755d9e09",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\url\\mojom\\url_mojom_origin.build_metadata": "78d9e5477653b6a6675d3bcde42483591495acb65392dbb22f720b7f94181d1f",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\cookie_manager.mojom-module": "baf2bfdd2f1506b3c89d1fae9531ad0aa8a4316d4c705295cdc6fae216192bb6",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\sandbox\\policy\\mojom\\context.mojom-module": "82ba5fb058a64903167565b77840574fb1e53ac877c9bc9830a17dd087373595",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\site_for_cookies.mojom-module": "a207dba36b1d82555f94001c876fcd0a8a9f3b5e4a844fb96ebb2f616e9566af",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\components\\content_settings\\core\\common\\content_settings_enums.build_metadata": "913fac699e777c43f92b3a122796afd785c97078a2709ce44f700cb45d2e9422",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\url\\mojom\\origin.mojom-module": "72bc9781fd738af55943622a66e34703c3dd088a28f7012b99385caf1bff18f9",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\tools\\bindings\\cpp_templates.zip": "fafb4b0fe0d1d475be804bb0834240f16fcc8a6157c3a7aed002af7a51a77d23",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\url\\mojom\\url.mojom-module": "edc209c6c6b691bf9ecfa36921e1e8abf45e4cc4da05296953121215ba8338ad",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\mojom\\base\\values.mojom-module": "39754bbcc90637bbcd878d4e8b6ea3320118ce8899df94bbfa1a80e6adcfe299",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\restricted_cookie_manager.mojom-module": "6fd8f979ba7fab306a582bbdb2e890781a66aa345de995a4b99b6df37782d78b",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\components\\content_settings\\core\\common\\content_settings_enums.mojom-module": "20f7eee598a325947262b316f82ec0e49d2e31e7fe985328d4df69db31ff3873",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\schemeful_site.mojom-module": "32e36f642302499b843bdcf3329eb52417409e2cb0f476c7a5d453ab9c64be2e",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\url\\mojom\\url_mojom_gurl.build_metadata": "f5eb38ccc79497b1d2650f1b28aace74ea9b34d912429508308ac81bf6a925f6",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\components\\content_settings\\core\\common\\content_settings_types.build_metadata": "5f8cebafcbc8be3821c30280693a9f20383538eff6b83de8364d9e766809ceaa",
+    "D:\\Glint156Candidate\\chromium\\src\\mojo\\public\\tools\\mojom\\mojom_parser.py": "6021dd82a83ddb44bbb8a65983eab5ce6bf9ec3fbe427d143d64918693cccf95",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\mojom\\base\\base.build_metadata": "95eb41ce81951d868b449eb1c75947076a957e02a5ccdb29f35a2b92be4f3074",
+    "D:\\Glint156Candidate\\chromium\\src\\mojo\\public\\tools\\bindings\\mojom_bindings_generator.py": "a456aea7582e55169c5da39c8018ef4ee43d000ff455b1d1e32691d25e07a053",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\components\\content_settings\\core\\common\\mojo_bindings.build_metadata": "afaeb9e222771a7135963d205ccfa5d4850a69c38789944f462b8834ef8bb366",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\cookies_mojom.build_metadata": "d17583b2da2ac13c8e2e1fffe16973a8eacb89e6f25eea72abb784482e44c85a",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\mojom_schemeful_site.build_metadata": "b5b7ee25fd71a82eeedd3342c531079c4583f69b8861c57812241d7a5fa6e600",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\components\\content_settings\\core\\common\\content_settings_types.mojom-module": "5642b05fc56c71892a198c8661e51a05098d995f6f93a44073d2f382461abb4b",
+    "D:\\GlintManagerQA\\cookie-producer-endpoint-20261102-v4\\source\\services\\network\\public\\mojom\\restricted_cookie_manager.mojom": "f398af485274d1b724127bc0acb35cd2d5929feac4a1e16dbb1fe3e0c49038c8",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\storage_access_api.mojom-module": "0d974baf212266604f9cd5afb109300bf581c62bb8a2fbf035b25c2a23f2ca8e",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\mojom_storage_access_api.build_metadata": "228bb88b84f1ae8c56893552647037c2cf788f7b82f5145d0f71259e8c0d7ec3",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\mojom\\base\\time.mojom-module": "fb3e0225441ad6bdc295060b3b09e5ec241268fb2c7bff52decb2dceaba0d30e",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\cookie_partition_key.mojom-module": "769df8aa43d518de37068c6353480869899ae048e89ef33834aeb54ce1a460eb",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\mojo\\public\\mojom\\base\\shared_memory.mojom-module": "7181366102f7b7e687d71b8e2b860e937f612bd7658e2c0e4e350a071cbd3682",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\gen\\services\\network\\public\\mojom\\cookies_mojom_blink__type_mappings": "82605b74faef351bf889990072721655daae7ce5a9005b14164f7b7c410b8ab9"
+  },
+  "transitive_import_modules": 16,
+  "import_metadata_checked": true,
+  "existing_six_method_wire_shapes_unchanged": true,
+  "added_method": {
+    "name": "DrainCookieWritesForCheckpoint",
+    "ordinal": 6,
+    "min_version": 1,
+    "attributes": {
+      "MinVersion": 1
+    },
+    "parameters": [],
+    "response_parameters": [
+      {
+        "name": "success",
+        "ordinal": null,
+        "spec": "b",
+        "min_version": null
+      }
+    ]
+  },
+  "input_postguards_passed": true,
+  "generated_artifacts": [
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-blink-forward.h",
+      "sha256": "73c0e4a0f000f771d6c69759caab831f01a53ef1ffbeeeecd29990e80d465ca6"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-blink-import-headers.h",
+      "sha256": "132b7f87470252c0024edc85da3ef64cef8dbfc0eb1913ef2fea65b5980405d0"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-blink-test-utils.h",
+      "sha256": "14554fb99e0dde09b558cebb47637c425ee37fefbe982ac1503d6fb49c8e0cb3"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-blink.cc",
+      "sha256": "96597c8d8c05c4887f80c5e213c18bd0e15f89a44e456fac9777f824cc0e184f"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-blink.h",
+      "sha256": "0e5ed02be95a5684e551fd720458a9cf423c40d2e25f4c46d637dba48bb97b71"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-data-view.h",
+      "sha256": "170a446c255f723ba0030e6f3687f67eaf267949b372925d219bb569a25196ed"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-features.h",
+      "sha256": "9549ef6aa5ca248a9e6eb4a361d66aec2f7fb7e07633676b81ddcb3b9f4cbc97"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-forward.h",
+      "sha256": "12893c7e16d5d11eb1769ecbf6bd227338f0cc0d10dec587a97263c01788779a"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-import-headers.h",
+      "sha256": "febc5372ac79832ceb741ec47d3149cb2a190fd68f680dea050766daf7a64641"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-module",
+      "sha256": "b77187d47fe5db7327419efe918268bf40b66f3f83bcd41e5e5cda409cf1a9e4"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-params-data.h",
+      "sha256": "1bbdeb1982939a1a96888eb04004182b0da97bd5d6ae843f7fdc9ac0995d52f0"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-send-validation.h",
+      "sha256": "09fd3db4ca21caf4023aa43992336bd50a6eb7c79564b9bd6b4815a3f727e993"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-shared-internal.h",
+      "sha256": "607738d1ce74915c495642baca750b18d85da4e1843af5f9f3de33ef3cb3db04"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-shared.cc",
+      "sha256": "8d9a89c9cdabbf07b383d5f6f7634aedc5a9e87ae27d20353ec7f9f17a25b509"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-shared.h",
+      "sha256": "c91ffd0d4b4d0452dce0cbbe038ee1ffd2e3eb62770503908c7f725c71f2d9d7"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom-test-utils.h",
+      "sha256": "02400ea406cca43e1ce7c294bad403f5de8162d3abd3300a5c9f78ddb8c6fe30"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom.cc",
+      "sha256": "119d543a55369d9c7f570d13f0674ffef6d568aa4ebb5b6a12fe8f42196fa342"
+    },
+    {
+      "path": "services/network/public/mojom/restricted_cookie_manager.mojom.h",
+      "sha256": "c987907ae7d15f378a490770adffe18ead96364f9f2b44087a5a260a416661dc"
+    }
+  ]
+}
