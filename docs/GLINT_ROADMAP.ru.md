@@ -8,6 +8,11 @@ committed host run passed 6037 tests, one skipped. Full GN/build, execution of t
 85 new native bodies and runtime checks remain pending; preserved R11 is still
 the last measured browser.
 
+The native runner is now implemented and host-tested, including fault injection
+for missing/disabled cases, receipt/input/binary changes and per-binary failures.
+It builds all six binaries together and discovers every listed parameter
+instance; actual linked native execution must follow the completed R12 build.
+
 Follow-up: the [complete R12 recipe](../native/drafts/upstream-156-checkpoint-r12/README.md)
 now composes all 143 patches across all three repositories in isolation. All 454
 final owned files match; reversal restores 319 upstream originals. This removes

@@ -8,6 +8,22 @@ or any linked Chromium test. The [native case plan](native-case-plan.json) accou
 for all **85 added test bodies** across six native binaries; actual parameter
 instances and execution remain unverified.
 
+## Native runner
+
+After a successful R12 browser build, use the checkpoint runner with a **fresh**
+report directory on D:
+
+~~~powershell
+.venv\Scripts\python.exe scripts\verify_native_checkpoint_units.py --workspace D:\Glint156Candidate --report-dir D:\GlintManagerQA\checkpoint-r12-native-run-01 --jobs 4
+~~~
+
+It builds all six executables in one invocation, discovers actual parameter
+instances, rejects missing/disabled/duplicate cases and validates exact successful
+results. It refuses an old browser receipt, a live builder or altered source/SDK/
+GN/runtime inputs. Test deadlines terminate only that invocation's owned process
+tree. Per-binary failures are retained while the other built binaries are checked.
+Preparing or testing this Python runner does not execute any native case.
+
 **R12 sources applied; build pending. No compiled R12 browser, native execution
 or runtime admission is claimed. R11 remains the measured runtime.**
 

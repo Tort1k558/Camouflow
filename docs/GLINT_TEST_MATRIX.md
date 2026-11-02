@@ -2,6 +2,14 @@
 
 ## 2026-11-02: R12 applied; compilation and native execution pending
 
+The [checkpoint runner](../scripts/verify_native_checkpoint_units.py) now derives
+the complete plan from the registered patches, discovers actual parameter
+instances and validates exact successful results. Its host tests cover omitted/
+disabled/duplicate cases, SQL-style failure reports, stale receipts, changed
+inputs/binaries and owned-tree timeout cleanup. A live build-lock refusal was
+also observed without creating a report directory. **No R12 native test execution
+is claimed by these runner checks.**
+
 | Gate | Result |
 | --- | --- |
 | Committed host suite | 6037 passed, one skipped at 369d39f; not proof for later changes |
