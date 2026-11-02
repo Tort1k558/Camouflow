@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -140,6 +141,35 @@ def run_tests(command: list[str], *, source: Path, env: dict, log: Path, timeout
             raise subprocess.CalledProcessError(code, command)
 
 
+def run_browser_cases(executable: Path, required: dict, *, source: Path, env: dict,
+                      report_dir: Path, timeout: int) -> list[dict]:
+    if not required or any(not cases for cases in required.values()):
+        raise ValueError('Browser execution requires a nonempty discovered selection')
+    deadline = time.monotonic() + timeout
+    runs = []
+    for suite, cases in sorted(required.items()):
+        for case in sorted(cases):
+            selected = suite + '.' + case
+            prefix = executable.stem + '-' + str(len(runs)).zfill(3)
+            results = report_dir / (prefix + '-tests.json')
+            row = dict(case=selected, passed=False)
+            runs.append(row)
+            try:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise ValueError('Browser test binary execution budget exhausted')
+                run_tests([str(executable), '--gtest_filter=' + selected,
+                           '--single-process-tests', '--gtest_output=json:' + str(results)],
+                          source=source, env=env, log=report_dir / (prefix + '.log'),
+                          timeout=remaining)
+                validate_results(read_record(results), {suite: {case}})
+                row.update(passed=True, results_file=results.name,
+                           results_sha256=checksum(results))
+            except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
+                row['error'] = str(error)
+    return runs
+
+
 def verify(workspace: Path, report_dir: Path, *, jobs: int = 4, timeout_seconds: int = 900) -> dict:
     if sys.platform != 'win32':
         raise ValueError('Checkpoint native execution currently supports Windows only')
@@ -229,15 +259,25 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
                            required_cases={suite: sorted(cases) for suite, cases in required.items()},
                            discovered_cases=sum(map(len, required.values())))
                 save()
-                selected = ':'.join(suite + '.' + case for suite, cases in sorted(required.items())
-                                    for case in sorted(cases))
-                results = report_dir / (binary + '-tests.json')
-                run_tests([str(executable), '--gtest_filter=' + selected, '--single-process-tests',
-                           '--gtest_output=json:' + str(results)],
-                          source=source, env=env, log=report_dir / (binary + '.log'), timeout=timeout)
-                validate_results(read_record(results), required)
-                row.update(passed=True, executed_cases=row['discovered_cases'],
-                           results_sha256=checksum(results), listing_sha256=checksum(listing))
+                if binary == 'content_browsertests':
+                    runs = run_browser_cases(executable, required, source=source, env=env,
+                                             report_dir=report_dir, timeout=timeout)
+                    row.update(execution_runs=runs, passed=all(r['passed'] for r in runs),
+                               listing_sha256=checksum(listing))
+                    if row['passed']:
+                        row['executed_cases'] = len(runs)
+                    else:
+                        row['error'] = 'Browser cases failed; inspect isolated execution runs'
+                else:
+                    selected = ':'.join(suite + '.' + case for suite, cases in sorted(required.items())
+                                        for case in sorted(cases))
+                    results = report_dir / (binary + '-tests.json')
+                    run_tests([str(executable), '--gtest_filter=' + selected, '--single-process-tests',
+                               '--gtest_output=json:' + str(results)],
+                              source=source, env=env, log=report_dir / (binary + '.log'), timeout=timeout)
+                    validate_results(read_record(results), required)
+                    row.update(passed=True, executed_cases=row['discovered_cases'],
+                               results_sha256=checksum(results), listing_sha256=checksum(listing))
             except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
                 row['error'] = str(error)
             save()

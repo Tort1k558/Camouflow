@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-checkpoint-r12",
+  "candidate_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "native_suite_passed": false,
+  "browser_runtime_verified": false,
+  "whole_profile_checkpoint_verified": false,
+  "production_admitted": false,
+  "compiled_test_binaries": 6,
+  "prepared_case_bodies": 85,
+  "discovered_case_instances": 107,
+  "native_build_steps": 6716,
+  "native_build_seconds": 13880.16,
+  "build_jobs_maximum": 4,
+  "link_pool": 1,
+  "first_native_report_sha256": "59fb7efc12e516df6987a827472d87f31b70a3ce017c755c08897e447e53b2dd",
+  "native_build_log_sha256": "0318b9c784d72aad260871caf2eb7152b5dc1accf5be3bae8516bf1b9fe35f9e",
+  "first_attempt": {
+    "passed": false,
+    "source_postguards_passed": true,
+    "targets": [
+      {
+        "binary": "blink_unittests",
+        "passed": false,
+        "discovered_cases": 35,
+        "prepared_bodies": 34,
+        "test_binary_sha256": "5aee8cd8e92cd97493232f9a571314916fcc2c7bc3573555dc8828f9b2ebd6b8"
+      },
+      {
+        "binary": "components_unittests",
+        "passed": true,
+        "discovered_cases": 42,
+        "prepared_bodies": 21,
+        "test_binary_sha256": "baf3f05846e79c6b4faa54466f0df956134bcde6f7be0247048673d6ea6d55b3"
+      },
+      {
+        "binary": "content_browsertests",
+        "passed": false,
+        "discovered_cases": 4,
+        "prepared_bodies": 4,
+        "test_binary_sha256": "25fa18830536946f24af4ee00c098491e4b03b4a36d7a9340a82f572afb021ec"
+      },
+      {
+        "binary": "content_unittests",
+        "passed": true,
+        "discovered_cases": 2,
+        "prepared_bodies": 2,
+        "test_binary_sha256": "32cb4f7ec903f479d3b4e2766e9879224f03ac6932161860b730d585e8e6d3f5"
+      },
+      {
+        "binary": "net_unittests",
+        "passed": false,
+        "discovered_cases": 17,
+        "prepared_bodies": 17,
+        "test_binary_sha256": "4810cebbc6b402e0374fec229bd628a9510ad066189cb568e8e005be5c677219"
+      },
+      {
+        "binary": "services_unittests",
+        "passed": true,
+        "discovered_cases": 7,
+        "prepared_bodies": 7,
+        "test_binary_sha256": "b6987c29bd838be3e4ba3dab7abccb91e22d01e68cdf9d374d01f371a0e5ea46"
+      }
+    ],
+    "net_results_sha256": "af2bfbb35c604b7cb1dddb7c5921ee932c68bf42d1df9619c825e14406c46839",
+    "net_cases_run": 17,
+    "net_failed_cases": [
+      "CookieMonsterTest.CheckpointDrainsPreviouslyReceivedHostWrite",
+      "SQLitePersistentCookieStoreTest.CheckpointLegacyWriteErrorRemainsSticky",
+      "SQLitePersistentCookieStoreTest.CheckpointReportsNewWriteError"
+    ],
+    "blink_aborted_without_result_json": true,
+    "browser_aborted_without_result_json": true
+  },
+  "browser_isolated_recheck": {
+    "schema": 1,
+    "passed": true,
+    "browser_runtime_verified": false,
+    "production_admitted": false,
+    "scope": "Four original R12 browser checkpoint cases in separate processes",
+    "previous_report_sha256": "59fb7efc12e516df6987a827472d87f31b70a3ce017c755c08897e447e53b2dd",
+    "runner_sha256": "bd0a514ade5aee948974d93cf06cb75f7307560096bde41a02e7a90183697d95",
+    "runs": [
+      {
+        "case": "RenderProcessHostTestBase.CheckpointExpiredDeadlinePreservesRenderer",
+        "passed": true,
+        "results_file": "content_browsertests-000-tests.json",
+        "results_sha256": "3f17639f5e69ab08a6c6b19c88cfcbb523285319b82776733ec34ddc39ed423d"
+      },
+      {
+        "case": "RenderProcessHostTestBase.CheckpointHungRendererUsesBrowserDeadline",
+        "passed": true,
+        "results_file": "content_browsertests-001-tests.json",
+        "results_sha256": "cf5e9c2d15bf3a48fb9cec677bf63668dd8821a5ce05f31f64f9ef8a782b7807"
+      },
+      {
+        "case": "RenderProcessHostTestBase.CheckpointLiveRendererProducerFence",
+        "passed": true,
+        "results_file": "content_browsertests-002-tests.json",
+        "results_sha256": "617d4b99fb72de547ae54cb6efbc22efc1bf8f7cc3dd8ce199396049bd0037ff"
+      },
+      {
+        "case": "RenderProcessHostTestBase.CheckpointRendererExitRejectsInflightFence",
+        "passed": true,
+        "results_file": "content_browsertests-003-tests.json",
+        "results_sha256": "b014c7fb889c88b4d3994c35eff7cd48dc7b3bb03d5b45f4f5b91a8238122285"
+      }
+    ],
+    "source_postguards_passed": true
+  },
+  "regression_started": false,
+  "regression_blocker": "180 GiB preflight reserve: 178.3 GiB free after test linking",
+  "diagnosed_fixture_issues": [
+    "Unanswered Mojo response was destroyed while its binding remained connected",
+    "Host-write fixture used an insecure SameSite=None cookie",
+    "SQL error injection used triggers, disabled by default in sql::Database"
+  ],
+  "fixture_corrections_compiled": false,
+  "fixture_corrections_executed": false
+}

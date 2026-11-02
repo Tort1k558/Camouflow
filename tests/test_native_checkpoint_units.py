@@ -241,3 +241,53 @@ def test_native_batch_pipeline_retains_failures_and_checks_postguards(monkeypatc
     if fault is None:
         assert sum(r['prepared_bodies'] for r in report['targets']) == 85
         assert sum(r['executed_cases'] for r in report['targets']) > 85
+
+
+@pytest.mark.parametrize('failed', (None, 'A'))
+def test_browser_cases_use_separate_processes_and_continue_after_failure(tmp_path, monkeypatch, failed):
+    commands = []
+
+    def execute(command, *, source, env, log, timeout):
+        commands.append(command)
+        selected = next(s.split('=', 1)[1] for s in command if s.startswith('--gtest_filter='))
+        assert ':' not in selected
+        assert '--single-process-tests' in command
+        suite, case = selected.split('.', 1)
+        if case == failed:
+            raise subprocess.CalledProcessError(1, command)
+        observed = result({suite: {case}})
+        destination = Path(next(s.split('json:', 1)[1] for s in command
+                                if s.startswith('--gtest_output=')))
+        destination.write_text(json.dumps(observed), encoding='utf-8')
+
+    monkeypatch.setattr(units, 'run_tests', execute)
+    runs = units.run_browser_cases(tmp_path / 'content_browsertests.exe', {'BrowserTest': {'B', 'A'}},
+                                   source=tmp_path, env={}, report_dir=tmp_path, timeout=900)
+    assert len(commands) == len(runs) == 2
+    assert [r['case'] for r in runs] == ['BrowserTest.A', 'BrowserTest.B']
+    assert [r['passed'] for r in runs] == [failed is None, True]
+    assert runs[-1]['results_file'] == 'content_browsertests-001-tests.json'
+
+
+def test_browser_case_budget_is_shared_across_processes(tmp_path, monkeypatch):
+    monkeypatch.setattr(units.time, 'monotonic', Mock(side_effect=[0, 10, 901]))
+    execute = Mock(side_effect=subprocess.TimeoutExpired(['browser'], 890))
+    monkeypatch.setattr(units, 'run_tests', execute)
+    runs = units.run_browser_cases(tmp_path / 'content_browsertests.exe', {'BrowserTest': {'A', 'B'}},
+                                   source=tmp_path, env={}, report_dir=tmp_path, timeout=900)
+    assert execute.call_count == 1
+    assert execute.call_args.kwargs['timeout'] == 890
+    assert not any(r['passed'] for r in runs)
+    assert 'budget exhausted' in runs[-1]['error']
+
+
+def test_browser_case_requires_its_exact_native_json(tmp_path, monkeypatch):
+    def execute(command, **kwargs):
+        destination = Path(next(s.split('json:', 1)[1] for s in command
+                                if s.startswith('--gtest_output=')))
+        destination.write_text(json.dumps(result({'OtherTest': {'A'}})), encoding='utf-8')
+
+    monkeypatch.setattr(units, 'run_tests', execute)
+    runs = units.run_browser_cases(tmp_path / 'content_browsertests.exe', {'BrowserTest': {'A'}},
+                                   source=tmp_path, env={}, report_dir=tmp_path, timeout=900)
+    assert not runs[0]['passed'] and 'error' in runs[0]

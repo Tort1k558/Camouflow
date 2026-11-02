@@ -113,3 +113,22 @@ def test_checkpoint_windows_build_is_not_native_or_runtime_admission():
     assert all(re.fullmatch('[0-9a-f]{64}', value) for value in record['runtime_core_sha256_measured'].values())
     assert not any(record[k] for k in ('native_tests_executed', 'runtime_verified',
                                       'privacy_admitted', 'production_admitted'))
+
+
+def test_checkpoint_failed_native_attempt_and_browser_repeat_remain_distinct():
+    candidate = build.load_candidate('upstream-156-checkpoint-r12')
+    record = json.loads((candidate['directory'] / 'native-attempt-observations.json').read_bytes())
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['compiled_test_binaries'] == 6
+    assert record['prepared_case_bodies'] == 85 and record['discovered_case_instances'] == 107
+    first = record['first_attempt']
+    assert not first['passed'] and first['source_postguards_passed']
+    assert len(first['targets']) == 6 and sum(row['passed'] for row in first['targets']) == 3
+    assert first['net_cases_run'] == 17 and len(first['net_failed_cases']) == 3
+    repeated = record['browser_isolated_recheck']
+    assert repeated['passed'] and repeated['source_postguards_passed']
+    assert len(repeated['runs']) == 4 and all(row['passed'] for row in repeated['runs'])
+    assert repeated['previous_report_sha256'] == record['first_native_report_sha256']
+    assert not any(record[k] for k in ('native_suite_passed', 'browser_runtime_verified',
+                                      'whole_profile_checkpoint_verified', 'production_admitted',
+                                      'fixture_corrections_compiled', 'fixture_corrections_executed'))

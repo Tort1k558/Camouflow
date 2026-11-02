@@ -1,5 +1,30 @@
 # R12: combined checkpoint prerequisites
 
+## Native execution: first attempt failed, browser repeat passed
+
+[Executed observations](native-attempt-observations.json) retain the failed first
+attempt. All six test binaries compiled: 6716 steps in 3h 51m 20.16s, maximum j4,
+one link slot. The 85 prepared bodies expand to 107 discovered instances.
+
+| Binary | Observed result |
+| --- | --- |
+| components_unittests | 42/42 passed |
+| content_unittests | 2/2 passed |
+| services_unittests | 7/7 passed |
+| content_browsertests | Original grouped run aborted; all four pass in separate processes with source/binary postguards |
+| net_unittests | 17 executed; three fixture failures remain unresolved by a compiled repeat |
+| blink_unittests | Aborted on an illegal mock Mojo callback drop; remaining cases not verified |
+
+Browser tests require a fresh process per case. The corrected runner preserves
+the shared per-binary deadline, exact result validation and owned-tree cleanup.
+The other diagnosed fixture corrections are prepared, **not compiled/executed**.
+SQL trigger injection was ineffective because Chromium disables triggers by
+default; the prepared replacement uses a reversible CHECK constraint and checks
+that a subsequent valid write persists despite the retained earlier error.
+
+The following 29-group regression did not start: post-link free space was below
+the unchanged 180 GiB reserve. Full native, runtime and durability gates remain open.
+
 ## Windows build passed
 
 [Compilation and postguards](windows-build.json) passed for the complete
@@ -8,7 +33,7 @@ the official build stage, including dependency/GN/source/SDK/receipt checks,
 took 5574.557 seconds. The receipt binds the exact manifest and all three core
 binary hashes.
 
-**Native tests and runtime are not yet verified.** Their builds/runs are separate
+**Full native verification failed; runtime remains unverified.** These are separate
 gates. Never launch from the writable compiler output; use an independently
 preserved QA copy after the native phases settle.
 
@@ -18,7 +43,7 @@ The [complete host suite](host-observations.json) passed **6037 tests, one skipp
 in 612.219 seconds at commit 369d39f. This is not evidence for later source changes
 or any linked Chromium test. The [native case plan](native-case-plan.json) accounts
 for all **85 added test bodies** across six native binaries; actual parameter
-instances and execution remain unverified.
+instances are now discovered; the partial execution above is not a full pass.
 
 ## Native runner
 
@@ -34,7 +59,8 @@ instances, rejects missing/disabled/duplicate cases and validates exact successf
 results. It refuses an old browser receipt, a live builder or altered source/SDK/
 GN/runtime inputs. Test deadlines terminate only that invocation's owned process
 tree. Per-binary failures are retained while the other built binaries are checked.
-Preparing or testing this Python runner does not execute any native case.
+Browser cases use separate processes and result files; host tests of this runner
+do not execute native cases.
 
 **R12 compiled; native and runtime verification pending. R11 remains the last
 measured runtime. No checkpoint, privacy or release admission is claimed.**

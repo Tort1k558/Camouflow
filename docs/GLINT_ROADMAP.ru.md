@@ -1,5 +1,16 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: linked checkpoint test execution
+
+[First native attempt](../native/drafts/upstream-156-checkpoint-r12/native-attempt-observations.json)
+compiled all six test binaries and discovered 107 instances from 85 bodies.
+Components/content/service unit groups pass. The first overall run failed:
+Blink aborted on a mock response drop, three net fixtures failed, and grouped
+browser cases violated the one-browser-test-per-process contract. With the runner
+fixed, all four actual browser cases pass separately with source/binary postguards.
+The remaining fixture corrections are prepared, not rebuilt. Regression was
+blocked by the post-link 180 GiB reserve; runtime/whole-profile admission is open.
+
 ## 2026-11-02: document cookie endpoint source prepared
 
 [Versioned cookie producer endpoint](../native/drafts/cookie-producer-endpoint/README.md)
