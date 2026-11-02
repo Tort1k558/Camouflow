@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## 2026-11-02: R13 native execution failed; connected R14 source packet prepared
+
+| Gate | Actual result |
+| --- | --- |
+| Full host regression at `195f393` | **6132 passed, 0 failed, 1 skipped**; input postguards passed |
+| R13 native rebuild | j4 hit LLVM OOM; unchanged-source j1 retry built in 47m46.20s / 6 steps |
+| Native groups | Components 42, content 2, services 7 and four isolated browser cases pass |
+| Net | **15/17 pass**; ALTER CHECK fixture setup fails on unavailable `pragma_quick_check` |
+| Blink | Existing timeout fixture now passes; later aggregation teardown aborts on a dangling namespace/controller pointer |
+| Final native postguards | Passed; the overall native result remains **failed** |
+| R14 preparation | **152 forward/reverse patches, 471 final sources, 332 restored originals, 163 prepared bodies** |
+| R14 admission | Unregistered/uncompiled; no runtime, whole-profile checkpoint or production admission |
+
+Evidence: [host run](../native/drafts/upstream-156-checkpoint-r13/host-regression.json),
+[native attempt](../native/drafts/upstream-156-checkpoint-r13/native-attempt-observations.json),
+[connected R14 packet](../native/drafts/upstream-156-producer-r14/README.md).
+
 ## 2026-11-02: R13 historical host-source regression repair
 
 | Gate | Result |

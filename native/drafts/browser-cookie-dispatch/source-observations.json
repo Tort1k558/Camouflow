@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "isolated_forward_reverse_passed": true,
+  "sources": [
+    {
+      "source": "content/public/browser/render_process_host.h",
+      "before_sha256": "92e9069777c30fa6cbaf03be8f193fa855cdbbdedde5bcd912060dd099dc4a78",
+      "after_sha256": "c3a65e48b18d3d00727c8304bad0d0a1f37ee64ccf7bca789e038e5a84e7e72f"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_impl.h",
+      "before_sha256": "4130174097ecb2e4daa033930902d9f1c2d58492c8cf484ba468c0f891907af2",
+      "after_sha256": "209ae37cbd241d5cbc2bf24468471ace85a99cbdce718b793d82cae619f7bed9"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_impl.cc",
+      "before_sha256": "b6707b546deea2f65595ae11275961a72870c8b22abda16e81794dc3703f19bc",
+      "after_sha256": "019cdeace5909fc21b8b234baadb17fb53c627c68da2dc9318b2f916bd44c447"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "before_sha256": "d6fb4e0f8bd9eaa601615ad9f86073d0036d5b453ca2697493e3917e735f75f7",
+      "after_sha256": "9909356c52c9d3c287d21e3420fcfe992b6255ecb461de0d8cdfe74ad1110a13"
+    }
+  ],
+  "patch_sha256": "a9efe3f5b41b70818e1e74390851f21ed433afcc31af73f6757f3641b24d77b7",
+  "canonical_sources_modified": false,
+  "native_case_bodies_prepared": 5,
+  "cpp_type_checked": false,
+  "compiled": false,
+  "native_tests_executed": false,
+  "full_candidate_composition_verified": false,
+  "whole_profile_checkpoint": false,
+  "production_admitted": false
+}

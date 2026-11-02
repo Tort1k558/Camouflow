@@ -1,5 +1,17 @@
 # Glint architecture
 
+## 2026-11-02: R13 native failures retained; next packet remains unselected
+
+The [R13 native attempt](drafts/upstream-156-checkpoint-r13/native-attempt-observations.json)
+rebuilt all six binaries with j1 after j4 OOM. Four groups pass, net has two SQL
+fixture failures, and Blink aborts on fixture teardown lifetime ordering. Final
+postguards pass; this is not overall native or runtime admission.
+
+The [complete R14 preparation](drafts/upstream-156-producer-r14/README.md) combines
+seven producer-stage packets and test-only SQL/GC corrections. All 152 patches
+replay/reverse across 471 final owned sources; 163 bodies are prepared, not run.
+The active source/runtime selection remains R13, and measured runtime remains R11.
+
 ## 2026-11-02: R12 Windows binary built, runtime not verified
 
 The [Windows build record](drafts/upstream-156-checkpoint-r12/windows-build.json)

@@ -1,5 +1,22 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: connected R14 prepared; R13 native result remains failed
+
+R13's j1 retry compiles/links all six executables, but two SQL setup cases fail
+on unavailable `pragma_quick_check`, and Blink aggregation fixture teardown trips
+the dangling-pointer detector. Four other native groups pass; final postguards
+pass. These are retained failures, not a completed checkpoint or runtime gate.
+
+[R14](../native/drafts/upstream-156-producer-r14/README.md) now publishes one
+152-patch preparation: seven connected producer packets plus SQL/GC fixture
+corrections. Isolated full replay/reversal passes and all 85 old bodies remain
+within the 163-body plan. C++ execution and production admission remain open.
+
+Next: full host recheck; explicit 163-body runner/registration; guarded source
+transition; memory-safe compile; every discovered native instance and 29 legacy
+groups; independent browser QA. Do not activate checkpoint support before its
+remaining global mutation, network/worker and backend/session persistence gates.
+
 ## 2026-11-02: R12 regression passed; R13 recipe registered
 
 The [existing R12 regression](../native/drafts/upstream-156-checkpoint-r12/native-all-observations.json)

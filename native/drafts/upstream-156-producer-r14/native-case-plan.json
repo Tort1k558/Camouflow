@@ -1,0 +1,1325 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-producer-r14",
+  "candidate_manifest_sha256": "22a1cfb94850724679bdb5627f014507db0f63127b9051220a058495870fa752",
+  "native_case_bodies_prepared": 163,
+  "cases": [
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsCompletesLoadedMapsBeforeAck",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsEmptyBatchIsAsynchronous",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsRejectsMemoryOnlyDatabase",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsRejectsUnopenedDatabase",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsOwnerLossNeverAcknowledgesSuccess",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsCommitterCanDestroyOwner",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsPriorLegacyErrorRemainsSticky",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsNewCommitErrorIsReported",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "fixture": "AsyncDomStorageDatabaseTest",
+      "case": "CommitPendingMapsDoesNotCommitNeighbourDatabase",
+      "kind": "TEST_P",
+      "patch": "0137-native-storage-commit-barrier.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "fixture": "StorageAreaImplTest",
+      "case": "CheckpointFenceWaitsForPendingPut",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "fixture": "StorageAreaImplTest",
+      "case": "CheckpointFenceRejectsDetachedCache",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "fixture": "StorageAreaImplTest",
+      "case": "CheckpointFenceRejectsAreaLossBeforeDelivery",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "fixture": "StorageAreaImplTest",
+      "case": "CheckpointFenceCleanAreaRepliesAsynchronously",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointEmptyDiskBackendCompletes",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointRejectsMemoryOnlyBackend",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointWaitsForReceivedPutAndPersistsIt",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointReturnsThroughPrivilegedControlPipe",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointOwnerLossDuringOpenFailsClosed",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointGenerationChangeRejectsOldReply",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointWriteErrorCannotBecomeSuccess",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "components_unittests",
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "fixture": "LocalStorageImplTest",
+      "case": "CheckpointCoversTwoStorageKeysInOnePartition",
+      "kind": "TEST_P",
+      "patch": "0138-native-storage-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointEmptyStoreRepliesAsynchronously",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointPersistsReceivedCookieBeforeAck",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointOwnerLossNeverRepliesSuccess",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointRejectsUnopenedStore",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointLegacyWriteErrorRemainsSticky",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointReportsNewWriteError",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointPersistsEncryptedCookieBeforeAck",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointReportsEncryptionFailure",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "fixture": "SQLitePersistentCookieStoreTest",
+      "case": "CheckpointReportsAbandonedBackgroundTask",
+      "kind": "TEST_F",
+      "patch": "0139-native-cookie-checkpoint.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointRejectsMemoryOnlyStoreAsynchronously",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointUnsupportedStoreDoesNotUseLegacyFlush",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointForwardsSuccessAfterLoad",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointLateSuccessAfterOwnerLossIsFailure",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointDroppedBackingCompletionIsFailure",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointLoadQueueOwnerLossFailsClosed",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointDrainsPreviouslyReceivedHostWrite",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "net_unittests",
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "fixture": "CookieMonsterTest",
+      "case": "CheckpointPropagatesBackingFailure",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/session_cleanup_cookie_store_unittest.cc",
+      "fixture": "SessionCleanupCookieStoreTest",
+      "case": "CheckpointForwardsDiskCommit",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/session_cleanup_cookie_store_unittest.cc",
+      "fixture": "SessionCleanupCookieStoreTest",
+      "case": "CheckpointWrapperLossRejectsLateSuccess",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointRejectsMemoryStoreOverPrivilegedPipe",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointVersionOneAndLegacyMethodRemainAvailable",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointOwnerLossRejectsPostedReply",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointPersistentStoreThroughCleanupWrapper",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/cookie_manager_unittest.cc",
+      "fixture": "CookieManagerTest",
+      "case": "CheckpointPersistentOwnerLossRejectsLateSuccess",
+      "kind": "TEST_F",
+      "patch": "0140-native-cookie-checkpoint-ipc.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointEmptyFenceIsAsynchronous",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointWaitsForAllOutOfOrderMutationReplies",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointNewMutationInvalidatesCapturedFence",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointRejectedPutRemainsFailed",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointUnansweredMutationExpires",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointTracksDeleteAndDeleteAllReplies",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointRebindRejectsAlreadyPostedSuccess",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointRebindWithUnacknowledgedWritesFailsClosed",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointOwnerLossRejectsPostedSuccess",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointDisconnectFailsPendingMutationFence",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointPendingFenceQueueIsBounded",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTestWithParam",
+      "case": "CheckpointRejectsSessionStorage",
+      "kind": "TEST_P",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointExpiredDeadlineIsAsynchronousFailure",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointRejectsUnboundAreaWithoutRebinding",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "fixture": "CachedStorageAreaTest",
+      "case": "CheckpointDoesNotWaitForNeighbourArea",
+      "kind": "TEST_F",
+      "patch": "0141-native-renderer-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointEmptyNamespaceIsAsynchronous",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointWaitsForBothAreas",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointEarlyAreaMutationRejectsAggregate",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointNewAreaRejectsCapturedTopology",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointRemovalRejectsCapturedTopology",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointEvictionPreservesUnacknowledgedWrites",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointFailedEvictionCannotEraseWriteFailure",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointNamespaceResetRejectsPostedEmptySuccess",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointSessionNamespaceIsRejected",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointNamespaceDeadlineIsRequired",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointNamespaceQueueIsBounded",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerEmptyScopeIsAsynchronous",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerNewNamespaceRejectsOldReply",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerOwnerLossRejectsLateReply",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerResetOverRealClientPipeFailsClosed",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerPropagatesAreaFailure",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "LocalStorageCheckpointAggregationTest",
+      "case": "CheckpointControllerQueueIsBounded",
+      "kind": "TEST_F",
+      "patch": "0142-native-storage-aggregate-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "StorageControllerTest",
+      "case": "CheckpointFacadeRejectsExpiredDeadlineWithoutCreation",
+      "kind": "TEST",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "fixture": "StorageControllerTest",
+      "case": "CheckpointFacadeRejectsUnboundedDeadlineWithoutCreation",
+      "kind": "TEST",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "RenderThreadImplUnittest",
+      "case": "CheckpointRendererInterfaceHasVersionOne",
+      "kind": "TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/renderer_host/render_process_host_unittest.cc",
+      "fixture": "RenderProcessHostUnitTest",
+      "case": "CheckpointUnsupportedHostRejectsWithoutStartingRenderer",
+      "kind": "TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "CheckpointLiveRendererProducerFence",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "CheckpointExpiredDeadlinePreservesRenderer",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "CheckpointRendererExitRejectsInflightFence",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "CheckpointHungRendererUsesBrowserDeadline",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0143-native-browser-storage-fence.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "EmptyScopeIsPostedAndDoesNotCreatePartition",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "NullContextFailsWithoutInlineReply",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "OffTheRecordScopeIsRejected",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "ExpiredDeadlineNeverContactsRenderer",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "UnboundedDeadlineNeverContactsRenderer",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "WaitsForAllCapturedRenderers",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "DoesNotContactOtherBrowserContext",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "InlineProducerCannotInvokeCallerInline",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "ProducerRejectionIsNotSuccess",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "DroppedProducerReplyFailsClosed",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "UnansweredProducerUsesBrowserDeadline",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "CancelPendingOperationPostsFailure",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "CancelQueuedSuccessCannotBecomeAcknowledged",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "ContextDestructionRejectsQueuedSuccess",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "HostDestructionRejectsPendingCohort",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "NewReadyRendererInvalidatesQueuedEmptyScope",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "UnreadyRendererDoesNotReceiveFence",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "RendererExitRejectsLateProducerAcknowledgment",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "NewPartitionInvalidatesPostedEmptySuccess",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "fixture": "ProfileProducerFenceTest",
+      "case": "RendererLimitRejectsBeforeAnyProducerRequest",
+      "kind": "TEST_F",
+      "patch": "0145-native-profile-producer-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "fixture": "DOMStorageContextWrapperTest",
+      "case": "CheckpointMissingConnectionRejectsPosted",
+      "kind": "TEST_F",
+      "patch": "0146-native-local-storage-checkpoint-owner.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "fixture": "DOMStorageContextWrapperTest",
+      "case": "CheckpointVersionedBackendSuccess",
+      "kind": "TEST_F",
+      "patch": "0146-native-local-storage-checkpoint-owner.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "fixture": "DOMStorageContextWrapperTest",
+      "case": "CheckpointBackendFailurePropagates",
+      "kind": "TEST_F",
+      "patch": "0146-native-local-storage-checkpoint-owner.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "fixture": "DOMStorageContextWrapperTest",
+      "case": "CheckpointTimeoutIgnoresLateSuccess",
+      "kind": "TEST_F",
+      "patch": "0146-native-local-storage-checkpoint-owner.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "fixture": "DOMStorageContextWrapperTest",
+      "case": "CheckpointDisconnectRejectsHungRequest",
+      "kind": "TEST_F",
+      "patch": "0146-native-local-storage-checkpoint-owner.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "fixture": "DOMStorageContextWrapperTest",
+      "case": "CheckpointShutdownRejectsAndIsIdempotent",
+      "kind": "TEST_F",
+      "patch": "0146-native-local-storage-checkpoint-owner.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "fixture": "DOMStorageContextWrapperTest",
+      "case": "CheckpointTimedOutWireSlotsRemainBounded",
+      "kind": "TEST_F",
+      "patch": "0146-native-local-storage-checkpoint-owner.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainEmptyPostsSuccess",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainWaitsForAllOutOfOrderWrites",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainNewWriteRejectsPending",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainQueuedSuccessChecksEpoch",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainQueuedSuccessChecksOwner",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainTimeoutDoesNotForgetWrite",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainDestroyedOwnerRejectsPending",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainWriteLimitPoisonsOnlyDrain",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainUnknownCompletionFailsClosed",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainWaiterLimit",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainTracksActualStringDispatch",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainBrokenTrackerPreservesWrites",
+      "kind": "TEST_P",
+      "patch": "0147-native-restricted-cookie-producer-drain.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainVersionedPipe",
+      "kind": "TEST_P",
+      "patch": "0148-native-cookie-producer-endpoint.patch"
+    },
+    {
+      "binary": "services_unittests",
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "fixture": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainPipeWaitsForWrite",
+      "kind": "TEST_P",
+      "patch": "0148-native-cookie-producer-endpoint.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc",
+      "fixture": "HeapMojoRemoteVersionQueryTest",
+      "case": "QueryVersionUsesExistingRemote",
+      "kind": "TEST_F",
+      "patch": "0148-native-cookie-producer-endpoint.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc",
+      "fixture": "HeapMojoRemoteVersionQueryTest",
+      "case": "ContextResetDropsPendingVersionQuery",
+      "kind": "TEST_F",
+      "patch": "0148-native-cookie-producer-endpoint.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintCookieDrainEmptyDocumentIsPosted",
+      "kind": "TEST_F",
+      "patch": "0148-native-cookie-producer-endpoint.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintCookieDrainExpiredDeadlineFailsPosted",
+      "kind": "TEST_F",
+      "patch": "0148-native-cookie-producer-endpoint.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintCookieDrainUnboundedDeadlineFails",
+      "kind": "TEST_F",
+      "patch": "0148-native-cookie-producer-endpoint.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintCookieDrainDetachedDocumentRejectsQueuedSuccess",
+      "kind": "TEST_F",
+      "patch": "0148-native-cookie-producer-endpoint.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintCookieProducerEpochReadIsStable",
+      "kind": "TEST_F",
+      "patch": "0149-native-cookie-producer-cohort-snapshot.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintCookieProducerCreationChangesCohortEpoch",
+      "kind": "TEST_F",
+      "patch": "0149-native-cookie-producer-cohort-snapshot.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintCookieProducerRebindChangesCohortEpoch",
+      "kind": "TEST_F",
+      "patch": "0149-native-cookie-producer-cohort-snapshot.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintWebDocumentNullCookieDrainFailsPosted",
+      "kind": "TEST_F",
+      "patch": "0149-native-cookie-producer-cohort-snapshot.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintWebDocumentEmptyCookieDrainIsPosted",
+      "kind": "TEST_F",
+      "patch": "0149-native-cookie-producer-cohort-snapshot.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintWebDocumentDetachedCookieDrainFails",
+      "kind": "TEST_F",
+      "patch": "0149-native-cookie-producer-cohort-snapshot.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintWebDocumentDisconnectedCookiePipeIsUnavailable",
+      "kind": "TEST_F",
+      "patch": "0149-native-cookie-producer-cohort-snapshot.patch"
+    },
+    {
+      "binary": "blink_unittests",
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "fixture": "DocumentTest",
+      "case": "GlintWebDocumentAvailabilityDoesNotBindCookiePipe",
+      "kind": "TEST_F",
+      "patch": "0149-native-cookie-producer-cohort-snapshot.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "EmptyCohortIsRecheckedAndPosted",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "OutOfOrderRepliesWaitForEveryDocument",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "EarlyAcknowledgersNewWriteRejectsCohort",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "WriteBeforeFinalPostedDeliveryRejects",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "NavigationChangesDocumentToken",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "NewFrameRejectsCohort",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "RemovedFrameRejectsCohort",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "LostOwnerRejectsCohort",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "DroppedCallbacksStillReplyAtDeadline",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "DeadlineBeforePostedSuccessRejects",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "FailedThenLateReplyCannotPromote",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "SynchronousProducerRepliesAreStillPosted",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "ExpiredDeadlineDoesNotContactProducers",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "UnboundedDeadlineDoesNotContactProducers",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "TooManyDocumentsRejectsBeforeDrain",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "CaptureCannotExtendOriginalDeadline",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "LongDeadlineDoesNotContactProducers",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_unittests",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "fixture": "DocumentCookieCheckpointTest",
+      "case": "UnavailableInitialCaptureFailsPosted",
+      "kind": "TEST_F",
+      "patch": "0150-native-renderer-cookie-cohort.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "DocumentCookieCheckpointLiveRendererProducerFence",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0151-native-browser-cookie-dispatch.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "DocumentCookieCheckpointExpiredDeadlinePreservesRenderer",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0151-native-browser-cookie-dispatch.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "DocumentCookieCheckpointRendererExitRejectsInflightFence",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0151-native-browser-cookie-dispatch.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "DocumentCookieCheckpointHungRendererUsesBrowserDeadline",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0151-native-browser-cookie-dispatch.patch"
+    },
+    {
+      "binary": "content_browsertests",
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "fixture": "RenderProcessHostTestBase",
+      "case": "DocumentCookieCheckpointMultipleDocuments",
+      "kind": "IN_PROC_BROWSER_TEST_F",
+      "patch": "0151-native-browser-cookie-dispatch.patch"
+    }
+  ],
+  "binaries": [
+    "blink_unittests",
+    "components_unittests",
+    "content_browsertests",
+    "content_unittests",
+    "net_unittests",
+    "services_unittests"
+  ],
+  "parameter_instances_discovered": false,
+  "built": false,
+  "executed": false,
+  "production_admitted": false,
+  "scope": "All declarations from the complete producer-stage packet; no execution implied"
+}

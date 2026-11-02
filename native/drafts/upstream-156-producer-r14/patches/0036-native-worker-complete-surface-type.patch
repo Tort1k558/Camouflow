@@ -1,0 +1,12 @@
+diff --git a/content/browser/camouflow_native/privacy_worker_service.h b/content/browser/camouflow_native/privacy_worker_service.h
+index abae124..68e50f3 100644
+--- a/content/browser/camouflow_native/privacy_worker_service.h
++++ b/content/browser/camouflow_native/privacy_worker_service.h
+@@ -9,6 +9,7 @@
+ #include "mojo/public/cpp/bindings/unique_receiver_set.h"
+ #include "third_party/blink/public/common/storage_key/storage_key.h"
+ #include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom.h"
+ #include "url/origin.h"
+ 
+ namespace content {

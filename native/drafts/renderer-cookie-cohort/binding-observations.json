@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "passed": true,
+  "native_executed": false,
+  "cpp_type_checked": false,
+  "gn_graph_verified": false,
+  "canonical_sources_modified": false,
+  "patch_sha256": "493ba3ec9410df248975a1ec29b7c1c3500763ecbeb844c90880bf3ceac6daea",
+  "transitive_import_modules": 3,
+  "import_metadata_checked": true,
+  "existing_method_wire_shape_unchanged": true,
+  "added_method": {
+    "name": "FenceDocumentCookiesForCheckpoint",
+    "ordinal": 1,
+    "min_version": 2,
+    "attributes": {
+      "MinVersion": 2,
+      "AllowedContext": {
+        "enum": "x:sandbox.mojom.Context",
+        "module": "sandbox/policy/mojom/context.mojom",
+        "field": "kBrowser",
+        "numeric_value": 0
+      }
+    },
+    "parameters": [
+      {
+        "name": "deadline",
+        "ordinal": null,
+        "spec": "x:mojo_base.mojom.TimeTicks",
+        "min_version": null
+      }
+    ],
+    "response_parameters": [
+      {
+        "name": "success",
+        "ordinal": null,
+        "spec": "b",
+        "min_version": null
+      }
+    ]
+  },
+  "input_postguards_passed": true,
+  "generated_artifacts": [
+    {
+      "path": "content/common/storage_checkpoint.mojom-data-view.h",
+      "sha256": "fe9e9b818b4024192494a549d626aab739084324745b1df31f54d333463637b4"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-features.h",
+      "sha256": "e7c662acbd90082b5aff867c9c5f17c54ee807c856aea797bba6df8fe1f82377"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-forward.h",
+      "sha256": "3e06061a262f22cbf528e20f8af3153e1824256634afb2264be65fd3d47f62c8"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-import-headers.h",
+      "sha256": "61fd2f8e8369a0d4fa7cb58da8f886022e97a3ed3604dff3886004c67f3de8a0"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-module",
+      "sha256": "f03fb24ec61b170c7f944ff2bf08788bca9303dda75d83727aab0b6d753b1c60"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-params-data.h",
+      "sha256": "9a435c194ee97b99c1c2115eb736eea61b1a2884cfe395541b8f4a070035517d"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-send-validation.h",
+      "sha256": "4e46fdaa50e09421f0cbc2efe4d4acb3c93906a83bf809d400d4933df4b2e78c"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-shared-internal.h",
+      "sha256": "67de53868f1c7cdb10e109999b56bc3061228df696dc2d8783296648d75a3a0c"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-shared.cc",
+      "sha256": "b4860df30abc2bf4c422a6cbd68d64cb56a16db2492fbc6b34fd580d30ff4295"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-shared.h",
+      "sha256": "5c0643d228c84923312c3f87aa7b5f837849776775d9f866f102ec7d4cf37670"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom-test-utils.h",
+      "sha256": "aa59f543b037b1342e3842dc7c1125156ce7864ed082d9e317e4a6b3ac1e9c97"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom.cc",
+      "sha256": "df0d5c3c977bf4952c049bdef7ff9e046ebe7117feafd477b187a1f6b66f67af"
+    },
+    {
+      "path": "content/common/storage_checkpoint.mojom.h",
+      "sha256": "e0c62570edaa80f192d641e86d49d53bca89521fc6398f660e715b4b08a7323a"
+    }
+  ],
+  "primary_input_count": 143,
+  "private_report_sha256": "1b7aa591ee8135557f905f960194a4228405656a682763c9c78e72b65d1a9e5b",
+  "production_admitted": false
+}

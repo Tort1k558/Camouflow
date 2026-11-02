@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "isolated_forward_reverse_passed": true,
+  "sources": [
+    {
+      "source": "third_party/blink/renderer/core/loader/cookie_jar.h",
+      "before_sha256": "f47cc36747a0725f475fb06e577fdd215b83af86c89c6b612425ad577e6c738c",
+      "after_sha256": "34a00a78b829c944f46f2ca074a7539ae1fd6fbccc0cba8671ec7411eae84800"
+    },
+    {
+      "source": "third_party/blink/renderer/core/loader/cookie_jar.cc",
+      "before_sha256": "ba3d3966e77e1058fff683345b0981d33f83625fa754678c4e1f631e1663ee2c",
+      "after_sha256": "91cef5c3be8fc5dd95994a40895ab6c58b0125f2d785a6284c66c07ad7190dcc"
+    },
+    {
+      "source": "third_party/blink/public/web/web_document.h",
+      "before_sha256": "495a2c4ce36289c34eb6b8fd2592bb818e05eaeb25f7862380e82d8a7009ca9a",
+      "after_sha256": "d51a11e08f82973a84a700c1ea22215ed53b79ded61509089f9eff14f61c4ab9"
+    },
+    {
+      "source": "third_party/blink/renderer/core/exported/web_document.cc",
+      "before_sha256": "dde1891e041c3b2b31bc8ac40859029ee37759722aff4d8e498455c6c57d93bb",
+      "after_sha256": "336058341103e0a7f63d4d598194cdecf0912985fdd3ab0a0236141dcb485e55"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "before_sha256": "61bcb6d6e4efcbb9b96d7963b1ee9c12523323d01799198f60d50fcd05495489",
+      "after_sha256": "a1152e1f856bdf14ec7e149e53fcf457c54ae30548959be2d4812d6b6ce81f31"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document.h",
+      "before_sha256": "59d2f2983cc9c86c5c1ea504e15b12b01fc6ee78f6475d613da383143d0be1b3",
+      "after_sha256": "fa3f5c173d251512bc578c66a4aa05dbc66780a43ed3a9206b8430552bf2d869"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document.cc",
+      "before_sha256": "27b98bdfd95cc5725d79b2647e1dc37515f13597f338e6de910ba2d90bc66956",
+      "after_sha256": "3cb6a2c1271ec06db0f3f351fc36d52eb8714f25538a5811441efd47b7097cbd"
+    }
+  ],
+  "patch_sha256": "518723c426e6f2fc29a922d41f9bb5b93d0dc9dae9e778e8e9e7354cacd334eb",
+  "canonical_sources_modified": false,
+  "native_case_bodies_prepared": 8,
+  "compiled": false,
+  "native_tests_executed": false,
+  "renderer_cohort_aggregation_implemented": false,
+  "profile_checkpoint_implemented": false,
+  "production_admitted": false
+}

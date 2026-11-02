@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "isolated_forward_reverse_passed": true,
+  "sources": [
+    {
+      "source": "content/common/storage_checkpoint.mojom",
+      "before_sha256": "c73c82cfaf4bcbcdbee6ed3f56f73b04efd597db71b15424361c6aef0be89886",
+      "after_sha256": "30aac90dc50d713e84f8117d1d1b734c4a45cc4c4969062fa7244770949dd451"
+    },
+    {
+      "source": "content/renderer/BUILD.gn",
+      "before_sha256": "7fe9dd48f13ff1523694604c916ebe41de4ce8d67bb53b5391becb43bf393ae4",
+      "after_sha256": "d6c7095fb035c9d16ffceb1ced0416577a3dcba876165a5ba63c96129c531d2c"
+    },
+    {
+      "source": "content/renderer/render_thread_impl.h",
+      "before_sha256": "4a202099b868369d8a025d4e79ff20964d999336efef0a1408464d4a40d1032f",
+      "after_sha256": "866da048371e018e63453c58913ca923284b3179bb12c3d1301f0174f9decb36"
+    },
+    {
+      "source": "content/renderer/render_thread_impl.cc",
+      "before_sha256": "031a37e494ee2e68eb03c6e05bbfaa118c5e46008aaf2672125795450715c508",
+      "after_sha256": "a27ac14c5b144850f7d36579ab193651bd12e93edf98c0810c30bb02771d53e2"
+    },
+    {
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "before_sha256": "71ca7612d71933d560587bb7e8ec4fdf5244565eea9bf3809246025e803e1601",
+      "after_sha256": "673f80de0b3e34fb17ca81426a547d7855543d23b10d1ba183c95ad38ed13065"
+    },
+    {
+      "source": "content/renderer/document_cookie_checkpoint.h",
+      "before_sha256": null,
+      "after_sha256": "d7168202973778495a53651a9417845108549f1314cb974dcfec1e49d567d2fd"
+    }
+  ],
+  "patch_sha256": "493ba3ec9410df248975a1ec29b7c1c3500763ecbeb844c90880bf3ceac6daea",
+  "canonical_sources_modified": false,
+  "cpp_type_checked": false,
+  "compiled": false,
+  "native_tests_executed": false,
+  "native_cohort_cases_prepared": 18,
+  "mojo_bindings_generated": false,
+  "browser_caller_implemented": false,
+  "profile_checkpoint_implemented": false,
+  "production_admitted": false
+}

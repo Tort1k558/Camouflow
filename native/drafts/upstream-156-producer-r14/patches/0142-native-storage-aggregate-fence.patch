@@ -1,0 +1,623 @@
+diff --git a/third_party/blink/renderer/modules/storage/cached_storage_area.h b/third_party/blink/renderer/modules/storage/cached_storage_area.h
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.h
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.h
+@@ -95,6 +95,11 @@
+   void FenceMutationsForCheckpoint(base::TimeTicks deadline,
+                                    base::OnceCallback<void(bool)> callback);
+ 
++  bool HasUnsettledCheckpointMutations() const {
++    return !checkpoint_pending_.empty() || !checkpoint_waiters_.empty();
++  }
++  bool HasCheckpointWriteFailure() const { return checkpoint_write_failed_; }
++
+   // Allow this object to keep track of the Source instances corresponding to
+   // it, which is needed for mutation event notifications.
+   // Returns the (unique) id allocated for this source for testing purposes.
+diff --git a/third_party/blink/renderer/modules/storage/cached_storage_area.cc b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+@@ -68,6 +68,9 @@
+   // HashSet reserves both zero and the maximum integer value as sentinels.
+   CHECK_LT(checkpoint_issued_, std::numeric_limits<uint64_t>::max() - 1);
+   const uint64_t serial = ++checkpoint_issued_;
++  if (storage_namespace_) {
++    storage_namespace_->NotifyLocalStorageCheckpointChange();
++  }
+   CHECK(checkpoint_pending_.insert(serial).is_new_entry);
+   return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+       base::BindOnce(
+@@ -161,6 +164,9 @@
+   checkpoint_timeout_.Stop();
+   CHECK_LT(checkpoint_generation_, std::numeric_limits<uint64_t>::max());
+   ++checkpoint_generation_;
++  if (storage_namespace_ && !IsSessionStorage()) {
++    storage_namespace_->NotifyLocalStorageCheckpointChange();
++  }
+   checkpoint_write_failed_ |= !checkpoint_pending_.empty();
+   checkpoint_pending_.clear();
+   checkpoint_acknowledged_ = checkpoint_issued_;
+diff --git a/third_party/blink/renderer/modules/storage/storage_namespace.h b/third_party/blink/renderer/modules/storage/storage_namespace.h
+--- a/third_party/blink/renderer/modules/storage/storage_namespace.h
++++ b/third_party/blink/renderer/modules/storage/storage_namespace.h
+@@ -26,8 +26,10 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_STORAGE_STORAGE_NAMESPACE_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_STORAGE_STORAGE_NAMESPACE_H_
+ 
++#include "base/functional/callback_forward.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/task/single_thread_task_runner.h"
++#include "base/time/time.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "third_party/blink/public/common/dom_storage/session_storage_namespace_id.h"
+ #include "third_party/blink/public/mojom/dom_storage/dom_storage.mojom-blink-forward.h"
+@@ -102,6 +104,14 @@
+   // Removes any CachedStorageAreas that aren't referenced by any source.
+   void CleanUpUnusedAreas();
+ 
++  // Local renderer producer aggregation only; does not commit storage to disk.
++  void FenceLocalStorageForCheckpoint(base::TimeTicks deadline,
++                                      base::OnceCallback<void(bool)> callback);
++  void NotifyLocalStorageCheckpointChange();
++  uint64_t LocalStorageCheckpointGeneration() const {
++    return checkpoint_generation_;
++  }
++
+   bool IsSessionStorage() const { return !namespace_id_.empty(); }
+ 
+   void AddInspectorStorageAgent(InspectorDOMStorageAgent* agent);
+@@ -130,6 +140,9 @@
+ 
+  private:
+   void EnsureConnected();
++  uint64_t checkpoint_generation_ = 0;
++  size_t checkpoint_requests_ = 0;
++  bool checkpoint_failed_eviction_ = false;
+ 
+   HeapHashSet<WeakMember<InspectorDOMStorageAgent>> inspector_agents_;
+ 
+diff --git a/third_party/blink/renderer/modules/storage/storage_namespace.cc b/third_party/blink/renderer/modules/storage/storage_namespace.cc
+--- a/third_party/blink/renderer/modules/storage/storage_namespace.cc
++++ b/third_party/blink/renderer/modules/storage/storage_namespace.cc
+@@ -25,12 +25,17 @@
+ 
+ #include "third_party/blink/renderer/modules/storage/storage_namespace.h"
+ 
++#include <algorithm>
++#include <limits>
+ #include <memory>
+ 
++#include "base/barrier_callback.h"
+ #include "base/feature_list.h"
++#include "base/functional/bind.h"
+ #include "base/memory/ptr_util.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/metrics/histogram_functions.h"
++#include "base/task/bind_post_task.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/platform/platform.h"
+@@ -117,6 +122,9 @@
+       /*is_session_storage_for_prerendering=*/false, std::move(storage_area));
+   cached_areas_.insert(std::make_unique<const BlinkStorageKey>(storage_key),
+                        result);
++  if (!IsSessionStorage()) {
++    NotifyLocalStorageCheckpointChange();
++  }
+   return result;
+ }
+ 
+@@ -190,10 +198,75 @@
+ void StorageNamespace::CleanUpUnusedAreas() {
+   Vector<const BlinkStorageKey*, 16> to_remove;
+   for (const auto& area : cached_areas_) {
+-    if (area.value->HasOneRef())
++    if (area.value->HasOneRef() &&
++        !area.value->HasUnsettledCheckpointMutations()) {
++      if (!IsSessionStorage()) {
++        checkpoint_failed_eviction_ |= area.value->HasCheckpointWriteFailure();
++      }
+       to_remove.push_back(area.key.get());
++    }
++  }
++  if (!to_remove.empty() && !IsSessionStorage()) {
++    NotifyLocalStorageCheckpointChange();
+   }
+   cached_areas_.RemoveAll(to_remove);
++}
++
++void StorageNamespace::NotifyLocalStorageCheckpointChange() {
++  CHECK(!IsSessionStorage());
++  CHECK_LT(checkpoint_generation_, std::numeric_limits<uint64_t>::max());
++  ++checkpoint_generation_;
++}
++
++void StorageNamespace::FenceLocalStorageForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  CHECK(callback);
++  const uint64_t generation = checkpoint_generation_;
++  const bool admitted = !IsSessionStorage() && !deadline.is_max() &&
++                        deadline > base::TimeTicks::Now() &&
++                        !checkpoint_failed_eviction_ &&
++                        checkpoint_requests_ < 64;
++  if (admitted) {
++    ++checkpoint_requests_;
++  }
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](WeakPersistent<StorageNamespace> owner, uint64_t generation,
++         base::TimeTicks deadline, bool admitted,
++         base::OnceCallback<void(bool)> callback, bool success) {
++        if (admitted && owner) {
++          CHECK_GT(owner->checkpoint_requests_, 0u);
++          --owner->checkpoint_requests_;
++        }
++        // The epoch includes mutations in areas which completed before others.
++        std::move(callback).Run(success && owner &&
++                                !owner->IsSessionStorage() &&
++                                !owner->checkpoint_failed_eviction_ &&
++                                owner->checkpoint_generation_ == generation &&
++                                base::TimeTicks::Now() < deadline);
++      },
++      WeakPersistent<StorageNamespace>(this), generation, deadline, admitted,
++      std::move(callback)));
++  if (!admitted) {
++    std::move(reply).Run(false);
++    return;
++  }
++  if (cached_areas_.empty()) {
++    std::move(reply).Run(true);
++    return;
++  }
++  auto barrier = base::BarrierCallback<bool>(
++      cached_areas_.size(), base::BindOnce(
++                                [](base::OnceCallback<void(bool)> callback,
++                                   std::vector<bool> results) {
++                                  std::move(callback).Run(std::all_of(
++                                      results.begin(), results.end(),
++                                      [](bool success) { return success; }));
++                                },
++                                std::move(reply)));
++  for (const auto& area : cached_areas_) {
++    area.value->FenceMutationsForCheckpoint(deadline, barrier);
++  }
+ }
+ 
+ void StorageNamespace::AddInspectorStorageAgent(
+@@ -239,6 +312,9 @@
+ }
+ 
+ void StorageNamespace::ResetStorageAreaAndNamespaceConnections() {
++  if (!IsSessionStorage()) {
++    NotifyLocalStorageCheckpointChange();
++  }
+   for (const auto& area : cached_areas_)
+     area.value->ResetConnection();
+   namespace_.reset();
+diff --git a/third_party/blink/renderer/modules/storage/storage_controller.h b/third_party/blink/renderer/modules/storage/storage_controller.h
+--- a/third_party/blink/renderer/modules/storage/storage_controller.h
++++ b/third_party/blink/renderer/modules/storage/storage_controller.h
+@@ -5,7 +5,9 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_STORAGE_STORAGE_CONTROLLER_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_STORAGE_STORAGE_CONTROLLER_H_
+ 
++#include "base/memory/weak_ptr.h"
+ #include "base/sequence_checker.h"
++#include "base/time/time.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/receiver.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+@@ -68,6 +70,12 @@
+   // Cleans up unused areas if the total cache size is over the cache limit.
+   void ClearAreasIfNeeded();
+ 
++  // Fences only this renderer's captured localStorage producers, not session or
++  // network storage. A missing namespace is an empty producer set, not disk
++  // data.
++  void FenceLocalStorageForCheckpoint(base::TimeTicks deadline,
++                                      base::OnceCallback<void(bool)> callback);
++
+   // Methods that delegate to the internal StorageNamespace used for
+   // LocalStorage:
+   scoped_refptr<CachedStorageArea> GetLocalStorageArea(
+@@ -97,7 +105,10 @@
+   mojo::Receiver<mojom::blink::DomStorageClient> dom_storage_client_receiver_{
+       this};
+ 
++  uint64_t checkpoint_generation_ = 0;
++  size_t checkpoint_requests_ = 0;
+   SEQUENCE_CHECKER(sequence_checker_);
++  base::WeakPtrFactory<StorageController> checkpoint_weak_factory_{this};
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/modules/storage/storage_controller.cc b/third_party/blink/renderer/modules/storage/storage_controller.cc
+--- a/third_party/blink/renderer/modules/storage/storage_controller.cc
++++ b/third_party/blink/renderer/modules/storage/storage_controller.cc
+@@ -4,8 +4,12 @@
+ 
+ #include "third_party/blink/renderer/modules/storage/storage_controller.h"
+ 
++#include <limits>
++
+ #include "base/feature_list.h"
++#include "base/functional/bind.h"
+ #include "base/system/sys_info.h"
++#include "base/task/bind_post_task.h"
+ #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
+ #include "third_party/blink/public/platform/platform.h"
+@@ -135,9 +139,57 @@
+   local_storage_namespace_->RemoveInspectorStorageAgent(agent);
+ }
+ 
++void StorageController::FenceLocalStorageForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  CHECK(callback);
++  StorageNamespace* current = local_storage_namespace_.Get();
++  const uint64_t namespace_generation =
++      current ? current->LocalStorageCheckpointGeneration() : 0;
++  const bool admitted = !deadline.is_max() &&
++                        deadline > base::TimeTicks::Now() &&
++                        checkpoint_requests_ < 64;
++  if (admitted) {
++    ++checkpoint_requests_;
++  }
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](base::WeakPtr<StorageController> owner,
++         WeakPersistent<StorageNamespace> captured, bool had_namespace,
++         uint64_t generation, uint64_t namespace_generation,
++         base::TimeTicks deadline, bool admitted,
++         base::OnceCallback<void(bool)> callback, bool success) {
++        if (admitted && owner) {
++          CHECK_GT(owner->checkpoint_requests_, 0u);
++          --owner->checkpoint_requests_;
++        }
++        std::move(callback).Run(
++            success && owner && owner->checkpoint_generation_ == generation &&
++            owner->local_storage_namespace_.Get() == captured.Get() &&
++            (!had_namespace ||
++             (captured && captured->LocalStorageCheckpointGeneration() ==
++                              namespace_generation)) &&
++            base::TimeTicks::Now() < deadline);
++      },
++      checkpoint_weak_factory_.GetWeakPtr(),
++      WeakPersistent<StorageNamespace>(current), current != nullptr,
++      checkpoint_generation_, namespace_generation, deadline, admitted,
++      std::move(callback)));
++  if (!admitted) {
++    std::move(reply).Run(false);
++  } else if (current) {
++    current->FenceLocalStorageForCheckpoint(deadline, std::move(reply));
++  } else {
++    // Do not create a namespace just to manufacture a positive fence result.
++    std::move(reply).Run(true);
++  }
++}
++
+ void StorageController::EnsureLocalStorageNamespaceCreated() {
+   if (local_storage_namespace_)
+     return;
++  CHECK_LT(checkpoint_generation_, std::numeric_limits<uint64_t>::max());
++  ++checkpoint_generation_;
+   local_storage_namespace_ = MakeGarbageCollected<StorageNamespace>(this);
+ }
+ 
+@@ -150,6 +202,8 @@
+ }
+ 
+ void StorageController::ResetLocalStorageConnections() {
++  CHECK_LT(checkpoint_generation_, std::numeric_limits<uint64_t>::max());
++  ++checkpoint_generation_;
+   if (local_storage_namespace_) {
+     local_storage_namespace_->ResetStorageAreaAndNamespaceConnections();
+   }
+diff --git a/third_party/blink/renderer/modules/storage/storage_controller_test.cc b/third_party/blink/renderer/modules/storage/storage_controller_test.cc
+--- a/third_party/blink/renderer/modules/storage/storage_controller_test.cc
++++ b/third_party/blink/renderer/modules/storage/storage_controller_test.cc
+@@ -9,6 +9,7 @@
+ #include "base/functional/bind.h"
+ #include "base/run_loop.h"
+ #include "base/task/thread_pool.h"
++#include "base/test/test_future.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+@@ -19,6 +20,7 @@
+ #include "third_party/blink/public/platform/scheduler/test/renderer_scheduler_test_support.h"
+ #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
++#include "third_party/blink/renderer/modules/storage/cached_storage_area.h"
+ #include "third_party/blink/renderer/modules/storage/storage_namespace.h"
+ #include "third_party/blink/renderer/modules/storage/testing/fake_area_source.h"
+ #include "third_party/blink/renderer/modules/storage/testing/mock_storage_area.h"
+@@ -256,4 +258,288 @@
+   EXPECT_EQ(opens, 3);
+ }
+ 
++class LocalStorageCheckpointAggregationTest : public testing::Test {
++ public:
++  void SetUp() override {
++    StorageController::DomStorageConnection connection;
++    dom_receiver_.Bind(
++        connection.dom_storage_remote.BindNewPipeAndPassReceiver());
++    connection.client_receiver = client_.BindNewPipeAndPassReceiver();
++    controller_ =
++        std::make_unique<StorageController>(std::move(connection), 1024 * 1024);
++    namespace_ = MakeGarbageCollected<StorageNamespace>(controller_.get());
++    test::ScopedMockedURLLoad url1(KURL("http://checkpoint-one.test/"),
++                                   test::CoreTestDataPath("foo.html"));
++    window1_ = To<LocalDOMWindow>(
++        web1_.InitializeAndLoad("http://checkpoint-one.test/")
++            ->GetPage()
++            ->MainFrame()
++            ->DomWindow());
++    test::ScopedMockedURLLoad url2(KURL("http://checkpoint-two.test/"),
++                                   test::CoreTestDataPath("foo.html"));
++    window2_ = To<LocalDOMWindow>(
++        web2_.InitializeAndLoad("http://checkpoint-two.test/")
++            ->GetPage()
++            ->MainFrame()
++            ->DomWindow());
++    source1_ = MakeGarbageCollected<FakeAreaSource>(
++        KURL("http://checkpoint-one.test/"), window1_.Get());
++    source2_ = MakeGarbageCollected<FakeAreaSource>(
++        KURL("http://checkpoint-two.test/"), window2_.Get());
++  }
++  void CreateFirst(bool controller_owned = false) {
++    area1_ = controller_owned ? controller_->GetLocalStorageArea(
++                                    window1_, backend1_.GetInterfaceRemote())
++                              : namespace_->GetCachedArea(
++                                    window1_, backend1_.GetInterfaceRemote());
++    area1_->RegisterSource(source1_);
++  }
++  void CreateSecond(bool controller_owned = false) {
++    area2_ = controller_owned ? controller_->GetLocalStorageArea(
++                                    window2_, backend2_.GetInterfaceRemote())
++                              : namespace_->GetCachedArea(
++                                    window2_, backend2_.GetInterfaceRemote());
++    area2_->RegisterSource(source2_);
++  }
++  base::TimeTicks Deadline() const {
++    return base::TimeTicks::Now() + base::Seconds(5);
++  }
++
++ protected:
++  test::TaskEnvironment task_environment_;
++  MockDomStorage dom_;
++  mojo::Receiver<mojom::blink::DomStorage> dom_receiver_{&dom_};
++  mojo::Remote<mojom::blink::DomStorageClient> client_;
++  std::unique_ptr<StorageController> controller_;
++  Persistent<StorageNamespace> namespace_;
++  frame_test_helpers::WebViewHelper web1_, web2_;
++  Persistent<LocalDOMWindow> window1_, window2_;
++  Persistent<FakeAreaSource> source1_, source2_;
++  MockStorageArea backend1_, backend2_;
++  scoped_refptr<CachedStorageArea> area1_, area2_;
++};
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointEmptyNamespaceIsAsynchronous) {
++  base::test::TestFuture<bool> result;
++  namespace_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_TRUE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest, CheckpointWaitsForBothAreas) {
++  CreateFirst();
++  CreateSecond();
++  backend1_.HoldCheckpointMutationCallbacks();
++  backend2_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(area1_->SetItem("key", "one", source1_));
++  ASSERT_TRUE(area2_->SetItem("key", "two", source2_));
++  backend1_.Flush();
++  backend2_.Flush();
++  base::test::TestFuture<bool> result;
++  namespace_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  backend1_.CompleteCheckpointMutationAt(0, true);
++  test::RunPendingTasks();
++  EXPECT_FALSE(result.IsReady());
++  backend2_.CompleteCheckpointMutationAt(0, true);
++  EXPECT_TRUE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointEarlyAreaMutationRejectsAggregate) {
++  CreateFirst();
++  CreateSecond();
++  backend2_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(area2_->SetItem("key", "two", source2_));
++  backend2_.Flush();
++  base::test::TestFuture<bool> result;
++  namespace_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  test::RunPendingTasks();
++  EXPECT_FALSE(result.IsReady());
++  ASSERT_TRUE(area1_->SetItem("later", "one", source1_));
++  backend1_.Flush();
++  backend2_.CompleteCheckpointMutationAt(0, true);
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointNewAreaRejectsCapturedTopology) {
++  CreateFirst();
++  backend1_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(area1_->SetItem("key", "one", source1_));
++  backend1_.Flush();
++  base::test::TestFuture<bool> result;
++  namespace_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  CreateSecond();
++  backend1_.CompleteCheckpointMutationAt(0, true);
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointRemovalRejectsCapturedTopology) {
++  CreateFirst();
++  base::test::TestFuture<bool> result;
++  namespace_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  area1_ = nullptr;
++  namespace_->CleanUpUnusedAreas();
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointEvictionPreservesUnacknowledgedWrites) {
++  CreateFirst();
++  backend1_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(area1_->SetItem("key", "one", source1_));
++  backend1_.Flush();
++  const auto* original = area1_.get();
++  const auto generation = namespace_->LocalStorageCheckpointGeneration();
++  area1_ = nullptr;
++  namespace_->CleanUpUnusedAreas();
++  EXPECT_EQ(generation, namespace_->LocalStorageCheckpointGeneration());
++  area1_ = namespace_->GetCachedArea(window1_);
++  EXPECT_EQ(original, area1_.get());
++  backend1_.CompleteCheckpointMutationAt(0, true);
++  test::RunPendingTasks();
++  area1_ = nullptr;
++  namespace_->CleanUpUnusedAreas();
++  EXPECT_GT(namespace_->LocalStorageCheckpointGeneration(), generation);
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointFailedEvictionCannotEraseWriteFailure) {
++  CreateFirst();
++  backend1_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(area1_->SetItem("key", "one", source1_));
++  backend1_.Flush();
++  backend1_.CompleteCheckpointMutationAt(0, false);
++  test::RunPendingTasks();
++  area1_ = nullptr;
++  namespace_->CleanUpUnusedAreas();
++  base::test::TestFuture<bool> result;
++  namespace_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointNamespaceResetRejectsPostedEmptySuccess) {
++  base::test::TestFuture<bool> result;
++  namespace_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  namespace_->ResetStorageAreaAndNamespaceConnections();
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointSessionNamespaceIsRejected) {
++  auto* session = MakeGarbageCollected<StorageNamespace>(
++      *window1_->GetFrame()->GetPage(), controller_.get(),
++      "checkpoint-session");
++  base::test::TestFuture<bool> result;
++  session->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointNamespaceDeadlineIsRequired) {
++  base::test::TestFuture<bool> expired, unbounded;
++  namespace_->FenceLocalStorageForCheckpoint(base::TimeTicks::Now(),
++                                             expired.GetCallback());
++  namespace_->FenceLocalStorageForCheckpoint(base::TimeTicks::Max(),
++                                             unbounded.GetCallback());
++  EXPECT_FALSE(expired.IsReady());
++  EXPECT_FALSE(expired.Get());
++  EXPECT_FALSE(unbounded.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointNamespaceQueueIsBounded) {
++  CreateFirst();
++  backend1_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(area1_->SetItem("key", "one", source1_));
++  backend1_.Flush();
++  Vector<std::unique_ptr<base::test::TestFuture<bool>>> waiting;
++  for (int i = 0; i < 64; ++i) {
++    auto result = std::make_unique<base::test::TestFuture<bool>>();
++    namespace_->FenceLocalStorageForCheckpoint(Deadline(),
++                                               result->GetCallback());
++    waiting.push_back(std::move(result));
++  }
++  base::test::TestFuture<bool> overflow;
++  namespace_->FenceLocalStorageForCheckpoint(Deadline(),
++                                             overflow.GetCallback());
++  EXPECT_FALSE(overflow.Get());
++  backend1_.CompleteCheckpointMutationAt(0, true);
++  for (auto& result : waiting) {
++    EXPECT_TRUE(result->Get());
++  }
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointControllerEmptyScopeIsAsynchronous) {
++  base::test::TestFuture<bool> result;
++  controller_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_TRUE(result.Get());
++  EXPECT_EQ(0u, controller_->TotalCacheSize());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointControllerNewNamespaceRejectsOldReply) {
++  base::test::TestFuture<bool> result;
++  controller_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  CreateFirst(true);
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointControllerOwnerLossRejectsLateReply) {
++  auto isolated = std::make_unique<StorageController>(
++      StorageController::DomStorageConnection{}, 1024);
++  base::test::TestFuture<bool> result;
++  isolated->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  isolated.reset();
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointControllerResetOverRealClientPipeFailsClosed) {
++  CreateFirst(true);
++  backend1_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(area1_->SetItem("key", "one", source1_));
++  backend1_.Flush();
++  base::test::TestFuture<bool> result;
++  controller_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  client_->ResetLocalStorageConnections();
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointControllerPropagatesAreaFailure) {
++  CreateFirst(true);
++  backend1_.HoldCheckpointMutationCallbacks();
++  ASSERT_TRUE(area1_->SetItem("key", "one", source1_));
++  backend1_.Flush();
++  base::test::TestFuture<bool> result;
++  controller_->FenceLocalStorageForCheckpoint(Deadline(), result.GetCallback());
++  backend1_.CompleteCheckpointMutationAt(0, false);
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(LocalStorageCheckpointAggregationTest,
++       CheckpointControllerQueueIsBounded) {
++  Vector<std::unique_ptr<base::test::TestFuture<bool>>> waiting;
++  for (int i = 0; i < 64; ++i) {
++    auto result = std::make_unique<base::test::TestFuture<bool>>();
++    controller_->FenceLocalStorageForCheckpoint(Deadline(),
++                                                result->GetCallback());
++    waiting.push_back(std::move(result));
++  }
++  base::test::TestFuture<bool> overflow;
++  controller_->FenceLocalStorageForCheckpoint(Deadline(),
++                                              overflow.GetCallback());
++  EXPECT_FALSE(overflow.Get());
++  for (auto& result : waiting) {
++    EXPECT_TRUE(result->Get());
++  }
++}
++
+ }  // namespace blink

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "head": "195f393b269ce2ef80f46ef34e412cebbfba90a7",
+  "candidate": "upstream-156-checkpoint-r13",
+  "candidate_manifest_sha256": "453e2bedc2b9fd6cb59ddf8a2e993d17ff30976fc5661bee5199bac450b81a0b",
+  "full_suite_executed": true,
+  "passed": true,
+  "returncode": 0,
+  "counts": {
+    "passed": 6132,
+    "failed": 0,
+    "skipped": 1
+  },
+  "duration_seconds": 713.922,
+  "input_postguards_passed": true,
+  "log_sha256": "83935ff14d9a21adb58e0aa7901f6e8887bf5f7d7b05753f9ad6cf83a6117a5f",
+  "production_admitted": false,
+  "scope": "Full host test suite, not browser or release admission",
+  "private_report_sha256": "b04f28c8d5bc7f46b0decf30f4b612196bad8316d50150b998e6a6ee11c03618"
+}

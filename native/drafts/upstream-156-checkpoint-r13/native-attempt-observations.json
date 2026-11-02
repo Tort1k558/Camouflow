@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-checkpoint-r13",
+  "candidate_manifest_sha256": "453e2bedc2b9fd6cb59ddf8a2e993d17ff30976fc5661bee5199bac450b81a0b",
+  "passed": false,
+  "postguards_passed": true,
+  "prepared_bodies": 85,
+  "discovered_instances": 107,
+  "build_passed": true,
+  "build_steps": 6,
+  "build_seconds": 2866.2,
+  "jobs": 1,
+  "private_report_sha256": "685cbf9e8576ff68cbb982869f800c2ac011fc7262ff47e809053c62fd42fc34",
+  "private_build_log_sha256": "9f68820c9711da375fc36d7bf27e37a9b6ea2b2c10078396ad07cdba3e5a3bec",
+  "targets": [
+    {
+      "binary": "blink_unittests",
+      "passed": false,
+      "discovered_cases": 35
+    },
+    {
+      "binary": "components_unittests",
+      "passed": true,
+      "discovered_cases": 42
+    },
+    {
+      "binary": "content_browsertests",
+      "passed": true,
+      "discovered_cases": 4
+    },
+    {
+      "binary": "content_unittests",
+      "passed": true,
+      "discovered_cases": 2
+    },
+    {
+      "binary": "net_unittests",
+      "passed": false,
+      "discovered_cases": 17
+    },
+    {
+      "binary": "services_unittests",
+      "passed": true,
+      "discovered_cases": 7
+    }
+  ],
+  "failures": [
+    "Two SQL fixtures: ALTER CHECK fails because pragma_quick_check is unavailable",
+    "Blink aggregation fixture: Oilpan namespace outlives its unique controller"
+  ],
+  "prior_j4_oom_retained": true,
+  "fixture_corrections_prepared_not_executed": true,
+  "browser_runtime_verified": false,
+  "whole_profile_checkpoint": false,
+  "production_admitted": false
+}

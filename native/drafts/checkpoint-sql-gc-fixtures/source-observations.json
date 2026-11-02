@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "before_sha256": "4dd9f29eb3948bab9afbab82e151e16af91b94a1930c4c126fd20a3ed3e66d94",
+      "after_sha256": "4b85d8e1a6c2b6e4b9f693f4878849d45412e8abb0f5a662b4e9a63413705425"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller.h",
+      "before_sha256": "f2a2d67edba33e0a09e5e22145b0e0b36b1513cf9f901386db68a500a0ee3bec",
+      "after_sha256": "a6fb017934ab12bc816e2bcd60d046a8a4ef6908220f37bef8c268d1e9ff94bd"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "before_sha256": "454c4847681c72002bcabb3f189ac5f6509a4d27e7b92912345d8daf9ea2bb98",
+      "after_sha256": "fe3ea5240069f89b1b62e2dd9d9b282e30d54da935a9ac893c0c6cb8154a5428"
+    }
+  ],
+  "patch_sha256": "4be3a8ccfc2206d08b5b858e45b7a051b5dabae3cbf5efcc5a2a75bb049cca5f",
+  "isolated_forward_reverse_passed": true,
+  "native_case_declarations_unchanged": true,
+  "original_error_and_false_assertions_preserved": true,
+  "dangling_checks_disabled": false,
+  "production_behavior_changed": false,
+  "canonical_sources_modified": false,
+  "compiled": false,
+  "native_tests_executed": false,
+  "production_admitted": false
+}

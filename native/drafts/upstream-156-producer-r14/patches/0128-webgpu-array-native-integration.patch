@@ -1,0 +1,402 @@
+--- a/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
++++ b/src/dawn/native/d3d12/GlintTextureProjectionD3D12.cpp
+@@ -132,6 +132,48 @@
+ }
+ }  // namespace
+ 
++MaybeError ValidateGlintSampledTextureView(Device* device, TextureView* view) {
++    DAWN_INTERNAL_ERROR_IF(!device || !view || view->GetDevice() != device,
++                           "Invalid Glint sampled-view logical owner.");
++    auto* texture = ToBackend(view->GetTexture());
++    DAWN_INTERNAL_ERROR_IF(!texture || texture->GetDevice() != device || !texture->HasAccess() ||
++        !texture->GetD3D12Resource() || texture->GetDimension() != wgpu::TextureDimension::e2D ||
++        texture->GetSampleCount() != 1 || view->GetAspects() != Aspect::Color ||
++        !view->IsSwizzleIdentity(), "Unsupported Glint sampled texture.");
++    const auto dimension = view->GetDimension();
++    const uint32_t mip = view->GetBaseMipLevel(), levels = view->GetLevelCount();
++    const uint32_t layer = view->GetBaseArrayLayer(), layers = view->GetLayerCount();
++    DAWN_INTERNAL_ERROR_IF((dimension != wgpu::TextureViewDimension::e2D &&
++                            dimension != wgpu::TextureViewDimension::e2DArray) ||
++        (dimension == wgpu::TextureViewDimension::e2D && layers != 1) ||
++        !levels || !layers || mip >= texture->GetNumMipLevels() ||
++        levels > texture->GetNumMipLevels() - mip || layer >= texture->GetArrayLayers() ||
++        layers > texture->GetArrayLayers() - layer,
++        "Invalid Glint sampled-view subresource range.");
++    const auto format = view->GetFormat().format;
++    DAWN_INTERNAL_ERROR_IF(format != wgpu::TextureFormat::RGBA8Unorm &&
++                            format != wgpu::TextureFormat::BGRA8Unorm,
++                            "Unsupported Glint sampled-view format.");
++    const auto original = texture->GetD3D12Resource()->GetDesc();
++    const auto& srv = view->GetSRVDescriptor();
++    const bool exact2D = srv.ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2D &&
++        original.DepthOrArraySize == 1 && layer == 0 && layers == 1 &&
++        srv.Texture2D.MostDetailedMip == mip && srv.Texture2D.MipLevels == levels &&
++        srv.Texture2D.PlaneSlice == 0 && srv.Texture2D.ResourceMinLODClamp == 0;
++    const bool exactArray = srv.ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2DARRAY &&
++        srv.Texture2DArray.MostDetailedMip == mip && srv.Texture2DArray.MipLevels == levels &&
++        srv.Texture2DArray.FirstArraySlice == layer && srv.Texture2DArray.ArraySize == layers &&
++        srv.Texture2DArray.PlaneSlice == 0 && srv.Texture2DArray.ResourceMinLODClamp == 0;
++    DAWN_INTERNAL_ERROR_IF(original.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
++        original.SampleDesc.Count != 1 || original.SampleDesc.Quality != 0 ||
++        original.MipLevels != texture->GetNumMipLevels() ||
++        original.DepthOrArraySize != texture->GetArrayLayers() ||
++        srv.Format != view->GetD3D12Format() ||
++        srv.Shader4ComponentMapping != D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING ||
++        (!exact2D && !exactArray), "Glint sampled-view descriptor differs from its logical range.");
++    return {};
++}
++
+ ResultOrError<std::unique_ptr<GlintTextureProjector>> GlintTextureProjector::Create(Device* device) {
+     DAWN_INTERNAL_ERROR_IF(!device || !device->GetGlintReadbackObserver(),
+                            "Glint projection requires an installed device policy.");
+@@ -185,14 +227,7 @@
+     auto* texture = ToBackend(view->GetTexture());
+     DAWN_INTERNAL_ERROR_IF(!texture || texture->GetDevice() != mDevice || !texture->HasAccess() ||
+                            !texture->GetD3D12Resource(), "Glint projection source is inaccessible.");
+-    DAWN_INTERNAL_ERROR_IF(view->GetDimension() != wgpu::TextureViewDimension::e2D ||
+-        view->GetBaseMipLevel() != 0 || view->GetLevelCount() != 1 || texture->GetNumMipLevels() != 1 ||
+-        view->GetBaseArrayLayer() != 0 || view->GetLayerCount() != 1 || !view->IsSwizzleIdentity(),
+-        "Unsupported Glint projection texture-view range.");
+-    const auto format = view->GetFormat().format;
+-    DAWN_INTERNAL_ERROR_IF(format != wgpu::TextureFormat::RGBA8Unorm &&
+-                           format != wgpu::TextureFormat::BGRA8Unorm,
+-                           "Unsupported Glint projection texture-view format.");
++    DAWN_TRY(ValidateGlintSampledTextureView(mDevice, view));
+     return RecordTexture(context, texture, view->GetD3D12Format());
+ }
+ 
+@@ -202,6 +237,8 @@
+                               !texture->HasAccess() || !texture->GetD3D12Resource(),
+                           "Invalid Glint texture-copy projection owner.");
+     DAWN_ASSERT(mDevice->IsLockedByCurrentThreadIfNeeded());
++    DAWN_INTERNAL_ERROR_IF(texture->GetDimension() != wgpu::TextureDimension::e2D ||
++        texture->GetSampleCount() != 1, "Unsupported Glint copy-projection texture shape.");
+     const auto format = texture->GetFormat().format;
+     DAWN_INTERNAL_ERROR_IF(format != wgpu::TextureFormat::RGBA8Unorm &&
+                               format != wgpu::TextureFormat::BGRA8Unorm,
+@@ -210,23 +247,31 @@
+ }
+ 
+ ResultOrError<std::shared_ptr<const GlintGpuReadbackSnapshot>>
+-GlintTextureProjector::RecordCopySnapshot(CommandRecordingContext* context, Texture* texture) {
++GlintTextureProjector::RecordCopySnapshot(CommandRecordingContext* context, Texture* texture,
++                                           uint32_t mipLevel, uint32_t arrayLayer) {
++    DAWN_INTERNAL_ERROR_IF(!context || !texture || texture->GetDevice() != mDevice ||
++        texture->GetDimension() != wgpu::TextureDimension::e2D ||
++        mipLevel >= texture->GetNumMipLevels() || mipLevel >= 32 ||
++        arrayLayer >= texture->GetArrayLayers(), "Invalid Glint paired snapshot selection.");
+     std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected;
+     DAWN_TRY_ASSIGN(projected, RecordCopy(context, texture));
+     const auto desc = projected->texture()->GetDesc();
+     const auto nativeFormat = projected->canonical_pixel_format();
+-    auto* const pixels = projected->canonical_pixel_buffer();
++    auto* const pixels = projected->canonical_pixel_buffer(mipLevel, arrayLayer);
++    const uint64_t width = std::max(uint64_t{1}, desc.Width >> mipLevel);
++    const uint32_t height = std::max(uint32_t{1}, desc.Height >> mipLevel);
+     DAWN_INTERNAL_ERROR_IF(!pixels || !desc.Width || !desc.Height ||
+         desc.Width > 8192 || desc.Height > 8192 ||
+         (nativeFormat != DXGI_FORMAT_R8G8B8A8_UNORM && nativeFormat != DXGI_FORMAT_B8G8R8A8_UNORM) ||
+-        desc.Format != nativeFormat || pixels->GetDesc().Width != desc.Width * desc.Height * 4,
++        desc.Format != nativeFormat || mipLevel >= desc.MipLevels || arrayLayer >= desc.DepthOrArraySize ||
++        pixels->GetDesc().Width != width * height * 4,
+         "Invalid Glint GPU pixel snapshot metadata.");
+     const auto format = nativeFormat == DXGI_FORMAT_B8G8R8A8_UNORM
+                             ? GlintReadbackFormat::Bgra8Unorm : GlintReadbackFormat::Rgba8Unorm;
+     auto native = std::shared_ptr<const GlintGpuPixelSnapshot>(
+-        new GlintGpuPixelSnapshot(mIdentity, std::move(projected)));
++        new GlintGpuPixelSnapshot(mIdentity, std::move(projected), mipLevel, arrayLayer));
+     return std::shared_ptr<const GlintGpuReadbackSnapshot>(new GlintGpuReadbackSnapshot(
+-        std::move(native), static_cast<uint32_t>(desc.Width), desc.Height, format));
++        std::move(native), static_cast<uint32_t>(width), height, format));
+ }
+ 
+ std::shared_ptr<const GlintGpuPixelSnapshot> GlintTextureProjector::ResolveSnapshot(
+@@ -355,9 +400,17 @@
+     ProjectionSeed seed;
+     DAWN_INTERNAL_ERROR_IF(!observer || !observer->CopyShaderProjectionSeed(seed.bytes),
+                            "Glint projection policy is invalid.");
+-    const auto range = SubresourceRange::SingleMipAndLayer(0, 0, Aspect::Color);
++    const auto range = texture->GetAllSubresources();
+     DAWN_TRY(texture->EnsureSubresourceContentInitialized(context, range));
+     if (auto cached = texture->GetGlintProjection(this, viewFormat)) {
++        const auto original = texture->GetD3D12Resource()->GetDesc();
++        const auto full = cached->texture()->GetDesc();
++        DAWN_INTERNAL_ERROR_IF(full.Dimension != original.Dimension || full.Width != original.Width ||
++            full.Height != original.Height || full.MipLevels != original.MipLevels ||
++            full.DepthOrArraySize != original.DepthOrArraySize || full.Format != viewFormat ||
++            full.SampleDesc.Count != original.SampleDesc.Count ||
++            full.SampleDesc.Quality != original.SampleDesc.Quality,
++            "Glint cached projection does not cover its complete texture.");
+         auto lease = glint::candidate::d3d12::ProjectedTexture::CloneLease(std::move(cached));
+         DAWN_INTERNAL_ERROR_IF(!lease, "Glint cached projection lease allocation failed.");
+         mDevice->ReferenceUntilUnused(lease->retirement_handle());
+@@ -368,7 +421,7 @@
+     texture->TrackUsageAndTransitionNow(context, D3D12_RESOURCE_STATE_COPY_SOURCE, range);
+     auto* queue = ToBackend(mDevice->GetQueue());
+     std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected;
+-    DAWN_TRY(CheckHRESULT(glint::candidate::d3d12::ProjectedTexture::Record(
++    DAWN_TRY(CheckHRESULT(glint::candidate::d3d12::ProjectedTexture::RecordAll(
+         mDevice->GetD3D12Device(), context->GetCommandList(), texture->GetD3D12Resource(),
+         viewFormat, true, mRoot.Get(), mPipeline.Get(), seed.bytes,
+         queue->GetSharedFence()->GetD3DFence(), uint64_t{queue->GetPendingCommandSerial()},
+--- a/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
++++ b/src/dawn/native/d3d12/GlintTextureProjectionD3D12.h
+@@ -16,22 +16,27 @@
+ class TextureView;
+ class Texture;
+ class CommandRecordingContext;
++MaybeError ValidateGlintSampledTextureView(Device* device, TextureView* view);
+ // Per-projector identity outlives the Dawn Device only through resource leases.
+ // It owns no Dawn references and cannot be confused with a reused Device address.
+ struct GlintProjectionIdentity final {};
+ class GlintGpuPixelSnapshot final {
+   public:
+-    ID3D12Resource* PixelBuffer() const { return mProjected->canonical_pixel_buffer(); }
++    ID3D12Resource* PixelBuffer() const { return mProjected->canonical_pixel_buffer(mMipLevel, mArrayLayer); }
+     DXGI_FORMAT PixelFormat() const { return mProjected->canonical_pixel_format(); }
+     ComPtr<IUnknown> RetirementHandle() const { return mProjected->retirement_handle(); }
+ 
+   private:
+     friend class GlintTextureProjector;
+     GlintGpuPixelSnapshot(std::shared_ptr<const GlintProjectionIdentity> identity,
+-                         std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected)
+-        : mIdentity(std::move(identity)), mProjected(std::move(projected)) {}
++                         std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> projected,
++                         uint32_t mipLevel, uint32_t arrayLayer)
++        : mIdentity(std::move(identity)), mProjected(std::move(projected)),
++          mMipLevel(mipLevel), mArrayLayer(arrayLayer) {}
+     const std::shared_ptr<const GlintProjectionIdentity> mIdentity;
+     const std::unique_ptr<glint::candidate::d3d12::ProjectedTexture> mProjected;
++    const uint32_t mMipLevel;
++    const uint32_t mArrayLayer;
+ };
+ 
+ struct GlintBufferWriteRange {
+@@ -58,7 +63,8 @@
+     ResultOrError<std::unique_ptr<glint::candidate::d3d12::ProjectedTexture>> RecordCopy(
+         CommandRecordingContext* context, Texture* texture);
+     ResultOrError<std::shared_ptr<const GlintGpuReadbackSnapshot>> RecordCopySnapshot(
+-        CommandRecordingContext* context, Texture* texture);
++        CommandRecordingContext* context, Texture* texture,
++        uint32_t mipLevel = 0, uint32_t arrayLayer = 0);
+     // Produces one shadow per owned logical buffer, outside a native render pass.
+     // Caller must install all aliases and restore backend state before execution.
+     // Metadata commit is not binding proof and never authorizes shader-byte output.
+--- a/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
++++ b/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
+@@ -60,7 +60,7 @@
+ ResultOrError<std::unique_ptr<glint::candidate::d3d12::TextureCapture>>
+ RecordGlintTextureReadbackSnapshot(Device* device,
+                                    CommandRecordingContext* context,
+-                                   Texture* texture) {
++                                   Texture* texture, uint32_t mipLevel, uint32_t arrayLayer) {
+     DAWN_INTERNAL_ERROR_IF(!device || !context || !texture || texture->GetDevice() != device,
+                            "Invalid Glint texture capture owner.");
+     DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
+@@ -72,7 +72,11 @@
+         "Unsupported Glint texture capture format.");
+     DAWN_INTERNAL_ERROR_IF(!(texture->GetInternalUsage() & wgpu::TextureUsage::CopySrc),
+                            "Glint texture capture requires native copy access.");
+-    const auto range = SubresourceRange::SingleMipAndLayer(0, 0, Aspect::Color);
++    DAWN_INTERNAL_ERROR_IF(texture->GetDimension() != wgpu::TextureDimension::e2D ||
++        texture->GetSampleCount() != 1 || mipLevel >= texture->GetNumMipLevels() ||
++        mipLevel >= 32 || arrayLayer >= texture->GetArrayLayers(),
++        "Invalid Glint CPU snapshot selection.");
++    const auto range = SubresourceRange::SingleMipAndLayer(mipLevel, arrayLayer, Aspect::Color);
+     DAWN_TRY(texture->EnsureSubresourceContentInitialized(context, range));
+     texture->TrackUsageAndTransitionNow(context, wgpu::TextureUsage::CopySrc, range);
+     auto* queue = ToBackend(device->GetQueue());
+@@ -81,7 +85,7 @@
+         glint::candidate::d3d12::TextureCapture::RecordBudgeted(
+             device->GetD3D12Device(), context->GetCommandList(), texture->GetD3D12Resource(),
+             queue->GetSharedFence()->GetD3DFence(), uint64_t{queue->GetPendingCommandSerial()},
+-            device->GetGlintReadbackBudget(), &capture),
++            device->GetGlintReadbackBudget(), &capture, mipLevel, arrayLayer),
+         "Glint full texture capture"));
+     // GPU ownership survives cancellation of the CPU snapshot ticket.
+     device->ReferenceUntilUnused(capture->retirement_handle());
+@@ -91,16 +95,16 @@
+ ResultOrError<std::unique_ptr<GlintReadbackSnapshot>> RecordGlintNativeTextureSnapshot(
+     Device* device,
+     CommandRecordingContext* context,
+-    Texture* texture) {
++    Texture* texture, uint32_t mipLevel, uint32_t arrayLayer) {
+     DAWN_INTERNAL_ERROR_IF(!device || !context || !texture || texture->GetDevice() != device,
+                            "Invalid Glint paired snapshot owner.");
+     DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
+     GlintTextureProjector* projector;
+     DAWN_TRY_ASSIGN(projector, device->GetGlintTextureProjector());
+     std::shared_ptr<const GlintGpuReadbackSnapshot> projected;
+-    DAWN_TRY_ASSIGN(projected, projector->RecordCopySnapshot(context, texture));
++    DAWN_TRY_ASSIGN(projected, projector->RecordCopySnapshot(context, texture, mipLevel, arrayLayer));
+     std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture;
+-    DAWN_TRY_ASSIGN(capture, RecordGlintTextureReadbackSnapshot(device, context, texture));
++    DAWN_TRY_ASSIGN(capture, RecordGlintTextureReadbackSnapshot(device, context, texture, mipLevel, arrayLayer));
+     return std::unique_ptr<GlintReadbackSnapshot>(
+         new NativeGlintReadbackSnapshot(std::move(capture), std::move(projected)));
+ }
+--- a/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
++++ b/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
+@@ -17,11 +17,11 @@
+ ResultOrError<std::unique_ptr<glint::candidate::d3d12::TextureCapture>>
+ RecordGlintTextureReadbackSnapshot(Device* device,
+                                    CommandRecordingContext* context,
+-                                   Texture* texture);
++                                   Texture* texture, uint32_t mipLevel = 0, uint32_t arrayLayer = 0);
+ ResultOrError<std::unique_ptr<GlintReadbackSnapshot>> RecordGlintNativeTextureSnapshot(
+     Device* device,
+     CommandRecordingContext* context,
+-    Texture* texture);
++    Texture* texture, uint32_t mipLevel = 0, uint32_t arrayLayer = 0);
+ // Private execution-bound byte snapshot. Does not itself authorize map admission.
+ ResultOrError<std::unique_ptr<GlintByteReadbackSnapshot>> RecordGlintNativeByteSnapshot(
+     Device* device,
+--- a/src/dawn/native/d3d12/BindGroupD3D12.cpp
++++ b/src/dawn/native/d3d12/BindGroupD3D12.cpp
+@@ -40,6 +40,7 @@
+ #include "src/dawn/native/d3d12/BindGroupLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/BufferD3D12.h"
+ #include "src/dawn/native/d3d12/DeviceD3D12.h"
++#include "src/dawn/native/d3d12/GlintTextureProjectionD3D12.h"
+ #include "src/dawn/native/d3d12/SamplerHeapCacheD3D12.h"
+ #include "src/dawn/native/d3d12/ShaderVisibleDescriptorAllocatorD3D12.h"
+ #include "src/dawn/native/d3d12/TextureD3D12.h"
+@@ -388,27 +389,16 @@
+         const auto& srv = view->GetSRVDescriptor();
+         const auto projected = replacement.resource->GetDesc();
+         const auto original = source->GetDesc();
+-        // Dawn represents an ordinary logical 2D view as a one-slice 2D-array SRV.
+-        const bool exact2D = srv.ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2D &&
+-            srv.Texture2D.MostDetailedMip == 0 && srv.Texture2D.MipLevels == 1 &&
+-            srv.Texture2D.PlaneSlice == 0 && srv.Texture2D.ResourceMinLODClamp == 0;
+-        const bool exactArray = srv.ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2DARRAY &&
+-            srv.Texture2DArray.MostDetailedMip == 0 && srv.Texture2DArray.MipLevels == 1 &&
+-            srv.Texture2DArray.FirstArraySlice == 0 && srv.Texture2DArray.ArraySize == 1 &&
+-            srv.Texture2DArray.PlaneSlice == 0 && srv.Texture2DArray.ResourceMinLODClamp == 0;
++        DAWN_TRY(ValidateGlintSampledTextureView(device, view));
+         ComPtr<ID3D12Device> owner;
+         DAWN_TRY(CheckHRESULT(replacement.resource->GetDevice(IID_PPV_ARGS(&owner)),
+                               "Glint projected texture physical owner"));
+         DAWN_INTERNAL_ERROR_IF(owner.Get() != device->GetD3D12Device() ||
+                                projected.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+                                projected.Format != srv.Format || projected.Width != original.Width ||
+-                               projected.Height != original.Height || projected.DepthOrArraySize != 1 ||
+-                               projected.MipLevels != 1 || projected.SampleDesc.Count != 1 ||
+-                               (projected.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) ||
+-                               view->GetDimension() != wgpu::TextureViewDimension::e2D ||
+-                               view->GetBaseMipLevel() != 0 || view->GetLevelCount() != 1 ||
+-                               view->GetBaseArrayLayer() != 0 || view->GetLayerCount() != 1 ||
+-                               !view->IsSwizzleIdentity() || (!exact2D && !exactArray),
++                               projected.Height != original.Height || projected.DepthOrArraySize != original.DepthOrArraySize ||
++                               projected.MipLevels != original.MipLevels || projected.SampleDesc.Count != 1 || projected.SampleDesc.Quality != 0 ||
++                               (projected.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE),
+                                "Glint projection descriptor is incompatible with its source view.");
+         seen.push_back(replacement.binding);
+     }
+--- a/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -1336,11 +1336,7 @@
+             for (BindingIndex index : layout->GetSampledTextureIndices()) {
+                 if (!(layout->GetBindingInfo(index).visibility & stages)) continue;
+                 auto* view = ToBackend(group->GetBindingAsTextureView(index));
+-                DAWN_INTERNAL_ERROR_IF(!view || view->GetDevice() != mDevice ||
+-                    view->GetDimension() != wgpu::TextureViewDimension::e2D ||
+-                    view->GetBaseMipLevel() != 0 || view->GetLevelCount() != 1 ||
+-                    view->GetBaseArrayLayer() != 0 || view->GetLayerCount() != 1 ||
+-                    !view->IsSwizzleIdentity(), "Unsupported Glint render sampled view.");
++                DAWN_TRY(ValidateGlintSampledTextureView(mDevice, view));
+                 auto found = mGlintRenderTextures.find(view->GetTexture());
+                 DAWN_INTERNAL_ERROR_IF(found == mGlintRenderTextures.end(),
+                                        "Glint sampled texture was absent from the validated pass scope.");
+@@ -2008,7 +2004,11 @@
+ 
+                 const TypedTexelBlockInfo& blockInfo = GetBlockInfo(copy->source);
+                 auto observer = GetDevice()->GetGlintReadbackObserver();
+-                std::unique_ptr<GlintReadbackSnapshot> snapshot;
++                struct GlintCopySnapshot {
++                    GlintTextureToBufferCopy notification;
++                    std::unique_ptr<GlintReadbackSnapshot> snapshot;
++                };
++                std::vector<GlintCopySnapshot> snapshots;
+                 GlintTextureToBufferCopy notification;
+                 if (observer) {
+                     notification.destination = {ToAPI(copy->destination.buffer.Get()),
+@@ -2022,25 +2022,52 @@
+                     notification.sourceY = dchecked_cast<uint32_t>(copy->source.origin.y);
+                     const auto format = texture->GetFormat().format;
+                     const auto resource = texture->GetD3D12Resource()->GetDesc();
+-                    const bool capturable =
+-                        copy->source.mipLevel == 0 && copy->source.origin.z == TexelCount{0u} &&
+-                        copy->copySize.depthOrArrayLayers == TexelCount{1u} &&
++                    const uint32_t baseLayer = dchecked_cast<uint32_t>(copy->source.origin.z);
++                    const uint32_t layers = dchecked_cast<uint32_t>(copy->copySize.depthOrArrayLayers);
++                    const bool capturable = copy->source.aspect == Aspect::Color && layers > 0 &&
++                        copy->source.mipLevel < resource.MipLevels &&
++                        baseLayer < resource.DepthOrArraySize && layers <= resource.DepthOrArraySize - baseLayer &&
+                         resource.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+-                        resource.DepthOrArraySize == 1 && resource.MipLevels == 1 &&
+-                        resource.SampleDesc.Count == 1 &&
++                        resource.SampleDesc.Count == 1 && resource.SampleDesc.Quality == 0 &&
+                         (format == wgpu::TextureFormat::RGBA8Unorm ||
+                          format == wgpu::TextureFormat::BGRA8Unorm);
+                     if (capturable) {
+                         notification.format = format == wgpu::TextureFormat::BGRA8Unorm
+                                                   ? GlintReadbackFormat::Bgra8Unorm
+                                                   : GlintReadbackFormat::Rgba8Unorm;
+-                        auto pending = RecordGlintNativeTextureSnapshot(ToBackend(GetDevice()),
+-                                                                        commandContext, texture);
+-                        if (pending.IsError()) {
+-                            observer->OnTextureToBufferCopy(notification, nullptr);
+-                            return pending.AcquireError();
++                        const uint64_t rows = dchecked_cast<uint32_t>(copy->destination.rowsPerImage);
++                        DAWN_INTERNAL_ERROR_IF(rows && notification.destinationRowPitch >
++                            std::numeric_limits<uint64_t>::max() / rows,
++                            "Glint array copy layer stride overflow.");
++                        const uint64_t stride = rows * notification.destinationRowPitch;
++                        DAWN_INTERNAL_ERROR_IF(stride && uint64_t{layers - 1} >
++                            (std::numeric_limits<uint64_t>::max() - notification.destinationOffset) / stride,
++                            "Glint array copy destination overflow.");
++                        const uint64_t rowBytes = uint64_t{notification.width} * 4;
++                        DAWN_INTERNAL_ERROR_IF(notification.destinationRowPitch < rowBytes ||
++                            (layers > 1 && rows < notification.height) || !notification.height,
++                            "Invalid Glint array copy row layout.");
++                        const uint64_t lastRows = uint64_t{notification.height - 1};
++                        DAWN_INTERNAL_ERROR_IF(lastRows && notification.destinationRowPitch >
++                            (std::numeric_limits<uint64_t>::max() - rowBytes) / lastRows,
++                            "Glint array copy final row overflow.");
++                        const uint64_t layerBytes = lastRows * notification.destinationRowPitch + rowBytes;
++                        const uint64_t lastOffset = notification.destinationOffset + uint64_t{layers - 1} * stride;
++                        DAWN_INTERNAL_ERROR_IF(lastOffset > notification.destination.size ||
++                            layerBytes > notification.destination.size - lastOffset,
++                            "Glint array copy exceeds its logical destination.");
++                        snapshots.reserve(layers);
++                        for (uint32_t layer = 0; layer < layers; ++layer) {
++                            auto row = notification;
++                            row.destinationOffset += uint64_t{layer} * stride;
++                            auto pending = RecordGlintNativeTextureSnapshot(ToBackend(GetDevice()),
++                                commandContext, texture, copy->source.mipLevel, baseLayer + layer);
++                            if (pending.IsError()) {
++                                observer->OnTextureToBufferCopy(notification, nullptr);
++                                return pending.AcquireError();
++                            }
++                            snapshots.push_back({row, pending.AcquireSuccess()});
+                         }
+-                        snapshot = pending.AcquireSuccess();
+                         descriptorHeapState.RestoreAfterGlintProjection(commandList);
+                     }
+                 }
+@@ -2060,7 +2087,13 @@
+                                             blockInfo.ToBlock(copy->copySize));
+                 }
+                 if (observer) {
+-                    observer->OnTextureToBufferCopy(notification, std::move(snapshot));
++                    if (snapshots.empty()) {
++                        observer->OnTextureToBufferCopy(notification, nullptr);
++                    } else {
++                        for (auto& row : snapshots) {
++                            observer->OnTextureToBufferCopy(row.notification, std::move(row.snapshot));
++                        }
++                    }
+                 }
+ 
+                 break;

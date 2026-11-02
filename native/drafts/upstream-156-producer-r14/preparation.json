@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "passed": true,
+  "registered": false,
+  "canonical_sources_modified": false,
+  "cpp_type_checked": false,
+  "compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "whole_profile_checkpoint": false,
+  "production_admitted": false,
+  "forward_patches": 152,
+  "reverse_patches": 152,
+  "manifest_sha256": "22a1cfb94850724679bdb5627f014507db0f63127b9051220a058495870fa752",
+  "final_owned_files_matched": 471,
+  "upstream_files_restored": 332,
+  "native_case_bodies_prepared": 163,
+  "baseline_native_bodies_preserved": 85,
+  "added_case_bodies": 78
+}
