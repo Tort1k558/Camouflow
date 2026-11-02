@@ -13,6 +13,27 @@
 | 4096-square RGBA8 | [All six full-image copies passed](large-image-resources.json) |
 | Resource measurement | **Incomplete**: a process-tree transition invalidated one sample; original failure retained |
 
+### GPU-process recovery: selected protected modes passed
+
+[Actual recovery observations](gpu-recovery-observations.json) cover three
+`Browser.crashGpuProcess` commands: a matched unselected baseline, protected
+native rendering and protected gamma-1400/contrast-300. Each preserves the same
+five documents without navigation or page crashes. A live device reports one
+loss callback; mapping its old buffer rejects with `AbortError`.
+
+Before/after checks cover eight document/frame/worker contexts per mode:
+48 context executions and 288 texture observations, including 32 protected
+context executions. Pixel/export/error consistency passes the existing explicit
+v2 contract and state comparison; translated shader debug-source length is not
+part of that identity comparison. The [exact public collector](measure_gpu_recovery.py)
+was executed on the receipt-bound independent R11 runtime, with cleanup and
+source/asset/driver postguards passed. Injected failure tests are separate.
+
+This verifies the selected GPU-process restart path, not a physical GPU reset,
+browser/renderer crash, retained pre-crash worker GPU objects, continuous resource
+coverage or manager/package recovery admission. Older failed recovery controls
+remain unchanged. No engine capability or production flag is activated.
+
 ### Resource follow-up: navigation transition isolated
 
 Two additional full 4K runs retain all six exact image-copy results, but each

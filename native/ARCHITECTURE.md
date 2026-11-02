@@ -1,5 +1,21 @@
 # Glint architecture
 
+## 2026-11-02: R11 runtime repair and selected GPU recovery measured
+
+The [complete R11 candidate](drafts/upstream-156-image-r11/README.md) is now built:
+136 patches, 29 native groups passed, selected-v2 rendering/restart/copy checks
+passed. Opaque GPU image sources use the existing RGBX-to-RGBA normalization;
+the raster budget, source ownership guards and manager admission stay unchanged.
+
+The public [GPU recovery collector](drafts/upstream-156-image-r11/measure_gpu_recovery.py)
+verifies actual GPU-process crashes against the independent receipt-bound binary.
+Five existing documents survive in each of three modes, and selected GPU identity
+and API consistency hold before/after. This is not browser/renderer recovery or
+physical GPU reset. Full lifecycle/package/manager admission remains open.
+The 4K graphics workload passes, but process-tree sampling misses navigation
+transitions; [timestamped gaps](drafts/upstream-156-image-r11/large-image-resource-timeline.json)
+remain failures, not zero-valued memory or exact peak evidence.
+
 ## 2026-11-02: R10 research registration, native execution pending
 
 The [135-patch R10 recipe](drafts/upstream-156-image-r10/README.md) is registered

@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: selected protected GPU-process recovery verified
+
+[R11 recovery](../native/drafts/upstream-156-image-r11/gpu-recovery-observations.json)
+passes three actual GPU-process crashes: matched baseline and two protected
+rendering presets. All five existing documents survive each crash; old-device
+mapping aborts correctly, and before/after GPU consistency passes across eight
+contexts per mode. Runtime/fixture cleanup and source/asset/driver guards pass.
+This does not close browser/renderer crashes, retained worker GPU objects,
+physical GPU reset, continuous resource coverage or manager/package recovery.
+Next: persistent storage and lock behaviour under browser/renderer failures,
+remaining Legacy Audio compatibility and end-to-end manager/package acceptance.
+
 ## 2026-11-02: resource gap localized to navigation, not waived
 
 [Two timestamped full 4K follow-ups](../native/drafts/upstream-156-image-r11/large-image-resource-timeline.json)

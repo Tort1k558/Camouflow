@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-11-02: protected GPU-process recovery
+
+| Check | Observed result |
+| --- | --- |
+| Real GPU-process crash | Three commands: baseline, native and gamma-1400/contrast-300 |
+| Existing documents | Five preserved per mode, no navigation or page crash |
+| Lost-device semantics | One callback; old buffer map rejects with AbortError |
+| Before/after GPU checks | 48 context executions / 288 texture observations passed; 32 protected context executions |
+| Cleanup and input guards | Runtime, fixture, source, assets and driver verified |
+| Evidence | [Receipt-bound observations](../native/drafts/upstream-156-image-r11/gpu-recovery-observations.json), [executed collector](../native/drafts/upstream-156-image-r11/measure_gpu_recovery.py) |
+
+Not tested by this row: physical GPU reset, browser/renderer crashes, survival of
+pre-crash worker GPU objects, complete memory coverage or manager/package recovery.
+The older recovery failures remain separate historical evidence.
+
 ## 2026-11-02: 4K resource timeline follow-up
 
 | Check | Observed result |
