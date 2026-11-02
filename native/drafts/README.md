@@ -1,8 +1,12 @@
 # Glint development candidates
 
-Current checkpoint (2026-10-29): the reviewed experimental Windows runtime is
-**Chromium 148 / 001-062**. The complete 62-patch Chromium 156 port is compiling
-separately; it has no linked/runtime result yet. See the authoritative
+Current checkpoint (2026-11-02): the latest checked Windows research runtime is
+**Chromium 156 R11 / 136 patches**; Chromium 148 is preserved for rollback.
+The [R11 evidence](upstream-156-image-r11/README.md) distinguishes passed runtime
+checks from unresolved crash-write, Audio, resource and package gates. The
+[database](storage-commit-barrier/README.md), [localStorage IPC](storage-checkpoint-ipc/README.md)
+and [cookie completion](cookie-checkpoint/README.md) packets are unselected source
+preparation, not repairs admitted in that runtime. See the authoritative
 [test matrix](../../docs/GLINT_TEST_MATRIX.md) and
 [architecture](../ARCHITECTURE.md) for current evidence and admission limits.
 The older checkpoints below describe how the registered components were built;

@@ -18,8 +18,14 @@ No native checkpoint implementation or durability repair is claimed yet.
 
 Source-only prerequisites now cover [database completion](drafts/storage-commit-barrier/README.md)
 and [privileged localStorage IPC/write-load fencing](drafts/storage-checkpoint-ipc/README.md).
-These type-checked drafts do not fence renderer producers, complete cookie writes
-or activate a checkpoint capability in the current R11 runtime.
+[SQLite cookie completion](drafts/cookie-checkpoint/README.md) additionally records
+SQL/encryption/cleanup errors and rejects late replies after frontend destruction.
+Its atomic lifetime marker preserves existing cross-sequence load ownership;
+legacy Flush is unchanged. Thirteen isolated files compose/reverse; the new
+cookie implementation and fixture type-check, but nine cases are not executed.
+CookieMonster/wrapper forwarding and privileged CookieManager IPC are still
+missing. These drafts do not fence renderer/network producers or activate a
+checkpoint capability in the current R11 runtime.
 
 ## 2026-11-02: R11 integration control and selected storage/crash recovery
 

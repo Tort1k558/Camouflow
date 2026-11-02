@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "scope": "Unselected SQLite cookie commit-completion prerequisite, not a profile checkpoint",
+  "base_candidate": "upstream-156-image-r11",
+  "base_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "patch": "cookie-checkpoint.patch",
+  "patch_sha256": "a28316435d7b1cb5f3456d8cc01bb735e1eac5e48812486805f5777456e015e5",
+  "sources": [
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.h",
+      "before_sha256": "157107bc700d7d12661f01c0d48c9221cb24113ec4257d5a8c8f2663c601b6c2",
+      "after_sha256": "63232faef472727400187fb0f02f60cb04d5b556c5aec710ea63e2ca61d0fdca"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.cc",
+      "before_sha256": "cebb7f21100ed85ec40d53386e27c33e409fcff95d197d26da89c23805d8aaa9",
+      "after_sha256": "88991c1e5397ac4f9f319b760c091158fc0933a1299d36068cd4990d7998f16a"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "before_sha256": "b0112b26a727bf15582d5736a21be6a8089212a88195e8f252dc7ae26a38e0c8",
+      "after_sha256": "fdc4c8bdbdfa1af77903e525daca1fda51040b780a95b6152e8499ea3c4b3827"
+    }
+  ],
+  "changed_files": 3,
+  "disjoint_from_base_owned_source_inputs": true,
+  "forward_reverse_passed": true,
+  "three_packet_composed_files": 13,
+  "three_packet_forward_reverse_passed": true,
+  "prerequisite_patches": [
+    {
+      "path": "native/drafts/storage-commit-barrier/storage-commit-barrier.patch",
+      "sha256": "f5eaa604f66cd72a5179d66dfd12b17fa52daafa96eb4be01c6ec478a80f6406"
+    },
+    {
+      "path": "native/drafts/storage-checkpoint-ipc/storage-checkpoint-ipc.patch",
+      "sha256": "700c6335d80ca73e0cc81e0a311707770b66c0b7d298fc6cef62e4fe14775d05"
+    }
+  ],
+  "type_checked_translation_units": 2,
+  "syntax_targets": [
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.cc",
+      "returncode": 0,
+      "response_sha256": "e2d087eb99ea7e9d3508764904052d0fcc0dd60c06c8ee91425ac0f8ecf17748",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "returncode": 0,
+      "response_sha256": "72bff621bb015e296bbade6756d906d41e4346e7c8e8d69824028706dab8063a",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "05684e8c218d904d4e3460e432d9c31f33835339b664a8d9b61a11de5e50d068",
+  "input_postguards_passed": true,
+  "active_core_unchanged": true,
+  "native_cases_prepared": [
+    "CheckpointEmptyStoreRepliesAsynchronously",
+    "CheckpointPersistsReceivedCookieBeforeAck",
+    "CheckpointOwnerLossNeverRepliesSuccess",
+    "CheckpointRejectsUnopenedStore",
+    "CheckpointLegacyWriteErrorRemainsSticky",
+    "CheckpointReportsNewWriteError",
+    "CheckpointPersistsEncryptedCookieBeforeAck",
+    "CheckpointReportsEncryptionFailure",
+    "CheckpointReportsAbandonedBackgroundTask"
+  ],
+  "native_cases_executed": false,
+  "selected": false,
+  "canonical_sources_modified": false,
+  "compiled_browser": false,
+  "runtime_verified": false,
+  "profile_checkpoint_implemented": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "earlier_syntax_failure": {
+    "report_sha256": "3d81e209c163f2fcc0f5d347243c1419b9b3768fcbfed6b814ade6c268f45b04",
+    "original_failure_preserved": true,
+    "target_returncodes": [
+      1,
+      0
+    ],
+    "cause": "RefCountedData value constructor attempts to copy an atomic; C++20 default construction avoids that copy."
+  },
+  "remaining": [
+    "CookieMonster/PersistentCookieStore abstraction and cleanup-wrapper status forwarding",
+    "Versioned privileged CookieManager IPC with owner/generation binding",
+    "Renderer/network producer fences and whole-profile partition/actor ownership",
+    "Manager checkpoint lifecycle, cancellation and partial-write semantics",
+    "Linked native tests, SQL/encryption failures and crash-after-ack runtime checks",
+    "Full candidate replay/build, resources and package admission"
+  ]
+}

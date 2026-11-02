@@ -1,5 +1,19 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: cookie commit completion prepared
+
+[Cookie checkpoint prerequisite](../native/drafts/cookie-checkpoint/README.md)
+adds explicit SQL/encryption error status, sticky previous-write failures and
+owner-loss/abandoned-task rejection. Legacy Flush is unchanged. Three source
+packets compose and reverse across thirteen pristine files; two C++ units
+type-check. Nine additional native cases are prepared, **not executed**.
+R11 source/runtime and the reproduced no-checkpoint write losses are unchanged.
+
+Next: forward status through CookieMonster and cleanup wrappers, add privileged
+versioned CookieManager completion, fence producers and bind profile generations
+and manager cancellation. Linked tests and crash-after-ack must pass before
+checkpoint capability or package admission.
+
 ## 2026-11-02: service-side localStorage fencing and versioned completion prepared
 
 [Checkpoint IPC extension](../native/drafts/storage-checkpoint-ipc/README.md)

@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-02: SQLite cookie completion prerequisite
+
+| Gate | Result |
+| --- | --- |
+| Source packet | [Explicit cookie commit status](../native/drafts/cookie-checkpoint/README.md); SQL/encryption and earlier-write errors reject success |
+| Three-packet isolated replay | Thirteen files matched after application and restored exactly; not full candidate replay |
+| C++ syntax/type checks | Implementation and native fixture passed; earlier atomic-construction failure retained |
+| Native cases | Nine additional bodies prepared; **not linked or executed** |
+| Owner loss / abandoned task | Source guards and fixtures prepared; runtime validation outstanding |
+| Profile checkpoint / R11 | **Not implemented/admitted**; existing runtime remains unchanged |
+
+CookieMonster/wrapper forwarding, privileged IPC, producer fences, manager
+lifecycle, linked native tests and crash-after-ack remain required gates.
+
 ## 2026-11-02: localStorage privileged checkpoint IPC preparation
 
 | Gate | Result |
