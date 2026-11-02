@@ -1,0 +1,562 @@
+{
+  "schema": 1,
+  "scope": "Unselected browser-owned renderer localStorage producer fence, not disk or profile checkpoint",
+  "base_candidate": "upstream-156-image-r11",
+  "base_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "patch": "browser-storage-fence.patch",
+  "patch_sha256": "4a91d6ac64a7a05a5e36d6b4acba3b4f7fb160d0dc6c8dd79ea1fd565169abd2",
+  "sources": [
+    {
+      "source": "third_party/blink/public/web/web_storage_checkpoint.h",
+      "before_sha256": null,
+      "after_sha256": "0c93e30a21ccc6e3676e963327a05e8f333c5f3bad7960c059cc06696abfd96d"
+    },
+    {
+      "source": "third_party/blink/public/BUILD.gn",
+      "before_sha256": "1248fe9a8f7f45fd218d7fe8ac8df21f80543da2cf077c7d7431e3bc7f2b387a",
+      "after_sha256": "02cfe7a40d4424e6e6a629315f176357a46cb5e9d752ec3900e3de9bdf78dd33"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller.h",
+      "before_sha256": "83c7b2dc1985caaf0533218ce7e3a22b4151b65df7c18608e149e9776b4d0221",
+      "after_sha256": "f2a2d67edba33e0a09e5e22145b0e0b36b1513cf9f901386db68a500a0ee3bec"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller.cc",
+      "before_sha256": "c4c8fc258d9ba5a5c28fe12e984f39eb40caff39aded373f2d3162af1c1d7a8d",
+      "after_sha256": "ef5668cceaef86ab4cfd87f278a689e29f0b97217b2fbb633c8218fe63cc56aa"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "before_sha256": "55352a8389a37c988e707322ab475df49170466abad8051dfcac27ae3d5cfc92",
+      "after_sha256": "454c4847681c72002bcabb3f189ac5f6509a4d27e7b92912345d8daf9ea2bb98"
+    },
+    {
+      "source": "content/common/storage_checkpoint.mojom",
+      "before_sha256": null,
+      "after_sha256": "c73c82cfaf4bcbcdbee6ed3f56f73b04efd597db71b15424361c6aef0be89886"
+    },
+    {
+      "source": "content/renderer/render_thread_impl.h",
+      "before_sha256": "0294c2e644db560fd53ab2ca7f2f50f8f3c33fa3ce3eb5e4e83ece1e6f9d679d",
+      "after_sha256": "4a202099b868369d8a025d4e79ff20964d999336efef0a1408464d4a40d1032f"
+    },
+    {
+      "source": "content/renderer/render_thread_impl.cc",
+      "before_sha256": "7cde737e425af19c535b6d1f3e8f02f19ec7b398e401ce3389075d154c0de2c6",
+      "after_sha256": "031a37e494ee2e68eb03c6e05bbfaa118c5e46008aaf2672125795450715c508"
+    },
+    {
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "before_sha256": "1c9b5086db4d2e16a124df16867fff998892b15a1e823088cfcd028d83614726",
+      "after_sha256": "71ca7612d71933d560587bb7e8ec4fdf5244565eea9bf3809246025e803e1601"
+    },
+    {
+      "source": "content/public/browser/render_process_host.h",
+      "before_sha256": "59164500618fd23edea6d79f89292d8b7805fa5d96d3c5be714ddfc7b4523673",
+      "after_sha256": "92e9069777c30fa6cbaf03be8f193fa855cdbbdedde5bcd912060dd099dc4a78"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_impl.h",
+      "before_sha256": "d9e5eda154ec921ec5de00a733c3f5b65463993498f416532968cf0cf7f176d5",
+      "after_sha256": "4130174097ecb2e4daa033930902d9f1c2d58492c8cf484ba468c0f891907af2"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_impl.cc",
+      "before_sha256": "895ae478bf1a4ff437e10d1bc6ba82a11edddcceba883ca6f8c5dbf0d761a842",
+      "after_sha256": "b6707b546deea2f65595ae11275961a72870c8b22abda16e81794dc3703f19bc"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_unittest.cc",
+      "before_sha256": "f0ae7d486a2715ff3912c0a1f81dfb64cc02f2ae867af20b59ced5efc1e5106d",
+      "after_sha256": "7881edcc4c2af1536eb7c56678d750e982a8988d9bbf8c6c593d7543aea08fcc"
+    },
+    {
+      "source": "content/common/BUILD.gn",
+      "before_sha256": "25058a90700f78c1f2c7c0cc06246c2dcc368bc9b69afacedafb963079fa745f",
+      "after_sha256": "102a7bf0bdce23fc8ea71e1be1be06cf7b654b8686ae4a0769acb0f70d81d4a3"
+    },
+    {
+      "source": "content/renderer/browser_exposed_renderer_interfaces.cc",
+      "before_sha256": "bdeac8dde56463f801a52dea17ed067e47458433e7aaac64477b0d5232aca248",
+      "after_sha256": "fc5b424a8d0b42c33845f3f287e6a01b01be856c059c569c16aedf548c1adb69"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "before_sha256": "3ac7bf399ce3b820dc046468e0d750e823c7981152ea106f847ba17b35abf553",
+      "after_sha256": "d6fb4e0f8bd9eaa601615ad9f86073d0036d5b453ca2697493e3917e735f75f7"
+    }
+  ],
+  "changed_files": 16,
+  "new_files": 2,
+  "composed_patch_chain": [
+    {
+      "path": "native/drafts/storage-commit-barrier/storage-commit-barrier.patch",
+      "sha256": "f5eaa604f66cd72a5179d66dfd12b17fa52daafa96eb4be01c6ec478a80f6406"
+    },
+    {
+      "path": "native/drafts/storage-checkpoint-ipc/storage-checkpoint-ipc.patch",
+      "sha256": "700c6335d80ca73e0cc81e0a311707770b66c0b7d298fc6cef62e4fe14775d05"
+    },
+    {
+      "path": "native/drafts/cookie-checkpoint/cookie-checkpoint.patch",
+      "sha256": "a28316435d7b1cb5f3456d8cc01bb735e1eac5e48812486805f5777456e015e5"
+    },
+    {
+      "path": "native/drafts/cookie-checkpoint-ipc/cookie-checkpoint-ipc.patch",
+      "sha256": "d42360d08e503f8fc026376728665a44b1c88ec834d8e9e6c0f8df8b4c4a6368"
+    },
+    {
+      "path": "native/drafts/renderer-storage-fence/renderer-storage-fence.patch",
+      "sha256": "a7cbdfbfaf46e46ca78e80cda7831ac13fdd440262dbe12bff5079b667863328"
+    },
+    {
+      "path": "native/drafts/storage-aggregate-fence/storage-aggregate-fence.patch",
+      "sha256": "8bd29c498ecd57bac95336711e67db6a29ae498806829246631abcc765e4309d"
+    }
+  ],
+  "composed_sources": [
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "before_sha256": "edf40f3c7991e86c07c230b21fe16bc9153aa2ab39bdcf2cab5bfdae5e98ee79",
+      "after_sha256": "f64dc93177c943926b2264a7e2730e266e376f69c908179f554f487ef934f7fb"
+    },
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "before_sha256": "cccd36f8e67a7f4389c8ecfc7369c453610996c67a268100b66f5686ab6975c4",
+      "after_sha256": "0e517014b76629443cc31def1bf946cce3a11b561746f6f160202ab197a1f41f"
+    },
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "before_sha256": "fe8a456bd974829d65aa55a984ec995b3f1a1f6df6ff9a0db1bfb99102a917d1",
+      "after_sha256": "0aee168fa3375f824664a27bc6575f7d695821e212f6c00f75b5f73dfa8d5942"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl.h",
+      "before_sha256": "0e06b50c829eb3929e4d5fdb4ae4d3ad3880dd53982ab8eff8b87eed196fd887",
+      "after_sha256": "c18bd0e8b924c2587afeca01b42e75ac8ba70eaadb2cbf097bb3fffbd6a50352"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "before_sha256": "c83fc015873846594e3710b0d41de54c991838de503e5762a3d583900fac5fe2",
+      "after_sha256": "a2e0791aab34b14cfbe429c5f40182b4c2855c6c931de1b92ac59d8576c7abb3"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl.h",
+      "before_sha256": "8a3aee90a19d9151ee54caebcfd17f87caa23c824ce7842c349bde1addec6ca3",
+      "after_sha256": "10305cfacff1465285dd9d5e58d227b34aa39acb3ad123a1d13089ce2a8c5144"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "before_sha256": "5d768d92ba81bce3b8ae74eb80a27043aaf7a283759053d73e18bbbbd523c4cc",
+      "after_sha256": "5425946e466c6b56a577e40f8f10333167ddfc071fad9035592e5b8975875815"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "before_sha256": "98bdb0ad281dc65083cea5b2c653685f114eb2838dfc193d55b49a4dfb98b4e8",
+      "after_sha256": "c7cf214a5581b93636210ae4f0b7f1ffcf65693d00a86fef9fe65959d5159c35"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "before_sha256": "f5ec67aa67c917fe9ab4d52c306bb18c0fae3d6c6cc71684500ba44a93fe21bd",
+      "after_sha256": "65a3f5211c499eff678e91b008df090951b317ad176a627f316effc9ae14b679"
+    },
+    {
+      "source": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "before_sha256": "162f2f8eadc21167bdf22029c134cc5516cf61fe35d9af353cf920a4f07fcfc2",
+      "after_sha256": "3dd6f5be2f66ba4ab26fee4efefff8e2a03741b2e5a85fdf006cea0a295d0833"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.h",
+      "before_sha256": "157107bc700d7d12661f01c0d48c9221cb24113ec4257d5a8c8f2663c601b6c2",
+      "after_sha256": "e3ed1c892be79935c73e164fae299fc4aeede25cb13ddab0f27616f6621c7c11"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.cc",
+      "before_sha256": "cebb7f21100ed85ec40d53386e27c33e409fcff95d197d26da89c23805d8aaa9",
+      "after_sha256": "88991c1e5397ac4f9f319b760c091158fc0933a1299d36068cd4990d7998f16a"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "before_sha256": "b0112b26a727bf15582d5736a21be6a8089212a88195e8f252dc7ae26a38e0c8",
+      "after_sha256": "fdc4c8bdbdfa1af77903e525daca1fda51040b780a95b6152e8499ea3c4b3827"
+    },
+    {
+      "source": "net/cookies/cookie_store.h",
+      "before_sha256": "f5744c6601f8d07a6f12c0a1532f9f9f7170e53cc4688483e0ff5cf8b2322929",
+      "after_sha256": "3e83f354549d839cf9be1aa90b37974609a81fc494c19e577799df125e5e6503"
+    },
+    {
+      "source": "net/cookies/cookie_store.cc",
+      "before_sha256": "5bec6b39284c34550ed12e1b9825ba9722c24d8b916b9ddf61b3aa7339760578",
+      "after_sha256": "55c4920b36b7c4500d61178aa6168cd8d3f38073eb60d54fc7776eb21b12c323"
+    },
+    {
+      "source": "net/cookies/cookie_monster.h",
+      "before_sha256": "bbad9f2d9225bda9897711663241fe4056b15ef1f1dfbe4701c3a346de7a6a3b",
+      "after_sha256": "be0e066885a35c1feb4ad8fd05c6948b1f9b87d082372c3aaa15046a264b134a"
+    },
+    {
+      "source": "net/cookies/cookie_monster.cc",
+      "before_sha256": "03553313829d0134cf41651ea8b313ca061b5d5a6fff9c50c4805d691ef39b97",
+      "after_sha256": "318f841ff64ae0fd21f2dc4e655fa7cfa699b66a632dade56f5094f7d09896c2"
+    },
+    {
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "before_sha256": "3ce9a441c9088997ec89f4401ea574a6c3d5ed53e80702d75bd20358fa972afd",
+      "after_sha256": "9d311f2dda242d33ca47e6300aff7ca0c4cdb2d9039a69f722548b5705f216fa"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store.h",
+      "before_sha256": "bc06ab1b376037f06625f4491137ec84a448ad89e1aa5126d2a5d20f3d1a827c",
+      "after_sha256": "f8ea44d9202086ce2a4e91660753e1e74acc6bf2862dfd09565c8fec6edc7ea7"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store.cc",
+      "before_sha256": "620c36c2cf92accd56133cb81ac204bc3d92de13c400699e83b9ee0cf26ae84b",
+      "after_sha256": "d4a9982c9ffa305298e8b5f5de90df81e7c5424343a035afc7aa6ab23a9cdb5f"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store_unittest.cc",
+      "before_sha256": "52641f71d0d346d9489830cc759b58a5d7a4ecbebff0f33397a4eb37cfced5b7",
+      "after_sha256": "ad21ce59efcb61aace3d05fdaf1832c8eb1f804e0a9b6a82779b8fb132865132"
+    },
+    {
+      "source": "services/network/cookie_manager.h",
+      "before_sha256": "baf4df02e2814bf07e756f53087c298e6d50f2a348e437966222833ca9d89f04",
+      "after_sha256": "065ddfad73399db14ac069a10974a561dc4f888de9c5fd2478737cd81e728839"
+    },
+    {
+      "source": "services/network/cookie_manager.cc",
+      "before_sha256": "379bda3186d14103049d80b18d7236914a54c71c0897aa3dc0d03875e192219e",
+      "after_sha256": "74ca19c82c27865475f1910e43783b327c5878efe6bbef9cf2f707b862ff3a93"
+    },
+    {
+      "source": "services/network/cookie_manager_unittest.cc",
+      "before_sha256": "156ddece1a0f5a797d94d5fef343241defa707ebcfece5c6e6d385e3a3c803dd",
+      "after_sha256": "0a8ed2cc822cb2b66302cdf675c1ddfd6a457120e34f57c020d8e801afc3daa9"
+    },
+    {
+      "source": "services/network/public/mojom/cookie_manager.mojom",
+      "before_sha256": "3ed5c72e99fe64ece31d627b3547b1bbd012e548b21b699d113c1da289816dbb",
+      "after_sha256": "06e9b875f5852e95aa6b3bb184e240c097dcd6b3ee31212c24f4ebb59dc73104"
+    },
+    {
+      "source": "services/network/test/test_cookie_manager.h",
+      "before_sha256": "48a9cfc0c56646b8367c0ed6e646d255da260b949f59b4be7348b39c403558ae",
+      "after_sha256": "715ba8f3bacef74bca15fb5a111c138c39396c50f138e17ce1e3d895d33fb41d"
+    },
+    {
+      "source": "services/network/test/test_cookie_manager.cc",
+      "before_sha256": "fbe722ec44c6d01931b48b0ad05743509c6b361d52f6c940a369cee6cbecf719",
+      "after_sha256": "893784ad695aea0590ef95b521dbf02d7b6ddf16eb41f251b2b00c0b32ef436c"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "before_sha256": "b6df0ff16d24659ff46e1a7334c592140e6cefacb46f6d0398c56bccd8ef9e90",
+      "after_sha256": "724146121ab9d52a2c428b20f4222595a84bc896c527fc6523608070db98b02d"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "before_sha256": "92a53b484ce3276c3155890549c8d38cfe91129996550a29c1d82f7c5f744e21",
+      "after_sha256": "72836303aae1f6ac6fee25feab832e31dc8c2d3a376b862228835ed4fca8e16c"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "before_sha256": "70d2cca5be3f17c46515e53528edf5de9835eb02bb7e26f1567c44e51701f9c2",
+      "after_sha256": "a74a3a642272e7e34b8f7dce80d031e81492106054c691aaaa5a41e48d61c3cf"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/testing/mock_storage_area.h",
+      "before_sha256": "4d354b6d985314971f7a255826702549eaaf7a06662f45aa67f72c2499d97cfa",
+      "after_sha256": "88476ad095847809e36559222cd09168a29bff996aa79483d4905529ceabe78e"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc",
+      "before_sha256": "6552bbb91b6b135dd5985b490c332898d6bc772d4742bbc7b08980205fcbf2b2",
+      "after_sha256": "dc576236e383d52f84e5c0fa41621592deb186b63723f708cfe20496ac419558"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_namespace.h",
+      "before_sha256": "8e5259fc3e2c398c66c891b752c5222416a8de0383916f09debb9010d55b8372",
+      "after_sha256": "56e83d210fe2617fb21ac0a667558e0836d204ac32a55e0a5d927e7356e2df9f"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_namespace.cc",
+      "before_sha256": "691aa75deb5145da9b8df6ef81e72ed50831b22c67f8c1ced800416199550ebe",
+      "after_sha256": "aa552dac51c761d28bf4fcc8445236a2ca6ad37e947d68279ce34bb41ee25191"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller.h",
+      "before_sha256": "32f8c38acf5f56d705c06b650684929faf046852f676354f44f9f9c6ec500e93",
+      "after_sha256": "f2a2d67edba33e0a09e5e22145b0e0b36b1513cf9f901386db68a500a0ee3bec"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller.cc",
+      "before_sha256": "79565da062a19e6a02c213f4a5b6f25619ce878f96e3a2f7b80c0e924d165daa",
+      "after_sha256": "ef5668cceaef86ab4cfd87f278a689e29f0b97217b2fbb633c8218fe63cc56aa"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "before_sha256": "3c3085ba5cf340cac3a6fbed2d36d1fd9873d50d67a426163f679656bf046361",
+      "after_sha256": "454c4847681c72002bcabb3f189ac5f6509a4d27e7b92912345d8daf9ea2bb98"
+    },
+    {
+      "source": "third_party/blink/public/web/web_storage_checkpoint.h",
+      "before_sha256": null,
+      "after_sha256": "0c93e30a21ccc6e3676e963327a05e8f333c5f3bad7960c059cc06696abfd96d"
+    },
+    {
+      "source": "third_party/blink/public/BUILD.gn",
+      "before_sha256": "1248fe9a8f7f45fd218d7fe8ac8df21f80543da2cf077c7d7431e3bc7f2b387a",
+      "after_sha256": "02cfe7a40d4424e6e6a629315f176357a46cb5e9d752ec3900e3de9bdf78dd33"
+    },
+    {
+      "source": "content/common/storage_checkpoint.mojom",
+      "before_sha256": null,
+      "after_sha256": "c73c82cfaf4bcbcdbee6ed3f56f73b04efd597db71b15424361c6aef0be89886"
+    },
+    {
+      "source": "content/renderer/render_thread_impl.h",
+      "before_sha256": "0294c2e644db560fd53ab2ca7f2f50f8f3c33fa3ce3eb5e4e83ece1e6f9d679d",
+      "after_sha256": "4a202099b868369d8a025d4e79ff20964d999336efef0a1408464d4a40d1032f"
+    },
+    {
+      "source": "content/renderer/render_thread_impl.cc",
+      "before_sha256": "7cde737e425af19c535b6d1f3e8f02f19ec7b398e401ce3389075d154c0de2c6",
+      "after_sha256": "031a37e494ee2e68eb03c6e05bbfaa118c5e46008aaf2672125795450715c508"
+    },
+    {
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "before_sha256": "1c9b5086db4d2e16a124df16867fff998892b15a1e823088cfcd028d83614726",
+      "after_sha256": "71ca7612d71933d560587bb7e8ec4fdf5244565eea9bf3809246025e803e1601"
+    },
+    {
+      "source": "content/public/browser/render_process_host.h",
+      "before_sha256": "59164500618fd23edea6d79f89292d8b7805fa5d96d3c5be714ddfc7b4523673",
+      "after_sha256": "92e9069777c30fa6cbaf03be8f193fa855cdbbdedde5bcd912060dd099dc4a78"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_impl.h",
+      "before_sha256": "d9e5eda154ec921ec5de00a733c3f5b65463993498f416532968cf0cf7f176d5",
+      "after_sha256": "4130174097ecb2e4daa033930902d9f1c2d58492c8cf484ba468c0f891907af2"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_impl.cc",
+      "before_sha256": "895ae478bf1a4ff437e10d1bc6ba82a11edddcceba883ca6f8c5dbf0d761a842",
+      "after_sha256": "b6707b546deea2f65595ae11275961a72870c8b22abda16e81794dc3703f19bc"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_unittest.cc",
+      "before_sha256": "f0ae7d486a2715ff3912c0a1f81dfb64cc02f2ae867af20b59ced5efc1e5106d",
+      "after_sha256": "7881edcc4c2af1536eb7c56678d750e982a8988d9bbf8c6c593d7543aea08fcc"
+    },
+    {
+      "source": "content/common/BUILD.gn",
+      "before_sha256": "25058a90700f78c1f2c7c0cc06246c2dcc368bc9b69afacedafb963079fa745f",
+      "after_sha256": "102a7bf0bdce23fc8ea71e1be1be06cf7b654b8686ae4a0769acb0f70d81d4a3"
+    },
+    {
+      "source": "content/renderer/browser_exposed_renderer_interfaces.cc",
+      "before_sha256": "bdeac8dde56463f801a52dea17ed067e47458433e7aaac64477b0d5232aca248",
+      "after_sha256": "fc5b424a8d0b42c33845f3f287e6a01b01be856c059c569c16aedf548c1adb69"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "before_sha256": "3ac7bf399ce3b820dc046468e0d750e823c7981152ea106f847ba17b35abf553",
+      "after_sha256": "d6fb4e0f8bd9eaa601615ad9f86073d0036d5b453ca2697493e3917e735f75f7"
+    }
+  ],
+  "composed_files": 50,
+  "forward_reverse_passed": true,
+  "new_files_removed_on_reverse": true,
+  "r11_owned_source_replay": [
+    {
+      "source": "content/renderer/render_thread_impl.cc",
+      "r11_before_sha256": "7cde737e425af19c535b6d1f3e8f02f19ec7b398e401ce3389075d154c0de2c6"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_impl.cc",
+      "r11_before_sha256": "895ae478bf1a4ff437e10d1bc6ba82a11edddcceba883ca6f8c5dbf0d761a842"
+    }
+  ],
+  "r11_root_patches_replayed_for_owned_sources": 99,
+  "full_candidate_composition_verified": false,
+  "primary_renderer_schema_unchanged": true,
+  "normal_checkpoint_interface_version": 1,
+  "finite_browser_deadline": true,
+  "wire_request_limit": 64,
+  "no_javascript_surface": true,
+  "no_renderer_database_flush": true,
+  "type_checked_translation_units": 16,
+  "syntax_targets": [
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "flags_reference_source": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "eef309f72194b686e64f5a972d368fdfb6dfccce51290e8d48c10105d7bc41e9",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_namespace.cc",
+      "flags_reference_source": "third_party/blink/renderer/modules/storage/storage_namespace.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "65966f582ac354415de65246bbe7acc1d29baef569c1dbbd5ac95637736957ff",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller.cc",
+      "flags_reference_source": "third_party/blink/renderer/modules/storage/storage_controller.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "97944ba0c2731589ff8218fa9a3eca9a0613856fe78bfcd3c500cbd50b7c6d49",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc",
+      "flags_reference_source": "third_party/blink/renderer/modules/storage/testing/mock_storage_area.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "d65dab9ae13498c4783f7b104f0646cab0cd53a8f37ae5993205f6331cfb40f8",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "flags_reference_source": "third_party/blink/renderer/modules/storage/cached_storage_area_test.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "923960d159605c2191d0f35a87f06054594c64052b89ff2682ee5cc1dea3693e",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_namespace_test.cc",
+      "flags_reference_source": "third_party/blink/renderer/modules/storage/storage_namespace_test.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "cbe4ca9fdb21447e8bdd490c93b7c230e10db2a51252c7fc9e5a30a16ca9bc4c",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "flags_reference_source": "third_party/blink/renderer/modules/storage/storage_controller_test.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "1e5c61ca00d3b7b539c0294aefa44defd8bac059b6b70e4accd641c0d26c684b",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/renderer/browser_exposed_renderer_interfaces.cc",
+      "flags_reference_source": "content/renderer/browser_exposed_renderer_interfaces.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "ba4b13490001e3da21be9adae8e2062d86ae6c5b115dfe469ab4e2c7fe59e5a1",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/renderer/render_thread_impl.cc",
+      "flags_reference_source": "content/renderer/render_thread_impl.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "03ebebb9d3ed8b9dcfdd92ee22ba36ffc91c0916ee7b597337ca0ba107874253",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "flags_reference_source": "content/renderer/render_thread_impl_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "5723478decf29e5d1dc34eafa9dc01557b1aeaacb7c64b5db777ccd00b4ff33b",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_impl.cc",
+      "flags_reference_source": "content/browser/renderer_host/render_process_host_impl.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "16a91630393d5952269105b0f83d0ac3d95c1aed51410d576135c10b0b3d1b52",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_unittest.cc",
+      "flags_reference_source": "content/browser/renderer_host/render_process_host_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "5b414892529322b87366df8e0505562495298ebee1f4fd3bc4b27bcbf07d3010",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "flags_reference_source": "content/browser/renderer_host/render_process_host_browsertest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "093b92a8f32c34984515507ec7490b49183369ed8c138c713657dc3352e6165d",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/public/test/mock_render_process_host.cc",
+      "flags_reference_source": "content/public/test/mock_render_process_host.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "f822f25ef03e431ede5f9389d4447c051d66e5fe4e703b11de4d7b3f8dc13623",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/common/storage_checkpoint.mojom.cc",
+      "flags_reference_source": "content/common/renderer.mojom.cc",
+      "generated": true,
+      "returncode": 0,
+      "response_sha256": "d92c52fbd8f4bf6ee172e3123b291ab31f850ffb6a25ccdc571e45da61a4a34c",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "content/common/storage_checkpoint.mojom-shared.cc",
+      "flags_reference_source": "content/common/renderer.mojom-shared.cc",
+      "generated": true,
+      "returncode": 0,
+      "response_sha256": "e44a8fb8d8d6dc15ab96d74eca287d7e72f7d0c377d0a1059fb4ae939e04868e",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "31e09ece77339b1929df8133eea17125256a0220f42688945b465f091d4952f4",
+  "gn_format_passed": true,
+  "gn_generation_verified": false,
+  "input_postguards_passed": true,
+  "active_core_unchanged": true,
+  "native_case_bodies_prepared": [
+    "CheckpointFacadeRejectsExpiredDeadlineWithoutCreation",
+    "CheckpointFacadeRejectsUnboundedDeadlineWithoutCreation",
+    "CheckpointRendererInterfaceHasVersionOne",
+    "CheckpointUnsupportedHostRejectsWithoutStartingRenderer",
+    "CheckpointLiveRendererProducerFence",
+    "CheckpointExpiredDeadlinePreservesRenderer",
+    "CheckpointRendererExitRejectsInflightFence",
+    "CheckpointHungRendererUsesBrowserDeadline"
+  ],
+  "browser_case_bodies_prepared": [
+    "CheckpointLiveRendererProducerFence",
+    "CheckpointExpiredDeadlinePreservesRenderer",
+    "CheckpointRendererExitRejectsInflightFence",
+    "CheckpointHungRendererUsesBrowserDeadline"
+  ],
+  "native_cases_executed": false,
+  "selected": false,
+  "canonical_sources_modified": false,
+  "compiled_browser": false,
+  "runtime_verified": false,
+  "producer_ipc_source_implemented": true,
+  "browser_coordinator_implemented": false,
+  "network_producer_fence_implemented": false,
+  "profile_checkpoint_implemented": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "remaining": [
+    "Stable whole-profile renderer/partition cohort and mutation exclusion",
+    "Network producer fences, persistent/session-cookie contract and backend acknowledgments",
+    "Manager lifecycle, cancellation, partial-write and recovery semantics",
+    "Complete GN graph, candidate composition, linked tests including real hang/exit IPC",
+    "Crash-after-ack, resource and guarded package/update/rollback admission"
+  ]
+}

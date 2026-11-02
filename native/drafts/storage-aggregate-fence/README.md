@@ -43,7 +43,8 @@ compiled browser and recorded no-checkpoint losses remain unchanged.
 
 ## Remaining
 
-- Public Blink facade and browser-owned renderer/actor coordination.
+- [Public Blink facade and single-renderer IPC](../browser-storage-fence/README.md)
+  are now prepared separately; whole-profile actor coordination remains open.
 - Network producers, session-cookie contract and all owned partition/backends.
 - Whole-profile protocol and manager capability/lifecycle/cancellation binding.
 - Linked native checks: weak GC roots, timeouts/virtual time, actual pipes, eviction/backpressure and crash-after-ack.

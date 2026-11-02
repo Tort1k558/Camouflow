@@ -1,5 +1,21 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: browser-owned producer IPC prepared
+
+[Browser producer fence](../native/drafts/browser-storage-fence/README.md) connects
+the existing Blink controller to a separate normal Mojo endpoint. Version 1 is
+required without changing the primordial Renderer protocol. An independent browser
+deadline covers negotiation and a hung renderer; lifecycle/generation checks and
+64 wire slots bound late callbacks without releasing slots merely on timeout.
+
+Seven isolated packets apply/reverse across 50 files. Sixteen C++ units type-check;
+eight additional native bodies, including four browser tests, are **not executed**.
+GN formatting passed, not full graph generation or linking. R11 is unchanged.
+Next: stable whole-profile actor/partition cohorts and mutation exclusion, network
+producer/session-cookie ordering, manager completion/cancellation, then complete
+candidate build and real crash-after-ack tests. Producer acknowledgment is not
+database durability, privacy or release admission.
+
 ## 2026-11-02: renderer namespace/controller aggregation prepared
 
 [Aggregate fence](../native/drafts/storage-aggregate-fence/README.md) waits for all

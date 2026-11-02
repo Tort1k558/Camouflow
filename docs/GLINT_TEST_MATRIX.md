@@ -1,5 +1,24 @@
 # Glint browser test matrix
 
+## 2026-11-02: browser-owned renderer producer IPC prepared
+
+| Gate | Result |
+| --- | --- |
+| Source bridge | Existing Blink controller to dedicated normal browser-only Mojo endpoint; interface version 1 |
+| Primary Renderer protocol | Unchanged; no AssociatedRemote version-query workaround |
+| Browser failure handling | Independent finite deadline, endpoint generation, weak lifetime and 64 outstanding wire requests |
+| Seven-packet isolated replay | 50 files matched/restored; two new files removed; not complete candidate composition |
+| R11-owned input proof | Two files reconstructed using 99 filtered root patches; not replay of all candidate repositories |
+| C++ syntax/type checks | 16 units passed, including fresh bindings and browser test fixture |
+| GN | Both files formatted; full generation/build graph **not verified** |
+| Native preparation | Eight bodies including four browser cases; **not linked or executed** |
+| Durability admission | **None**: no disk/profile completion; existing R11 losses unchanged |
+| Evidence | [Browser producer packet](../native/drafts/browser-storage-fence/README.md) |
+
+Two generated binding units reuse corresponding existing binding target flags;
+this does not establish new Ninja edges. Whole-profile cohorts, network producers,
+session-cookie semantics, manager lifecycle and crash-after-ack remain open.
+
 ## 2026-11-02: renderer localStorage namespace/controller aggregation
 
 | Gate | Result |

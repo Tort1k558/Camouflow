@@ -1,5 +1,21 @@
 # Glint architecture
 
+## 2026-11-02: source-only browser/renderer producer bridge
+
+The [browser producer fence](drafts/browser-storage-fence/README.md) adds a public
+Blink facade and a dedicated normal Mojo endpoint, leaving the primordial
+Renderer protocol unchanged. The browser requires endpoint version 1, owns a
+finite deadline independent of renderer execution, and checks host lifetime,
+endpoint generation and process readiness. Outstanding wire slots remain bounded
+even when the user-facing deadline expires before the renderer answers.
+
+This is only a producer fence, not an atomic profile checkpoint. Seven isolated
+packets compose/reverse across 50 files; sixteen C++ units type-check. Eight new
+native bodies (four browser cases) are **not executed**. GN graph generation,
+linking and runtime admission remain pending; R11 inputs and binary are unchanged.
+Whole-profile actor/partition mutation exclusion, network producers, session-cookie
+semantics and manager cancellation/partial completion remain required.
+
 ## 2026-11-02: crash boundaries and next checkpoint requirement
 
 [R11 no-checkpoint measurements](drafts/upstream-156-image-r11/crash-recovery-observations.json)

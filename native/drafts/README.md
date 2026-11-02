@@ -14,6 +14,10 @@ The [renderer localStorage fence](renderer-storage-fence/README.md) is another
 unselected source packet: existing mutation replies, explicit deadlines and
 generation checks. Its [namespace/controller aggregation](storage-aggregate-fence/README.md)
 adds cohort epochs and eviction guards, not a completed browser/profile checkpoint.
+The [browser-owned producer bridge](browser-storage-fence/README.md) adds a
+separate versioned Mojo endpoint and independent browser deadline. Its seven-packet
+50-file replay and 16 type checks are source evidence, not runtime or durability
+admission; eight additional native bodies remain unexecuted.
 The older checkpoints below describe how the registered components were built;
 they are not the current browser version. Do not modify or reapply promoted
 patches during an active build.
