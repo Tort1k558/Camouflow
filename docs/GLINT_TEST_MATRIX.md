@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## 2026-11-02: R12 Windows compile/link passed
+
+| Gate | Result |
+| --- | --- |
+| Complete source recipe | 143 patches; exact candidate manifest bound to the build receipt |
+| GN / compile / link | Passed; 2508 Ninja steps in 1h 25m 28.03s, maximum j4 |
+| Official build stage | 5574.557 seconds including dependency/GN and final source/SDK/receipt checks |
+| Core / provenance | All three binary hashes recorded; no installer or runtime admission |
+| New checkpoint cases | Six test binaries are a separate build/run phase; no result claimed here |
+| Existing native regression | Separate 29-group phase; not inferred from compilation |
+| Browser runtime | Independent QA copy and policies-off runtime gate remain pending |
+| Evidence | [Windows build](../native/drafts/upstream-156-checkpoint-r12/windows-build.json) |
+
+The source-only cohort draft is not included in this build. R11 remains the last
+runtime-tested browser; no latest detector/CAPTCHA verdict is established.
+
 ## 2026-11-02: unselected profile producer cohort
 
 | Gate | Result |

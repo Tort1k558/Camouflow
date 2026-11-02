@@ -1,5 +1,18 @@
 # Glint architecture
 
+## 2026-11-02: R12 Windows binary built, runtime not verified
+
+The [Windows build record](drafts/upstream-156-checkpoint-r12/windows-build.json)
+binds the complete 143-patch recipe, compiler/SDK/GN receipt and all three binary
+hashes. Compile/link and final source checks passed; 2508 Ninja steps took
+1h 25m 28.03s with maximum j4. This is separate from executing the new checkpoint
+fixtures or the existing native regression.
+
+The writable build output must not be launched while native test targets build.
+An independent QA copy and full source-runtime check follow the native phases.
+The measured R11 runtime remains preserved. Neither R12 whole-profile checkpoint
+semantics nor privacy/package/release admission follows from this build.
+
 ## 2026-11-02: follow-up producer cohort draft
 
 The [unselected cohort draft](drafts/profile-producer-cohort/README.md) connects

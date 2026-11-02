@@ -95,3 +95,21 @@ def test_checkpoint_source_transition_does_not_claim_a_built_browser():
     assert all(r['terminal'] and r['returncode'] == 0 for r in record['stages'])
     assert not any(record[k] for k in ('compiled_browser', 'native_tests_executed',
                                       'runtime_verified', 'privacy_admitted', 'production_admitted'))
+
+
+def test_checkpoint_windows_build_is_not_native_or_runtime_admission():
+    candidate = build.load_candidate('upstream-156-checkpoint-r12')
+    record = json.loads((candidate['directory'] / 'windows-build.json').read_bytes())
+    assert record['passed'] and record['compiled_browser'] and record['source_and_receipt_postguards_passed']
+    assert record['candidate_manifest_sha256'] == candidate['manifest_sha256']
+    assert record['chromium_revision'] == candidate['manifest']['target_revision']
+    assert record['chromium_version'] == candidate['manifest']['target_version']
+    assert record['build_jobs'] == 4 and record['patch_count'] == 143
+    assert record['ninja_steps'] == 2508 and record['ninja_elapsed'] == '1h25m28.03s'
+    assert record['official_build_stage_seconds'] == record['stages'][-1]['duration_seconds'] == 5574.557
+    assert [r['action'] for r in record['stages']] == ['sync', 'hooks', 'patch', 'build']
+    assert all(r['returncode'] == 0 for r in record['stages'])
+    assert set(record['runtime_core_sha256_measured']) == {'chrome.exe', 'chrome.dll', 'chrome_elf.dll'}
+    assert all(re.fullmatch('[0-9a-f]{64}', value) for value in record['runtime_core_sha256_measured'].values())
+    assert not any(record[k] for k in ('native_tests_executed', 'runtime_verified',
+                                      'privacy_admitted', 'production_admitted'))

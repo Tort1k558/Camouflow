@@ -1,5 +1,18 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: complete R12 Windows build passed
+
+[R12 compilation](../native/drafts/upstream-156-checkpoint-r12/windows-build.json)
+and final postguards passed: 143 patches, maximum j4, 2508 Ninja steps in
+1h 25m 28.03s. The 5574.557-second official stage also includes dependency/GN and
+source/SDK/receipt verification. The build is not runtime admission.
+
+Next in sequence: build/run the 85 prepared checkpoint bodies with all actual
+parameter instances; repeat the existing 29 native groups; preserve an independent
+QA runtime and repeat the policies-off source-runtime gate. Browser compatibility,
+profile checkpoint completion, resources and package/update/rollback remain open.
+The follow-up cohort source is not applied to this compiled recipe.
+
 ## 2026-11-02: profile producer cohort source draft
 
 The [public cohort draft](../native/drafts/profile-producer-cohort/README.md)

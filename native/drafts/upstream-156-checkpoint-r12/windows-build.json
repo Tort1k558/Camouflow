@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "passed": true,
+  "compiled_browser": true,
+  "platform": "win32",
+  "candidate": "upstream-156-checkpoint-r12",
+  "candidate_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "measured_build_start_commit": "369d39f6a1db91abe4210180b42a1032d58d61b4",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "build_jobs": 4,
+  "patch_count": 143,
+  "ninja_steps": 2508,
+  "ninja_elapsed": "1h25m28.03s",
+  "official_build_stage_seconds": 5574.557,
+  "stages": [
+    {
+      "action": "sync",
+      "returncode": 0,
+      "duration_seconds": 140.89,
+      "log_sha256": "c5933f8944472f8cd88c78733b6ca9c67b6da85ef40e53b4ab2b88b6d5a10cf1"
+    },
+    {
+      "action": "hooks",
+      "returncode": 0,
+      "duration_seconds": 50.637,
+      "log_sha256": "71044b7ef24de7feff18a0ddebb95fb9665c39a0ad93e0cc01eadbf1ff927d32"
+    },
+    {
+      "action": "patch",
+      "returncode": 0,
+      "duration_seconds": 96.967,
+      "log_sha256": "dc5c5b15d4d92d3c85a004575b3793a10240e6f2b9f5ef4404ac6c53f6d81cd4"
+    },
+    {
+      "action": "build",
+      "returncode": 0,
+      "duration_seconds": 5574.557,
+      "log_sha256": "edbc52778cbd24fdd1152ca9bcc4468126cd583942fe4a132ec812f0a1c14767"
+    }
+  ],
+  "receipt_sha256": "954b38a81f07d037f580fe27728f059ea733b3968875c117744350092851909e",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "47c70f5fc511041adaf5a0b4fe1ea2aa9f5ffbf9380f5a0b037a8003a2e87c1e",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "args_sha256": "5f2a3a78c30293b6ba62b41635ad74aeb062c8ccdaba4667086fcc8662e530dd",
+  "local_windows_toolchain_sha256": "68aa63de741ddd1a8a5362863cf49943c725644a209bcc6c59da9efc67a797e7",
+  "source_and_receipt_postguards_passed": true,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Windows compile/link and source/SDK/GN/core receipt checks only; not native cases, runtime, durability or packaging admission"
+}
