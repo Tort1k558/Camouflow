@@ -2,6 +2,10 @@
 
 **Source prepared and type-checked. Not a working profile checkpoint.**
 
+The separate [service IPC extension](../storage-checkpoint-ipc/README.md) now
+prepares pending-write-load fences and versioned privileged completion. It remains
+unselected; producer, cookie, browser/manager and runtime admission work is open.
+
 The [three-file patch](storage-commit-barrier.patch) adds
 `AsyncDomStorageDatabase::CommitPendingMaps(callback)` without changing the
 existing `InitiateCommit()` interface. It collects available map batches, waits

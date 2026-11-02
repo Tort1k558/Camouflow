@@ -1,5 +1,18 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: service-side localStorage fencing and versioned completion prepared
+
+[Checkpoint IPC extension](../native/drafts/storage-checkpoint-ipc/README.md)
+adds received-write-load fences, one partition commit completion and generation
+checks across database replacement. The privileged method is interface version 1;
+legacy schema methods and Flush are retained. Both source packets apply/reverse
+over ten isolated files. Fresh bindings and eight C++ units type-check; twelve
+new native case bodies are prepared, not executed. R11 remains unchanged.
+
+This does not fence renderer messages in transit or implement a full profile
+checkpoint. Cookie error completion, producer/partition actor fencing,
+browser/manager lifecycle and crash-after-ack/native/package gates remain open.
+
 ## 2026-11-02: checkpoint database completion prerequisite prepared
 
 [Storage commit barrier](../native/drafts/storage-commit-barrier/README.md) adds

@@ -16,6 +16,11 @@ semantics, cross-profile isolation and crash-after-ack tests before capability o
 package admission. Filesystem write completion is not an OS power-loss guarantee.
 No native checkpoint implementation or durability repair is claimed yet.
 
+Source-only prerequisites now cover [database completion](drafts/storage-commit-barrier/README.md)
+and [privileged localStorage IPC/write-load fencing](drafts/storage-checkpoint-ipc/README.md).
+These type-checked drafts do not fence renderer producers, complete cookie writes
+or activate a checkpoint capability in the current R11 runtime.
+
 ## 2026-11-02: R11 integration control and selected storage/crash recovery
 
 [Runtime measurements](drafts/upstream-156-image-r11/runtime-gate-observations.json)

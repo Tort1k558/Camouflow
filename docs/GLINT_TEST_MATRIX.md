@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-11-02: localStorage privileged checkpoint IPC preparation
+
+| Gate | Result |
+| --- | --- |
+| Two-packet isolated replay | Ten composed files matched; ten pristine inputs restored |
+| Fresh Mojo bindings | New method minimum version 1; eight legacy methods remain at version 0 |
+| C++ syntax/type checks | Eight units passed, including two generated units; not linked tests |
+| Native test preparation | Twelve new bodies, 21 including prerequisite; **not executed** |
+| Profile checkpoint / write-loss repair | **Not implemented/admitted**; current R11 remains unchanged |
+| Evidence | [Source extension](../native/drafts/storage-checkpoint-ipc/README.md) |
+
+Producer messages in transit, cookie failures, full profile/partition ownership,
+manager integration and crash-after-ack/runtime tests remain separate gates.
+
 ## 2026-11-02: database commit-completion source prerequisite
 
 | Gate | Result |

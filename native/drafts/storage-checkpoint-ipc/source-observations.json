@@ -1,0 +1,199 @@
+{
+  "schema": 1,
+  "scope": "Unselected privileged localStorage completion with pending-write-load fences",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "base_candidate": "upstream-156-image-r11",
+  "base_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "prerequisite_packet": "native/drafts/storage-commit-barrier/storage-commit-barrier.patch",
+  "prerequisite_patch_sha256": "f5eaa604f66cd72a5179d66dfd12b17fa52daafa96eb4be01c6ec478a80f6406",
+  "patch": "storage-checkpoint-ipc.patch",
+  "patch_sha256": "700c6335d80ca73e0cc81e0a311707770b66c0b7d298fc6cef62e4fe14775d05",
+  "changed_files": 7,
+  "sources": [
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl.h",
+      "before_sha256": "0e06b50c829eb3929e4d5fdb4ae4d3ad3880dd53982ab8eff8b87eed196fd887",
+      "after_sha256": "c18bd0e8b924c2587afeca01b42e75ac8ba70eaadb2cbf097bb3fffbd6a50352"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "before_sha256": "c83fc015873846594e3710b0d41de54c991838de503e5762a3d583900fac5fe2",
+      "after_sha256": "a2e0791aab34b14cfbe429c5f40182b4c2855c6c931de1b92ac59d8576c7abb3"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl.h",
+      "before_sha256": "8a3aee90a19d9151ee54caebcfd17f87caa23c824ce7842c349bde1addec6ca3",
+      "after_sha256": "10305cfacff1465285dd9d5e58d227b34aa39acb3ad123a1d13089ce2a8c5144"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "before_sha256": "5d768d92ba81bce3b8ae74eb80a27043aaf7a283759053d73e18bbbbd523c4cc",
+      "after_sha256": "5425946e466c6b56a577e40f8f10333167ddfc071fad9035592e5b8975875815"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "before_sha256": "98bdb0ad281dc65083cea5b2c653685f114eb2838dfc193d55b49a4dfb98b4e8",
+      "after_sha256": "c7cf214a5581b93636210ae4f0b7f1ffcf65693d00a86fef9fe65959d5159c35"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "before_sha256": "f5ec67aa67c917fe9ab4d52c306bb18c0fae3d6c6cc71684500ba44a93fe21bd",
+      "after_sha256": "65a3f5211c499eff678e91b008df090951b317ad176a627f316effc9ae14b679"
+    },
+    {
+      "source": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "before_sha256": "162f2f8eadc21167bdf22029c134cc5516cf61fe35d9af353cf920a4f07fcfc2",
+      "after_sha256": "3dd6f5be2f66ba4ab26fee4efefff8e2a03741b2e5a85fdf006cea0a295d0833"
+    }
+  ],
+  "prerequisite_sources": [
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "before_sha256": "edf40f3c7991e86c07c230b21fe16bc9153aa2ab39bdcf2cab5bfdae5e98ee79",
+      "after_sha256": "f64dc93177c943926b2264a7e2730e266e376f69c908179f554f487ef934f7fb"
+    },
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "before_sha256": "cccd36f8e67a7f4389c8ecfc7369c453610996c67a268100b66f5686ab6975c4",
+      "after_sha256": "0e517014b76629443cc31def1bf946cce3a11b561746f6f160202ab197a1f41f"
+    },
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "before_sha256": "fe8a456bd974829d65aa55a984ec995b3f1a1f6df6ff9a0db1bfb99102a917d1",
+      "after_sha256": "0aee168fa3375f824664a27bc6575f7d695821e212f6c00f75b5f73dfa8d5942"
+    }
+  ],
+  "composed_files_matched": 10,
+  "upstream_files_restored": 10,
+  "forward_reverse_passed": true,
+  "full_candidate_composition_verified": false,
+  "legacy_schema_prefix_preserved": true,
+  "legacy_flush_body_preserved": true,
+  "interface_version": 1,
+  "new_method_min_version": 1,
+  "legacy_method_min_versions": {
+    "BindStorageArea": 0,
+    "GetUsage": 0,
+    "DeleteStorage": 0,
+    "CleanUpStorage": 0,
+    "Flush": 0,
+    "PurgeMemory": 0,
+    "ApplyPolicyUpdates": 0,
+    "ForceKeepSessionState": 0
+  },
+  "bindings_generated": true,
+  "generated_bindings_sha256": {
+    "components/services/storage/public/mojom/local_storage_control.mojom-data-view.h": "fd27e8db0157a4ce2cb8d1f6d709f2f722d6c72359eacd18a529e4c2e1614840",
+    "components/services/storage/public/mojom/local_storage_control.mojom-features.h": "10f8b39341ea5de8f4678d284615a5af8b49b4716d6e7b846b0f06f023fc151c",
+    "components/services/storage/public/mojom/local_storage_control.mojom-forward.h": "41f9287ea917b26b360099e23054596368ded801e51ff012c2be2a332d2d0e4a",
+    "components/services/storage/public/mojom/local_storage_control.mojom-import-headers.h": "50aed6be365069e4d20c0d4b86ce35e992449a73934b691dec2cea631052b098",
+    "components/services/storage/public/mojom/local_storage_control.mojom-module": "a1deb943b5e7ae2f0af5e8b56fa4378a2416d6c524f4b9ec6e7d6b2c8afdfe97",
+    "components/services/storage/public/mojom/local_storage_control.mojom-params-data.h": "1159fcf6520cc14a4dc26c3261dd2e51ff6b5b53bf6d56791eaefc67cb363f99",
+    "components/services/storage/public/mojom/local_storage_control.mojom-send-validation.h": "5bdf2c360c86b4d09f37587ffae32ad637988455e1019e1cfa4e9974c6e6c524",
+    "components/services/storage/public/mojom/local_storage_control.mojom-shared-internal.h": "f23ec3e596ce15dcb1b2072e77d08a16cca0c0bc31572de1f4a38db39f10a914",
+    "components/services/storage/public/mojom/local_storage_control.mojom-shared-message-ids.h": "bdd184ca314644af9eb02699d2b64de1d1dcbd42ac813c615554e66e47ed864c",
+    "components/services/storage/public/mojom/local_storage_control.mojom-shared.cc": "752d6456bc24b60a6df614d05fe0cfaf312a45583b9d5f95f0d87e806d7f62fa",
+    "components/services/storage/public/mojom/local_storage_control.mojom-shared.h": "432d9feb4c23dc2b49f7e9c48287f469b7fabda4d35f9d3ce34e3a443060c015",
+    "components/services/storage/public/mojom/local_storage_control.mojom-test-utils.h": "dbdd0dd7fc13995a606bef20b7b969798978b7ab599d1d4eb9528c839b5e6d5a",
+    "components/services/storage/public/mojom/local_storage_control.mojom.cc": "084dd0d81ead7362b7c6168ed4af38f5daf1bd7f48f19b09d826c8e80d5ce7bc",
+    "components/services/storage/public/mojom/local_storage_control.mojom.h": "70397bf0a2272d38fc5cbf40aa7961f721e381f6c593542582b3836069231374"
+  },
+  "syntax_report_sha256": "2e43959386ed7f4b79ebd5432130dee4ff24af6135132eb9fb83c51cd5a0f6f2",
+  "type_checked_translation_units": 8,
+  "syntax_targets": [
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "dea46d1d9f22c24700d3a53e778ea88fcb6c28d731fc117bfa9c39961dcf93cb",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "7e96ffb4488bd3d8bbac6a0e3e49c11f85f98660b587d4303ab429578ba13c21",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "bc6668b290d9a47e69d68be95b06321e07c1bae8dbaac1b4b6b38bdd943bd972",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "240637f6a517c8aa3c33f39e817ee0fe63d0f468770d7b9f1cb2b35129f6369a",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "21f3d18a39e998d8e3482b181783ff7239f037424b562fccfb2e356542723ab0",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "971a117a7bf4f743533411a311804c07e95d9904c9cba003f0aef1b356367cb7",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "components/services/storage/public/mojom/local_storage_control.mojom.cc",
+      "generated": true,
+      "returncode": 0,
+      "response_sha256": "f808ff149f0f3f1237fc0615231b20209997b793ef1eefbc0b75c585e385acf2",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "components/services/storage/public/mojom/local_storage_control.mojom-shared.cc",
+      "generated": true,
+      "returncode": 0,
+      "response_sha256": "88b173380a13be88e0a518f715c199cb07dedf48716a9cbb5bff8b15aa9a2b23",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "input_postguards_passed": true,
+  "active_core_unchanged": true,
+  "native_new_cases": {
+    "StorageAreaImplTest": [
+      "CheckpointFenceWaitsForPendingPut",
+      "CheckpointFenceRejectsDetachedCache",
+      "CheckpointFenceRejectsAreaLossBeforeDelivery",
+      "CheckpointFenceCleanAreaRepliesAsynchronously"
+    ],
+    "LocalStorageImplTest": [
+      "CheckpointEmptyDiskBackendCompletes",
+      "CheckpointRejectsMemoryOnlyBackend",
+      "CheckpointWaitsForReceivedPutAndPersistsIt",
+      "CheckpointReturnsThroughPrivilegedControlPipe",
+      "CheckpointOwnerLossDuringOpenFailsClosed",
+      "CheckpointGenerationChangeRejectsOldReply",
+      "CheckpointWriteErrorCannotBecomeSuccess",
+      "CheckpointCoversTwoStorageKeysInOnePartition"
+    ]
+  },
+  "prepared_new_native_case_bodies": 12,
+  "prepared_native_case_bodies_including_prerequisite": 21,
+  "native_tests_executed": false,
+  "selected": false,
+  "canonical_sources_modified": false,
+  "compiled_browser": false,
+  "runtime_verified": false,
+  "profile_checkpoint_implemented": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "remaining": [
+    "Renderer-side producer fences and whole-profile partition/actor generation binding",
+    "Cookie commit status including asynchronous backing-store failures",
+    "Browser control protocol and manager admission/lifecycle/cancellation",
+    "Linked native tests and real IPC/error/recovery checks",
+    "Crash-after-ack and continuous-resource/combined-policy acceptance",
+    "Complete candidate composition, build and guarded package delivery"
+  ]
+}
