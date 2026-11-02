@@ -13,6 +13,39 @@
 | 4096-square RGBA8 | [All six full-image copies passed](large-image-resources.json) |
 | Resource measurement | **Incomplete**: a process-tree transition invalidated one sample; original failure retained |
 
+### Renderer recovery passes; last-write browser durability fails
+
+The [no-checkpoint crash matrix](crash-recovery-observations.json) is complete,
+but its overall verdict is **failed**:
+
+| Crash target | Baseline | Protected native | Protected gamma-1400/contrast-300 |
+| --- | --- | --- | --- |
+| Renderer | All five stores preserved | All five preserved | All five preserved |
+| Entire browser, no graceful checkpoint | Fresh cookies/localStorage lost | Same loss | Same loss |
+| GPU readback identity after recovery | Passed for both crash kinds | Passed for both | Passed for both |
+
+IndexedDB, CacheStorage and the dedicated storage service-worker registration
+survive these browser-crash cases. Neighbouring profiles remain unchanged; locks
+stay held until owned teardown. The 96 before/after GPU context executions
+(64 protected) pass the existing v2 contract. Renderer cases keep the same browser
+root; browser cases require an actual disconnect and restart.
+
+The [executed collector](measure_crash_recovery.py) isolates the storage worker's
+scope from the GPU worker fixture. It records actual crash signals, shields the
+pending CDP command across observation timeouts and consumes its result after
+teardown. Final cleanup/postguards pass and the captured final log has no
+unretrieved-future warnings. Both earlier harness attempts remain recorded;
+their failures are not relabelled as passes.
+
+Pinned upstream source batches cookie commits with a 30-second default and
+localStorage with a five-second default. The observed loss is consistent with
+those defaults, including the unprotected baseline; per-case disk flush timing
+was not traced. Web API acknowledgement is not a durable checkpoint, and the
+current fire-and-forget storage Flush interfaces do not prove a completed barrier.
+Next: design an explicit, acknowledged native checkpoint without closing a profile,
+then test errors, cancellation, cross-profile isolation and crash-after-ack. This
+will not imply power-loss safety or silently make the no-checkpoint row pass.
+
 ### Source-runtime integration and selected profile recovery
 
 [Runtime gate observations](runtime-gate-observations.json) separate two scopes:

@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## 2026-11-02: renderer/browser crashes without graceful checkpoint
+
+| Check | Result |
+| --- | --- |
+| Renderer: baseline / protected native / protected gamma | 3/3 passed; same browser root and five stores preserved |
+| Browser: same three modes, immediate crash after acknowledged writes | 0/3 passed; fresh cookies and localStorage lost |
+| Other persistent stores | IndexedDB, CacheStorage and storage service-worker registration survived |
+| GPU identity after recovery | All six cases passed; 96 before/after context executions, 64 protected |
+| Neighbour and ownership | Other profile unchanged; lock retained until teardown; observed owned processes exited |
+| Final CDP cleanup | All requests settled, no unretrieved-future warnings in the captured final log |
+| Overall result | **Failed**, browser last-write durability remains unverified |
+| Evidence | [Measured records](../native/drafts/upstream-156-image-r11/crash-recovery-observations.json), [executed collector](../native/drafts/upstream-156-image-r11/measure_crash_recovery.py) |
+
+No OS power-loss test or full recovery admission is implied. Earlier harness
+failures remain preserved. The older checkpointed passes do not replace this row.
+
 ## 2026-11-02: source-runtime integration / selected profile restarts
 
 | Scope | Result |

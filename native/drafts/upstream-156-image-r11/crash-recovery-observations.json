@@ -1,0 +1,557 @@
+{
+  "schema": 1,
+  "candidate": "upstream-156-image-r11",
+  "candidate_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "0e2dc956a173f32017f3756c695a393d7320df606159ebbdbd0b527aacbfe3c9",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "831ba2f123fbb898add7b7b61dd3ad4ed7c4c2b2a697899013f87e144e1b59a2",
+  "passed": false,
+  "measurement_complete": true,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "full_recovery_admitted": false,
+  "uncheckpointed_browser_durability_verified": false,
+  "power_loss_tested": false,
+  "source_report_sha256": "5d365e708f47198d0639477147da4d6d025d4ea61807941c86e4a2099179b807",
+  "collector_sha256": "cb7ca8d677d59af46605425de79db68d88f64f3a7c93165e2eba51a47289d5b4",
+  "source_sha256": {
+    "native/drafts/protected-gpu-v2/validate.py": "74af93564d9b5fbae0fb23762aa3195d17b6a5ce009aa63eea2ffd34a16a6c16",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "scripts/verify_native_gpu.py": "c1db5bcd7991c7d538a4cbbdf613a436a55f08cbf5aade246a64e5ba0bc2c270",
+    "scripts/verify_native_gpu_readback.py": "f7566c8c829496345a6a616e1b13a524e9258fba0fb69b7f1dee00b68c7dbac9",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_worker_startup.py": "94a35e70e1760e69f78c8e23eaf5ad7da15cb3569e7309dce440b238267579ec"
+  },
+  "phases": [
+    {
+      "kind": "renderer",
+      "mode": "baseline",
+      "protected": false,
+      "passed": true,
+      "graceful_checkpoint_before_crash": false,
+      "crash_command": "Page.crash",
+      "crash_command_returned": false,
+      "crash_transport_error_type": "TimeoutError",
+      "crash_signal_observed": true,
+      "in_process_lock_retained_until_teardown": true,
+      "browser_connected_after_crash": true,
+      "browser_disconnect_notifications": 0,
+      "page_crash_notifications": 1,
+      "restored_storage": {
+        "cookie": "owned=renderer-baseline-victim",
+        "local": "renderer-baseline-victim",
+        "indexed": "renderer-baseline-victim",
+        "cached": "renderer-baseline-victim",
+        "workers": 1
+      },
+      "storage_components": {
+        "cookie": true,
+        "local": true,
+        "indexed": true,
+        "cached": true,
+        "workers": true
+      },
+      "gpu_recovery_verified": true,
+      "survivor_preserved": true,
+      "crash_request": {
+        "settled": true,
+        "error_type": "TargetClosedError"
+      },
+      "resources_closed": true,
+      "before_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 0,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "after_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 0,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "before_state_sha256": "4b5021be569bbda2605bfe1e2dec5cfe0ebf9da795eeb369eff9ea00636f1c7c",
+      "after_state_sha256": "4b5021be569bbda2605bfe1e2dec5cfe0ebf9da795eeb369eff9ea00636f1c7c",
+      "same_browser_preserved": true
+    },
+    {
+      "kind": "renderer",
+      "mode": "native",
+      "protected": true,
+      "passed": true,
+      "graceful_checkpoint_before_crash": false,
+      "crash_command": "Page.crash",
+      "crash_command_returned": false,
+      "crash_transport_error_type": "TimeoutError",
+      "crash_signal_observed": true,
+      "in_process_lock_retained_until_teardown": true,
+      "browser_connected_after_crash": true,
+      "browser_disconnect_notifications": 0,
+      "page_crash_notifications": 1,
+      "restored_storage": {
+        "cookie": "owned=renderer-native-victim",
+        "local": "renderer-native-victim",
+        "indexed": "renderer-native-victim",
+        "cached": "renderer-native-victim",
+        "workers": 1
+      },
+      "storage_components": {
+        "cookie": true,
+        "local": true,
+        "indexed": true,
+        "cached": true,
+        "workers": true
+      },
+      "gpu_recovery_verified": true,
+      "survivor_preserved": true,
+      "crash_request": {
+        "settled": true,
+        "error_type": "TargetClosedError"
+      },
+      "resources_closed": true,
+      "before_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 504,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "after_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 504,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "before_state_sha256": "9d61f7765c484d35dd6b2e58d3532cc8d58c555e43e7a69dd9a97284c2abf53b",
+      "after_state_sha256": "9d61f7765c484d35dd6b2e58d3532cc8d58c555e43e7a69dd9a97284c2abf53b",
+      "same_browser_preserved": true
+    },
+    {
+      "kind": "renderer",
+      "mode": "gamma-1400-contrast-300",
+      "protected": true,
+      "passed": true,
+      "graceful_checkpoint_before_crash": false,
+      "crash_command": "Page.crash",
+      "crash_command_returned": false,
+      "crash_transport_error_type": "TimeoutError",
+      "crash_signal_observed": true,
+      "in_process_lock_retained_until_teardown": true,
+      "browser_connected_after_crash": true,
+      "browser_disconnect_notifications": 0,
+      "page_crash_notifications": 1,
+      "restored_storage": {
+        "cookie": "owned=renderer-gamma-1400-contrast-300-victim",
+        "local": "renderer-gamma-1400-contrast-300-victim",
+        "indexed": "renderer-gamma-1400-contrast-300-victim",
+        "cached": "renderer-gamma-1400-contrast-300-victim",
+        "workers": 1
+      },
+      "storage_components": {
+        "cookie": true,
+        "local": true,
+        "indexed": true,
+        "cached": true,
+        "workers": true
+      },
+      "gpu_recovery_verified": true,
+      "survivor_preserved": true,
+      "crash_request": {
+        "settled": true,
+        "error_type": "TargetClosedError"
+      },
+      "resources_closed": true,
+      "before_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 520,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "after_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 520,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "before_state_sha256": "91cc04dcfde61056a559b1a2e2fab2e5a60f1158ca7d156f9c78f4e0b15e11e0",
+      "after_state_sha256": "91cc04dcfde61056a559b1a2e2fab2e5a60f1158ca7d156f9c78f4e0b15e11e0",
+      "same_browser_preserved": true
+    },
+    {
+      "kind": "browser",
+      "mode": "baseline",
+      "protected": false,
+      "passed": false,
+      "graceful_checkpoint_before_crash": false,
+      "crash_command": "Browser.crash",
+      "crash_command_returned": false,
+      "crash_transport_error_type": "TargetClosedError",
+      "crash_signal_observed": true,
+      "in_process_lock_retained_until_teardown": true,
+      "browser_connected_after_crash": false,
+      "browser_disconnect_notifications": 1,
+      "page_crash_notifications": 0,
+      "restored_storage": {
+        "cookie": "",
+        "local": null,
+        "indexed": "browser-baseline-victim",
+        "cached": "browser-baseline-victim",
+        "workers": 1
+      },
+      "storage_components": {
+        "cookie": false,
+        "local": false,
+        "indexed": true,
+        "cached": true,
+        "workers": true
+      },
+      "gpu_recovery_verified": true,
+      "survivor_preserved": true,
+      "crash_request": {
+        "settled": true,
+        "error_type": "TargetClosedError"
+      },
+      "resources_closed": true,
+      "before_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 0,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "after_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 0,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "before_state_sha256": "4b5021be569bbda2605bfe1e2dec5cfe0ebf9da795eeb369eff9ea00636f1c7c",
+      "after_state_sha256": "4b5021be569bbda2605bfe1e2dec5cfe0ebf9da795eeb369eff9ea00636f1c7c",
+      "browser_restarted": true
+    },
+    {
+      "kind": "browser",
+      "mode": "native",
+      "protected": true,
+      "passed": false,
+      "graceful_checkpoint_before_crash": false,
+      "crash_command": "Browser.crash",
+      "crash_command_returned": false,
+      "crash_transport_error_type": "TargetClosedError",
+      "crash_signal_observed": true,
+      "in_process_lock_retained_until_teardown": true,
+      "browser_connected_after_crash": false,
+      "browser_disconnect_notifications": 1,
+      "page_crash_notifications": 0,
+      "restored_storage": {
+        "cookie": "",
+        "local": null,
+        "indexed": "browser-native-victim",
+        "cached": "browser-native-victim",
+        "workers": 1
+      },
+      "storage_components": {
+        "cookie": false,
+        "local": false,
+        "indexed": true,
+        "cached": true,
+        "workers": true
+      },
+      "gpu_recovery_verified": true,
+      "survivor_preserved": true,
+      "crash_request": {
+        "settled": true,
+        "error_type": "TargetClosedError"
+      },
+      "resources_closed": true,
+      "before_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 464,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "after_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 464,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "before_state_sha256": "937481bdad5eaf8940b52bbca9493ea41d4e0d4e141f8d99fb0e8fce58716f3a",
+      "after_state_sha256": "937481bdad5eaf8940b52bbca9493ea41d4e0d4e141f8d99fb0e8fce58716f3a",
+      "browser_restarted": true
+    },
+    {
+      "kind": "browser",
+      "mode": "gamma-1400-contrast-300",
+      "protected": true,
+      "passed": false,
+      "graceful_checkpoint_before_crash": false,
+      "crash_command": "Browser.crash",
+      "crash_command_returned": false,
+      "crash_transport_error_type": "TargetClosedError",
+      "crash_signal_observed": true,
+      "in_process_lock_retained_until_teardown": true,
+      "browser_connected_after_crash": false,
+      "browser_disconnect_notifications": 1,
+      "page_crash_notifications": 0,
+      "restored_storage": {
+        "cookie": "",
+        "local": null,
+        "indexed": "browser-gamma-1400-contrast-300-victim",
+        "cached": "browser-gamma-1400-contrast-300-victim",
+        "workers": 1
+      },
+      "storage_components": {
+        "cookie": false,
+        "local": false,
+        "indexed": true,
+        "cached": true,
+        "workers": true
+      },
+      "gpu_recovery_verified": true,
+      "survivor_preserved": true,
+      "crash_request": {
+        "settled": true,
+        "error_type": "TargetClosedError"
+      },
+      "resources_closed": true,
+      "before_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 464,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "after_validation": {
+        "contract_version": 2,
+        "pipeline_version": 2,
+        "contexts": 8,
+        "textures": 48,
+        "changed_colour_bytes": 464,
+        "original_observations_mutated": false,
+        "legacy_validator_replaced": false
+      },
+      "before_state_sha256": "a7602c4b026e5b0356cce118c8c8562dbee11465507d0c1655dcbd476b77cc9f",
+      "after_state_sha256": "a7602c4b026e5b0356cce118c8c8562dbee11465507d0c1655dcbd476b77cc9f",
+      "browser_restarted": true
+    }
+  ],
+  "renderer_phases_passed": 3,
+  "browser_phases_passed": 0,
+  "gpu_phases_passed": 6,
+  "observed_context_executions": 96,
+  "protected_context_executions": 64,
+  "all_crash_requests_settled": true,
+  "owned_resources_closed": true,
+  "fixture_thread_closed": true,
+  "postguards_passed": true,
+  "diagnostic_log_sha256": "55695a68f4e5c33e4c0251da9f8238e365445d9b164ded35ec3e7fb5fce0830c",
+  "unretrieved_future_warnings_in_final_log": 0,
+  "earlier_attempts": [
+    {
+      "attempt": 1,
+      "source_report_sha256": "43d6499ae782b8fe589656e38b0ee41bf12a468f9be3c401cc6407f1911f377d",
+      "measured_collector_sha256": "c5ed7d4303a8aa3e8fb27a7915711c7567db9d7ff2ced2fbddb77fbb7527a4be",
+      "original_failure_preserved": true,
+      "measurement_complete": false,
+      "phases": [
+        {
+          "kind": "renderer",
+          "mode": "baseline",
+          "passed": false,
+          "error": "Renderer crash did not preserve the browser connection",
+          "storage_components": null
+        },
+        {
+          "kind": "renderer",
+          "mode": "native",
+          "passed": false,
+          "error": "Renderer crash did not preserve the browser connection",
+          "storage_components": null
+        },
+        {
+          "kind": "renderer",
+          "mode": "gamma-1400-contrast-300",
+          "passed": false,
+          "error": "Renderer crash did not preserve the browser connection",
+          "storage_components": null
+        },
+        {
+          "kind": "browser",
+          "mode": "baseline",
+          "passed": false,
+          "error": "Page.evaluate: Error: Native worker probe timed out\n    at eval (eval at evaluate (:302:30), <anonymous>:3:43)",
+          "storage_components": {
+            "cookie": false,
+            "local": false,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        },
+        {
+          "kind": "browser",
+          "mode": "native",
+          "passed": false,
+          "error": "Page.evaluate: Error: Native worker probe timed out\n    at eval (eval at evaluate (:302:30), <anonymous>:3:43)",
+          "storage_components": {
+            "cookie": false,
+            "local": false,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        },
+        {
+          "kind": "browser",
+          "mode": "gamma-1400-contrast-300",
+          "passed": false,
+          "error": "Page.evaluate: Error: Native worker probe timed out\n    at eval (eval at evaluate (:302:30), <anonymous>:3:43)",
+          "storage_components": {
+            "cookie": false,
+            "local": false,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        }
+      ]
+    },
+    {
+      "attempt": 2,
+      "source_report_sha256": "7ee2ac1f92908cf54d38663f9de33c0961b166903de61131cc69cb9486cb38a6",
+      "measured_collector_sha256": "c6b40e68526c2d569558f9db42185f2472dc0d189718c5b849b037e03dd8847f",
+      "original_failure_preserved": true,
+      "measurement_complete": true,
+      "phases": [
+        {
+          "kind": "renderer",
+          "mode": "baseline",
+          "passed": true,
+          "error": null,
+          "storage_components": {
+            "cookie": true,
+            "local": true,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        },
+        {
+          "kind": "renderer",
+          "mode": "native",
+          "passed": true,
+          "error": null,
+          "storage_components": {
+            "cookie": true,
+            "local": true,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        },
+        {
+          "kind": "renderer",
+          "mode": "gamma-1400-contrast-300",
+          "passed": true,
+          "error": null,
+          "storage_components": {
+            "cookie": true,
+            "local": true,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        },
+        {
+          "kind": "browser",
+          "mode": "baseline",
+          "passed": false,
+          "error": null,
+          "storage_components": {
+            "cookie": false,
+            "local": false,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        },
+        {
+          "kind": "browser",
+          "mode": "native",
+          "passed": false,
+          "error": null,
+          "storage_components": {
+            "cookie": false,
+            "local": false,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        },
+        {
+          "kind": "browser",
+          "mode": "gamma-1400-contrast-300",
+          "passed": false,
+          "error": null,
+          "storage_components": {
+            "cookie": false,
+            "local": false,
+            "indexed": true,
+            "cached": true,
+            "workers": true
+          }
+        }
+      ]
+    }
+  ],
+  "fixture_corrections": "Dedicated storage-worker scope avoids replacing the GPU fixture worker; actual crash signals and browser-root continuity are required, without assuming a unique page notification. Pending crash commands are shielded and consumed after teardown.",
+  "upstream_commit_evidence": {
+    "revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+    "pristine_source_sha256": {
+      "net/extras/sqlite/sqlite_persistent_cookie_store.cc": "cebb7f21100ed85ec40d53386e27c33e409fcff95d197d26da89c23805d8aaa9",
+      "components/services/storage/dom_storage/local_storage_impl.cc": "5d768d92ba81bce3b8ae74eb80a27043aaf7a283759053d73e18bbbbd523c4cc",
+      "components/services/storage/public/mojom/local_storage_control.mojom": "162f2f8eadc21167bdf22029c134cc5516cf61fe35d9af353cf920a4f07fcfc2",
+      "content/public/browser/storage_partition.h": "5bf636613ec28382e393b812216afd199ff7024d0a3b780887261ad11abdffa7"
+    },
+    "cookie_default_batch_delay_seconds": 30,
+    "local_storage_default_commit_delay_seconds": 5,
+    "actual_per_test_flush_timing_measured": false,
+    "interpretation": "Upstream batches writes after Web API acknowledgement. Defaults are source evidence, not measured crash timings. Fire-and-forget Flush is not a completed disk or power-loss barrier."
+  },
+  "remaining": "Explicit completed storage checkpoint design and unsaved-write durability; broader cohorts, worker-object lifetime, installed-package/manager combinations, resource and fidelity/security admission."
+}

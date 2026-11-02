@@ -1,5 +1,21 @@
 # Glint architecture
 
+## 2026-11-02: crash boundaries and next checkpoint requirement
+
+[R11 no-checkpoint measurements](drafts/upstream-156-image-r11/crash-recovery-observations.json)
+distinguish renderer loss from whole-browser loss. All three renderer modes
+preserve five stores and the browser root. Immediate whole-browser crashes lose
+fresh cookies/localStorage in baseline and both protected presets. GPU identity
+survives all six cases; that does not make the data-durability gate pass.
+
+Next checkpoint work must provide an explicit completion/error result for the
+owned profile, without publishing a JavaScript surface or silently switching an
+older engine. Cookie and localStorage commit completion must be established,
+not inferred from queued Flush calls or delays. Define cancellation/partial-write
+semantics, cross-profile isolation and crash-after-ack tests before capability or
+package admission. Filesystem write completion is not an OS power-loss guarantee.
+No native checkpoint implementation or durability repair is claimed yet.
+
 ## 2026-11-02: R11 integration control and selected storage/crash recovery
 
 [Runtime measurements](drafts/upstream-156-image-r11/runtime-gate-observations.json)

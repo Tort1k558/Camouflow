@@ -1,5 +1,21 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: renderer recovery verified; browser last-write loss reproduced
+
+[Complete six-case matrix](../native/drafts/upstream-156-image-r11/crash-recovery-observations.json):
+renderer recovery preserves five stores in baseline and both protected presets.
+Whole-browser crashes without a graceful checkpoint lose fresh cookies and
+localStorage in all three modes; IndexedDB, cache and the storage worker survive.
+The overall gate stays **failed**, despite all six GPU identity/recovery checks
+passing. Neighbouring profiles, lock ownership and final cleanup are verified.
+
+The collector fixes a worker-scope collision and orphaned CDP crash-request
+futures, retaining earlier failed attempts. Pinned upstream delayed-commit defaults
+are consistent with the loss, not a trace of actual disk timing. Next: an explicit
+completed native storage checkpoint, not a sleep or fire-and-forget Flush; verify
+crash-after-ack, isolation, error/cancellation and older-runtime rejection. Keep
+unsaved-write and power-loss limits distinct from checkpointed recovery.
+
 ## 2026-11-02: source-runtime integration and protected profile restarts verified
 
 [R11 runtime gates](../native/drafts/upstream-156-image-r11/runtime-gate-observations.json):
