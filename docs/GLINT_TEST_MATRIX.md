@@ -1,5 +1,14 @@
 # Glint browser test matrix
 
+## 2026-11-02: telemetry failure intervals
+
+Host regression tests reproduced a retained CPU baseline after a failed process-
+tree capture. The monitor now propagates the original failure, discards that
+baseline and reports CPU warm-up on the next valid capture. A rejected concurrent
+sampler does not invalidate the active sampler's baseline. No missing capture is
+replaced with zero or retried. This is **not** a passing large-image resource gate;
+the original R11 unavailable-sample results remain unchanged.
+
 ## 2026-11-02: R12 applied; compilation and native execution pending
 
 The [checkpoint runner](../scripts/verify_native_checkpoint_units.py) now derives

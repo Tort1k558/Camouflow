@@ -87,6 +87,50 @@ def test_exited_process_error_is_not_retried_or_replaced():
     assert count == [10] and not monitor._sampling_lock.locked()
 
 
+@pytest.mark.parametrize("failure", [
+    OSError("Process disappeared"), ValueError("Process tree changed"),
+    RuntimeError("Capture failed"), asyncio.CancelledError(),
+])
+def test_failed_capture_discards_cpu_interval_without_hiding_the_error(failure):
+    values = iter((tree(1), failure, tree(3), tree(4)))
+    def capture(root):
+        value = next(values)
+        if isinstance(value, BaseException):
+            raise value
+        return value
+    monitor = module.BrowserProcessMonitor(SimpleNamespace(read_tree=capture), anchor())
+    assert monitor.sample()["cpu"]["state"] == "warming"
+    with pytest.raises(type(failure)) as caught:
+        monitor.sample()
+    assert caught.value is failure
+    assert monitor._previous is None and not monitor._sampling_lock.locked()
+    assert monitor.sample()["cpu"]["state"] == "warming"
+    assert monitor.sample()["cpu"]["state"] == "ready"
+
+
+def test_busy_capture_does_not_discard_another_samplers_cpu_baseline():
+    monitor = monitor_with(tree(1), tree(2))
+    monitor.sample()
+    previous = monitor._previous
+    monitor._sampling_lock.acquire()
+    try:
+        with pytest.raises(RuntimeError, match="already running"):
+            monitor.sample()
+        assert monitor._previous is previous
+    finally:
+        monitor._sampling_lock.release()
+    assert monitor.sample()["cpu"]["state"] == "ready"
+
+
+def test_wrong_root_after_valid_capture_cannot_reuse_old_cpu_interval():
+    monitor = monitor_with(tree(1), tree(2, pid=12), tree(3))
+    monitor.sample()
+    with pytest.raises(ValueError, match="bound browser identity"):
+        monitor.sample()
+    assert monitor._previous is None
+    assert monitor.sample()["cpu"]["state"] == "warming"
+
+
 @pytest.mark.parametrize("response", [None, {}, {"processInfo": []}, {"processInfo": [None]},
     {"processInfo": [{"type": "browser", "id": True}]}, {"processInfo": [{"type": "browser", "id": 0}]},
     {"processInfo": [{"type": "browser", "id": 10}] * 2}, {"processInfo": [{}] * 513}])

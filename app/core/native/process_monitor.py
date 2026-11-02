@@ -127,5 +127,9 @@ class BrowserProcessMonitor:
                     "private_commit_sum_bytes": current.summed_private_commit_bytes,
                     "capture_duration_ns": current.measured_ns - current.capture_started_ns,
                     "cpu": cpu}
+        except BaseException:
+            with self._state_lock:
+                self._previous = None
+            raise
         finally:
             self._sampling_lock.release()
