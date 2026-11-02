@@ -5,8 +5,9 @@ Current checkpoint (2026-11-02): the latest checked Windows research runtime is
 The [R11 evidence](upstream-156-image-r11/README.md) distinguishes passed runtime
 checks from unresolved crash-write, Audio, resource and package gates. The
 [database](storage-commit-barrier/README.md), [localStorage IPC](storage-checkpoint-ipc/README.md)
-and [cookie completion](cookie-checkpoint/README.md) packets are unselected source
-preparation, not repairs admitted in that runtime. See the authoritative
+and [cookie completion](cookie-checkpoint/README.md) with its
+[privileged forwarding extension](cookie-checkpoint-ipc/README.md) are unselected
+source preparation, not repairs admitted in that runtime. See the authoritative
 [test matrix](../../docs/GLINT_TEST_MATRIX.md) and
 [architecture](../ARCHITECTURE.md) for current evidence and admission limits.
 The older checkpoints below describe how the registered components were built;

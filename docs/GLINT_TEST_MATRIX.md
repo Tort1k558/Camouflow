@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-11-02: cookie completion forwarding and privileged IPC
+
+| Gate | Result |
+| --- | --- |
+| Source chain | SQLite → cleanup wrapper → CookieMonster load/task queue → CookieManager |
+| Fresh bindings | Browser-only method at version 1; seventeen old methods remain version 0 |
+| Four-packet isolated replay | 27 files matched/restored, including the shared SQLite header; not full candidate replay |
+| C++ syntax/type checks | Fourteen passed, including existing support classes, four fixture units and two generated units |
+| Native case preparation | Fifteen new bodies; **not linked/executed** |
+| Profile checkpoint / R11 | **Not implemented/admitted**; no runtime or no-checkpoint-result changes |
+| Evidence | [Forwarding packet](../native/drafts/cookie-checkpoint-ipc/README.md) |
+
+Producer/actor fencing, whole-profile ownership, session-cookie persistence,
+manager cancellation, linked tests and real crash-after-ack are still required.
+
 ## 2026-11-02: SQLite cookie completion prerequisite
 
 | Gate | Result |

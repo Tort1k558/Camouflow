@@ -1,0 +1,464 @@
+{
+  "schema": 1,
+  "scope": "Unselected cookie commit completion through CookieMonster, cleanup wrapper and privileged IPC",
+  "base_candidate": "upstream-156-image-r11",
+  "base_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "patch": "cookie-checkpoint-ipc.patch",
+  "patch_sha256": "d42360d08e503f8fc026376728665a44b1c88ec834d8e9e6c0f8df8b4c4a6368",
+  "sources": [
+    {
+      "source": "net/cookies/cookie_store.h",
+      "before_sha256": "f5744c6601f8d07a6f12c0a1532f9f9f7170e53cc4688483e0ff5cf8b2322929",
+      "after_sha256": "3e83f354549d839cf9be1aa90b37974609a81fc494c19e577799df125e5e6503"
+    },
+    {
+      "source": "net/cookies/cookie_store.cc",
+      "before_sha256": "5bec6b39284c34550ed12e1b9825ba9722c24d8b916b9ddf61b3aa7339760578",
+      "after_sha256": "55c4920b36b7c4500d61178aa6168cd8d3f38073eb60d54fc7776eb21b12c323"
+    },
+    {
+      "source": "net/cookies/cookie_monster.h",
+      "before_sha256": "bbad9f2d9225bda9897711663241fe4056b15ef1f1dfbe4701c3a346de7a6a3b",
+      "after_sha256": "be0e066885a35c1feb4ad8fd05c6948b1f9b87d082372c3aaa15046a264b134a"
+    },
+    {
+      "source": "net/cookies/cookie_monster.cc",
+      "before_sha256": "03553313829d0134cf41651ea8b313ca061b5d5a6fff9c50c4805d691ef39b97",
+      "after_sha256": "318f841ff64ae0fd21f2dc4e655fa7cfa699b66a632dade56f5094f7d09896c2"
+    },
+    {
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "before_sha256": "3ce9a441c9088997ec89f4401ea574a6c3d5ed53e80702d75bd20358fa972afd",
+      "after_sha256": "9d311f2dda242d33ca47e6300aff7ca0c4cdb2d9039a69f722548b5705f216fa"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.h",
+      "before_sha256": "63232faef472727400187fb0f02f60cb04d5b556c5aec710ea63e2ca61d0fdca",
+      "after_sha256": "e3ed1c892be79935c73e164fae299fc4aeede25cb13ddab0f27616f6621c7c11"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store.h",
+      "before_sha256": "bc06ab1b376037f06625f4491137ec84a448ad89e1aa5126d2a5d20f3d1a827c",
+      "after_sha256": "f8ea44d9202086ce2a4e91660753e1e74acc6bf2862dfd09565c8fec6edc7ea7"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store.cc",
+      "before_sha256": "620c36c2cf92accd56133cb81ac204bc3d92de13c400699e83b9ee0cf26ae84b",
+      "after_sha256": "d4a9982c9ffa305298e8b5f5de90df81e7c5424343a035afc7aa6ab23a9cdb5f"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store_unittest.cc",
+      "before_sha256": "52641f71d0d346d9489830cc759b58a5d7a4ecbebff0f33397a4eb37cfced5b7",
+      "after_sha256": "ad21ce59efcb61aace3d05fdaf1832c8eb1f804e0a9b6a82779b8fb132865132"
+    },
+    {
+      "source": "services/network/cookie_manager.h",
+      "before_sha256": "baf4df02e2814bf07e756f53087c298e6d50f2a348e437966222833ca9d89f04",
+      "after_sha256": "065ddfad73399db14ac069a10974a561dc4f888de9c5fd2478737cd81e728839"
+    },
+    {
+      "source": "services/network/cookie_manager.cc",
+      "before_sha256": "379bda3186d14103049d80b18d7236914a54c71c0897aa3dc0d03875e192219e",
+      "after_sha256": "74ca19c82c27865475f1910e43783b327c5878efe6bbef9cf2f707b862ff3a93"
+    },
+    {
+      "source": "services/network/cookie_manager_unittest.cc",
+      "before_sha256": "156ddece1a0f5a797d94d5fef343241defa707ebcfece5c6e6d385e3a3c803dd",
+      "after_sha256": "0a8ed2cc822cb2b66302cdf675c1ddfd6a457120e34f57c020d8e801afc3daa9"
+    },
+    {
+      "source": "services/network/public/mojom/cookie_manager.mojom",
+      "before_sha256": "3ed5c72e99fe64ece31d627b3547b1bbd012e548b21b699d113c1da289816dbb",
+      "after_sha256": "06e9b875f5852e95aa6b3bb184e240c097dcd6b3ee31212c24f4ebb59dc73104"
+    },
+    {
+      "source": "services/network/test/test_cookie_manager.h",
+      "before_sha256": "48a9cfc0c56646b8367c0ed6e646d255da260b949f59b4be7348b39c403558ae",
+      "after_sha256": "715ba8f3bacef74bca15fb5a111c138c39396c50f138e17ce1e3d895d33fb41d"
+    },
+    {
+      "source": "services/network/test/test_cookie_manager.cc",
+      "before_sha256": "fbe722ec44c6d01931b48b0ad05743509c6b361d52f6c940a369cee6cbecf719",
+      "after_sha256": "893784ad695aea0590ef95b521dbf02d7b6ddf16eb41f251b2b00c0b32ef436c"
+    }
+  ],
+  "changed_files": 15,
+  "prerequisite_patches": [
+    {
+      "path": "native/drafts/storage-commit-barrier/storage-commit-barrier.patch",
+      "sha256": "f5eaa604f66cd72a5179d66dfd12b17fa52daafa96eb4be01c6ec478a80f6406"
+    },
+    {
+      "path": "native/drafts/storage-checkpoint-ipc/storage-checkpoint-ipc.patch",
+      "sha256": "700c6335d80ca73e0cc81e0a311707770b66c0b7d298fc6cef62e4fe14775d05"
+    },
+    {
+      "path": "native/drafts/cookie-checkpoint/cookie-checkpoint.patch",
+      "sha256": "a28316435d7b1cb5f3456d8cc01bb735e1eac5e48812486805f5777456e015e5"
+    }
+  ],
+  "upstream_composed_sources": [
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "before_sha256": "edf40f3c7991e86c07c230b21fe16bc9153aa2ab39bdcf2cab5bfdae5e98ee79",
+      "after_sha256": "f64dc93177c943926b2264a7e2730e266e376f69c908179f554f487ef934f7fb"
+    },
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "before_sha256": "cccd36f8e67a7f4389c8ecfc7369c453610996c67a268100b66f5686ab6975c4",
+      "after_sha256": "0e517014b76629443cc31def1bf946cce3a11b561746f6f160202ab197a1f41f"
+    },
+    {
+      "source": "components/services/storage/dom_storage/async_dom_storage_database_unittest.cc",
+      "before_sha256": "fe8a456bd974829d65aa55a984ec995b3f1a1f6df6ff9a0db1bfb99102a917d1",
+      "after_sha256": "0aee168fa3375f824664a27bc6575f7d695821e212f6c00f75b5f73dfa8d5942"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl.h",
+      "before_sha256": "0e06b50c829eb3929e4d5fdb4ae4d3ad3880dd53982ab8eff8b87eed196fd887",
+      "after_sha256": "c18bd0e8b924c2587afeca01b42e75ac8ba70eaadb2cbf097bb3fffbd6a50352"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "before_sha256": "c83fc015873846594e3710b0d41de54c991838de503e5762a3d583900fac5fe2",
+      "after_sha256": "a2e0791aab34b14cfbe429c5f40182b4c2855c6c931de1b92ac59d8576c7abb3"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl.h",
+      "before_sha256": "8a3aee90a19d9151ee54caebcfd17f87caa23c824ce7842c349bde1addec6ca3",
+      "after_sha256": "10305cfacff1465285dd9d5e58d227b34aa39acb3ad123a1d13089ce2a8c5144"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "before_sha256": "5d768d92ba81bce3b8ae74eb80a27043aaf7a283759053d73e18bbbbd523c4cc",
+      "after_sha256": "5425946e466c6b56a577e40f8f10333167ddfc071fad9035592e5b8975875815"
+    },
+    {
+      "source": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "before_sha256": "98bdb0ad281dc65083cea5b2c653685f114eb2838dfc193d55b49a4dfb98b4e8",
+      "after_sha256": "c7cf214a5581b93636210ae4f0b7f1ffcf65693d00a86fef9fe65959d5159c35"
+    },
+    {
+      "source": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "before_sha256": "f5ec67aa67c917fe9ab4d52c306bb18c0fae3d6c6cc71684500ba44a93fe21bd",
+      "after_sha256": "65a3f5211c499eff678e91b008df090951b317ad176a627f316effc9ae14b679"
+    },
+    {
+      "source": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "before_sha256": "162f2f8eadc21167bdf22029c134cc5516cf61fe35d9af353cf920a4f07fcfc2",
+      "after_sha256": "3dd6f5be2f66ba4ab26fee4efefff8e2a03741b2e5a85fdf006cea0a295d0833"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.h",
+      "before_sha256": "157107bc700d7d12661f01c0d48c9221cb24113ec4257d5a8c8f2663c601b6c2",
+      "after_sha256": "e3ed1c892be79935c73e164fae299fc4aeede25cb13ddab0f27616f6621c7c11"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.cc",
+      "before_sha256": "cebb7f21100ed85ec40d53386e27c33e409fcff95d197d26da89c23805d8aaa9",
+      "after_sha256": "88991c1e5397ac4f9f319b760c091158fc0933a1299d36068cd4990d7998f16a"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "before_sha256": "b0112b26a727bf15582d5736a21be6a8089212a88195e8f252dc7ae26a38e0c8",
+      "after_sha256": "fdc4c8bdbdfa1af77903e525daca1fda51040b780a95b6152e8499ea3c4b3827"
+    },
+    {
+      "source": "net/cookies/cookie_store.h",
+      "before_sha256": "f5744c6601f8d07a6f12c0a1532f9f9f7170e53cc4688483e0ff5cf8b2322929",
+      "after_sha256": "3e83f354549d839cf9be1aa90b37974609a81fc494c19e577799df125e5e6503"
+    },
+    {
+      "source": "net/cookies/cookie_store.cc",
+      "before_sha256": "5bec6b39284c34550ed12e1b9825ba9722c24d8b916b9ddf61b3aa7339760578",
+      "after_sha256": "55c4920b36b7c4500d61178aa6168cd8d3f38073eb60d54fc7776eb21b12c323"
+    },
+    {
+      "source": "net/cookies/cookie_monster.h",
+      "before_sha256": "bbad9f2d9225bda9897711663241fe4056b15ef1f1dfbe4701c3a346de7a6a3b",
+      "after_sha256": "be0e066885a35c1feb4ad8fd05c6948b1f9b87d082372c3aaa15046a264b134a"
+    },
+    {
+      "source": "net/cookies/cookie_monster.cc",
+      "before_sha256": "03553313829d0134cf41651ea8b313ca061b5d5a6fff9c50c4805d691ef39b97",
+      "after_sha256": "318f841ff64ae0fd21f2dc4e655fa7cfa699b66a632dade56f5094f7d09896c2"
+    },
+    {
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "before_sha256": "3ce9a441c9088997ec89f4401ea574a6c3d5ed53e80702d75bd20358fa972afd",
+      "after_sha256": "9d311f2dda242d33ca47e6300aff7ca0c4cdb2d9039a69f722548b5705f216fa"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store.h",
+      "before_sha256": "bc06ab1b376037f06625f4491137ec84a448ad89e1aa5126d2a5d20f3d1a827c",
+      "after_sha256": "f8ea44d9202086ce2a4e91660753e1e74acc6bf2862dfd09565c8fec6edc7ea7"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store.cc",
+      "before_sha256": "620c36c2cf92accd56133cb81ac204bc3d92de13c400699e83b9ee0cf26ae84b",
+      "after_sha256": "d4a9982c9ffa305298e8b5f5de90df81e7c5424343a035afc7aa6ab23a9cdb5f"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store_unittest.cc",
+      "before_sha256": "52641f71d0d346d9489830cc759b58a5d7a4ecbebff0f33397a4eb37cfced5b7",
+      "after_sha256": "ad21ce59efcb61aace3d05fdaf1832c8eb1f804e0a9b6a82779b8fb132865132"
+    },
+    {
+      "source": "services/network/cookie_manager.h",
+      "before_sha256": "baf4df02e2814bf07e756f53087c298e6d50f2a348e437966222833ca9d89f04",
+      "after_sha256": "065ddfad73399db14ac069a10974a561dc4f888de9c5fd2478737cd81e728839"
+    },
+    {
+      "source": "services/network/cookie_manager.cc",
+      "before_sha256": "379bda3186d14103049d80b18d7236914a54c71c0897aa3dc0d03875e192219e",
+      "after_sha256": "74ca19c82c27865475f1910e43783b327c5878efe6bbef9cf2f707b862ff3a93"
+    },
+    {
+      "source": "services/network/cookie_manager_unittest.cc",
+      "before_sha256": "156ddece1a0f5a797d94d5fef343241defa707ebcfece5c6e6d385e3a3c803dd",
+      "after_sha256": "0a8ed2cc822cb2b66302cdf675c1ddfd6a457120e34f57c020d8e801afc3daa9"
+    },
+    {
+      "source": "services/network/public/mojom/cookie_manager.mojom",
+      "before_sha256": "3ed5c72e99fe64ece31d627b3547b1bbd012e548b21b699d113c1da289816dbb",
+      "after_sha256": "06e9b875f5852e95aa6b3bb184e240c097dcd6b3ee31212c24f4ebb59dc73104"
+    },
+    {
+      "source": "services/network/test/test_cookie_manager.h",
+      "before_sha256": "48a9cfc0c56646b8367c0ed6e646d255da260b949f59b4be7348b39c403558ae",
+      "after_sha256": "715ba8f3bacef74bca15fb5a111c138c39396c50f138e17ce1e3d895d33fb41d"
+    },
+    {
+      "source": "services/network/test/test_cookie_manager.cc",
+      "before_sha256": "fbe722ec44c6d01931b48b0ad05743509c6b361d52f6c940a369cee6cbecf719",
+      "after_sha256": "893784ad695aea0590ef95b521dbf02d7b6ddf16eb41f251b2b00c0b32ef436c"
+    }
+  ],
+  "four_packet_composed_files": 27,
+  "forward_reverse_passed": true,
+  "full_candidate_composition_verified": false,
+  "legacy_schema_prefix_preserved": true,
+  "legacy_method_min_versions": {
+    "GetAllCookies": 0,
+    "GetAllCookiesWithAccessSemantics": 0,
+    "GetCookieList": 0,
+    "SetCanonicalCookie": 0,
+    "DeleteCanonicalCookie": 0,
+    "DeleteCookies": 0,
+    "DeleteSessionOnlyCookies": 0,
+    "DeleteStaleSessionOnlyCookies": 0,
+    "AddCookieChangeListener": 0,
+    "AddGlobalChangeListener": 0,
+    "CloneInterface": 0,
+    "FlushCookieStore": 0,
+    "AllowFileSchemeCookies": 0,
+    "SetContentSettings": 0,
+    "SetForceKeepSessionState": 0,
+    "BlockThirdPartyCookies": 0,
+    "SetPreCommitCallbackDelayForTesting": 0
+  },
+  "interface_version": 1,
+  "new_method_min_version": 1,
+  "browser_only_method": true,
+  "legacy_flush_bodies_preserved": true,
+  "bindings_generated": true,
+  "bindings_sha256": {
+    "services/network/public/mojom/cookie_manager.mojom-data-view.h": "2b9bbf22b1eacf8751cd16be721fb829ebfc757f9e3ed84976d80bcac3a5ba95",
+    "services/network/public/mojom/cookie_manager.mojom-features.h": "40b9927f71795f78de7063e76ca99d0b1d741d88d473106d23db6028bda5a4bf",
+    "services/network/public/mojom/cookie_manager.mojom-forward.h": "6db21f3eb4722978a0d6d1f8d60c5ee952c66c4f2c5deb3597842254b2be6bd6",
+    "services/network/public/mojom/cookie_manager.mojom-import-headers.h": "bdfee79eee934034152a9206d1f6433d9f8cec2870bff31bc8e4e535d8a4d142",
+    "services/network/public/mojom/cookie_manager.mojom-module": "099c245c6f00808d1ee25e11bac852862204688197083e609327113976adc1eb",
+    "services/network/public/mojom/cookie_manager.mojom-params-data.h": "49fee870a4165e948935437ec28789feae9f812f5f134f04ec9a19a7f7cf0317",
+    "services/network/public/mojom/cookie_manager.mojom-send-validation.h": "2619c2b4882d2f2a1e42929a1b269eea78606cb5de2ad480139297c76c491ac7",
+    "services/network/public/mojom/cookie_manager.mojom-shared-internal.h": "2e677eaf9c39872c55d3c4b0c047980dac4e79ddc4a2c5bf49c83d1cca65e4ad",
+    "services/network/public/mojom/cookie_manager.mojom-shared-message-ids.h": "566e76f40e78c7f4e6d4788b3db5239cc2590ac5d5ac2d88a7d14da256a0fea9",
+    "services/network/public/mojom/cookie_manager.mojom-shared.cc": "2581f0f457744b48031c0ab95f7b8b1a8a7e2e27de88dae5232e4828334fc3aa",
+    "services/network/public/mojom/cookie_manager.mojom-shared.h": "9c465746da315e018bd0a88f09ed956b8995c169546d92ba4c5316eb1b627cc4",
+    "services/network/public/mojom/cookie_manager.mojom-test-utils.h": "1dc8c34b76896870b6449c11c32b588272ef6f60044c721af09068ced14f2e74",
+    "services/network/public/mojom/cookie_manager.mojom.cc": "7de2457b8b5551afdd95b52b81baadd0d35ef00c55e1afbdfccd16869281ad30",
+    "services/network/public/mojom/cookie_manager.mojom.h": "7036a87c2598f19b8b633256b867501980fee2105fc86ce6bfdff5f347cc1561"
+  },
+  "bindings_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "type_checked_translation_units": 14,
+  "syntax_targets": [
+    {
+      "source": "net/cookies/cookie_store.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "152c3720f9ee3d856dca57033aa50291919b209c43acca95a71b3522a40dbc78",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "net/cookies/cookie_monster.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "273eff51d22107e0e3b059d32b0fe44e23ca1c56719e9163cf5df46a1d6d418b",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "af3f018bb0dc5178d7df63ca5000dae26c827199f155bde65aff0d8654c5425f",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "net/cookies/cookie_store_test_helpers.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "1c70a0c8a8f0f0cd8d3497e86bd1445b8a01a3d53dd21e72038acf45f8f71cfd",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "net/cookies/cookie_monster_store_test.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "16c462dd62f636797458728d55640003151b589ef1c0d3e27817b1961c8fbf29",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "net/cookies/cookie_monster_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "60f438943e244f0f20050e78cb15d428eff7032d9fb069b92991189b13b0a191",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "3a40f3f8d2ae7d91e2aa57b1fbacc3509fdf7507117816d4cc30e97dc7564abb",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "247145f528d88e27e495c0dbd1a144951d5a36e50141eff7af1708decfa6b374",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "services/network/cookie_manager.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "666622ece72dce1670a597c2e1f32047b98b35ff855afe9f787be5cf12442447",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "services/network/test/test_cookie_manager.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "b3224a68aec0b069e5d1ca9504eec54e4bc3c7a025ce71e927c425c70b043508",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "services/network/session_cleanup_cookie_store_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "3f3ffa1dad5dbcddb8bae0e0a7b2b4064300f88a9420e4e2bf5b66c3cebadf40",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "services/network/cookie_manager_unittest.cc",
+      "generated": false,
+      "returncode": 0,
+      "response_sha256": "17fd01b94eeab1ff512e1e04d572c3b78a30f05d1cbf1d3b9accd2de8bf45330",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "services/network/public/mojom/cookie_manager.mojom.cc",
+      "generated": true,
+      "returncode": 0,
+      "response_sha256": "97ee1a664927b592912384add23322a1df7ea38192210d269622c924d0dc9502",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "services/network/public/mojom/cookie_manager.mojom-shared.cc",
+      "generated": true,
+      "returncode": 0,
+      "response_sha256": "4305a1e8fbe50dff1fe00a6799ef74ed2cc9b8c0a385d69d24b55046870eaa00",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": "f65bdbbd0017c00ebc3662fd46fa0804aa4198e4a630de367463f997f95d3cfd",
+  "input_postguards_passed": true,
+  "active_core_unchanged": true,
+  "native_cases_prepared": [
+    {
+      "fixture": "CookieMonsterTest",
+      "name": "CheckpointRejectsMemoryOnlyStoreAsynchronously"
+    },
+    {
+      "fixture": "CookieMonsterTest",
+      "name": "CheckpointUnsupportedStoreDoesNotUseLegacyFlush"
+    },
+    {
+      "fixture": "CookieMonsterTest",
+      "name": "CheckpointForwardsSuccessAfterLoad"
+    },
+    {
+      "fixture": "CookieMonsterTest",
+      "name": "CheckpointLateSuccessAfterOwnerLossIsFailure"
+    },
+    {
+      "fixture": "CookieMonsterTest",
+      "name": "CheckpointDroppedBackingCompletionIsFailure"
+    },
+    {
+      "fixture": "CookieMonsterTest",
+      "name": "CheckpointLoadQueueOwnerLossFailsClosed"
+    },
+    {
+      "fixture": "CookieMonsterTest",
+      "name": "CheckpointDrainsPreviouslyReceivedHostWrite"
+    },
+    {
+      "fixture": "CookieMonsterTest",
+      "name": "CheckpointPropagatesBackingFailure"
+    },
+    {
+      "fixture": "SessionCleanupCookieStoreTest",
+      "name": "CheckpointForwardsDiskCommit"
+    },
+    {
+      "fixture": "SessionCleanupCookieStoreTest",
+      "name": "CheckpointWrapperLossRejectsLateSuccess"
+    },
+    {
+      "fixture": "CookieManagerTest",
+      "name": "CheckpointRejectsMemoryStoreOverPrivilegedPipe"
+    },
+    {
+      "fixture": "CookieManagerTest",
+      "name": "CheckpointVersionOneAndLegacyMethodRemainAvailable"
+    },
+    {
+      "fixture": "CookieManagerTest",
+      "name": "CheckpointOwnerLossRejectsPostedReply"
+    },
+    {
+      "fixture": "CookieManagerTest",
+      "name": "CheckpointPersistentStoreThroughCleanupWrapper"
+    },
+    {
+      "fixture": "CookieManagerTest",
+      "name": "CheckpointPersistentOwnerLossRejectsLateSuccess"
+    }
+  ],
+  "native_cases_executed": false,
+  "selected": false,
+  "canonical_sources_modified": false,
+  "compiled_browser": false,
+  "runtime_verified": false,
+  "profile_checkpoint_implemented": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "remaining": [
+    "Renderer/network producer fences and whole-profile partition/actor generation binding",
+    "Session-cookie persistence contract and capture of all profile storage backends",
+    "Browser checkpoint protocol and manager capability/lifecycle/cancellation binding",
+    "Linked native tests and real IPC/error/crash-after-ack verification",
+    "Full candidate composition/build, resources and guarded package delivery"
+  ]
+}

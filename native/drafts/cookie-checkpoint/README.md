@@ -42,8 +42,9 @@ prior/new SQL errors, encryption failure and abandoned background work.
 
 ## Still required
 
-- Forward status through PersistentCookieStore, CookieMonster and cleanup wrappers.
-- Add versioned privileged CookieManager completion and owner/generation checks.
+- Validate the [prepared forwarding/IPC extension](../cookie-checkpoint-ipc/README.md)
+  through PersistentCookieStore, CookieMonster, cleanup wrappers and CookieManager.
+- Establish whole-profile ownership/generation and capability admission beyond that source extension.
 - Fence renderer/network producers and capture all owned partitions/actors.
 - Bind the manager's lifecycle, cancellation and partial-write semantics.
 - Run linked native tests, real error injection and browser crash immediately after acknowledgment.

@@ -23,9 +23,13 @@ SQL/encryption/cleanup errors and rejects late replies after frontend destructio
 Its atomic lifetime marker preserves existing cross-sequence load ownership;
 legacy Flush is unchanged. Thirteen isolated files compose/reverse; the new
 cookie implementation and fixture type-check, but nine cases are not executed.
-CookieMonster/wrapper forwarding and privileged CookieManager IPC are still
-missing. These drafts do not fence renderer/network producers or activate a
-checkpoint capability in the current R11 runtime.
+[Cookie forwarding/IPC](drafts/cookie-checkpoint-ipc/README.md) extends that source
+chain through the cleanup wrapper and CookieMonster's existing load/task queue
+to a version-1 browser-only CookieManager method. Late replies and discarded
+completions fail closed. Four packets compose/reverse across 27 files; fourteen
+cookie C++ units type-check, while fifteen additional native cases remain unexecuted.
+These drafts do not fence renderer/network producers, establish the whole-profile
+session-cookie contract or activate a checkpoint capability in the R11 runtime.
 
 ## 2026-11-02: R11 integration control and selected storage/crash recovery
 

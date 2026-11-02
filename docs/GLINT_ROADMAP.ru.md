@@ -1,5 +1,19 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: cookie completion reaches privileged IPC in source
+
+[Cookie forwarding extension](../native/drafts/cookie-checkpoint-ipc/README.md)
+connects SQLite status through the cleanup wrapper and CookieMonster to a
+browser-only CookieManager method at interface version 1. The load/task queue
+orders previously received host mutations before committing. Unsupported stores,
+lost owners and abandoned completions fail explicitly; old Flush is unchanged.
+
+Four source packets compose/reverse across 27 files. Fresh bindings and fourteen
+C++ units type-check. Fifteen additional native cases are prepared, **not executed**;
+R11 and its recorded no-checkpoint losses remain unchanged. Next are network/
+renderer producer fences, whole-profile generations, the session-cookie contract
+and manager cancellation, followed by linked tests and crash-after-ack admission.
+
 ## 2026-11-02: cookie commit completion prepared
 
 [Cookie checkpoint prerequisite](../native/drafts/cookie-checkpoint/README.md)
