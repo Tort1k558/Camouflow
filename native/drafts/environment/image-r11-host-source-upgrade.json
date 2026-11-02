@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "patch": "image-r11-host-source-upgrade.patch",
+  "patch_sha256": "b1e8e120b8aaf1c730c57ab7bb9428a24a982d903e58b742cbfdbdc50fe29a8e",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "5554d2bb847d9a1bfeaa7d9c232179fcca32e7fb492a7e6beb805501793b9917",
+      "after_sha256": "7132f2328fe49008ba2bdafe58f207e9fb6e323187efad849b4b0b91019a6a15"
+    },
+    {
+      "source": "scripts/verify_native_privacy_units.py",
+      "before_sha256": "a489cff24a12f40bca9530ec5b400be77033397ad3a63e1f677e72211b831f3a",
+      "after_sha256": "c6ab3f9e44cf2c4e3eeee568305def92cdfe72eb36086554963a4e5ae76c530a"
+    }
+  ],
+  "scope": "Reversible R11 candidate and five opaque source unit registration; exact R10 host source bytes preserved",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

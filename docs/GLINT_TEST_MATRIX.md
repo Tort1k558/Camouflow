@@ -1,5 +1,15 @@
 # Glint browser test matrix
 
+## 2026-11-02: R11 registered with exact opaque-source native group
+
+[R11](../native/drafts/upstream-156-image-r11/README.md) registers the complete
+136-patch recipe and five-case gpu-opaque-sources group. The existing 28 groups
+and binary mappings are unchanged; exact R10 host source bytes are archived
+reversibly. Build pins, maximum j4 and the 180 GiB reserve remain unchanged.
+Next: full current host regression, verified rollback/source transition, Windows
+build and all native groups, then original opaque/frame and matched GPU checks.
+Registration does not execute cases, repair R10 or activate manager admission.
+
 ## 2026-11-02: complete R11 source preparation, not a new runtime
 
 [Full repair-chain replay](../native/drafts/canvas-opaque-sources/full-composition-observations.json)

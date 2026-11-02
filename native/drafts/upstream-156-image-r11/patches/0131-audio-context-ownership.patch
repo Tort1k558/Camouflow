@@ -1,0 +1,455 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.h b/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
+@@ -118,6 +118,8 @@
+   bool HasPendingActivity() const final;
+ 
+  private:
++  friend class OfflineAudioContextTestPeer;
++  void ClearGlintAudioPartitionSeed();
+   void DetachPendingResolvers() override;
+ 
+   // Fetch directly the destination handler.
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+@@ -28,6 +28,7 @@
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "media/base/audio_glitch_info.h"
++#include "third_party/boringssl/src/include/openssl/mem.h"
+ #include "third_party/blink/public/platform/platform.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_offline_audio_context_options.h"
+@@ -48,6 +49,7 @@
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/bindings/script_state.h"
+ #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
+ #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
+ #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
+ #include "third_party/blink/renderer/platform/wtf/math_extras.h"
+@@ -56,6 +58,22 @@
+ namespace blink {
+ 
+ namespace {
++
++void ClearGlintAudioSeed(std::optional<std::array<uint8_t, 32>>& seed) {
++  if (seed) {
++    OPENSSL_cleanse(seed->data(), seed->size());
++    seed.reset();
++  }
++}
++
++struct ScopedGlintAudioSeed {
++  glint::candidate::SurfaceSeedResult result;
++  ~ScopedGlintAudioSeed() {
++    if (result.has_value()) {
++      ClearGlintAudioSeed(result.value());
++    }
++  }
++};
+ 
+ OfflineAudioContext* CreateOfflineAudioContext(
+     ExecutionContext* context,
+@@ -193,6 +211,7 @@
+ }
+ 
+ OfflineAudioContext::~OfflineAudioContext() {
++  ClearGlintAudioPartitionSeed();
+ #if DEBUG_AUDIONODE_REFERENCES
+   fprintf(stderr, "[%16p]: OfflineAudioContext::~OfflineAudioContext()\n",
+           this);
+@@ -255,31 +274,26 @@
+     return EmptyPromise();
+   }
+   // Math-only processing and v1 post-read farbling are mutually exclusive.
+-  const auto seed =
++  ScopedGlintAudioSeed seed{
+       *pipeline == glint::candidate::AudioMathPipeline::kLegacyReadback
+           ? glint::candidate::SurfacePartitionSeed(
+                 GetExecutionContext(),
+                 glint::candidate::SurfaceSeedKind::kAudio)
+           : glint::candidate::SurfaceSeedResult(
+-                std::optional<std::array<uint8_t, 32>>{});
+-  if (!seed.has_value()) {
++                std::optional<std::array<uint8_t, 32>>{})};
++  if (!seed.result.has_value()) {
+     exception_state.ThrowDOMException(DOMExceptionCode::kNotReadableError,
+                                      "Glint offline Audio policy is unavailable.");
+     return EmptyPromise();
+   }
+-  glint_audio_partition_seed_ = seed.value();
+   float sample_rate = DestinationHandler().SampleRate();
+   unsigned number_of_channels = DestinationHandler().NumberOfChannels();
+-  if (glint_audio_partition_seed_ &&
++  if (seed.result.value() &&
+       !glint::candidate::CanCopyOfflineAudio(number_of_channels, total_render_frames_)) {
+     exception_state.ThrowDOMException(DOMExceptionCode::kNotReadableError,
+                                      "Glint offline Audio copy exceeds its allocation budget.");
+     return EmptyPromise();
+   }
+-
+-  complete_resolver_ = MakeGarbageCollected<ScriptPromiseResolver<AudioBuffer>>(
+-      script_state, exception_state.GetContext());
+-  complete_resolver_->SuppressDetachCheck();
+ 
+   // Allocate the AudioBuffer to hold the rendered result.
+ 
+@@ -295,6 +309,12 @@
+                 String::Number(sample_rate), ")"}));
+     return EmptyPromise();
+   }
++
++  complete_resolver_ = MakeGarbageCollected<ScriptPromiseResolver<AudioBuffer>>(
++      script_state, exception_state.GetContext());
++  complete_resolver_->SuppressDetachCheck();
++
++  glint_audio_partition_seed_ = seed.result.value();
+ 
+   DestinationHandler().EnsureOfflineRenderThreadInitialized();
+   DestinationHandler().SetSharedRenderTarget(render_target);
+@@ -452,50 +472,45 @@
+   return ToResolvedUndefinedPromise(script_state);
+ }
+ 
++void OfflineAudioContext::ClearGlintAudioPartitionSeed() {
++  ClearGlintAudioSeed(glint_audio_partition_seed_);
++}
++
+ void OfflineAudioContext::FireCompletionEvent() {
+   DCHECK(IsMainThread());
+-
+-  // Context is finished, so remove any tail processing nodes; there's nowhere
+-  // for the output to go.
++  if (!complete_resolver_) {
++    ClearGlintAudioPartitionSeed();
++    is_rendering_started_ = false;
++    return;
++  }
++  // Claim completion before any event can detach or re-enter this context.
++  auto resolver = WrapPersistent(complete_resolver_.Get());
++  complete_resolver_ = nullptr;
++
+   GetDeferredTaskHandler().FinishTailProcessing();
+-
+-  // We set the state to closed here so that the oncomplete event handler sees
+-  // that the context has been closed.
+   SetContextState(V8AudioContextState::Enum::kClosed);
+-
+-  // Avoid firing the event if the document has already gone away.
+   if (GetExecutionContext()) {
+-    AudioBuffer* rendered_buffer =
+-        destinationNode()
+-            ->DestinationBuffer();
+-    DCHECK(rendered_buffer);
+-    if (!rendered_buffer) {
+-      return;
+-    }
+-
+-    if (glint_audio_partition_seed_) {
+-      // Transform a detached result once, before either observable exposure.
++    AudioBuffer* rendered_buffer = destinationNode()->DestinationBuffer();
++    if (rendered_buffer && glint_audio_partition_seed_) {
+       rendered_buffer = glint::candidate::CopyOfflineAudioBuffer(
+           *rendered_buffer, *glint_audio_partition_seed_);
+     }
++    ClearGlintAudioPartitionSeed();
+     if (!rendered_buffer) {
+-      complete_resolver_->Reject(MakeGarbageCollected<DOMException>(
++      resolver->Reject(MakeGarbageCollected<DOMException>(
+           DOMExceptionCode::kNotReadableError,
+           "Glint offline Audio readback could not be completed."));
+     } else {
+-      // Keep the same live mutable AudioBuffer for the event and the Promise.
++      // Event and Promise share the same live mutable buffer.
+       DispatchEvent(*OfflineAudioCompletionEvent::Create(rendered_buffer));
+-      complete_resolver_->Resolve(rendered_buffer);
++      resolver->Resolve(rendered_buffer);
+     }
+-    complete_resolver_ = nullptr;
+   } else {
+-    // The resolver should be rejected when the execution context is gone.
+-    complete_resolver_->Reject(MakeGarbageCollected<DOMException>(
++    ClearGlintAudioPartitionSeed();
++    resolver->Reject(MakeGarbageCollected<DOMException>(
+         DOMExceptionCode::kInvalidStateError,
+         "the execution context does not exist"));
+-    complete_resolver_ = nullptr;
+-  }
+-
++  }
+   is_rendering_started_ = false;
+ }
+ 
+@@ -575,6 +590,15 @@
+ 
+ void OfflineAudioContext::RejectPendingResolvers() {
+   DCHECK(IsMainThread());
++  // Uninitialize stops the rendering thread before reaching this hook.
++  auto resolver = WrapPersistent(complete_resolver_.Get());
++  complete_resolver_ = nullptr;
++  ClearGlintAudioPartitionSeed();
++  is_rendering_started_ = false;
++  if (resolver) {
++    resolver->Reject(MakeGarbageCollected<DOMException>(
++        DOMExceptionCode::kInvalidStateError, "Audio context is going away"));
++  }
+ 
+   {
+     base::AutoLock locker(suspend_frames_lock_);
+@@ -601,21 +625,23 @@
+ 
+ void OfflineAudioContext::DetachPendingResolvers() {
+   DCHECK(IsMainThread());
+-
+-  {
+-    base::AutoLock locker(suspend_frames_lock_);
+-    scheduled_suspend_frames_.clear();
+-  }
+-
+-  for (auto& entry : scheduled_suspends_) {
+-    entry.value->SuppressDetachCheck();
+-  }
+-  scheduled_suspends_.clear();
+-
+   if (complete_resolver_) {
+     complete_resolver_->SuppressDetachCheck();
+     complete_resolver_ = nullptr;
+   }
++
++  ClearGlintAudioPartitionSeed();
++  is_rendering_started_ = false;
++
++  {
++    base::AutoLock locker(suspend_frames_lock_);
++    scheduled_suspend_frames_.clear();
++  }
++
++  for (auto& entry : scheduled_suspends_) {
++    entry.value->SuppressDetachCheck();
++  }
++  scheduled_suspends_.clear();
+ 
+   BaseAudioContext::DetachPendingResolvers();
+ }
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+@@ -3,11 +3,13 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_context.h"
++#include "third_party/blink/renderer/modules/webaudio/offline_audio_completion_event.h"
+ 
+ #include <algorithm>
+ #include <memory>
+ #include <utility>
+ 
++#include "base/containers/span.h"
+ #include "base/test/scoped_feature_list.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "third_party/blink/public/common/features.h"
+@@ -19,6 +21,8 @@
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_offline_audio_context_options.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_union_audiocontextrendersizecategory_unsignedlong.h"
+ #include "third_party/blink/renderer/core/dom/document.h"
++#include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
++#include "third_party/blink/renderer/core/event_type_names.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+@@ -40,6 +44,75 @@
+ namespace blink {
+ 
+ class OfflineAudioContextTest : public PageTestBase {};
++
++
++class OfflineAudioContextTestPeer {
++ public:
++  static bool HasSeed(const OfflineAudioContext& context) {
++    return context.glint_audio_partition_seed_.has_value();
++  }
++  static bool HasResolver(const OfflineAudioContext& context) {
++    return context.complete_resolver_ != nullptr;
++  }
++  static base::span<const uint8_t, 32> SeedBytes(
++      const OfflineAudioContext& context) {
++    return base::span(*context.glint_audio_partition_seed_);
++  }
++  static void Detach(OfflineAudioContext& context) {
++    context.DetachPendingResolvers();
++  }
++  static ScriptPromise<AudioBuffer> Prime(OfflineAudioContext& context,
++                                         ScriptState* script_state,
++                                         bool with_buffer = true) {
++    std::array<uint8_t, 32> seed;
++    seed.fill(27);
++    context.glint_audio_partition_seed_ = seed;
++    context.complete_resolver_ =
++        MakeGarbageCollected<ScriptPromiseResolver<AudioBuffer>>(script_state);
++    context.complete_resolver_->SuppressDetachCheck();
++    context.is_rendering_started_ = true;
++    if (with_buffer) {
++      auto* buffer = AudioBuffer::CreateUninitialized(1, 128, 44100);
++      CHECK(buffer);
++      std::ranges::fill(buffer->getChannelData(0)->AsSpan(), 0.25f);
++      context.destinationNode()->SetDestinationBuffer(buffer);
++    }
++    return context.complete_resolver_->Promise();
++  }
++};
++
++class GlintOfflineCompletionListener final : public NativeEventListener {
++ public:
++  enum class Action { kNone, kDetach, kReenter };
++  GlintOfflineCompletionListener(OfflineAudioContext* context, Action action)
++      : context_(context), action_(action) {}
++  void Invoke(ExecutionContext*, Event* event) override {
++    ++calls;
++    seed_during_callback = OfflineAudioContextTestPeer::HasSeed(*context_);
++    resolver_during_callback = OfflineAudioContextTestPeer::HasResolver(*context_);
++    buffer_ = static_cast<OfflineAudioCompletionEvent*>(event)->renderedBuffer();
++    buffer_->getChannelData(0)->AsSpan()[0] = 0.375f;
++    if (action_ == Action::kDetach) {
++      OfflineAudioContextTestPeer::Detach(*context_);
++    } else if (action_ == Action::kReenter) {
++      context_->FireCompletionEvent();
++    }
++  }
++  AudioBuffer* buffer() const { return buffer_.Get(); }
++  void Trace(Visitor* visitor) const override {
++    visitor->Trace(context_);
++    visitor->Trace(buffer_);
++    NativeEventListener::Trace(visitor);
++  }
++  unsigned calls = 0;
++  bool seed_during_callback = false;
++  bool resolver_during_callback = false;
++
++ private:
++  Member<OfflineAudioContext> context_;
++  Member<AudioBuffer> buffer_;
++  Action action_;
++};
+ 
+ TEST_F(OfflineAudioContextTest, RenderSizeHint) {
+   V8TestingScope scope;
+@@ -257,6 +330,8 @@
+   EXPECT_TRUE(exception.HadException());
+   EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(), DOMExceptionCode::kNotReadableError);
+   EXPECT_EQ(context->state().AsStringView(), "suspended");
++  EXPECT_FALSE(OfflineAudioContextTestPeer::HasSeed(*context));
++  EXPECT_FALSE(OfflineAudioContextTestPeer::HasResolver(*context));
+ }
+ 
+ TEST_F(OfflineAudioContextTest, GlintMathDisabledCaptureRemainsLegacy) {
+@@ -547,4 +622,108 @@
+   }
+ }
+ 
++
++TEST_F(OfflineAudioContextTest, GlintRejectClearsSeedAndBlocksLateCompletion) {
++  auto holder = GlintOfflineAudioPolicyHolder(true, 27);
++  ASSERT_TRUE(holder);
++  Persistent<OfflineAudioContext> context = OfflineAudioContext::Create(
++      holder->GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++  V8TestingScope scope(std::move(holder));
++  ScriptPromiseTester tester(scope.GetScriptState(),
++      OfflineAudioContextTestPeer::Prime(*context, scope.GetScriptState()));
++  const auto seed_bytes = OfflineAudioContextTestPeer::SeedBytes(*context);
++  auto* listener = MakeGarbageCollected<GlintOfflineCompletionListener>(
++      context, GlintOfflineCompletionListener::Action::kNone);
++  context->addEventListener(event_type_names::kComplete, listener);
++  context->RejectPendingResolvers();
++  tester.WaitUntilSettled();
++  EXPECT_TRUE(tester.IsRejected());
++  EXPECT_FALSE(OfflineAudioContextTestPeer::HasSeed(*context));
++  EXPECT_FALSE(OfflineAudioContextTestPeer::HasResolver(*context));
++  for (uint8_t value : seed_bytes) {
++    EXPECT_EQ(value, 0);
++  }
++  context->FireCompletionEvent();
++  EXPECT_EQ(listener->calls, 0u);
++  EXPECT_TRUE(tester.IsRejected());
++}
++
++TEST_F(OfflineAudioContextTest, GlintDetachClearsSeedWithoutPublishingRawCompletion) {
++  auto holder = GlintOfflineAudioPolicyHolder(true, 27);
++  ASSERT_TRUE(holder);
++  Persistent<OfflineAudioContext> context = OfflineAudioContext::Create(
++      holder->GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++  V8TestingScope scope(std::move(holder));
++  ScriptPromiseTester tester(scope.GetScriptState(),
++      OfflineAudioContextTestPeer::Prime(*context, scope.GetScriptState()));
++  const auto seed_bytes = OfflineAudioContextTestPeer::SeedBytes(*context);
++  auto* listener = MakeGarbageCollected<GlintOfflineCompletionListener>(
++      context, GlintOfflineCompletionListener::Action::kNone);
++  context->addEventListener(event_type_names::kComplete, listener);
++  OfflineAudioContextTestPeer::Detach(*context);
++  EXPECT_FALSE(OfflineAudioContextTestPeer::HasSeed(*context));
++  EXPECT_FALSE(OfflineAudioContextTestPeer::HasResolver(*context));
++  for (uint8_t value : seed_bytes) {
++    EXPECT_EQ(value, 0);
++  }
++  context->FireCompletionEvent();
++  test::RunPendingTasks();
++  EXPECT_EQ(listener->calls, 0u);
++  EXPECT_FALSE(tester.IsFulfilled());
++  EXPECT_FALSE(tester.IsRejected());
++}
++
++TEST_F(OfflineAudioContextTest, GlintCompletionClaimsResolverAndClearsSeedBeforeCallbacks) {
++  using Action = GlintOfflineCompletionListener::Action;
++  for (Action action : {Action::kNone, Action::kDetach, Action::kReenter}) {
++    auto holder = GlintOfflineAudioPolicyHolder(true, 27);
++    ASSERT_TRUE(holder);
++    Persistent<OfflineAudioContext> context = OfflineAudioContext::Create(
++        holder->GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++    V8TestingScope scope(std::move(holder));
++    ScriptPromiseTester tester(scope.GetScriptState(),
++        OfflineAudioContextTestPeer::Prime(*context, scope.GetScriptState()));
++    auto* original_buffer = context->destinationNode()->DestinationBuffer();
++    auto* listener = MakeGarbageCollected<GlintOfflineCompletionListener>(context, action);
++    context->addEventListener(event_type_names::kComplete, listener);
++    context->FireCompletionEvent();
++    tester.WaitUntilSettled();
++    ASSERT_TRUE(tester.IsFulfilled());
++    auto* result = ToScriptWrappable<AudioBuffer>(scope.GetIsolate(),
++        tester.Value().V8Value().As<v8::Object>());
++    EXPECT_EQ(listener->calls, 1u);
++    EXPECT_FALSE(listener->seed_during_callback);
++    EXPECT_FALSE(listener->resolver_during_callback);
++    EXPECT_EQ(result, listener->buffer());
++    ASSERT_NE(result, original_buffer);
++    EXPECT_EQ(result->getChannelData(0)->AsSpan()[0], 0.375f);
++    EXPECT_EQ(original_buffer->getChannelData(0)->AsSpan()[0], 0.25f);
++    EXPECT_FALSE(OfflineAudioContextTestPeer::HasSeed(*context));
++    EXPECT_FALSE(OfflineAudioContextTestPeer::HasResolver(*context));
++  }
++}
++
++TEST_F(OfflineAudioContextTest, GlintMissingDestinationRejectsAndClearsCapturedSeed) {
++  auto holder = GlintOfflineAudioPolicyHolder(true, 27);
++  ASSERT_TRUE(holder);
++  Persistent<OfflineAudioContext> context = OfflineAudioContext::Create(
++      holder->GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++  V8TestingScope scope(std::move(holder));
++  ScriptPromiseTester tester(scope.GetScriptState(),
++      OfflineAudioContextTestPeer::Prime(*context, scope.GetScriptState(), false));
++  const auto seed_bytes = OfflineAudioContextTestPeer::SeedBytes(*context);
++  auto* listener = MakeGarbageCollected<GlintOfflineCompletionListener>(
++      context, GlintOfflineCompletionListener::Action::kNone);
++  context->addEventListener(event_type_names::kComplete, listener);
++  context->FireCompletionEvent();
++  tester.WaitUntilSettled();
++  EXPECT_TRUE(tester.IsRejected());
++  EXPECT_EQ(listener->calls, 0u);
++  EXPECT_FALSE(OfflineAudioContextTestPeer::HasSeed(*context));
++  EXPECT_FALSE(OfflineAudioContextTestPeer::HasResolver(*context));
++  for (uint8_t value : seed_bytes) {
++    EXPECT_EQ(value, 0);
++  }
++}
++
+ }  // namespace blink

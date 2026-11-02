@@ -203,7 +203,7 @@ NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-r
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
                      "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics", "screen-widget", "screen-orientation",
-                     "screen-live-main", "screen-dispatch", "screenshot-transaction", "surface-launch", "audio-lifecycle", "canvas-rendering", "gpu-image-sources")
+                     "screen-live-main", "screen-dispatch", "screenshot-transaction", "surface-launch", "audio-lifecycle", "canvas-rendering", "gpu-image-sources", "gpu-opaque-sources")
 
 SCREENSHOT_TRANSACTION_TESTS = {"GlintScreenshotEmulationTest": {
     "CrossSessionUsesEffectiveParameters", "TemporaryReadbackNeverClaimsPersistentOwnership",
@@ -341,7 +341,20 @@ GPU_IMAGE_SOURCE_TESTS = {
 }
 
 
+GPU_OPAQUE_SOURCE_TESTS = {
+    "GlintOpaqueCanvasImageSourceTest": {
+        "NormalizesRGBXToTheExistingRGBAOracle",
+        "KeepsOpaqueAlphaOriginOrientationAndSource",
+        "RetainsTheExactDetachedCopyBudget",
+        "OwnedRGBXStillRequiresNormalization",
+        "DoesNotAdmitUnknownFormatsOrColourSpaces",
+    },
+}
+
+
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "gpu-opaque-sources":
+        return GPU_OPAQUE_SOURCE_TESTS
     if target == "gpu-image-sources":
         return GPU_IMAGE_SOURCE_TESTS
     if target == "canvas-rendering":
@@ -578,12 +591,14 @@ def require_target_sources(source: Path, patches: list[dict], target: str) -> di
     if target == "screen-widget":
         required_patches.update({"0069-native-logical-screen-inheritance.patch",
                                  "0070-native-logical-screen-lifecycle.patch"})
-    if target == "gpu-image-sources":
+    if target in {"gpu-image-sources", "gpu-opaque-sources"}:
         required_patches.update({"0033-native-surface-readback.patch",
                                  "0123-profile-surface-launch.patch", "0132-canvas-rendering-v2.patch",
                                  "0133-native-gpu-image-sources.patch",
                                  "0134-native-canvas-frame-provenance.patch",
                                  "0135-native-canvas-owned-raster.patch"})
+    if target == "gpu-opaque-sources":
+        required_patches.add("0136-native-opaque-gpu-image-sources.patch")
     if target == "canvas-rendering":
         required_patches.update({"0123-profile-surface-launch.patch", "0132-canvas-rendering-v2.patch"})
     if target == "screen-metrics":
@@ -669,7 +684,7 @@ def unit_binary_target(target: str) -> str:
     return ("blink_common_unittests" if target in {"screen-metrics", "canvas-rendering"} else
                     "gfx_unittests" if target == "font-rasterization" else
                     "gpu_unittests" if target == "gpu-metadata" else
-                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "gpu-image-sources", "identity-handoff", "audio-math", "audio-lifecycle", "screen-widget", "screen-orientation"} else
+                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "gpu-image-sources", "gpu-opaque-sources", "identity-handoff", "audio-math", "audio-lifecycle", "screen-widget", "screen-orientation"} else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
 
 
@@ -677,14 +692,16 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
            target: str = "keys", candidate_name: str | None = None,
            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
     required = required_tests(target)
-    if target == "gpu-image-sources" and candidate_name != "upstream-156-image-r10":
-        raise ValueError("GPU image-source units require the exact upstream-156-image-r10 candidate")
-    if target == "canvas-rendering" and candidate_name not in {"upstream-156-canvas-r9", "upstream-156-image-r10"}:
-        raise ValueError("Canvas rendering units require the exact upstream-156-canvas-r9 or upstream-156-image-r10 candidate")
-    if target == "audio-lifecycle" and candidate_name not in {"upstream-156-audio-r8", "upstream-156-canvas-r9", "upstream-156-image-r10"}:
-        raise ValueError("Audio lifecycle units require the exact upstream-156-audio-r8 or upstream-156-canvas-r9 or upstream-156-image-r10 candidate")
-    if target == "surface-launch" and candidate_name not in {"upstream-156-webgpu-r5", "upstream-156-webgpu-r6", "upstream-156-webgpu-r7", "upstream-156-audio-r8", "upstream-156-canvas-r9", "upstream-156-image-r10"}:
-        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 or upstream-156-webgpu-r6 or upstream-156-webgpu-r7 or upstream-156-audio-r8 or upstream-156-canvas-r9 or upstream-156-image-r10 candidate")
+    if target == "gpu-opaque-sources" and candidate_name != "upstream-156-image-r11":
+        raise ValueError("Opaque GPU source units require the exact upstream-156-image-r11 candidate")
+    if target == "gpu-image-sources" and candidate_name not in {"upstream-156-image-r10", "upstream-156-image-r11"}:
+        raise ValueError("GPU image-source units require the exact upstream-156-image-r10 or upstream-156-image-r11 candidate")
+    if target == "canvas-rendering" and candidate_name not in {"upstream-156-canvas-r9", "upstream-156-image-r10", "upstream-156-image-r11"}:
+        raise ValueError("Canvas rendering units require the exact upstream-156-canvas-r9 or upstream-156-image-r10 or upstream-156-image-r11 candidate")
+    if target == "audio-lifecycle" and candidate_name not in {"upstream-156-audio-r8", "upstream-156-canvas-r9", "upstream-156-image-r10", "upstream-156-image-r11"}:
+        raise ValueError("Audio lifecycle units require the exact upstream-156-audio-r8 or upstream-156-canvas-r9 or upstream-156-image-r10 or upstream-156-image-r11 candidate")
+    if target == "surface-launch" and candidate_name not in {"upstream-156-webgpu-r5", "upstream-156-webgpu-r6", "upstream-156-webgpu-r7", "upstream-156-audio-r8", "upstream-156-canvas-r9", "upstream-156-image-r10", "upstream-156-image-r11"}:
+        raise ValueError("Surface launch units require the exact upstream-156-webgpu-r5 or upstream-156-webgpu-r6 or upstream-156-webgpu-r7 or upstream-156-audio-r8 or upstream-156-canvas-r9 or upstream-156-image-r10 or upstream-156-image-r11 candidate")
     if target == "screenshot-transaction" and candidate_name not in CANDIDATES:
         raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
     if target in LIVE_SCREEN_TESTS and candidate_name not in CANDIDATES:
@@ -743,7 +760,9 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("GPU image-source, frame-owner commitment and single-raster copy units; not browser GPU/worker/resource or package admission"
+    scope = ("Opaque RGBX source normalization, ownership and budget units; not browser image/frame or package admission"
+             if target == "gpu-opaque-sources" else
+             "GPU image-source, frame-owner commitment and single-raster copy units; not browser GPU/worker/resource or package admission"
              if target == "gpu-image-sources" else
              "Explicit Canvas rendering version/preset and switch-consistency units; not browser routing or device-cohort admission"
              if target == "canvas-rendering" else

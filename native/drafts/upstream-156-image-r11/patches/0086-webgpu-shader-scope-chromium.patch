@@ -1,0 +1,91 @@
+diff --git a/gpu/command_buffer/service/glint_webgpu_readback_observer.h b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -41,6 +41,7 @@
+                      uint64_t size,
+                      dawn::native::GlintBufferWriteKind kind) override;
+   void OnBufferDestroyed(WGPUBuffer buffer) override;
++  void OnShaderScope(const dawn::native::GlintShaderScope& scope) override;
+   dawn::native::GlintReadbackMapStatus ClassifyReadMap(
+       dawn::native::GlintBufferIdentity buffer,
+       uint64_t offset,
+diff --git a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -227,6 +227,76 @@
+   }
+   Collect();
+ }
++void GlintWebGPUReadbackObserver::OnShaderScope(
++    const dawn::native::GlintShaderScope& scope) {
++  const auto uses = scope.buffers;
++  std::lock_guard lock(mutex_);
++  if (failed_) {
++    return;
++  }
++  if (!scope.complete ||
++      uses.size() > dawn::native::kGlintShaderBufferUseLimit ||
++      uses.size() > limits_.buffers) {
++    Fail();
++    return;
++  }
++  const uint64_t sequence = NextSequence();
++  if (!sequence) {
++    return;
++  }
++  bool derived = scope.hasTextureInputs;
++  // Inspect all inputs before mutating any output, including read-write
++  // aliases.
++  for (size_t index = 0; index < uses.size(); ++index) {
++    const auto& use = uses[index];
++    if (!use.buffer.handle ||
++        use.buffer.size > std::numeric_limits<size_t>::max()) {
++      Fail();
++      return;
++    }
++    for (size_t previous = 0; previous < index; ++previous) {
++      if (uses[previous].buffer.handle == use.buffer.handle) {
++        Fail();
++        return;
++      }
++    }
++    const auto found = buffers_.find(use.buffer.handle);
++    if (found == buffers_.end()) {
++      continue;
++    }
++    if (found->second.size != use.buffer.size) {
++      Fail();
++      return;
++    }
++    if (use.readable &&
++        (found->second.unsafe ||
++         found->second.provenance.PlanMap(0, use.buffer.size).status !=
++             WebGpuMapProvenance::kUnrelated)) {
++      derived = true;
++    }
++  }
++  for (const auto& use : uses) {
++    if (!use.writable) {
++      continue;
++    }
++    // Ordinary untracked buffer-only compute does not consume tracking slots.
++    if (!derived && !buffers_.contains(use.buffer.handle)) {
++      continue;
++    }
++    auto* output = GetBuffer(use.buffer);
++    if (!output) {
++      return;
++    }
++    if (derived || !output->provenance.RecordUncertainWrite(sequence, 0,
++                                                            use.buffer.size)) {
++      output->unsafe = true;
++    }
++  }
++  // Denial is an interim safety barrier, not compatible shader pixel
++  // protection.
++  Collect();
++}
++
+ void GlintWebGPUReadbackObserver::OnBufferDestroyed(WGPUBuffer buffer) {
+   std::lock_guard lock(mutex_);
+   buffers_.erase(buffer);

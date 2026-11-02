@@ -1,0 +1,377 @@
+diff --git a/third_party/blink/public/common/native_privacy/glint/canvas_rendering_policy.h b/third_party/blink/public/common/native_privacy/glint/canvas_rendering_policy.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/canvas_rendering_policy.h
+@@ -0,0 +1,78 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_CANVAS_RENDERING_POLICY_H_
++#define GLINT_CANVAS_RENDERING_POLICY_H_
++
++#include <optional>
++#include <string_view>
++
++namespace glint::candidate {
++inline constexpr char kCanvasPipelineVersionSwitch[] =
++    "glint-canvas-pipeline-version";
++inline constexpr char kCanvasRenderingPresetSwitch[] =
++    "glint-canvas-rendering-preset";
++
++enum class CanvasPipeline { kReadbackV1, kRenderingV2 };
++enum class CanvasRenderingPreset {
++  kNative, kAliased, kGrayscale, kClearTypeRgb, kClearTypeBgr,
++  kGamma1400Contrast300, kGamma2200Contrast500,
++};
++struct CanvasRenderingPolicy {
++  CanvasPipeline pipeline;
++  CanvasRenderingPreset preset;
++};
++struct CanvasRenderingInput {
++  std::optional<std::string_view> version;
++  std::optional<std::string_view> preset;
++  std::optional<std::string_view> rasterization;
++  std::optional<std::string_view> gamma;
++  std::optional<std::string_view> contrast;
++};
++
++// No profile migration or random selection. Version 2 must match the actual
++// native font switches; a descriptive preset alone cannot change the pipeline.
++constexpr std::optional<CanvasRenderingPolicy> ParseCanvasRenderingPolicy(
++    const CanvasRenderingInput& input) {
++  if (!input.version || *input.version == "1") {
++    if (input.preset) {
++      return std::nullopt;
++    }
++    return CanvasRenderingPolicy{CanvasPipeline::kReadbackV1,
++                                 CanvasRenderingPreset::kNative};
++  }
++  if (*input.version != "2" || !input.preset) {
++    return std::nullopt;
++  }
++  const bool native_raster = !input.rasterization ||
++                            *input.rasterization == "native";
++  const bool native_tuning = !input.gamma && !input.contrast;
++  const auto selected = *input.preset;
++  std::optional<CanvasRenderingPreset> preset;
++  if (selected == "native" && native_raster && native_tuning) {
++    preset = CanvasRenderingPreset::kNative;
++  } else if (selected == "aliased" && input.rasterization == "aliased" &&
++             native_tuning) {
++    preset = CanvasRenderingPreset::kAliased;
++  } else if (selected == "grayscale" && input.rasterization == "grayscale" &&
++             native_tuning) {
++    preset = CanvasRenderingPreset::kGrayscale;
++  } else if (selected == "cleartype-rgb" &&
++             input.rasterization == "cleartype-rgb" && native_tuning) {
++    preset = CanvasRenderingPreset::kClearTypeRgb;
++  } else if (selected == "cleartype-bgr" &&
++             input.rasterization == "cleartype-bgr" && native_tuning) {
++    preset = CanvasRenderingPreset::kClearTypeBgr;
++  } else if (selected == "gamma-1400-contrast-300" && native_raster &&
++             input.gamma == "1.4" && input.contrast == "0.3") {
++    preset = CanvasRenderingPreset::kGamma1400Contrast300;
++  } else if (selected == "gamma-2200-contrast-500" && native_raster &&
++             input.gamma == "2.2" && input.contrast == "0.5") {
++    preset = CanvasRenderingPreset::kGamma2200Contrast500;
++  }
++  if (!preset) {
++    return std::nullopt;
++  }
++  return CanvasRenderingPolicy{CanvasPipeline::kRenderingV2, *preset};
++}
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h b/third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h
+@@ -0,0 +1,41 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_CANVAS_RENDERING_COMMAND_H_
++#define GLINT_CANVAS_RENDERING_COMMAND_H_
++
++#include "base/command_line.h"
++#include "build/build_config.h"
++#include "canvas_rendering_policy.h"
++#include "profile_surface_activation.h"
++
++namespace glint::candidate {
++inline std::optional<CanvasRenderingPolicy> CanvasRenderingPolicyForCommand(
++    const base::CommandLine& command) {
++  const auto version = command.GetSwitchValueASCII(kCanvasPipelineVersionSwitch);
++  const auto preset = command.GetSwitchValueASCII(kCanvasRenderingPresetSwitch);
++  const auto raster = command.GetSwitchValueASCII("glint-windows-font-rasterization");
++  const auto gamma = command.GetSwitchValueASCII("text-gamma");
++  const auto contrast = command.GetSwitchValueASCII("text-contrast");
++  const auto present = [&](const char* name, const std::string& value)
++      -> std::optional<std::string_view> {
++    return command.HasSwitch(name) ? std::optional<std::string_view>(value)
++                                   : std::nullopt;
++  };
++  auto policy = ParseCanvasRenderingPolicy({
++      present(kCanvasPipelineVersionSwitch, version),
++      present(kCanvasRenderingPresetSwitch, preset),
++      present("glint-windows-font-rasterization", raster),
++      present("text-gamma", gamma), present("text-contrast", contrast)});
++  if (policy && policy->pipeline == CanvasPipeline::kRenderingV2) {
++#if BUILDFLAG(IS_WIN)
++    if (!HasProfileSurfacePolicy(command)) {
++      return std::nullopt;
++    }
++#else
++    return std::nullopt;
++#endif
++  }
++  return policy;
++}
++}  // namespace glint::candidate
++#endif
+diff --git a/content/browser/camouflow_native/privacy_context.cc b/content/browser/camouflow_native/privacy_context.cc
+--- a/content/browser/camouflow_native/privacy_context.cc
++++ b/content/browser/camouflow_native/privacy_context.cc
+@@ -12,6 +12,7 @@
+ #include "base/command_line.h"
+ 
+ #include <utility>
++#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+ 
+ #include "base/check.h"
+ #include "base/files/file_path.h"
+@@ -25,6 +26,13 @@
+ std::optional<NativeFingerprintDerivationMode>
+ ResolveNativeFingerprintDerivationModeForLaunch(
+     const base::CommandLine& command) {
++  const auto rendering = glint::candidate::CanvasRenderingPolicyForCommand(command);
++  if (!rendering ||
++      (rendering->pipeline == glint::candidate::CanvasPipeline::kRenderingV2 &&
++       command.GetSwitchValueASCII(kNativeFingerprintDerivationModeSwitch) !=
++           "profile-identity")) {
++    return std::nullopt;
++  }
+   if (command.HasSwitch(glint::candidate::kProfileSurfacePolicySwitch)) {
+     const auto version = command.GetSwitchValueASCII(
+         glint::candidate::kProfileSurfacePolicySwitch);
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -5,6 +5,7 @@
+ // Represents the browser side of the browser <--> renderer communication
+ // channel. There will be one RenderProcessHost per renderer process.
+ 
++#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+ #include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "content/browser/renderer_host/render_process_host_impl.h"
+ 
+@@ -4060,7 +4061,11 @@
+ #endif
+   };
+   renderer_cmd->CopySwitchesFrom(browser_cmd, kSwitchNames);
++  CHECK(glint::candidate::CanvasRenderingPolicyForCommand(browser_cmd))
++      << "Invalid Glint Canvas rendering configuration";
+   const char* const glint_bootstrap_test_switches[] = {
++      glint::candidate::kCanvasPipelineVersionSwitch,
++      glint::candidate::kCanvasRenderingPresetSwitch,
+       "glint-worker-canvas-bootstrap-test",
+       "glint-worker-surface-bootstrap-test",
+       "glint-document-canvas-bootstrap-test",
+diff --git a/content/renderer/render_thread_impl.cc b/content/renderer/render_thread_impl.cc
+--- a/content/renderer/render_thread_impl.cc
++++ b/content/renderer/render_thread_impl.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/renderer/render_thread_impl.h"
++#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+ 
+ #include <algorithm>
+ #include <atomic>
+@@ -838,6 +839,9 @@
+       ->SetRuntimeFeaturesDefaultsBeforeBlinkInitialization();
+   SetRuntimeFeaturesDefaultsAndUpdateFromArgs(command_line);
+ 
++  CHECK(glint::candidate::CanvasRenderingPolicyForCommand(command_line))
++      << "Invalid Glint Canvas rendering configuration";
++
+   blink::Initialize(blink_platform_impl_.get(), binders,
+                     main_thread_scheduler_.get());
+ 
+diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
+--- a/third_party/blink/public/common/BUILD.gn
++++ b/third_party/blink/public/common/BUILD.gn
+@@ -292,6 +292,8 @@
+     "native_privacy/document_canvas_policy_validation.h",
+     "native_privacy/document_commit_preflight.h",
+     "native_privacy/document_storage_key_resolution.h",
++    "native_privacy/glint/canvas_rendering_policy.h",
++    "native_privacy/glint/canvas_rendering_command.h",
+     "native_privacy/glint/profile_surface_activation.h",
+     "native_privacy/glint/profile_surface_launch.h",
+     "storage_key/storage_key.h",
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc
+@@ -1,6 +1,7 @@
+ // Copyright 2026 CamouFlow contributors.
+ // SPDX-License-Identifier: MIT
+ #include "canvas_partition_seed.h"
++#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+ 
+ #include "third_party/blink/renderer/core/dom/document.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+@@ -14,8 +15,23 @@
+     return base::unexpected(SurfaceSeedError::kInvalidPolicy);
+   }
+   switch (kind) {
+-    case SurfaceSeedKind::kCanvas:
++    case SurfaceSeedKind::kCanvas: {
++      const auto rendering = CanvasRenderingPolicyForCommand(
++          *base::CommandLine::ForCurrentProcess());
++      if (!rendering) {
++        return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++      }
++      if (rendering->pipeline == CanvasPipeline::kRenderingV2) {
++        // Empty means explicitly validated native rendering, never missing IPC.
++        const auto& owned = scope.GlintSurfacePolicy();
++        if (!scope.GlintSurfacePolicyRequired() || !owned ||
++            owned->policy.identity_mode != SurfaceIdentityMode::kProfileIdentity) {
++          return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++        }
++        return std::optional<std::array<uint8_t, 32>>{};
++      }
+       return scope.GlintCanvasPartitionSeed();
++    }
+     case SurfaceSeedKind::kWebGL:
+       return scope.GlintWebGLPartitionSeed();
+     case SurfaceSeedKind::kWebGPU:
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h
+@@ -21,7 +21,9 @@
+     base::expected<std::optional<std::array<uint8_t, 32>>, SurfaceSeedError>;
+ 
+ // Only consumes the owned native bootstrap; never a page-provided seed.
+-// A successful empty result means flag-off. Required missing/invalid data is
++// A successful empty result means flag-off or validated Canvas rendering v2.
++// The latter still requires an owned profile-identity IPC policy.
++// Required missing/invalid data is
+ // an error, and must never be interpreted as permission for raw readback.
+ CORE_EXPORT SurfaceSeedResult SurfacePartitionSeed(
+     blink::ExecutionContext* context,
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+--- a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
++++ b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+@@ -5,6 +5,7 @@
+ 
+ #include "base/feature_list.h"
+ #include "canvas_partition_seed.h"
++#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+ #include "canvas_readback_candidate.h"
+ #include "gpu/command_buffer/common/glint/webgpu_readback_features.h"
+ #include "third_party/blink/public/common/features.h"
+@@ -51,6 +52,15 @@
+     default:
+       return base::unexpected(SurfaceSeedError::kUnsupportedKind);
+   }
++  if (kind == SurfaceSeedKind::kCanvas &&
++      surface != CanvasExportSurface::kCanvas) {
++    const auto rendering = CanvasRenderingPolicyForCommand(
++        *base::CommandLine::ForCurrentProcess());
++    if (!rendering || rendering->pipeline == CanvasPipeline::kRenderingV2) {
++      // Disabled GPU protection cannot fall back to native 2D rendering.
++      return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++    }
++  }
+   auto seed = SurfacePartitionSeed(context, kind);
+   if (kind != SurfaceSeedKind::kCanvas && seed.has_value() && !seed.value()) {
+     return base::unexpected(SurfaceSeedError::kInvalidPolicy);
+diff --git a/third_party/blink/common/native_privacy/glint/canvas_rendering_policy_unittest.cc b/third_party/blink/common/native_privacy/glint/canvas_rendering_policy_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/common/native_privacy/glint/canvas_rendering_policy_unittest.cc
+@@ -0,0 +1,74 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace glint::candidate {
++namespace {
++constexpr CanvasRenderingInput kNativeV2{"2", "native", std::nullopt,
++                                        std::nullopt, std::nullopt};
++static_assert(ParseCanvasRenderingPolicy(kNativeV2)->pipeline ==
++              CanvasPipeline::kRenderingV2);
++static_assert(ParseCanvasRenderingPolicy({{}, {}, {}, {}, {}})->pipeline ==
++              CanvasPipeline::kReadbackV1);
++
++TEST(GlintCanvasRenderingPolicyTest, LegacyAbsenceDoesNotMigrateSettings) {
++  const auto policy = ParseCanvasRenderingPolicy(
++      {std::nullopt, std::nullopt, "grayscale", "2.2", "0.5"});
++  ASSERT_TRUE(policy);
++  EXPECT_EQ(policy->pipeline, CanvasPipeline::kReadbackV1);
++}
++
++TEST(GlintCanvasRenderingPolicyTest, ExplicitLegacyRejectsRenderingPreset) {
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({"1", "native", {}, {}, {}}));
++  EXPECT_TRUE(ParseCanvasRenderingPolicy({"1", std::nullopt, {}, {}, {}}));
++}
++
++TEST(GlintCanvasRenderingPolicyTest, AcceptsSevenExactNativeConfigurations) {
++  constexpr CanvasRenderingInput inputs[] = {
++      kNativeV2, {"2", "aliased", "aliased", {}, {}},
++      {"2", "grayscale", "grayscale", {}, {}},
++      {"2", "cleartype-rgb", "cleartype-rgb", {}, {}},
++      {"2", "cleartype-bgr", "cleartype-bgr", {}, {}},
++      {"2", "gamma-1400-contrast-300", "native", "1.4", "0.3"},
++      {"2", "gamma-2200-contrast-500", std::nullopt, "2.2", "0.5"}};
++  for (const auto& input : inputs) {
++    const auto policy = ParseCanvasRenderingPolicy(input);
++    ASSERT_TRUE(policy);
++    EXPECT_EQ(policy->pipeline, CanvasPipeline::kRenderingV2);
++  }
++}
++
++TEST(GlintCanvasRenderingPolicyTest, RejectsOrphanUnknownAndEmptyVersions) {
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({std::nullopt, "native", {}, {}, {}}));
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({"", "native", {}, {}, {}}));
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({"3", "native", {}, {}, {}}));
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({"2", std::nullopt, {}, {}, {}}));
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({"2", "unknown", {}, {}, {}}));
++}
++
++TEST(GlintCanvasRenderingPolicyTest, MetadataMustMatchActualRenderingSwitches) {
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({"2", "grayscale", "aliased", {}, {}}));
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({"2", "native", "", "1.4", "0.3"}));
++  EXPECT_FALSE(ParseCanvasRenderingPolicy({"2", "grayscale", "grayscale", "1.4", {}}));
++  EXPECT_FALSE(ParseCanvasRenderingPolicy(
++      {"2", "gamma-1400-contrast-300", "native", "2.2", "0.3"}));
++  EXPECT_FALSE(ParseCanvasRenderingPolicy(
++      {"2", "gamma-1400-contrast-300", "native", "1.4", std::nullopt}));
++}
++
++TEST(GlintCanvasRenderingPolicyTest, V2RequiresProfileSurfaceBootstrap) {
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  command.AppendSwitchASCII(kCanvasPipelineVersionSwitch, "2");
++  command.AppendSwitchASCII(kCanvasRenderingPresetSwitch, "native");
++  EXPECT_FALSE(CanvasRenderingPolicyForCommand(command));
++  command.AppendSwitchASCII(kProfileSurfacePolicySwitch, "1");
++#if BUILDFLAG(IS_WIN)
++  ASSERT_TRUE(CanvasRenderingPolicyForCommand(command));
++#else
++  EXPECT_FALSE(CanvasRenderingPolicyForCommand(command));
++#endif
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/common/BUILD.gn b/third_party/blink/common/BUILD.gn
+--- a/third_party/blink/common/BUILD.gn
++++ b/third_party/blink/common/BUILD.gn
+@@ -381,6 +381,7 @@
+   testonly = true
+ 
+   sources = [
++    "native_privacy/glint/canvas_rendering_policy_unittest.cc",
+     "bluetooth/web_bluetooth_device_id_unittest.cc",
+     "client_hints/client_hints_unittest.cc",
+     "client_hints/enabled_client_hints_unittest.cc",

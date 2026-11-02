@@ -126,7 +126,7 @@ def test_image_r10_registers_all_21_native_cases_from_the_composed_source():
 def test_image_r10_preserves_all_27_r9_groups_and_binary_mappings(native_units_before_image_r10):
     previous = native_units_before_image_r10
     assert len(previous['SUPPORTED_TARGETS']) == 27
-    assert units.SUPPORTED_TARGETS == (*previous['SUPPORTED_TARGETS'], 'gpu-image-sources')
+    assert units.SUPPORTED_TARGETS[:28] == (*previous['SUPPORTED_TARGETS'], 'gpu-image-sources')
     for target in previous['SUPPORTED_TARGETS']:
         assert units.required_tests(target) == previous['required_tests'](target)
         assert units.unit_binary_target(target) == previous['unit_binary_target'](target)
@@ -167,12 +167,13 @@ def test_image_r10_requires_ownership_bootstrap_and_all_three_source_extensions(
             units.require_target_sources(tmp_path, [{'name': name} for name in required - {missing}], 'gpu-image-sources')
 
 
-def test_image_r10_archive_binds_both_current_and_exact_before_registration_sources(host_sources_before_image_r10):
+def test_image_r10_archive_binds_both_current_and_exact_before_registration_sources(
+        host_sources_before_image_r10, host_sources_before_image_r11):
     record = json.loads((ROOT / 'native/drafts/environment/image-r10-host-source-upgrade.json').read_bytes())
     old_native = json.loads((ROOT / 'native/drafts/upstream-156-canvas-r9/native-all-observations.json').read_bytes())
     assert set(host_sources_before_image_r10) == {row['source'] for row in record['sources']}
     for row in record['sources']:
-        assert hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest() == row['after_sha256']
+        assert hashlib.sha256(host_sources_before_image_r11[row['source']]).hexdigest() == row['after_sha256']
         assert hashlib.sha256(host_sources_before_image_r10[row['source']]).hexdigest() == row['before_sha256']
         assert row['before_sha256'] == old_native['source_sha256'][row['source']]
         assert b'upstream-156-image-r10' not in host_sources_before_image_r10[row['source']]

@@ -1,0 +1,44 @@
+diff --git a/include/dawn/native/DawnNative.h b/include/dawn/native/DawnNative.h
+--- a/include/dawn/native/DawnNative.h
++++ b/include/dawn/native/DawnNative.h
+@@ -118,6 +118,27 @@
+     std::span<const GlintShaderBufferUse> buffers;
+     bool hasTextureInputs = false;
+     bool complete = false;
++};
++
++struct GlintGpuInputRegion {
++    GlintBufferIdentity buffer;
++    uint64_t bufferOffset = 0;
++    uint64_t size = 0;
++    uint64_t snapshotOffset = 0;
++    uint64_t layoutOffset = 0;
++    uint32_t rowPitch = 0;
++    uint32_t width = 0;
++    uint32_t height = 0;
++    uint32_t sourceX = 0;
++    uint32_t sourceY = 0;
++    GlintReadbackFormat format = GlintReadbackFormat::Unsupported;
++    std::shared_ptr<const GlintGpuReadbackSnapshot> snapshot;
++};
++struct GlintGpuInputPlan {
++    uint64_t deviceEpoch = 0;
++    uint64_t policyGeneration = 0;
++    uint64_t sequence = 0;
++    std::vector<GlintGpuInputRegion> regions;
+ };
+ 
+ class DAWN_NATIVE_EXPORT GlintByteReadbackSnapshot {
+@@ -183,6 +204,12 @@
+     virtual bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) = 0;
+     // Validated binding ranges, not proof of exact shader writes.
+     virtual void OnShaderScope(const GlintShaderScope& scope) = 0;
++    // Native-only immutable metadata/lease plan. Null means denied, never raw readiness.
++    virtual std::shared_ptr<const GlintGpuInputPlan> PrepareGpuInputPlan(
++        const GlintShaderScope& scope) = 0;
++    // Attests unchanged metadata only. Does not authorize output or prove GPU routing.
++    virtual bool CommitGpuInputPlan(std::shared_ptr<const GlintGpuInputPlan> plan) = 0;
++
+     // Trusted native calls only. Empty plan means use the existing opaque scope path.
+     // An outstanding plan must be committed or invalidated with OnExecutionError.
+     // Projection readiness is backend-owned, never supplied by renderer commands.
