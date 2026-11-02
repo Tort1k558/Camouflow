@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "selected": false,
+  "type_checked": false,
+  "compiled": false,
+  "native_executed": false,
+  "renderer_cohort_integrated": false,
+  "worker_integrated": false,
+  "whole_profile_checkpoint": false,
+  "patch_sha256": "d32e0c64935586a08e85ffb5db8bcf7711b94fcfe2b80520b1d369aa3c19513e",
+  "sources": [
+    {
+      "source": "services/network/public/mojom/restricted_cookie_manager.mojom",
+      "before_sha256": "93d906df8249a3de57bf2317b1b7715d56a65ad6007a26dbe4a0806ceeca42d0",
+      "after_sha256": "f398af485274d1b724127bc0acb35cd2d5929feac4a1e16dbb1fe3e0c49038c8"
+    },
+    {
+      "source": "services/network/restricted_cookie_manager.h",
+      "before_sha256": "9d9ffa19ddd556379744c7b826d4f5f0fa819c4a82d8d0a168378a99a084fd71",
+      "after_sha256": "b1b6dace8c38b91b13b546b435a35c910ff889a5229e41d798bc065a7f34b008"
+    },
+    {
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "before_sha256": "d18cba187cc46f76d7882208d342f9514b484ca54548697734fbe47732a689d8",
+      "after_sha256": "42e4de28a4a39418c34067f8fef5f53db36bddf4545126271defe6ff91e55034"
+    },
+    {
+      "source": "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h",
+      "before_sha256": "d81fe351c2da7d791efddfc9b4f61cc9227f86930627cd76ca2a7c28da7944a7",
+      "after_sha256": "0bcf79be0afef403b6acb0e8a7619872b8126d18eac78e0d189f5fa6af3dc05c"
+    },
+    {
+      "source": "third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc",
+      "before_sha256": "e790c6190afa4d0e2190f6fa568e7613a00b3bfd5ceb8ca2b9e8941778b30c72",
+      "after_sha256": "69358cdb814cfc23b9fcbb7805e147a10e8a03edb8c0da7e6b72fc5ba05553c9"
+    },
+    {
+      "source": "third_party/blink/renderer/core/loader/cookie_jar.h",
+      "before_sha256": "f0100e6444f59d6ab790ffa216c917989541ac9f0da2447ec4a36aed854b7989",
+      "after_sha256": "f47cc36747a0725f475fb06e577fdd215b83af86c89c6b612425ad577e6c738c"
+    },
+    {
+      "source": "third_party/blink/renderer/core/loader/cookie_jar.cc",
+      "before_sha256": "f7ccdae8f309cfff8c9aa6d6954655fd4993417d89d71bb631718bab0cb61acf",
+      "after_sha256": "ba3d3966e77e1058fff683345b0981d33f83625fa754678c4e1f631e1663ee2c"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document.h",
+      "before_sha256": "ee194b8859904a41cb4854eace69dd5fbf547f776e392917e43010072c4bc154",
+      "after_sha256": "59d2f2983cc9c86c5c1ea504e15b12b01fc6ee78f6475d613da383143d0be1b3"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document.cc",
+      "before_sha256": "efcdbd804d5c72fc60f004be381aeaa0280c2efa38b727bc00030e28c3f7e66d",
+      "after_sha256": "27b98bdfd95cc5725d79b2647e1dc37515f13597f338e6de910ba2d90bc66956"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "before_sha256": "799374ce4e86da16a489ef25591835f0568935fc17b964ce82721cb0bf439da1",
+      "after_sha256": "61bcb6d6e4efcbb9b96d7963b1ee9c12523323d01799198f60d50fcd05495489"
+    }
+  ],
+  "fixture_bodies_prepared": 8,
+  "scope": "Restricted-cookie versioned endpoint and document drain source; not a profile checkpoint",
+  "base_candidate": "upstream-156-checkpoint-r12",
+  "base_manifest_sha256": "4f088dc792a78fccddb6248746c037a99b286c277db0be0286b309c551b70487",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "patch": "cookie-producer-endpoint.patch",
+  "fixture_case_bodies": [
+    {
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "suite": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainVersionedPipe"
+    },
+    {
+      "source": "services/network/restricted_cookie_manager_unittest.cc",
+      "suite": "RestrictedCookieManagerCheckpointDrainTest",
+      "case": "CheckpointDrainPipeWaitsForWrite"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "suite": "DocumentTest",
+      "case": "GlintCookieDrainEmptyDocumentIsPosted"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "suite": "DocumentTest",
+      "case": "GlintCookieDrainExpiredDeadlineFailsPosted"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "suite": "DocumentTest",
+      "case": "GlintCookieDrainUnboundedDeadlineFails"
+    },
+    {
+      "source": "third_party/blink/renderer/core/dom/document_test.cc",
+      "suite": "DocumentTest",
+      "case": "GlintCookieDrainDetachedDocumentRejectsQueuedSuccess"
+    },
+    {
+      "source": "third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc",
+      "suite": "HeapMojoRemoteVersionQueryTest",
+      "case": "QueryVersionUsesExistingRemote"
+    },
+    {
+      "source": "third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc",
+      "suite": "HeapMojoRemoteVersionQueryTest",
+      "case": "ContextResetDropsPendingVersionQuery"
+    }
+  ],
+  "canonical_sources_modified": false,
+  "production_admitted": false,
+  "runtime_verified": false,
+  "registered": false,
+  "full_candidate_composition_verified": false,
+  "isolated_four_packet_composition_passed": true,
+  "composed_final_files": 19,
+  "composed_original_files_restored": 16,
+  "composed_new_files_removed_on_reverse": 3,
+  "composed_packets": [
+    {
+      "patch": "profile-producer-cohort.patch",
+      "sha256": "859294b9a9174dc7f25da8770193b48ba82628c67b40a7671d24f4c4b6034867"
+    },
+    {
+      "patch": "local-storage-checkpoint-owner.patch",
+      "sha256": "149da7831631599ef386993418dfd5a01f1ec13b258c1345c2e2dc2618f20594"
+    },
+    {
+      "patch": "restricted-cookie-producer-drain.patch",
+      "sha256": "f28c636baf7c0b0440fccec755e7261f30ae4523f1cb07ffd8dfbe871907d499"
+    },
+    {
+      "patch": "cookie-producer-endpoint.patch",
+      "sha256": "d32e0c64935586a08e85ffb5db8bcf7711b94fcfe2b80520b1d369aa3c19513e"
+    }
+  ],
+  "formatted_with_pinned_clang_format": true,
+  "mojo_grammar_parsed": true,
+  "generated_bindings_verified": false,
+  "all_implementers_verified": false,
+  "mojo_endpoint_source_prepared": true,
+  "document_drain_source_prepared": true,
+  "http_producers_fenced": false
+}

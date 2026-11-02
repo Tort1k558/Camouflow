@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## 2026-11-02: document cookie endpoint source prepared
+
+[Versioned cookie producer endpoint](../native/drafts/cookie-producer-endpoint/README.md)
+connects the prepared network drain to existing CookieJar/Document instances,
+with version negotiation, owner/generation/write-epoch checks, retained wire
+bounds and deadline state independent of Oilpan/Mojo callback lifetime. No
+connection is created by the drain. Four packets compose/reverse across 19
+files; the pinned Mojo grammar parser accepts the interface. Eight additional
+native bodies are prepared, not executed. Generated bindings, C++ types, all
+implementers, renderer document-cohort aggregation, workers, HTTP producers,
+backend/manager completion and runtime admission remain open. R12 is unchanged.
+
 ## 2026-11-02: restricted-cookie producer drain source draft
 
 [Per-manager cookie write tracking](../native/drafts/restricted-cookie-producer-drain/README.md)
