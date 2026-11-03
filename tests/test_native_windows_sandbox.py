@@ -23,9 +23,13 @@ $ErrorActionPreference = 'Stop'
   })}
 }) | ConvertTo-Json -Depth 6 -Compress
 '''
+    # Windows PowerShell is launched through Python, not directly by pwsh.
+    environment = {name: value for name, value in os.environ.items() if name.casefold() != 'psmodulepath'}
+    environment['GLINT_TEST_ACL_PATHS'] = json.dumps([str(path) for path in paths])
     result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', script],
-        env=dict(os.environ, GLINT_TEST_ACL_PATHS=json.dumps([str(path) for path in paths])),
-        capture_output=True, check=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+        env=environment,
+        capture_output=True, check=False, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+    assert result.returncode == 0, result.stderr.decode('utf-8-sig', errors='replace')
     return {row['path']: row for row in json.loads(result.stdout.decode('utf-8-sig'))}
 
 
@@ -147,3 +151,17 @@ def test_failed_acl_setup_never_publishes_or_damages_the_existing_release(tmp_pa
     assert Path(installed['executable_path']).read_bytes() == first_bytes
     assert store.inspect(digest) == installed
     assert not list(store.root.glob('native-install-*'))
+
+
+def test_acl_probe_isolates_inherited_powershell_module_paths(owned, tmp_path, monkeypatch):
+    modules = tmp_path / 'foreign-edition-modules'
+    module = modules / 'Microsoft.PowerShell.Utility'
+    module.mkdir(parents=True)
+    (module / 'Microsoft.PowerShell.Utility.psd1').write_text(
+        "@{ ModuleVersion='99.0'; PowerShellVersion='5.1'; RootModule='Blocked.psm1'; "
+        "FunctionsToExport=@('ConvertFrom-Json','ConvertTo-Json') }", encoding='utf-8')
+    (module / 'Blocked.psm1').write_text("throw 'Foreign module must not load'", encoding='utf-8')
+    monkeypatch.setenv('PSModulePath', str(modules))
+    stage, payload, executable, profile = owned
+    observed = acls([payload, profile])
+    assert set(observed) == {str(payload), str(profile)}
