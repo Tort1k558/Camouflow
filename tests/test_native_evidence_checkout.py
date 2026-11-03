@@ -11,6 +11,8 @@ def test_byte_bound_evidence_has_explicit_checkout_policy():
         'native/drafts/audio-lifecycle-runtime/r7-observations.json',
         'native/drafts/scoped-patch-index-r8/packet.json',
     }
+    lifecycle = ROOT / 'native/drafts/upstream-156-audio-r8/audio-lifecycle-observations.json'
+    paths.update(json.loads(lifecycle.read_bytes())['source_sha256'])
     for name in ('upstream-156-audio-r8', 'upstream-156-checkpoint-r12',
                  'upstream-156-checkpoint-r13', 'upstream-156-document-r15'):
         manifest = json.loads((ROOT / 'native/drafts' / name / 'manifest.json').read_bytes())
