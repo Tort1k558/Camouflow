@@ -1,0 +1,1228 @@
+diff --git a/scripts/native_build.py b/scripts/native_build.py
+--- a/scripts/native_build.py
++++ b/scripts/native_build.py
+@@ -23,6 +23,7 @@
+     "upstream-156-producer-r14",
+     "upstream-156-document-r15",
+     "upstream-156-recovery-r16",
++    "upstream-156-worker-r17",
+ )
+ CANDIDATES = ("upstream-156", *WEBGPU_CANDIDATES)
+ WINDOWS_DIA_FILES = ("include/dia2.h", "include/cvconst.h", "include/diacreate.h", "lib/diaguids.lib",
+diff --git a/scripts/verify_native_checkpoint_units.py b/scripts/verify_native_checkpoint_units.py
+--- a/scripts/verify_native_checkpoint_units.py
++++ b/scripts/verify_native_checkpoint_units.py
+@@ -33,6 +33,7 @@
+     'upstream-156-producer-r14': (136, 163),
+     'upstream-156-document-r15': (136, 175),
+     'upstream-156-recovery-r16': (136, 225),
++    'upstream-156-worker-r17': (136, 300),
+ }
+ 
+ 
+@@ -46,7 +47,7 @@
+         raise ValueError('Unknown checkpoint candidate plan')
+     first_patch, body_count = PLAN_SPECS[candidate['name']]
+     expected_binaries = (tuple(sorted((*BINARIES, 'browser_tests')))
+-                         if candidate['name'] == 'upstream-156-recovery-r16' else BINARIES)
++                         if candidate['name'] in ('upstream-156-recovery-r16', 'upstream-156-worker-r17') else BINARIES)
+     plan = read_record(candidate['directory'] / 'native-case-plan.json')
+     if (plan.get('candidate_manifest_sha256') != candidate['manifest_sha256']
+             or plan.get('binaries') != list(expected_binaries)
+@@ -72,7 +73,7 @@
+                           else 'net_unittests' if source.startswith('net/')
+                           else 'services_unittests' if source.startswith('services/network/')
+                           else 'blink_unittests' if source.startswith('third_party/blink/')
+-                          else 'browser_tests' if candidate['name'] == 'upstream-156-recovery-r16'
++                          else 'browser_tests' if candidate['name'] in ('upstream-156-recovery-r16', 'upstream-156-worker-r17')
+                           and source.startswith('chrome/') and source.endswith('_browsertest.cc')
+                           else 'content_browsertests' if source.endswith('_browsertest.cc')
+                           else 'content_unittests' if source.startswith('content/') else None)
+@@ -239,8 +240,20 @@
+                 candidate['directory'] / 'native-case-plan.json'}
+         if any(not p.is_file() or p != p.resolve() for p in paths):
+             raise ValueError('Missing or linked checkpoint verification input')
++        if candidate['name'] == 'upstream-156-worker-r17':
++            from scripts import native_checkpoint_dispatch as browser_dispatch
++            from scripts import native_checkpoint_browser as browser_pairs
++            paths.update(Path(browser_dispatch.__file__).parent / name for name in (
++                'native_checkpoint_dispatch.py', 'native_checkpoint_browser.py',
++                'native_checkpoint_recovery.py', 'native_checkpoint_crash.py',
++                'native_checkpoint_process.py', 'native_checkpoint_contract.py'))
++            if any(not p.is_file() or p != p.resolve() for p in paths):
++                raise ValueError('Missing or linked R17 checkpoint controller input')
+         inputs = {p: checksum(p) for p in paths}
+         patches = units.verified_source_chain(workspace, candidate, candidate['lock'], env)
++        if candidate['name'] == 'upstream-156-worker-r17':
++            browser_dispatch.crash.validate_source_contract(
++                source, candidate['directory'] / 'native-case-plan.json')
+         receipt = read_record(output / 'camouflow-build.json')
+         validate_build_receipt(receipt, candidate['lock'], candidate=candidate)
+         core = measure_runtime_core(output / 'chrome.exe')
+@@ -276,7 +289,27 @@
+                            required_cases={suite: sorted(cases) for suite, cases in required.items()},
+                            discovered_cases=sum(map(len, required.values())))
+                 save()
+-                if binary in ('content_browsertests', 'browser_tests'):
++                if binary == 'browser_tests' and candidate['name'] == 'upstream-156-worker-r17':
++                    routed = browser_dispatch.run_browser_dispatch(executable, required,
++                        plan_path=candidate['directory'] / 'native-case-plan.json', source=source,
++                        owner_root=report_dir, output=report_dir / 'browser-dispatch', cwd=source,
++                        env=env, expected_binary_sha256=binaries[binary], timeout_seconds=timeout)
++                    completed = routed['completed_gtest_cases']
++                    forced = routed['qualified_forced_termination_cases']
++                    row.update(browser_dispatch_report='browser-dispatch/report.json',
++                        executed_cases=completed, qualified_forced_termination_cases=forced,
++                        passed=(routed['passed'] is True and type(completed) is int
++                                and type(forced) is int and forced == 1
++                                and completed == row['discovered_cases'] - 1),
++                        listing_sha256=checksum(listing))
++                    if not row['passed']:
++                        row['error'] = 'R17 browser dispatch failed; forced exits are not gtest passes'
++                elif binary == 'content_browsertests' and candidate['name'] == 'upstream-156-worker-r17':
++                    runs = browser_pairs.run_browser_cases(executable, required, source=source, env=env,
++                        report_dir=report_dir, timeout=timeout)
++                    row.update(execution_runs=runs, passed=all(r['passed'] for r in runs),
++                        executed_cases=sum(r['passed'] is True for r in runs), listing_sha256=checksum(listing))
++                elif binary in ('content_browsertests', 'browser_tests'):
+                     runs = run_browser_cases(executable, required, source=source, env=env,
+                                              report_dir=report_dir, timeout=timeout)
+                     row.update(execution_runs=runs, passed=all(r['passed'] for r in runs),
+diff --git a/app/core/native/distribution.py b/app/core/native/distribution.py
+--- a/app/core/native/distribution.py
++++ b/app/core/native/distribution.py
+@@ -17,6 +17,7 @@
+ 
+ from .configuration import NativeConfiguration
+ from .health import probe_native_binary
++from .windows_sandbox import configure_staged_sandbox_access
+ 
+ MAX_ARCHIVE_BYTES = 2 * 1024 ** 3
+ MAX_UNPACKED_BYTES = 8 * 1024 ** 3
+@@ -293,6 +294,8 @@
+                 metadata = self._inspect_directory(payload, digest)
+                 if payload.resolve() != payload or not payload.is_relative_to(self.root) or target.resolve() != target:
+                     raise ValueError("Native candidate escaped its owned store")
++                if sys.platform == "win32":
++                    configure_staged_sandbox_access(payload, stage)
+                 payload.rename(target)
+                 metadata["executable_path"] = str(target / checked_archive_name(metadata["executable"]))
+                 return metadata
+diff --git a/app/core/native/windows_sandbox.py b/app/core/native/windows_sandbox.py
+--- /dev/null
++++ b/app/core/native/windows_sandbox.py
+@@ -0,0 +1,73 @@
++"""AppContainer read/execute access for an owned, verified installation stage only."""
++
++import ctypes
++import stat
++import subprocess
++import sys
++from ctypes import wintypes
++from pathlib import Path
++
++# The two installation capabilities used by Chromium's ConfigureAppContainerSandbox.
++INSTALL_CAPABILITY_SIDS = (
++    "S-1-15-3-1024-3424233489-972189580-2057154623-747635277-1604371224-316187997-3786583170-1043257646",
++    "S-1-15-3-1024-2302894289-466761758-1166120688-1039016420-2430351297-4240214049-4028510897-3317428798",
++)
++MAX_STAGE_PATHS = 50001
++
++
++def _stage_snapshot(payload: Path) -> dict[Path, tuple[int, int, int, int]]:
++    pending = [payload]
++    checked = {}
++    while pending:
++        path = pending.pop()
++        info = path.lstat()
++        if (path.resolve(strict=True) != path or info.st_file_attributes & 0x400
++                or not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode))
++                or (stat.S_ISREG(info.st_mode) and info.st_nlink != 1)):
++            raise ValueError("Sandbox installation stage contains a link or non-regular object")
++        checked[path] = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
++        if len(checked) + len(pending) > MAX_STAGE_PATHS:
++            raise ValueError("Sandbox installation stage exceeds its object limit")
++        if stat.S_ISDIR(info.st_mode):
++            children = list(path.iterdir())
++            if len(checked) + len(pending) + len(children) > MAX_STAGE_PATHS:
++                raise ValueError("Sandbox installation stage exceeds its object limit")
++            pending.extend(children)
++    return checked
++
++
++def _system_icacls() -> Path:
++    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
++    kernel.GetSystemDirectoryW.argtypes = [wintypes.LPWSTR, wintypes.UINT]
++    kernel.GetSystemDirectoryW.restype = wintypes.UINT
++    buffer = ctypes.create_unicode_buffer(32768)
++    count = kernel.GetSystemDirectoryW(buffer, len(buffer))
++    if not 0 < count < len(buffer):
++        raise ctypes.WinError(ctypes.get_last_error())
++    executable = Path(buffer.value) / "icacls.exe"
++    if executable.resolve(strict=True) != executable or not executable.is_file():
++        raise ValueError("Windows system ACL utility is missing or linked")
++    return executable
++
++
++def configure_staged_sandbox_access(payload: Path, stage: Path) -> None:
++    """Call only after archive/manifest verification and before publishing the release."""
++    if sys.platform != "win32":
++        raise OSError("Installation capability configuration requires Windows")
++    if (not isinstance(stage, Path) or not isinstance(payload, Path)
++            or not stage.is_absolute() or stage.resolve(strict=True) != stage
++            or not stage.is_dir() or not stage.name.startswith("native-install-")
++            or payload.parent != stage or payload.name != "payload"
++            or payload.resolve(strict=True) != payload or not payload.is_dir()):
++        raise ValueError("Sandbox access may only be configured on the owned installation payload")
++    before = _stage_snapshot(payload)
++    command = [str(_system_icacls()), str(payload), "/grant",
++               *("*" + sid + ":(OI)(CI)(RX)" for sid in INSTALL_CAPABILITY_SIDS), "/Q"]
++    try:
++        subprocess.run(command, stdin=subprocess.DEVNULL, capture_output=True,
++                       check=True, timeout=30,
++                       creationflags=subprocess.CREATE_NO_WINDOW)
++    except subprocess.SubprocessError as error:
++        raise OSError("Could not configure Native installation sandbox read/execute access") from error
++    if _stage_snapshot(payload) != before:
++        raise ValueError("Installation payload identity or content metadata changed during ACL configuration")
+diff --git a/scripts/native_checkpoint_browser.py b/scripts/native_checkpoint_browser.py
+--- /dev/null
++++ b/scripts/native_checkpoint_browser.py
+@@ -0,0 +1,101 @@
++"""Run discovered ordinary browser tests with isolated, complete PRE chains."""
++import re
++import subprocess
++import time
++from pathlib import Path
++
++from scripts.native_checkpoint_crash import checksum
++from scripts.native_checkpoint_recovery import _run_recovery_process as run_tests
++
++from scripts.package_native_windows import read_record
++from scripts.verify_native_checkpoint_units import validate_results
++
++
++def browser_case_groups(required: dict) -> list[tuple[str, tuple[str, ...]]]:
++    if not isinstance(required, dict) or not required:
++        raise ValueError('Browser execution requires a nonempty discovered selection')
++    grouped = []
++    name_pattern = re.compile(r'[A-Za-z0-9_/]+')
++    for suite, selected in required.items():
++        if (not isinstance(suite, str) or not name_pattern.fullmatch(suite)
++                or 'PRE_' in suite or not isinstance(selected, (set, frozenset, list, tuple))
++                or not selected):
++            raise ValueError('Invalid discovered browser suite/cases')
++        families = {}
++        observed = set()
++        for case in selected:
++            if (not isinstance(case, str) or not name_pattern.fullmatch(case)
++                    or case in observed or ('PRE_' in case and not case.startswith('PRE_'))):
++                raise ValueError('Invalid or duplicate discovered browser case')
++            observed.add(case)
++            leaf, depth = case, 0
++            while leaf.startswith('PRE_'):
++                leaf, depth = leaf[4:], depth + 1
++            if not leaf or 'PRE_' in leaf:
++                raise ValueError('Invalid PRE_ chain name')
++            families.setdefault(leaf, {})[depth] = case
++        for leaf, phases in families.items():
++            deepest = max(phases)
++            if set(phases) != set(range(deepest + 1)):
++                raise ValueError('PRE_ chain is orphaned or missing a declared phase: ' + suite + '.' + leaf)
++            grouped.append((suite, tuple(phases[level] for level in range(deepest, -1, -1))))
++    return sorted(grouped, key=lambda item: (item[0], item[1][-1]))
++
++
++def run_browser_cases(executable: Path, required: dict, *, source: Path, env: dict,
++                      report_dir: Path, timeout: int) -> list[dict]:
++    groups = browser_case_groups(required)
++    deadline = time.monotonic() + timeout
++    runs = []
++    for group_index, (suite, phases) in enumerate(groups):
++        profile = None
++        identity = None
++        if len(phases) > 1:
++            if report_dir != report_dir.resolve() or not report_dir.is_dir():
++                raise ValueError('Paired browser profiles require a canonical report directory')
++            profile = report_dir / (executable.stem + '-chain-' + str(group_index).zfill(3) + '-profile')
++            if profile.resolve() != profile or profile.parent != report_dir or profile.exists():
++                raise ValueError('Paired browser profile must be fresh and owned by this report')
++            profile.mkdir(exist_ok=False)
++            stat = profile.stat()
++            identity = (stat.st_dev, stat.st_ino)
++        previous_failed = False
++        for phase_index, case in enumerate(phases):
++            selected = suite + '.' + case
++            prefix = executable.stem + '-' + str(len(runs)).zfill(3)
++            results = report_dir / (prefix + '-tests.json')
++            row = {'case': selected, 'passed': False}
++            if profile:
++                row.update(profile_directory=profile.name, phase_index=phase_index,
++                           phase_count=len(phases))
++            runs.append(row)
++            if previous_failed:
++                row.update(error='Earlier PRE_ phase failed; dependent phase was not executed',
++                           not_executed=True)
++                continue
++            try:
++                remaining = deadline - time.monotonic()
++                if remaining <= 0:
++                    raise ValueError('Browser test binary execution budget exhausted')
++                command = [str(executable), '--gtest_filter=' + selected,
++                           '--single-process-tests', '--gtest_output=json:' + str(results)]
++                if profile:
++                    stat = profile.stat()
++                    if profile.resolve() != profile or (stat.st_dev, stat.st_ino) != identity:
++                        raise ValueError('Paired browser profile identity changed')
++                    command.append('--user-data-dir=' + str(profile))
++                run_tests(command, source=source, env=env,
++                          log=report_dir / (prefix + '.log'), timeout=remaining)
++                validate_results(read_record(results), {suite: {case}})
++                if profile:
++                    stat = profile.stat()
++                    if (profile.resolve() != profile or (stat.st_dev, stat.st_ino) != identity
++                            or not any(profile.iterdir())):
++                        raise ValueError('Browser did not retain the requested owned profile')
++                    row['profile_identity_verified'] = True
++                row.update(passed=True, results_file=results.name,
++                           results_sha256=checksum(results))
++            except (ValueError, OSError, subprocess.SubprocessError) as error:
++                row['error'] = str(error)
++                previous_failed = True
++    return runs
+diff --git a/scripts/native_checkpoint_contract.py b/scripts/native_checkpoint_contract.py
+--- /dev/null
++++ b/scripts/native_checkpoint_contract.py
+@@ -0,0 +1,82 @@
++"""Bind opted-in browser checkpoint cases to the actual fixture source bytes."""
++
++import hashlib
++from pathlib import Path
++import re
++import stat
++
++
++BROWSER_TEST_SOURCE = "chrome/browser/net/glint_cookie_prefix_browsertest.cc"
++CRASH_SUITE = "GlintCookiePrefixBrowserTest"
++CRASH_PRE_CASE = "PRE_CrashAfterAcknowledgedPrefix"
++CRASH_POST_CASE = "CrashAfterAcknowledgedPrefix"
++MAX_CRASH_PHASE_SECONDS = 300
++MAX_FIXTURE_BYTES = 2 * 1024 * 1024
++_CASE_PATTERN = re.compile(r"\b(TEST(?:_F|_P)?|IN_PROC_BROWSER_TEST_F)\(\s*(\w+),\s*(\w+)")
++
++
++def validate_browser_contract(source: Path, plan: dict) -> dict[str, str]:
++    """Validate this fixture only; compiled provenance and discovery are separate gates."""
++    if (not isinstance(source, Path) or not source.is_absolute()
++            or source.resolve(strict=True) != source or not source.is_dir()):
++        raise ValueError("Browser contract requires a canonical existing source directory")
++    if not isinstance(plan, dict) or not isinstance(plan.get("browser_execution"), dict):
++        raise ValueError("Browser execution requires its explicit versioned contract")
++    contract = plan["browser_execution"]
++    expected = {
++        "schema": 1,
++        "mode": "source-bound-acknowledged-crash-v1",
++        "binary": "browser_tests",
++        "source": BROWSER_TEST_SOURCE,
++        "expected_termination_case": CRASH_SUITE + "." + CRASH_PRE_CASE,
++        "recovery_case": CRASH_SUITE + "." + CRASH_POST_CASE,
++        "ordinary_pre_chains_require_fresh_shared_profiles": True,
++        "maximum_crash_phase_seconds": MAX_CRASH_PHASE_SECONDS,
++        "forced_phase_is_gtest_pass": False,
++    }
++    if (set(contract) != set(expected) | {"source_sha256"}
++            or any(type(contract[key]) is not type(value) or contract[key] != value
++                   for key, value in expected.items())
++            or not isinstance(contract["source_sha256"], str)
++            or re.fullmatch(r"[a-f0-9]{64}", contract["source_sha256"]) is None):
++        raise ValueError("Unsupported or mismatched browser execution contract")
++    cases = plan.get("cases")
++    binaries = plan.get("binaries")
++    if (not isinstance(cases, list) or not cases or len(cases) > 50000
++            or type(plan.get("native_case_bodies_prepared")) is not int
++            or plan["native_case_bodies_prepared"] != len(cases)
++            or not isinstance(binaries, list) or not binaries
++            or any(not isinstance(binary, str) for binary in binaries)
++            or len(set(binaries)) != len(binaries) or "browser_tests" not in binaries
++            or any(not isinstance(row, dict) or row.get("binary") not in binaries for row in cases)):
++        raise ValueError("Browser contract requires a complete structurally valid case plan")
++    rows = [row for row in cases if row.get("source") == BROWSER_TEST_SOURCE]
++    if (not rows or any(row.get("binary") != "browser_tests"
++                       or row.get("kind") != "IN_PROC_BROWSER_TEST_F"
++                       or not isinstance(row.get("fixture"), str)
++                       or not isinstance(row.get("case"), str) for row in rows)):
++        raise ValueError("Browser fixture declarations have the wrong source or test kind")
++    declared = [(row["kind"], row["fixture"], row["case"]) for row in rows]
++    fixture = source / BROWSER_TEST_SOURCE
++    before = fixture.lstat()
++    if (not stat.S_ISREG(before.st_mode) or fixture.resolve(strict=True) != fixture
++            or not 0 < before.st_size <= MAX_FIXTURE_BYTES
++            or (hasattr(before, "st_file_attributes") and before.st_file_attributes & 0x400)):
++        raise ValueError("Browser fixture must be a bounded regular source file without links")
++    with fixture.open("rb") as stream:
++        raw = stream.read(MAX_FIXTURE_BYTES + 1)
++    digest = hashlib.sha256(raw).hexdigest()
++    if len(raw) > MAX_FIXTURE_BYTES or digest != contract["source_sha256"]:
++        raise ValueError("Browser fixture source hash differs from the declared contract")
++    actual = _CASE_PATTERN.findall(raw.decode("utf-8-sig"))
++    if actual != declared or len(set(actual)) != len(actual):
++        raise ValueError("Browser fixture cases are missing, duplicated or differ from source order")
++    if any(("IN_PROC_BROWSER_TEST_F", CRASH_SUITE, case) not in actual
++           for case in (CRASH_PRE_CASE, CRASH_POST_CASE)):
++        raise ValueError("The exact expected-crash pair is not declared in the bound fixture")
++    after = fixture.lstat()
++    if (fixture.resolve(strict=True) != fixture
++            or any(getattr(before, field) != getattr(after, field)
++                   for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns"))):
++        raise ValueError("Browser fixture identity or content changed during validation")
++    return {str(fixture): digest}
+diff --git a/scripts/native_checkpoint_crash.py b/scripts/native_checkpoint_crash.py
+--- /dev/null
++++ b/scripts/native_checkpoint_crash.py
+@@ -0,0 +1,275 @@
++"""Windows-only test controller. A qualified forced exit is not a gtest PASS."""
++import ctypes
++import hashlib
++import json
++import math
++import re
++import secrets
++import sys
++import time
++from ctypes import wintypes
++from pathlib import Path
++
++from scripts.native_checkpoint_process import OwnedJobProcess, sample_owned_job, terminate_owned_job
++
++from app.core.native.windows_process_tree import WindowsProcessTreeReader
++
++FORCED_EXIT_CODE = 0x474C
++
++
++class _BasicLimits(ctypes.Structure):
++    _fields_ = [('process_time', ctypes.c_longlong), ('job_time', ctypes.c_longlong),
++                ('flags', wintypes.DWORD), ('min_working_set', ctypes.c_size_t),
++                ('max_working_set', ctypes.c_size_t), ('active_limit', wintypes.DWORD),
++                ('affinity', ctypes.c_size_t), ('priority', wintypes.DWORD),
++                ('scheduling', wintypes.DWORD)]
++
++
++class _IoCounters(ctypes.Structure):
++    _fields_ = [(name, ctypes.c_ulonglong) for name in
++                ('read_ops', 'write_ops', 'other_ops', 'read_bytes', 'write_bytes', 'other_bytes')]
++
++
++class _ExtendedLimits(ctypes.Structure):
++    _fields_ = [('basic', _BasicLimits), ('io', _IoCounters),
++                ('process_memory', ctypes.c_size_t), ('job_memory', ctypes.c_size_t),
++                ('peak_process_memory', ctypes.c_size_t), ('peak_job_memory', ctypes.c_size_t)]
++
++
++class _Accounting(ctypes.Structure):
++    _fields_ = [(name, ctypes.c_longlong) for name in
++                ('user', 'kernel', 'period_user', 'period_kernel')] + [
++                (name, wintypes.DWORD) for name in ('faults', 'total', 'active', 'terminated')]
++
++
++class _OwnedJob:
++    def __init__(self):
++        self.kernel = ctypes.WinDLL('kernel32', use_last_error=True)
++        self.kernel.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
++        self.kernel.CreateJobObjectW.restype = wintypes.HANDLE
++        self.kernel.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int,
++                                                        ctypes.c_void_p, wintypes.DWORD]
++        self.kernel.SetInformationJobObject.restype = wintypes.BOOL
++        self.kernel.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
++        self.kernel.AssignProcessToJobObject.restype = wintypes.BOOL
++        self.kernel.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
++        self.kernel.TerminateJobObject.restype = wintypes.BOOL
++        self.kernel.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int,
++            ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p]
++        self.kernel.QueryInformationJobObject.restype = wintypes.BOOL
++        self.kernel.IsProcessInJob.argtypes = [wintypes.HANDLE, wintypes.HANDLE,
++                                               ctypes.POINTER(wintypes.BOOL)]
++        self.kernel.IsProcessInJob.restype = wintypes.BOOL
++        self.kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
++        self.kernel.OpenProcess.restype = wintypes.HANDLE
++        self.kernel.CloseHandle.argtypes = [wintypes.HANDLE]
++        self.kernel.CloseHandle.restype = wintypes.BOOL
++        self.handle = self.kernel.CreateJobObjectW(None, None)
++        if not self.handle:
++            raise ctypes.WinError(ctypes.get_last_error())
++        limits = _ExtendedLimits()
++        limits.basic.flags = 0x2000  # KILL_ON_JOB_CLOSE; no breakaway allowance.
++        if not self.kernel.SetInformationJobObject(self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
++            error = ctypes.WinError(ctypes.get_last_error())
++            self.close()
++            raise error
++
++    def assign(self, process):
++        # Popen's held Windows process handle binds this exact owned child, not
++        # a PID copied from an untrusted acknowledgment.
++        if not self.kernel.AssignProcessToJobObject(self.handle, int(process._handle)):
++            raise ctypes.WinError(ctypes.get_last_error())
++
++    def require_member(self, pid):
++        handle = self.kernel.OpenProcess(0x1000, False, pid)
++        if not handle:
++            raise ctypes.WinError(ctypes.get_last_error())
++        try:
++            present = wintypes.BOOL()
++            if not self.kernel.IsProcessInJob(handle, self.handle, ctypes.byref(present)):
++                raise ctypes.WinError(ctypes.get_last_error())
++            if not present.value:
++                raise ValueError('Observed owned descendant is outside the crash-test job')
++        finally:
++            if not self.kernel.CloseHandle(handle):
++                raise ctypes.WinError(ctypes.get_last_error())
++
++    def active(self):
++        sample = _Accounting()
++        if not self.kernel.QueryInformationJobObject(self.handle, 1, ctypes.byref(sample),
++                                                     ctypes.sizeof(sample), None):
++            raise ctypes.WinError(ctypes.get_last_error())
++        return sample.active
++
++    def terminate(self):
++        if not self.kernel.TerminateJobObject(self.handle, FORCED_EXIT_CODE):
++            raise ctypes.WinError(ctypes.get_last_error())
++
++    def close(self):
++        if self.handle:
++            handle, self.handle = self.handle, None
++            if not self.kernel.CloseHandle(handle):
++                raise ctypes.WinError(ctypes.get_last_error())
++
++
++def checksum(path):
++    with path.open('rb') as stream:
++        return hashlib.file_digest(stream, 'sha256').hexdigest()
++
++
++def _unique_object(pairs):
++    result = {}
++    for key, value in pairs:
++        if key in result:
++            raise ValueError('Duplicate acknowledgment field')
++        result[key] = value
++    return result
++
++
++def validate_ack(record, *, pid, challenge, profile):
++    if not isinstance(record, dict) or set(record) != {
++            'schema', 'challenge', 'pid', 'profile', 'acknowledged', 'workers', 'scope'}:
++        raise ValueError('Unexpected acknowledgment schema/fields')
++    if type(record['schema']) is not int or record['schema'] != 1:
++        raise ValueError('Invalid acknowledgment schema version')
++    if type(record['pid']) is not int or record['pid'] != pid:
++        raise ValueError('Acknowledgment PID is not the owned child')
++    if record['challenge'] != challenge or not isinstance(record['challenge'], str):
++        raise ValueError('Acknowledgment challenge did not match this invocation')
++    if record['acknowledged'] is not True or record['scope'] != 'document-and-worker-cookie-prefix':
++        raise ValueError('Acknowledgment does not certify the requested prefix')
++    if type(record['workers']) is not int or not 1 <= record['workers'] <= 512:
++        raise ValueError('Acknowledgment requires a bounded active worker cohort')
++    if not isinstance(record['profile'], str):
++        raise ValueError('Acknowledgment profile is not a path')  # noqa: TRY004 - untrusted receipt field
++    supplied = Path(record['profile'])
++    if not supplied.is_absolute() or supplied != profile or supplied.resolve() != profile:
++        raise ValueError('Acknowledgment profile is not the owned test profile')
++
++
++def run_acknowledged_crash(command, *, owner_root, output, cwd, env, expected_binary_sha256,
++                           timeout_seconds=60.0, max_ack_to_kill_seconds=2.0):
++    if sys.platform != 'win32':
++        raise OSError('This crash controller requires Windows job/process identity checks')
++    if any(type(value) not in (int, float) or not math.isfinite(value) or not 0 < value <= 300
++           for value in (timeout_seconds, max_ack_to_kill_seconds)):
++        raise ValueError('Crash-test budgets must be finite and bounded')
++    if (not isinstance(command, list) or not command or any(not isinstance(arg, str) for arg in command)
++            or any(arg.startswith(('--user-data-dir', '--glint-crash-')) for arg in command[1:])):
++        raise ValueError('Crash controller owns its profile/challenge/receipt switches')
++    executable = Path(command[0])
++    if (not executable.is_absolute() or executable.resolve() != executable or not executable.is_file()
++            or not isinstance(expected_binary_sha256, str)
++            or not re.fullmatch(r'[a-f0-9]{64}', expected_binary_sha256)
++            or checksum(executable) != expected_binary_sha256):
++        raise ValueError('Crash-test executable binding failed')
++    if (owner_root != owner_root.resolve() or not owner_root.is_absolute() or not owner_root.is_dir()
++            or output.parent != owner_root or output.resolve() != output or output.exists()):
++        raise ValueError('Crash evidence requires a fresh child of its canonical owner directory')
++    if (cwd != cwd.resolve() or not cwd.is_dir() or not isinstance(env, dict)
++            or any(not isinstance(key, str) or not isinstance(value, str) for key, value in env.items())):
++        raise ValueError('Crash test requires an explicit canonical cwd and string environment')
++    output.mkdir(exist_ok=False)
++    profile = output / 'profile'
++    profile.mkdir()
++    temporary = output / 'temp'
++    temporary.mkdir()
++    environment = dict(env, TEMP=str(temporary), TMP=str(temporary), PYTHONDONTWRITEBYTECODE='1')
++    stat = profile.stat()
++    profile_identity = (stat.st_dev, stat.st_ino)
++    receipt = output / 'ack.json'
++    challenge = secrets.token_hex(32)
++    argv = [*command, '--user-data-dir=' + str(profile),
++            '--glint-crash-challenge=' + challenge, '--glint-crash-ack=' + str(receipt)]
++    record = {'schema': 1, 'passed': False, 'scope': 'Owned acknowledged forced-termination phase only',
++        'executable_sha256': expected_binary_sha256, 'expected_exit_code': FORCED_EXIT_CODE,
++        'output': str(output), 'profile': str(profile), 'qualified_termination': False,
++        'gtest_completed': False, 'recovery_measured': False, 'production_admitted': False}
++    child, job = None, None
++    started = time.monotonic()
++    try:
++        job = _OwnedJob()
++        with (output / 'process.log').open('xb') as log:
++            child = OwnedJobProcess(argv, cwd=cwd, env=environment, stdout=log, job=job)
++            record['owned_pid'] = child.pid
++            record['job_assigned_at_creation'] = True
++            job.require_member(child.pid)
++            reader = WindowsProcessTreeReader()
++            anchor = reader.read(child.pid)
++            record['owned_created_100ns'] = anchor.created_100ns
++            while not receipt.exists():
++                if child.poll() is not None:
++                    raise ValueError('Owned process exited before a qualified acknowledgment')
++                if time.monotonic() - started >= timeout_seconds:
++                    raise TimeoutError('Checkpoint acknowledgment deadline expired')
++                time.sleep(0.02)
++            if receipt.resolve() != receipt or receipt.stat().st_size > 16384:
++                raise ValueError('Acknowledgment file is linked or oversized')
++            with receipt.open('rb') as stream:
++                raw = stream.read(16385)
++            if len(raw) > 16384:
++                raise ValueError('Acknowledgment exceeds the bounded payload size')
++            acknowledged = json.loads(raw, object_pairs_hook=_unique_object)
++            validate_ack(acknowledged, pid=child.pid, challenge=challenge, profile=profile)
++            ack_time = time.monotonic()
++            stat = profile.stat()
++            if ((stat.st_dev, stat.st_ino) != profile_identity or profile.resolve() != profile
++                    or not any(profile.iterdir())):
++                raise ValueError('Requested profile identity/content was not retained')
++            sample = sample_owned_job(job, reader, anchor)
++            for process in sample:
++                job.require_member(process.pid)
++            reader.read(child.pid, expected_created_100ns=anchor.created_100ns)
++            if child.poll() is not None or time.monotonic() - ack_time > max_ack_to_kill_seconds:
++                raise ValueError('Acknowledged child exited or the bounded termination window elapsed')
++            record['ack_sha256'] = hashlib.sha256(raw).hexdigest()
++            record['observed_processes'] = [{'pid': p.pid, 'created_100ns': p.created_100ns}
++                                       for p in sample]
++            terminate_owned_job(job)
++            record['exit_code'] = child.wait(timeout=5)
++            deadline = time.monotonic() + 5
++            while job.active():
++                if time.monotonic() >= deadline:
++                    raise TimeoutError('Owned crash-test job still has active descendants')
++                time.sleep(0.02)
++            delay = time.monotonic() - ack_time
++            if record['exit_code'] != FORCED_EXIT_CODE or delay > max_ack_to_kill_seconds:
++                raise ValueError('Forced exit outcome/time does not match the qualified test')
++            if checksum(executable) != expected_binary_sha256:
++                raise ValueError('Executable binding changed during crash test')
++            record.update(passed=True, qualified_termination=True,
++                          ack_to_exit_seconds=delay, remaining_job_processes=0)
++    except Exception as error:  # noqa: BLE001 - retain a failed protocol receipt; cleanup is mandatory
++        record['error'] = f'{type(error).__name__}: {error}'
++    finally:
++        try:
++            if job:
++                terminate_owned_job(job)
++                if child:
++                    child.wait(timeout=5)
++                deadline = time.monotonic() + 5
++                while job.active():
++                    if time.monotonic() >= deadline:
++                        raise TimeoutError('Owned job cleanup did not finish')
++                    time.sleep(0.02)
++            record['owned_process_cleanup_complete'] = child is None or child.poll() is not None
++        except Exception as error:  # noqa: BLE001 - cleanup failure must remain in the receipt
++            record.update(passed=False, cleanup_error=f'{type(error).__name__}: {error}')
++            if child and child.poll() is None:
++                child.kill()
++                child.wait(timeout=5)
++        finally:
++            if job:
++                try:
++                    job.close()
++                except OSError as error:
++                    record.update(passed=False, job_close_error=str(error))
++        if child:
++            try:
++                child.close()
++            except OSError as error:
++                record.update(passed=False, process_handle_close_error=str(error))
++        record['seconds'] = time.monotonic() - started
++        (output / 'report.json').write_text(json.dumps(record, indent=2) + '\n',
++                                          encoding='utf-8', newline='\n')
++    return record
+diff --git a/scripts/native_checkpoint_dispatch.py b/scripts/native_checkpoint_dispatch.py
+--- /dev/null
++++ b/scripts/native_checkpoint_dispatch.py
+@@ -0,0 +1,119 @@
++"""Complete source-bound browser routing; not compiled/runtime admission."""
++import hashlib
++import json
++import time
++from pathlib import Path
++
++from scripts.native_checkpoint_crash import _unique_object, checksum
++
++from scripts import native_checkpoint_browser as pairs
++from scripts import native_checkpoint_contract as contract
++from scripts import native_checkpoint_crash as ack
++from scripts import native_checkpoint_process as process
++from scripts import native_checkpoint_recovery as crash
++
++ROOT = Path(__file__).resolve().parents[1]
++
++
++def classify_cases(required, plan, source):
++    bindings = contract.validate_browser_contract(source, plan)
++    rows = [row for row in plan['cases'] if row['binary'] == 'browser_tests']
++    declared = [(row['fixture'], row['case']) for row in rows]
++    if (not rows or len(set(declared)) != len(declared)
++            or any(row['kind'] != 'IN_PROC_BROWSER_TEST_F' for row in rows)):
++        raise ValueError('Browser plan has duplicate, empty or unbound declarations')
++    groups = pairs.browser_case_groups(required)
++    discovered = {(suite, case) for suite, phases in groups for case in phases}
++    if discovered != set(declared):
++        raise ValueError('Discovered browser cases differ from the complete declared selection')
++    expected = {(crash.SUITE, crash.PRE_CASE), (crash.SUITE, crash.RECOVERY_CASE)}
++    if not expected <= discovered:
++        raise ValueError('The complete expected-crash pair is required')
++    ordinary = {suite: set(cases) for suite, cases in required.items()}
++    ordinary[crash.SUITE].difference_update((crash.PRE_CASE, crash.RECOVERY_CASE))
++    ordinary = {suite: cases for suite, cases in ordinary.items() if cases}
++    pairs.browser_case_groups(ordinary)
++    return ordinary, bindings
++
++
++def run_browser_dispatch(executable, required, *, plan_path, source, owner_root,
++                         output, cwd, env, expected_binary_sha256, timeout_seconds=900):
++    if type(timeout_seconds) is not int or not 1 <= timeout_seconds <= 900:
++        raise ValueError('Shared browser budget must be an integer in 1..900 seconds')
++    if (owner_root.resolve() != owner_root or not owner_root.is_dir()
++            or output.parent != owner_root or output.resolve() != output or output.exists()
++            or output.drive.upper() != 'D:' or output.is_relative_to(ROOT)
++            or output.is_relative_to(source)):
++        raise ValueError('Browser dispatch requires a fresh owned canonical D: report outside sources')
++    bindings = crash.validate_source_contract(source, plan_path)
++    with plan_path.open('rb') as stream:
++        raw = stream.read(4 * 1024 * 1024 + 1)
++    if len(raw) > 4 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != bindings[str(plan_path)]:
++        raise ValueError('Browser case plan changed after bounded validation')
++    plan = json.loads(raw, object_pairs_hook=_unique_object)
++    ordinary, fixture_bindings = classify_cases(required, plan, source)
++    bindings.update(fixture_bindings)
++    bindings.update({plan_path: checksum(plan_path), Path(pairs.__file__): checksum(Path(pairs.__file__)),
++        Path(__file__): checksum(Path(__file__)),
++        Path(crash.__file__): checksum(Path(crash.__file__)),
++        Path(ack.__file__): checksum(Path(ack.__file__)),
++        Path(process.__file__): checksum(Path(process.__file__)),
++        Path(contract.__file__): checksum(Path(contract.__file__))})
++
++    def guard():
++        if (checksum(executable) != expected_binary_sha256
++                or any(checksum(Path(path)) != digest for path, digest in bindings.items())):
++            raise ValueError('Browser binary, plan or bound runner/source changed')
++
++    guard()
++    expected_normal = {suite + '.' + case for suite, cases in ordinary.items() for case in cases}
++    output.mkdir(exist_ok=False)
++    report = {'schema': 1, 'passed': False, 'scope': 'Complete browser case dispatch; not runtime admission',
++        'declared_cases': len(expected_normal) + 2, 'completed_gtest_cases': 0,
++        'maximum_crash_phase_seconds': 300,
++        'qualified_forced_termination_cases': 0, 'ordinary_runs': [],
++        'native_provenance_verified': False, 'browser_durability_admitted': False, 'production_admitted': False,
++        'executable_sha256': expected_binary_sha256,
++        'input_sha256': {str(path): digest for path, digest in bindings.items()}}
++    started = time.monotonic()
++
++    def remaining():
++        seconds = timeout_seconds - (time.monotonic() - started)
++        if seconds <= 0:
++            raise TimeoutError('Shared ordinary/crash browser execution budget exhausted')
++        return seconds
++
++    try:
++        normal_dir = output / 'ordinary'
++        normal_dir.mkdir()
++        report['ordinary_runs'] = pairs.run_browser_cases(executable, ordinary,
++            source=cwd, env=env, report_dir=normal_dir, timeout=remaining())
++        rows = report['ordinary_runs']
++        names = [row['case'] for row in rows]
++        if (len(names) != len(expected_normal) or set(names) != expected_normal
++                or any(row['passed'] is not True for row in rows)):
++            raise ValueError('Ordinary browser execution is missing, duplicated, foreign or failed')
++        report['completed_gtest_cases'] = len(rows)
++        guard()
++        forced = crash.run_crash_recovery([str(executable)], source=source, plan_path=plan_path,
++            owner_root=output, output=output / 'acknowledged-crash', cwd=cwd, env=env,
++            expected_binary_sha256=expected_binary_sha256, timeout_seconds=min(remaining(), 300))
++        report['crash_recovery'] = forced
++        if (forced['passed'] is not True or type(forced['completed_gtest_cases']) is not int
++                or forced['completed_gtest_cases'] != 1
++                or type(forced['qualified_forced_termination_cases']) is not int
++                or forced['qualified_forced_termination_cases'] != 1
++                or forced['post_profile_reopen_validated'] is not True):
++            raise ValueError('Expected-crash termination and separate completed recovery were not both verified')
++        report['completed_gtest_cases'] += 1
++        report['qualified_forced_termination_cases'] = 1
++        remaining()
++        guard()
++        report['passed'] = True
++    except Exception as error:  # noqa: BLE001 - persist a failed dispatch receipt, never admission
++        report['error'] = f'{type(error).__name__}: {error}'
++    finally:
++        report['seconds'] = time.monotonic() - started
++        (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n',
++                                           encoding='utf-8', newline='\n')
++    return report
+diff --git a/scripts/native_checkpoint_process.py b/scripts/native_checkpoint_process.py
+--- /dev/null
++++ b/scripts/native_checkpoint_process.py
+@@ -0,0 +1,269 @@
++"""Create a private Windows child inside its job before its entry point can run."""
++import ctypes
++import math
++import os
++import subprocess
++import sys
++import time
++from contextlib import ExitStack
++from ctypes import wintypes
++from pathlib import Path
++
++if sys.platform == "win32":
++    import msvcrt
++
++
++class _StartupInfo(ctypes.Structure):
++    _fields_ = [('cb', wintypes.DWORD), ('reserved', wintypes.LPWSTR),
++        ('desktop', wintypes.LPWSTR), ('title', wintypes.LPWSTR),
++        *[(name, wintypes.DWORD) for name in ('x', 'y', 'width', 'height',
++          'chars_x', 'chars_y', 'fill', 'flags')],
++        ('show', wintypes.WORD), ('reserved_size', wintypes.WORD),
++        ('reserved_bytes', ctypes.c_void_p), ('stdin', wintypes.HANDLE),
++        ('stdout', wintypes.HANDLE), ('stderr', wintypes.HANDLE)]
++
++
++class _StartupInfoEx(ctypes.Structure):
++    _fields_ = [('startup', _StartupInfo), ('attributes', ctypes.c_void_p)]
++
++
++class _ProcessInformation(ctypes.Structure):
++    _fields_ = [('process', wintypes.HANDLE), ('thread', wintypes.HANDLE),
++               ('pid', wintypes.DWORD), ('tid', wintypes.DWORD)]
++
++
++class OwnedJobProcess:
++    def __init__(self, argv, *, cwd, env, stdout, job):
++        if sys.platform != 'win32' or ctypes.sizeof(ctypes.c_void_p) != 8:
++            raise OSError('Atomic job launch currently requires 64-bit Windows')
++        if (not isinstance(argv, list) or not argv
++                or any(not isinstance(arg, str) or '\0' in arg for arg in argv)
++                or not Path(argv[0]).is_absolute() or cwd.resolve() != cwd or not cwd.is_dir()
++                or not isinstance(env, dict) or not env
++                or any(not isinstance(k, str) or not k or '=' in k or '\0' in k
++                       or not isinstance(v, str) or '\0' in v for k, v in env.items())
++                or len({key.casefold() for key in env}) != len(env)):
++            raise ValueError('Atomic job launch requires exact argv, cwd and unambiguous environment')
++        self.args = argv
++        self.returncode = None
++        self._handle = None
++        self.kernel = kernel = ctypes.WinDLL('kernel32', use_last_error=True)
++        kernel.InitializeProcThreadAttributeList.argtypes = [ctypes.c_void_p, wintypes.DWORD,
++            wintypes.DWORD, ctypes.POINTER(ctypes.c_size_t)]
++        kernel.InitializeProcThreadAttributeList.restype = wintypes.BOOL
++        kernel.UpdateProcThreadAttribute.argtypes = [ctypes.c_void_p, wintypes.DWORD,
++            ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_void_p]
++        kernel.UpdateProcThreadAttribute.restype = wintypes.BOOL
++        kernel.DeleteProcThreadAttributeList.argtypes = [ctypes.c_void_p]
++        kernel.DeleteProcThreadAttributeList.restype = None
++        kernel.GetCurrentProcess.argtypes = []
++        kernel.GetCurrentProcess.restype = wintypes.HANDLE
++        kernel.DuplicateHandle.argtypes = [wintypes.HANDLE, wintypes.HANDLE, wintypes.HANDLE,
++            ctypes.POINTER(wintypes.HANDLE), wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
++        kernel.DuplicateHandle.restype = wintypes.BOOL
++        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
++        kernel.CloseHandle.restype = wintypes.BOOL
++        kernel.CreateProcessW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR,
++            ctypes.c_void_p, ctypes.c_void_p, wintypes.BOOL, wintypes.DWORD,
++            ctypes.c_void_p, wintypes.LPCWSTR, ctypes.c_void_p,
++            ctypes.POINTER(_ProcessInformation)]
++        kernel.CreateProcessW.restype = wintypes.BOOL
++        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
++        kernel.WaitForSingleObject.restype = wintypes.DWORD
++        kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
++        kernel.GetExitCodeProcess.restype = wintypes.BOOL
++        kernel.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
++        kernel.TerminateProcess.restype = wintypes.BOOL
++        if (ctypes.sizeof(_StartupInfo) != 104 or ctypes.sizeof(_StartupInfoEx) != 112
++                or ctypes.sizeof(_ProcessInformation) != 24):
++            raise RuntimeError('Windows startup ABI size mismatch')
++
++        def close(handle):
++            if not kernel.CloseHandle(handle):
++                raise ctypes.WinError(ctypes.get_last_error())
++
++        try:
++            with ExitStack() as cleanup:
++                size = ctypes.c_size_t()
++                if kernel.InitializeProcThreadAttributeList(None, 2, 0, ctypes.byref(size)):
++                    raise RuntimeError('Unexpected successful attribute sizing probe')
++                if ctypes.get_last_error() != 122 or not 0 < size.value <= 65536:
++                    raise ctypes.WinError(ctypes.get_last_error())
++                attributes = ctypes.create_string_buffer(size.value)
++                if not kernel.InitializeProcThreadAttributeList(attributes, 2, 0, ctypes.byref(size)):
++                    raise ctypes.WinError(ctypes.get_last_error())
++                cleanup.callback(kernel.DeleteProcThreadAttributeList, attributes)
++                current = kernel.GetCurrentProcess()
++
++                def duplicate(file):
++                    handle = wintypes.HANDLE()
++                    if not kernel.DuplicateHandle(current, msvcrt.get_osfhandle(file.fileno()),
++                            current, ctypes.byref(handle), 0, True, 2):
++                        raise ctypes.WinError(ctypes.get_last_error())
++                    cleanup.callback(close, handle)
++                    return handle.value
++
++                stdin_file = cleanup.enter_context(open(os.devnull, 'rb'))
++                inherited = (wintypes.HANDLE * 2)(duplicate(stdin_file), duplicate(stdout))
++                jobs = (wintypes.HANDLE * 1)(job.handle)
++                # Exact SDK constants: HANDLE_LIST (2) and JOB_LIST (13), input bit.
++                for kind, value in ((0x00020002, inherited), (0x0002000D, jobs)):
++                    if not kernel.UpdateProcThreadAttribute(attributes, 0, kind, value,
++                            ctypes.sizeof(value), None, None):
++                        raise ctypes.WinError(ctypes.get_last_error())
++                startup = _StartupInfoEx()
++                startup.startup.cb = ctypes.sizeof(startup)
++                startup.startup.flags = 0x00000100  # STARTF_USESTDHANDLES.
++                startup.startup.stdin = inherited[0]
++                startup.startup.stdout = startup.startup.stderr = inherited[1]
++                startup.attributes = ctypes.cast(attributes, ctypes.c_void_p)
++                command = ctypes.create_unicode_buffer(subprocess.list2cmdline(argv))
++                environment = ctypes.create_unicode_buffer('\0'.join(
++                    key + '=' + value for key, value in sorted(env.items(), key=lambda item: item[0].casefold())) + '\0\0')
++                info = _ProcessInformation()
++                # EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW.
++                if not kernel.CreateProcessW(argv[0], command, None, None, True, 0x08080400,
++                        environment, str(cwd), ctypes.byref(startup), ctypes.byref(info)):
++                    raise ctypes.WinError(ctypes.get_last_error())
++                self._handle, self.pid = info.process, info.pid
++                close(info.thread)
++        except BaseException:
++            if self._handle:
++                try:
++                    self.kill()
++                    self.wait(timeout=5)
++                finally:
++                    self.close()
++            raise
++
++    def poll(self):
++        if self.returncode is not None:
++            return self.returncode
++        state = self.kernel.WaitForSingleObject(self._handle, 0)
++        if state == 258:
++            return None
++        if state != 0:
++            raise ctypes.WinError(ctypes.get_last_error())
++        code = wintypes.DWORD()
++        if not self.kernel.GetExitCodeProcess(self._handle, ctypes.byref(code)):
++            raise ctypes.WinError(ctypes.get_last_error())
++        self.returncode = code.value
++        return self.returncode
++
++    def wait(self, timeout):
++        milliseconds = min(math.ceil(max(0, timeout) * 1000), 0xFFFFFFFE)
++        state = self.kernel.WaitForSingleObject(self._handle, milliseconds)
++        if state == 258:
++            raise subprocess.TimeoutExpired(self.args, timeout)
++        if state != 0:
++            raise ctypes.WinError(ctypes.get_last_error())
++        return self.poll()
++
++    def kill(self):
++        if self.poll() is None and not self.kernel.TerminateProcess(self._handle, 1):
++            if self.poll() is None:
++                raise ctypes.WinError(ctypes.get_last_error())
++
++    def close(self):
++        if self._handle:
++            if not self.kernel.CloseHandle(self._handle):
++                raise ctypes.WinError(ctypes.get_last_error())
++            self._handle = None
++
++
++def _owned_job_handles(job):
++    class ProcessList(ctypes.Structure):
++        _fields_ = [('assigned', wintypes.DWORD), ('count', wintypes.DWORD),
++                    ('pids', ctypes.c_size_t * 4096)]
++
++    sample = ProcessList()
++    if not job.kernel.QueryInformationJobObject(job.handle, 3, ctypes.byref(sample),
++                                                ctypes.sizeof(sample), None):
++        raise ctypes.WinError(ctypes.get_last_error())
++    if sample.count > 4096 or sample.assigned != sample.count:
++        raise ValueError('Owned job process list is incomplete')
++    handles = []
++    try:
++        for pid in sample.pids[:sample.count]:
++            handle = job.kernel.OpenProcess(0x101000, False, pid)
++            if not handle:
++                if ctypes.get_last_error() == 87:
++                    continue
++                raise ctypes.WinError(ctypes.get_last_error())
++            handles.append(handle)
++            present = wintypes.BOOL()
++            if not job.kernel.IsProcessInJob(handle, job.handle, ctypes.byref(present)):
++                raise ctypes.WinError(ctypes.get_last_error())
++            if not present.value:
++                raise ValueError('Owned process identity changed outside its job')
++        return handles
++    except BaseException:
++        for handle in handles:
++            job.kernel.CloseHandle(handle)
++        raise
++
++
++def terminate_owned_job(job, *, timeout=5):
++    """Terminate the exact owned job and await held member handles, never PIDs."""
++    if (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
++            or not math.isfinite(timeout) or not 0 < timeout <= 5):
++        raise ValueError('Owned job cleanup deadline must be finite and within five seconds')
++    handles = []
++    try:
++        try:
++            handles = _owned_job_handles(job)
++        finally:
++            job.terminate()
++        job.kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
++        job.kernel.WaitForSingleObject.restype = wintypes.DWORD
++        deadline = time.monotonic() + timeout
++        for handle in handles:
++            milliseconds = max(0, int((deadline - time.monotonic()) * 1000))
++            if job.kernel.WaitForSingleObject(handle, milliseconds) != 0:
++                raise RuntimeError('Owned job member did not finish termination')
++        while job.active():
++            if time.monotonic() >= deadline:
++                raise TimeoutError('Owned job cleanup deadline exceeded')
++            time.sleep(0.01)
++    finally:
++        with ExitStack() as cleanup:
++            for handle in handles:
++                cleanup.callback(_close_job_member_handle, job, handle)
++
++
++def _close_job_member_handle(job, handle):
++    if not job.kernel.CloseHandle(handle):
++        raise ctypes.WinError(ctypes.get_last_error())
++
++
++def sample_owned_job(job, reader, anchor):
++    """Bind measurements to job membership, not reusable global parent PID links."""
++    kernel = job.kernel
++    kernel.GetProcessId.argtypes = [wintypes.HANDLE]
++    kernel.GetProcessId.restype = wintypes.DWORD
++
++    def identify(handles):
++        pids = [kernel.GetProcessId(handle) for handle in handles]
++        if not pids or len(pids) > 512 or 0 in pids or len(set(pids)) != len(pids):
++            raise ValueError('Owned job measurement has invalid or unbounded process identities')
++        if anchor.pid not in pids:
++            raise ValueError('Owned measurement root is absent from its job')
++        return set(pids)
++
++    with ExitStack() as cleanup:
++        handles = _owned_job_handles(job)
++        for handle in handles:
++            cleanup.callback(_close_job_member_handle, job, handle)
++        pids = identify(handles)
++        samples = [reader.read(pid, expected_created_100ns=(
++            anchor.created_100ns if pid == anchor.pid else None)) for pid in sorted(pids)]
++        if any(sample.created_100ns < anchor.created_100ns for sample in samples):
++            raise ValueError('Owned job member predates the trusted root')
++        measured = tuple(reader.read(sample.pid, expected_created_100ns=sample.created_100ns)
++                         for sample in samples)
++        final_handles = _owned_job_handles(job)
++        for handle in final_handles:
++            cleanup.callback(_close_job_member_handle, job, handle)
++        if identify(final_handles) != pids:
++            raise ValueError('Owned job membership changed during measurement')
++        return measured
+diff --git a/scripts/native_checkpoint_recovery.py b/scripts/native_checkpoint_recovery.py
+--- /dev/null
++++ b/scripts/native_checkpoint_recovery.py
+@@ -0,0 +1,171 @@
++"""Source-bound crash/reopen checks; compiled provenance remains a caller gate."""
++import hashlib
++import json
++import math
++import re
++import stat
++import subprocess
++import time
++from pathlib import Path
++
++from scripts.native_checkpoint_contract import (
++    CRASH_POST_CASE as RECOVERY_CASE,
++)
++from scripts.native_checkpoint_contract import (
++    CRASH_PRE_CASE as PRE_CASE,
++)
++from scripts.native_checkpoint_contract import (
++    CRASH_SUITE as SUITE,
++)
++from scripts.native_checkpoint_contract import (
++    validate_browser_contract,
++)
++from scripts.native_checkpoint_crash import (
++    _OwnedJob,
++    _unique_object,
++    checksum,
++    run_acknowledged_crash,
++    validate_ack,
++)
++from scripts.native_checkpoint_process import OwnedJobProcess, terminate_owned_job
++
++from scripts.verify_native_checkpoint_units import validate_results
++
++
++def validate_source_contract(source, plan_path):
++    before = plan_path.lstat()
++    if (not plan_path.is_absolute() or plan_path.resolve(strict=True) != plan_path
++            or not stat.S_ISREG(before.st_mode)
++            or getattr(before, 'st_file_attributes', 0) & 0x400
++            or not 0 < before.st_size <= 4 * 1024 * 1024):
++        raise ValueError('Browser case plan must be a bounded canonical regular file')
++    with plan_path.open('rb') as stream:
++        raw = stream.read(4 * 1024 * 1024 + 1)
++    if len(raw) > 4 * 1024 * 1024:
++        raise ValueError('Browser case plan exceeds its size limit')
++    plan = json.loads(raw, object_pairs_hook=_unique_object)
++    bindings = validate_browser_contract(source, plan)
++    after = plan_path.lstat()
++    if (plan_path.resolve(strict=True) != plan_path
++            or any(getattr(before, key) != getattr(after, key)
++                   for key in ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns'))):
++        raise ValueError('Browser case plan identity changed during validation')
++    bindings[str(plan_path)] = hashlib.sha256(raw).hexdigest()
++    return bindings
++
++
++def _run_recovery_process(command, *, source, env, log, timeout):
++    """Keep recovery descendants owned even if their parent exits first."""
++    job, child = None, None
++    try:
++        with log.open('xb') as stream:
++            job = _OwnedJob()
++            child = OwnedJobProcess(command, cwd=source, env=env, stdout=stream, job=job)
++            code = child.wait(timeout=timeout)
++            if code:
++                raise subprocess.CalledProcessError(code, command)
++    finally:
++        try:
++            if job:
++                terminate_owned_job(job)
++            if child:
++                child.wait(timeout=5)
++            if job and job.active():
++                raise RuntimeError('Recovery job still contains owned processes')
++        finally:
++            try:
++                if job:
++                    job.close()
++            finally:
++                if child:
++                    child.close()
++
++
++def run_crash_recovery(prefix, *, source, plan_path, owner_root, output, cwd, env,
++                       expected_binary_sha256, timeout_seconds=120):
++    if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
++            or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= 300):
++        raise ValueError('Shared crash/recovery budget must be finite and within 300 seconds')
++    bindings = validate_source_contract(source, plan_path)
++    for name in (Path(__file__).name, 'native_checkpoint_crash.py', 'native_checkpoint_process.py',
++                 'native_checkpoint_contract.py'):
++        path = Path(__file__).parent / name
++        bindings[str(path)] = checksum(path)
++    if (not isinstance(prefix, list) or not prefix or
++            any(not isinstance(arg, str) for arg in prefix) or
++            any(arg.startswith(('--gtest', '--single-process-tests', '--user-data-dir', '--glint-crash-'))
++                for arg in prefix[1:])):
++        raise ValueError('Crash/recovery runner owns its exact test/profile switches')
++    started = time.monotonic()
++    measured = {'schema': 1, 'passed': False,
++        'scope': 'Owned source-bound crash/reopen process protocol; not standalone browser admission',
++        'expected_crash_case': SUITE + '.' + PRE_CASE,
++        'recovery_case': SUITE + '.' + RECOVERY_CASE,
++        'completed_gtest_cases': 0, 'qualified_forced_termination_cases': 0,
++        'post_profile_reopen_validated': False, 'browser_durability_admitted': False,
++        'production_admitted': False, 'source_contract_sha256': bindings}
++    forced = None
++    try:
++        pre_json = output / 'pre-tests.json'
++        forced = run_acknowledged_crash(
++            [*prefix, '--gtest_filter=' + SUITE + '.' + PRE_CASE,
++             '--single-process-tests', '--gtest_output=json:' + str(pre_json)],
++            owner_root=owner_root, output=output, cwd=cwd, env=env,
++            expected_binary_sha256=expected_binary_sha256, timeout_seconds=timeout_seconds)
++        measured['forced_phase_passed'] = forced['passed']
++        if not forced['passed'] or not forced['qualified_termination']:
++            raise ValueError('Intentional forced phase was not qualified')
++        measured['qualified_forced_termination_cases'] = 1
++        if pre_json.exists():
++            raise ValueError('Intentional crash phase unexpectedly produced a completed gtest result')
++        if checksum(Path(prefix[0])) != expected_binary_sha256:
++            raise ValueError('Executable binding changed before recovery')
++        if any(checksum(Path(path)) != digest for path, digest in bindings.items()):
++            raise ValueError('Source contract changed before recovery')
++        profile = Path(forced['profile'])
++        if profile.parent != output or profile.resolve() != profile or not profile.is_dir():
++            raise ValueError('Owned profile changed before recovery')
++        stat = profile.stat()
++        profile_identity = (stat.st_dev, stat.st_ino)
++        ack_path = output / 'ack.json'
++        if ack_path.resolve() != ack_path:
++            raise ValueError('Qualified acknowledgment became linked before recovery')
++        with ack_path.open('rb') as stream:
++            raw = stream.read(16385)
++        if len(raw) > 16384 or hashlib.sha256(raw).hexdigest() != forced['ack_sha256']:
++            raise ValueError('Qualified acknowledgment changed before recovery')
++        ack = json.loads(raw, object_pairs_hook=_unique_object)
++        validate_ack(ack, pid=forced['owned_pid'], challenge=ack['challenge'], profile=profile)
++        if not re.fullmatch(r'[a-f0-9]{64}', ack['challenge']):
++            raise ValueError('Qualified challenge is not the required invocation nonce')
++        remaining = timeout_seconds - (time.monotonic() - started)
++        if remaining <= 0:
++            raise TimeoutError('Shared crash/recovery budget exhausted')
++        results = output / 'recovery-tests.json'
++        if results.exists():
++            raise ValueError('Recovery result file must be fresh')
++        environment = dict(env, TEMP=str(output / 'temp'), TMP=str(output / 'temp'),
++                           PYTHONDONTWRITEBYTECODE='1')
++        command = [*prefix, '--gtest_filter=' + SUITE + '.' + RECOVERY_CASE,
++                   '--single-process-tests', '--gtest_output=json:' + str(results),
++                   '--user-data-dir=' + str(profile), '--glint-crash-challenge=' + ack['challenge']]
++        _run_recovery_process(command, source=cwd, env=environment,
++                              log=output / 'recovery.log', timeout=remaining)
++        validate_results(json.loads(results.read_bytes(), object_pairs_hook=_unique_object),
++                         {SUITE: {RECOVERY_CASE}})
++        stat = profile.stat()
++        if (profile.resolve() != profile or (stat.st_dev, stat.st_ino) != profile_identity
++                or checksum(Path(prefix[0])) != expected_binary_sha256
++                or any(checksum(Path(path)) != digest for path, digest in bindings.items())):
++            raise ValueError('Profile, executable or source contract changed during recovery')
++        measured.update(passed=True, completed_gtest_cases=1,
++                        post_profile_reopen_validated=True, recovery_results_sha256=checksum(results))
++    except Exception as error:  # noqa: BLE001 - report a failed pair without admitting recovery
++        measured['error'] = f'{type(error).__name__}: {error}'
++    finally:
++        measured['seconds'] = time.monotonic() - started
++        if forced is not None:
++            measured['forced_phase_report_sha256'] = checksum(output / 'report.json')
++            (output / 'pair-report.json').write_text(json.dumps(measured, indent=2) + '\n',
++                                                    encoding='utf-8', newline='\n')
++    return measured

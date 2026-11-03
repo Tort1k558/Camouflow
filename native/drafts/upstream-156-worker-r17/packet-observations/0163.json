@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "4c5a49c89076cd5d997aa2faeb3f1db35443b1ed06ececb21c64615b1959ce30",
+  "normalized_patch_sha256": "765edee33e9c75fdb268ff4f2de70faaab53d6d1eacca230cae305e3a2110583",
+  "patch": "0163-cookie-store-endpoint.patch",
+  "before_source_sha256": {
+    "third_party/blink/renderer/core/loader/cookie_jar.h": "e7d85c47e22538ed2feb798c8279b83fbbc472b458cabb27e9c3de2a5dc67965",
+    "third_party/blink/renderer/core/loader/cookie_jar.cc": "b073454fce1d5d0a60cbed0c41cb0ba0d72f76e9ef7d61c9ebf86d2df5f7f743",
+    "third_party/blink/renderer/modules/cookie_store/cookie_store.h": "bdd8dbb7da15388117cb60d3d693a2dec3dcb4b2e74326e56c5adceeed1fe86f",
+    "third_party/blink/renderer/modules/cookie_store/cookie_store.cc": "307a45574d3d19b75c8ff7f00b33b4af532f883b3e01ec67b91287f9a285e48b"
+  },
+  "final_source_sha256": {
+    "third_party/blink/renderer/core/loader/cookie_jar.h": "16fc31fb8a7e7bcc801dba5eb9982b955e6ba1a33a6c3828430ac69381d1c7e8",
+    "third_party/blink/renderer/core/loader/cookie_jar.cc": "e0b70ccf781828e8b8573b6ec052ab68af5a0435d4c04f2fb0bcf63a858e95e9",
+    "third_party/blink/renderer/modules/cookie_store/cookie_store.h": "1d9fc14bdb612ad3e191823006d47bb6bcbce0ea7c0e4283b145f004ef48cd99",
+    "third_party/blink/renderer/modules/cookie_store/cookie_store.cc": "5d44cffb0636fb50240d6902300df8d7d16f299dc88e5869acb25e5cb2e4ebd3"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

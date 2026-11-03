@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "ab19ca65eac8bcc4594a895c8f3fa769f003fb408f3975d0657ba7244d1145cc",
+  "normalized_patch_sha256": "92b5ec563a0f9f1776fac6696f0331cb709fc389ff08d02c3c077bd13c3cc8ea",
+  "patch": "0168-worker-cookie-checkpoint-tests.patch",
+  "before_source_sha256": {
+    "third_party/blink/renderer/modules/service_worker/service_worker_global_scope_test.cc": "3a24499ff22431e531eb7e1fbc12337cb5d76011d499421b8b9908ab642001df"
+  },
+  "final_source_sha256": {
+    "third_party/blink/renderer/modules/service_worker/service_worker_global_scope_test.cc": "5ae8379ce25dd2f269a0ca3a467310e556c2610f77d95d2bafa6b426b558ffcd"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

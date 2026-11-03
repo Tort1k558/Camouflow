@@ -1,0 +1,421 @@
+diff --git a/content/browser/storage_partition_impl.h b/content/browser/storage_partition_impl.h
+--- a/content/browser/storage_partition_impl.h
++++ b/content/browser/storage_partition_impl.h
+@@ -182,6 +182,8 @@
+   // generation.
+   void FlushCookiesForCheckpoint(base::TimeTicks deadline,
+                                  base::OnceCallback<void(bool)> callback);
++  // Read-only generation lease; empty for unavailable/nonpersistent owners.
++  base::WeakPtr<StoragePartitionImpl> GetCookieCheckpointOwner();
+   storage::mojom::LocalStorageControl* GetLocalStorageControl() override;
+   LockManager<storage::BucketId>*
+   GetLockManager();  // override; TODO: Add to interface
+diff --git a/content/browser/storage_partition_impl.cc b/content/browser/storage_partition_impl.cc
+--- a/content/browser/storage_partition_impl.cc
++++ b/content/browser/storage_partition_impl.cc
+@@ -1734,18 +1734,26 @@
+   cookie_checkpoints_.clear();
+ }
+ 
++base::WeakPtr<StoragePartitionImpl>
++StoragePartitionImpl::GetCookieCheckpointOwner() {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (cookie_checkpoint_shutdown_ || !browser_context_ ||
++      browser_context_->ShutdownStarted() ||
++      browser_context_->IsOffTheRecord() || config_.in_memory() ||
++      !cookie_manager_for_browser_process_.is_bound() ||
++      !cookie_manager_for_browser_process_.is_connected()) {
++    return {};
++  }
++  return cookie_checkpoint_weak_factory_.GetWeakPtr();
++}
++
+ void StoragePartitionImpl::FlushCookiesForCheckpoint(
+     base::TimeTicks deadline,
+     base::OnceCallback<void(bool)> callback) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   CHECK(callback);
+-  if (cookie_checkpoint_shutdown_ || !browser_context_ ||
+-      browser_context_->ShutdownStarted() ||
+-      browser_context_->IsOffTheRecord() || config_.in_memory() ||
+-      deadline.is_max() || deadline <= base::TimeTicks::Now() ||
+-      !cookie_manager_for_browser_process_.is_bound() ||
+-      !cookie_manager_for_browser_process_.is_connected() ||
+-      cookie_checkpoints_.size() >= 64 ||
++  if (!GetCookieCheckpointOwner() || deadline.is_max() ||
++      deadline <= base::TimeTicks::Now() || cookie_checkpoints_.size() >= 64 ||
+       next_cookie_checkpoint_id_ == std::numeric_limits<uint64_t>::max()) {
+     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE, base::BindOnce(std::move(callback), false));
+diff --git a/content/browser/dom_storage/dom_storage_context_wrapper.h b/content/browser/dom_storage/dom_storage_context_wrapper.h
+--- a/content/browser/dom_storage/dom_storage_context_wrapper.h
++++ b/content/browser/dom_storage/dom_storage_context_wrapper.h
+@@ -114,6 +114,9 @@
+   // Does not fence renderer producers or start/restart a storage service.
+   // False includes unsupported peers, disconnection, shutdown and timeout.
+   void FlushLocalStorageForCheckpoint(base::OnceCallback<void(bool)> callback);
++  // Invalidated on shutdown/rebinding, including after an earlier successful
++  // RPC.
++  base::WeakPtr<DOMStorageContextWrapper> GetLocalStorageCheckpointOwner();
+ 
+   void OpenLocalStorage(
+       const blink::StorageKey& storage_key,
+diff --git a/content/browser/dom_storage/dom_storage_context_wrapper.cc b/content/browser/dom_storage/dom_storage_context_wrapper.cc
+--- a/content/browser/dom_storage/dom_storage_context_wrapper.cc
++++ b/content/browser/dom_storage/dom_storage_context_wrapper.cc
+@@ -299,12 +299,21 @@
+   local_storage_checkpoints_.clear();
+ }
+ 
++base::WeakPtr<DOMStorageContextWrapper>
++DOMStorageContextWrapper::GetLocalStorageCheckpointOwner() {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (checkpoint_shutdown_ || !local_storage_control_.is_bound() ||
++      !local_storage_control_.is_connected()) {
++    return {};
++  }
++  return checkpoint_weak_factory_.GetWeakPtr();
++}
++
+ void DOMStorageContextWrapper::FlushLocalStorageForCheckpoint(
+     base::OnceCallback<void(bool)> callback) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   CHECK(callback);
+-  if (checkpoint_shutdown_ || !local_storage_control_.is_bound() ||
+-      !local_storage_control_.is_connected() ||
++  if (!GetLocalStorageCheckpointOwner() ||
+       local_storage_checkpoints_.size() >= 64 ||
+       next_local_storage_checkpoint_id_ ==
+           std::numeric_limits<uint64_t>::max()) {
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -632,6 +632,8 @@
+     "camouflow_native/glint/document_surface_commit_producer.cc",
+     "camouflow_native/glint/window_privacy_readiness.cc",
+     "camouflow_native/glint/window_privacy_readiness.h",
++    "camouflow_native/glint/profile_document_commit.cc",
++    "camouflow_native/glint/profile_document_commit.h",
+     "camouflow_native/glint/profile_producer_fence.cc",
+     "camouflow_native/glint/profile_producer_fence.h",
+     "camouflow_native/privacy_context.cc",
+diff --git a/content/browser/camouflow_native/glint/profile_document_commit.h b/content/browser/camouflow_native/glint/profile_document_commit.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/profile_document_commit.h
+@@ -0,0 +1,95 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_GLINT_PROFILE_DOCUMENT_COMMIT_H_
++#define CONTENT_BROWSER_CAMOUFLOW_NATIVE_GLINT_PROFILE_DOCUMENT_COMMIT_H_
++
++#include <cstddef>
++#include <memory>
++#include <vector>
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "content/common/content_export.h"
++
++namespace content {
++class BrowserContext;
++class DOMStorageContextWrapper;
++class StoragePartitionImpl;
++}  // namespace content
++
++namespace camouflow::native {
++
++class ProfileProducerFence;
++
++// A document-producer prefix followed by cookie/localStorage store commits.
++// NOT an atomic profile snapshot: no mutation freeze or worker/HTTP/IDB/cache
++// fencing, session-restore guarantee or power-loss durability is implied.
++class CONTENT_EXPORT ProfileDocumentCommit final {
++ public:
++  enum class Status {
++    kCommittedDocumentPrefix,
++    kInvalidScope,
++    kNoPersistentPartitions,
++    kTooManyPartitions,
++    kNotReady,
++    kProducerRejected,
++    kBackendRejected,
++    kTopologyChanged,
++    kTimedOut,
++    kOwnerGone,
++    kCancelled,
++  };
++
++  struct Result {
++    Status status;
++    size_t loaded_partition_count;
++  };
++  using Callback = base::OnceCallback<void(Result)>;
++
++  // UI only; never creates a partition or starts/restarts a service. Retain
++  // until posted completion. Destruction posts cancellation for a pending call.
++  static std::unique_ptr<ProfileDocumentCommit> Start(
++      content::BrowserContext* context,
++      base::TimeTicks deadline,
++      Callback callback);
++  ~ProfileDocumentCommit();
++
++  ProfileDocumentCommit(const ProfileDocumentCommit&) = delete;
++  ProfileDocumentCommit& operator=(const ProfileDocumentCommit&) = delete;
++
++ private:
++  static constexpr size_t kMaxPartitions = 128;
++
++  struct PartitionLease {
++    base::WeakPtr<content::StoragePartitionImpl> partition;
++    base::WeakPtr<content::StoragePartitionImpl> cookie_owner;
++    base::WeakPtr<content::DOMStorageContextWrapper> local_storage_owner;
++  };
++
++  ProfileDocumentCommit(content::BrowserContext* context,
++                        base::TimeTicks deadline,
++                        Callback callback);
++  void Begin();
++  void ProducersReplied(bool success);
++  void BackendReplied(bool success);
++  Status Revalidate();
++  void Finish(Status status);
++  void Deliver(Status status);
++
++  base::WeakPtr<content::BrowserContext> context_;
++  const base::TimeTicks deadline_;
++  Callback callback_;
++  std::vector<PartitionLease> partitions_;
++  std::unique_ptr<ProfileProducerFence> producers_;
++  size_t remaining_ = 0;
++  bool completion_queued_ = false;
++  base::OneShotTimer timer_;
++  base::WeakPtrFactory<ProfileDocumentCommit> weak_factory_{this};
++};
++
++}  // namespace camouflow::native
++
++#endif
+diff --git a/content/browser/camouflow_native/glint/profile_document_commit.cc b/content/browser/camouflow_native/glint/profile_document_commit.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/profile_document_commit.cc
+@@ -0,0 +1,215 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#include "content/browser/camouflow_native/glint/profile_document_commit.h"
++
++#include <utility>
++
++#include "base/check.h"
++#include "base/check_op.h"
++#include "base/task/bind_post_task.h"
++#include "base/task/sequenced_task_runner.h"
++#include "content/browser/camouflow_native/glint/profile_producer_fence.h"
++#include "content/browser/dom_storage/dom_storage_context_wrapper.h"
++#include "content/browser/storage_partition_impl.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/storage_partition.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++
++namespace camouflow::native {
++
++std::unique_ptr<ProfileDocumentCommit> ProfileDocumentCommit::Start(
++    content::BrowserContext* context,
++    base::TimeTicks deadline,
++    Callback callback) {
++  CHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  CHECK(callback);
++  auto operation = std::unique_ptr<ProfileDocumentCommit>(
++      new ProfileDocumentCommit(context, deadline, std::move(callback)));
++  operation->Begin();
++  return operation;
++}
++
++ProfileDocumentCommit::ProfileDocumentCommit(content::BrowserContext* context,
++                                             base::TimeTicks deadline,
++                                             Callback callback)
++    : context_(context ? context->GetWeakPtr()
++                       : base::WeakPtr<content::BrowserContext>()),
++      deadline_(deadline),
++      callback_(std::move(callback)) {}
++
++ProfileDocumentCommit::~ProfileDocumentCommit() {
++  CHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  weak_factory_.InvalidateWeakPtrs();
++  timer_.Stop();
++  producers_.reset();
++  if (callback_) {
++    base::BindPostTaskToCurrentDefault(std::move(callback_))
++        .Run(Result{Status::kCancelled, partitions_.size()});
++  }
++}
++
++void ProfileDocumentCommit::Begin() {
++  if (!context_ || context_->ShutdownStarted()) {
++    Finish(Status::kOwnerGone);
++    return;
++  }
++  if (context_->IsOffTheRecord()) {
++    Finish(Status::kInvalidScope);
++    return;
++  }
++  if (deadline_.is_max() || deadline_ <= base::TimeTicks::Now()) {
++    Finish(Status::kTimedOut);
++    return;
++  }
++  if (context_->GetLoadedStoragePartitionCount() > kMaxPartitions) {
++    Finish(Status::kTooManyPartitions);
++    return;
++  }
++  bool valid = true;
++  context_->ForEachLoadedStoragePartition(
++      [this, &valid](content::StoragePartition* partition) {
++        valid &= !partition->GetConfig().in_memory();
++        partitions_.push_back(PartitionLease{
++            static_cast<content::StoragePartitionImpl*>(partition)
++                ->GetWeakPtr(),
++            {},
++            {}});
++      });
++  if (!valid) {
++    Finish(Status::kInvalidScope);
++    return;
++  }
++  if (partitions_.empty()) {
++    Finish(Status::kNoPersistentPartitions);
++    return;
++  }
++  for (auto& lease : partitions_) {
++    if (!lease.partition || !lease.partition->GetDOMStorageContext()) {
++      Finish(Status::kNotReady);
++      return;
++    }
++    lease.cookie_owner = lease.partition->GetCookieCheckpointOwner();
++    lease.local_storage_owner = lease.partition->GetDOMStorageContext()
++                                    ->GetLocalStorageCheckpointOwner();
++    if (!lease.cookie_owner || !lease.local_storage_owner) {
++      Finish(Status::kNotReady);
++      return;
++    }
++  }
++  timer_.Start(FROM_HERE, deadline_ - base::TimeTicks::Now(),
++               base::BindOnce(&ProfileDocumentCommit::Finish,
++                              weak_factory_.GetWeakPtr(), Status::kTimedOut));
++  producers_ = ProfileProducerFence::Start(
++      context_.get(), deadline_,
++      base::BindOnce(
++          [](base::WeakPtr<ProfileDocumentCommit> operation,
++             ProfileProducerFence::Result result) {
++            if (operation) {
++              operation->ProducersReplied(
++                  result.status == ProfileProducerFence::Status::kAcknowledged);
++            }
++          },
++          weak_factory_.GetWeakPtr()),
++      ProfileProducerFence::ProducerScope::kDocumentStorage,
++      /*retain_cohort=*/true);
++}
++
++ProfileDocumentCommit::Status ProfileDocumentCommit::Revalidate() {
++  if (!context_ || context_->ShutdownStarted()) {
++    return Status::kOwnerGone;
++  }
++  if (context_->IsOffTheRecord()) {
++    return Status::kInvalidScope;
++  }
++  if (base::TimeTicks::Now() >= deadline_) {
++    return Status::kTimedOut;
++  }
++  if (!producers_ || producers_->CheckRetainedCohort() !=
++                         ProfileProducerFence::Status::kAcknowledged) {
++    return Status::kTopologyChanged;
++  }
++  for (const auto& lease : partitions_) {
++    if (!lease.partition || !lease.cookie_owner || !lease.local_storage_owner) {
++      return Status::kOwnerGone;
++    }
++    if (!lease.partition->GetCookieCheckpointOwner() ||
++        !lease.local_storage_owner->GetLocalStorageCheckpointOwner()) {
++      return Status::kNotReady;
++    }
++  }
++  return Status::kCommittedDocumentPrefix;
++}
++
++void ProfileDocumentCommit::ProducersReplied(bool success) {
++  if (completion_queued_) {
++    return;
++  }
++  if (!success) {
++    Finish(Status::kProducerRejected);
++    return;
++  }
++  const auto status = Revalidate();
++  if (status != Status::kCommittedDocumentPrefix) {
++    Finish(status);
++    return;
++  }
++  remaining_ = partitions_.size() * 2;
++  for (const auto& lease : partitions_) {
++    if (!lease.partition || !lease.cookie_owner || !lease.local_storage_owner) {
++      Finish(Status::kNotReady);
++      return;
++    }
++    auto reply = [this]() {
++      return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindPostTaskToCurrentDefault(
++              base::BindOnce(&ProfileDocumentCommit::BackendReplied,
++                             weak_factory_.GetWeakPtr())),
++          false);
++    };
++    lease.cookie_owner->FlushCookiesForCheckpoint(deadline_, reply());
++    lease.local_storage_owner->FlushLocalStorageForCheckpoint(reply());
++  }
++}
++
++void ProfileDocumentCommit::BackendReplied(bool success) {
++  if (completion_queued_) {
++    return;
++  }
++  CHECK_GT(remaining_, 0u);
++  if (!success) {
++    Finish(Status::kBackendRejected);
++    return;
++  }
++  if (--remaining_ == 0) {
++    Finish(Status::kCommittedDocumentPrefix);
++  }
++}
++
++void ProfileDocumentCommit::Finish(Status status) {
++  if (completion_queued_ || !callback_) {
++    return;
++  }
++  completion_queued_ = true;
++  timer_.Stop();
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&ProfileDocumentCommit::Deliver,
++                                weak_factory_.GetWeakPtr(), status));
++}
++
++void ProfileDocumentCommit::Deliver(Status status) {
++  if (!context_ || context_->ShutdownStarted()) {
++    status = Status::kOwnerGone;
++  } else if (status == Status::kCommittedDocumentPrefix) {
++    status = Revalidate();
++  }
++  auto callback = std::move(callback_);
++  const auto partition_count = partitions_.size();
++  // Keep the acknowledged producer cohort observed until the final validation;
++  // do not let asynchronous backend work authorize success after topology loss.
++  producers_.reset();
++  std::move(callback).Run(Result{status, partition_count});
++}
++
++}  // namespace camouflow::native

@@ -1,0 +1,292 @@
+diff --git a/third_party/blink/renderer/core/loader/build.gni b/third_party/blink/renderer/core/loader/build.gni
+index 11deec3533263dcc4717655c4b302b6666ea9831..b8d71894f946956c036d5787d9525f18b4c542bc 100644
+--- a/third_party/blink/renderer/core/loader/build.gni
++++ b/third_party/blink/renderer/core/loader/build.gni
+@@ -14,6 +14,7 @@ blink_core_sources_loader = [
+   "beacon_data.cc",
+   "beacon_data.h",
+   "cookie_jar.cc",
++  "cookie_checkpoint_state.h",
+   "cookie_jar.h",
+   "cross_thread_resource_timing_info_copier.h",
+   "document_load_timing.cc",
+diff --git a/third_party/blink/renderer/core/loader/cookie_checkpoint_state.h b/third_party/blink/renderer/core/loader/cookie_checkpoint_state.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..d7588c265b372fc45f4384b7f5cc884e93259853
+--- /dev/null
++++ b/third_party/blink/renderer/core/loader/cookie_checkpoint_state.h
+@@ -0,0 +1,113 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_CHECKPOINT_STATE_H_
++#define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_CHECKPOINT_STATE_H_
++
++#include <cstddef>
++#include <cstdint>
++#include <limits>
++#include <optional>
++
++namespace camouflow::native {
++
++// Shared write/connection accounting. The transport owner still validates its
++// lifetime, protocol version, connection and absolute deadline before replying.
++class CookieCheckpointState final {
++ public:
++  struct Snapshot {
++    std::uint64_t generation;
++    std::uint64_t epoch;
++    bool operator==(const Snapshot&) const = default;
++  };
++
++  static constexpr std::size_t kMaximumPendingWireRequests = 64;
++
++  constexpr CookieCheckpointState() = default;
++  CookieCheckpointState(const CookieCheckpointState&) = delete;
++  CookieCheckpointState& operator=(const CookieCheckpointState&) = delete;
++
++  constexpr bool IsAvailable() const { return !broken_ && !history_lost_; }
++  constexpr Snapshot Capture() const { return {generation_, epoch_}; }
++  constexpr bool IsCurrent(Snapshot snapshot) const {
++    return IsAvailable() && snapshot == Capture();
++  }
++
++  // Called before sending a write, not after its asynchronous reply.
++  constexpr bool RecordWrite() {
++    if (epoch_ == std::numeric_limits<std::uint64_t>::max()) {
++      broken_ = true;
++      return false;
++    }
++    last_write_epoch_ = ++epoch_;
++    return true;
++  }
++
++  constexpr void InvalidateConnection() {
++    history_lost_ |= last_write_epoch_ > acknowledged_write_epoch_;
++    if (generation_ == std::numeric_limits<std::uint64_t>::max() ||
++        epoch_ == std::numeric_limits<std::uint64_t>::max()) {
++      broken_ = true;
++    } else {
++      ++generation_;
++      ++epoch_;
++    }
++    pending_wire_requests_ = 0;
++  }
++
++  constexpr std::optional<Snapshot> BeginWireRequest() {
++    if (!IsAvailable() ||
++        pending_wire_requests_ >= kMaximumPendingWireRequests) {
++      return std::nullopt;
++    }
++    ++pending_wire_requests_;
++    return Capture();
++  }
++
++  // Only a wire reply or connection retirement releases a slot. A caller's
++  // timeout/cancellation does not cancel the underlying Mojo request.
++  constexpr bool RetireWireRequest(Snapshot snapshot) {
++    if (snapshot.generation != generation_) {
++      return false;
++    }
++    if (pending_wire_requests_ == 0) {
++      broken_ = true;
++      return false;
++    }
++    --pending_wire_requests_;
++    return true;
++  }
++
++  // Invoke only after the owner has validated a successful transport reply and
++  // its final posted-delivery guards. This is not a transport acknowledgment.
++  constexpr bool Acknowledge(Snapshot snapshot) {
++    if (!IsCurrent(snapshot)) {
++      return false;
++    }
++    acknowledged_write_epoch_ = last_write_epoch_;
++    return true;
++  }
++
++  constexpr std::size_t PendingWireRequests() const {
++    return pending_wire_requests_;
++  }
++  constexpr std::uint64_t LastWriteEpoch() const { return last_write_epoch_; }
++  constexpr std::uint64_t AcknowledgedWriteEpoch() const {
++    return acknowledged_write_epoch_;
++  }
++
++ private:
++  friend class CookieCheckpointStateTestPeer;
++
++  std::uint64_t generation_ = 0;
++  std::uint64_t epoch_ = 0;
++  std::uint64_t last_write_epoch_ = 0;
++  std::uint64_t acknowledged_write_epoch_ = 0;
++  std::size_t pending_wire_requests_ = 0;
++  bool history_lost_ = false;
++  bool broken_ = false;
++};
++
++}  // namespace camouflow::native
++
++#endif  // THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_CHECKPOINT_STATE_H_
+diff --git a/third_party/blink/renderer/core/loader/cookie_jar.cc b/third_party/blink/renderer/core/loader/cookie_jar.cc
+index e8338890564973412730143dc7dd8012ed2d482c..0c594c2d4bceb74cb2b061b37468a38c72548f80 100644
+--- a/third_party/blink/renderer/core/loader/cookie_jar.cc
++++ b/third_party/blink/renderer/core/loader/cookie_jar.cc
+@@ -119,8 +119,8 @@ std::optional<uint64_t> CookieJar::CheckpointProducerEpoch() {
+ }
+ 
+ bool CookieJar::IsCheckpointProducerAvailable() const {
+-  return !checkpoint_tracking_broken_ && !checkpoint_history_lost_ &&
+-         (!backend_.is_bound() ? checkpoint_last_write_epoch_ == 0
++  return checkpoint_state_.IsAvailable() &&
++         (!backend_.is_bound() ? checkpoint_state_.LastWriteEpoch() == 0
+                                : backend_.is_connected());
+ }
+ 
+@@ -172,25 +172,12 @@ bool CookieJar::SetCookie(const String& value) {
+ 
+ void CookieJar::MarkCheckpointCookieWrite() {
+   AdvanceCheckpointProducerEpoch();
+-  if (checkpoint_epoch_ == std::numeric_limits<uint64_t>::max()) {
+-    checkpoint_tracking_broken_ = true;
+-    return;
+-  }
+-  checkpoint_last_write_epoch_ = ++checkpoint_epoch_;
++  checkpoint_state_.RecordWrite();
+ }
+ 
+ void CookieJar::InvalidateCheckpointConnection() {
+   AdvanceCheckpointProducerEpoch();
+-  checkpoint_history_lost_ |=
+-      checkpoint_last_write_epoch_ > checkpoint_acknowledged_write_epoch_;
+-  if (checkpoint_generation_ == std::numeric_limits<uint64_t>::max() ||
+-      checkpoint_epoch_ == std::numeric_limits<uint64_t>::max()) {
+-    checkpoint_tracking_broken_ = true;
+-  } else {
+-    ++checkpoint_generation_;
+-    ++checkpoint_epoch_;
+-  }
+-  checkpoint_wire_requests_ = 0;
++  checkpoint_state_.InvalidateConnection();
+ }
+ 
+ void CookieJar::DrainWritesForCheckpoint(
+@@ -201,9 +188,10 @@ void CookieJar::DrainWritesForCheckpoint(
+   auto reply = std::make_shared<CheckpointReply>(deadline, std::move(callback));
+   auto runner = base::SequencedTaskRunner::GetCurrentDefault();
+   if (deadline <= now || deadline > now + base::Seconds(30) ||
+-      checkpoint_tracking_broken_ || checkpoint_history_lost_ || !document_ ||
++      !checkpoint_state_.IsAvailable() || !document_ ||
+       !document_->IsActive() || !document_->GetFrame() ||
+-      checkpoint_wire_requests_ >= 64) {
++      checkpoint_state_.PendingWireRequests() >=
++          camouflow::native::CookieCheckpointState::kMaximumPendingWireRequests) {
+     runner->PostTask(FROM_HERE,
+                      base::BindOnce(&CheckpointReply::Complete, reply, false));
+     return;
+@@ -212,13 +200,14 @@ void CookieJar::DrainWritesForCheckpoint(
+   runner->PostDelayedTask(
+       FROM_HERE, base::BindOnce(&CheckpointReply::Complete, reply, false),
+       deadline - now);
+-  const auto generation = checkpoint_generation_;
+-  const auto epoch = checkpoint_epoch_;
++  const auto snapshot = checkpoint_state_.Capture();
++  const auto generation = snapshot.generation;
++  const auto epoch = snapshot.epoch;
+   if (!backend_.is_bound()) {
+     runner->PostTask(
+         FROM_HERE,
+         BindOnce(&CookieJar::DeliverCheckpointReply, WrapWeakPersistent(this),
+-                 reply, generation, epoch, checkpoint_last_write_epoch_ == 0));
++                 reply, generation, epoch, checkpoint_state_.LastWriteEpoch() == 0));
+     return;
+   }
+   if (!backend_.is_connected()) {
+@@ -226,7 +215,11 @@ void CookieJar::DrainWritesForCheckpoint(
+                      base::BindOnce(&CheckpointReply::Complete, reply, false));
+     return;
+   }
+-  ++checkpoint_wire_requests_;
++  if (!checkpoint_state_.BeginWireRequest()) {
++    runner->PostTask(FROM_HERE,
++                     base::BindOnce(&CheckpointReply::Complete, reply, false));
++    return;
++  }
+   backend_.QueryVersion(BindOnce(&CookieJar::OnCheckpointVersion,
+                                  WrapWeakPersistent(this), reply, generation,
+                                  epoch));
+@@ -236,8 +229,9 @@ void CookieJar::OnCheckpointVersion(std::shared_ptr<CheckpointReply> reply,
+                                     uint64_t generation,
+                                     uint64_t epoch,
+                                     uint32_t version) {
+-  if (version < 1 || generation != checkpoint_generation_ ||
+-      epoch != checkpoint_epoch_ || !reply->callback ||
++  if (version < 1 ||
++      camouflow::native::CookieCheckpointState::Snapshot{generation, epoch} !=
++          checkpoint_state_.Capture() || !reply->callback ||
+       base::TimeTicks::Now() >= reply->deadline || !backend_.is_bound() ||
+       !backend_.is_connected()) {
+     OnCheckpointWireReply(std::move(reply), generation, epoch, false);
+@@ -252,13 +246,7 @@ void CookieJar::OnCheckpointWireReply(std::shared_ptr<CheckpointReply> reply,
+                                       uint64_t generation,
+                                       uint64_t epoch,
+                                       bool success) {
+-  if (generation == checkpoint_generation_) {
+-    if (checkpoint_wire_requests_ > 0) {
+-      --checkpoint_wire_requests_;
+-    } else {
+-      checkpoint_tracking_broken_ = true;
+-    }
+-  }
++  checkpoint_state_.RetireWireRequest({generation, epoch});
+   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+       FROM_HERE,
+       BindOnce(&CookieJar::DeliverCheckpointReply, WrapWeakPersistent(this),
+@@ -269,15 +257,14 @@ void CookieJar::DeliverCheckpointReply(std::shared_ptr<CheckpointReply> reply,
+                                        uint64_t generation,
+                                        uint64_t epoch,
+                                        bool success) {
+-  success = success && generation == checkpoint_generation_ &&
+-            epoch == checkpoint_epoch_ && !checkpoint_tracking_broken_ &&
+-            !checkpoint_history_lost_ && document_ && document_->IsActive() &&
++  success = success && checkpoint_state_.IsCurrent({generation, epoch}) &&
++            document_ && document_->IsActive() &&
+             document_->GetFrame() &&
+-            (!backend_.is_bound() ? checkpoint_last_write_epoch_ == 0
++            (!backend_.is_bound() ? checkpoint_state_.LastWriteEpoch() == 0
+                                   : backend_.is_connected()) &&
+             base::TimeTicks::Now() < reply->deadline;
+   if (success && reply->callback) {
+-    checkpoint_acknowledged_write_epoch_ = checkpoint_last_write_epoch_;
++    success = checkpoint_state_.Acknowledge({generation, epoch});
+   }
+   CheckpointReply::Complete(std::move(reply), success);
+ }
+diff --git a/third_party/blink/renderer/core/loader/cookie_jar.h b/third_party/blink/renderer/core/loader/cookie_jar.h
+index ccacc813aba7b9da02e025ef24d72ad9d3e6a75d..930f2ccfa0a21164fc60f1436425d5ec40355d7e 100644
+--- a/third_party/blink/renderer/core/loader/cookie_jar.h
++++ b/third_party/blink/renderer/core/loader/cookie_jar.h
+@@ -15,6 +15,7 @@
+ #include "mojo/public/cpp/base/shared_memory_version.h"
+ #include "services/network/public/mojom/restricted_cookie_manager.mojom-blink.h"
+ #include "third_party/blink/renderer/core/core_export.h"
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_state.h"
+ #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+ #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+@@ -168,13 +169,7 @@ class CORE_EXPORT CookieJar : public GarbageCollected<CookieJar> {
+   // and it is compared with the committed_writes_count in shared memory.
+   mojo::CountType required_committed_writes_ = 0;
+ 
+-  uint64_t checkpoint_generation_ = 0;
+-  uint64_t checkpoint_epoch_ = 0;
+-  uint64_t checkpoint_last_write_epoch_ = 0;
+-  uint64_t checkpoint_acknowledged_write_epoch_ = 0;
+-  size_t checkpoint_wire_requests_ = 0;
+-  bool checkpoint_history_lost_ = false;
+-  bool checkpoint_tracking_broken_ = false;
++  camouflow::native::CookieCheckpointState checkpoint_state_;
+ };
+ 
+ }  // namespace blink

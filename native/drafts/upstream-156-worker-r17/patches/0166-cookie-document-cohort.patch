@@ -1,0 +1,298 @@
+diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
+index 5999a81e043dede1b34f1c78befc474805991333..0b9ae43d367efae5184facd508f9ff9318205399 100644
+--- a/third_party/blink/renderer/core/dom/document.cc
++++ b/third_party/blink/renderer/core/dom/document.cc
+@@ -309,6 +309,8 @@
+ #include "third_party/blink/renderer/core/layout/pagination_utils.h"
+ #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
+ #include "third_party/blink/renderer/core/loader/anchor_element_interaction_tracker.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h"
+ #include "third_party/blink/renderer/core/loader/cookie_jar.h"
+ #include "third_party/blink/renderer/core/loader/document_loader.h"
+ #include "third_party/blink/renderer/core/loader/frame_fetch_context.h"
+@@ -6928,22 +6930,102 @@ void Document::setCookie(const String& value, ExceptionState& exception_state) {
+ }
+ 
+ bool Document::IsCookieProducerAvailableForCheckpoint() const {
+-  return IsActive() && GetFrame() && cookie_jar_ &&
+-         cookie_jar_->IsCheckpointProducerAvailable();
++  if (!IsActive() || !GetFrame() || !cookie_jar_ ||
++      !cookie_jar_->IsCheckpointProducerAvailable()) {
++    return false;
++  }
++  auto* context = GetExecutionContext();
++  if (!context || context->IsContextDestroyed()) {
++    return false;
++  }
++  auto* participant = CookieCheckpointParticipant::GetIfExists(*context);
++  return !participant || participant->CaptureWritesForCheckpoint().has_value();
+ }
+ 
+ void Document::DrainCookieWritesForCheckpoint(
+     base::TimeTicks deadline,
+     base::OnceCallback<void(bool)> callback) {
+   CHECK(callback);
+-  if (!IsActive() || !GetFrame() || !cookie_jar_) {
+-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+-        FROM_HERE, base::BindOnce(std::move(callback), false));
+-    return;
++  auto runner = base::SequencedTaskRunner::GetCurrentDefault();
++  const auto now = base::TimeTicks::Now();
++  const auto epoch = CookieJar::CheckpointProducerEpoch();
++  if (now >= deadline || deadline > now + base::Seconds(30) || !epoch ||
++      !IsCookieProducerAvailableForCheckpoint()) {
++    runner->PostTask(FROM_HERE, base::BindOnce(std::move(callback), false));
++    return;
++  }
++  auto* context = GetExecutionContext();
++  auto* participant = CookieCheckpointParticipant::GetIfExists(*context);
++  const auto snapshot = participant ? participant->CaptureWritesForCheckpoint()
++                                    : std::nullopt;
++  if (participant && !snapshot) {
++    runner->PostTask(FROM_HERE, base::BindOnce(std::move(callback), false));
++    return;
++  }
++
++  // Neither the timeout nor final delivery depends on a surviving Oilpan owner.
++  struct Reply {
++    explicit Reply(base::OnceCallback<void(bool)> completion)
++        : callback(std::move(completion)) {}
++    void Complete(bool success) {
++      if (callback) {
++        std::move(callback).Run(success);
++      }
++    }
++    base::OnceCallback<void(bool)> callback;
++    size_t remaining = 0;
++    bool success = true;
++  };
++  auto reply = std::make_shared<Reply>(std::move(callback));
++  reply->remaining = participant ? 2 : 1;
++  runner->PostDelayedTask(
++      FROM_HERE,
++      base::BindOnce([](std::shared_ptr<Reply> pending) { pending->Complete(false); },
++                     reply),
++      deadline - base::TimeTicks::Now());
++
++  auto validate =
++      [document = WeakPersistent<Document>(this),
++       jar = WeakPersistent<CookieJar>(cookie_jar_.Get()),
++       owner = WeakPersistent<ExecutionContext>(context),
++       producer = WeakPersistent<CookieCheckpointParticipant>(participant),
++       expected_epoch = *epoch, snapshot, deadline]() {
++        if (base::TimeTicks::Now() >= deadline || !document || !jar || !owner ||
++            owner->IsContextDestroyed() || !document->IsActive() ||
++            !document->GetFrame() || document->GetExecutionContext() != owner.Get() ||
++            document->cookie_jar_.Get() != jar.Get() ||
++            !jar->IsCheckpointProducerAvailable() ||
++            CookieJar::CheckpointProducerEpoch() != expected_epoch) {
++          return false;
++        }
++        auto* current = CookieCheckpointParticipant::GetIfExists(*owner);
++        if (current != producer.Get()) {
++          return false;
++        }
++        if (!snapshot) {
++          return !current;
++        }
++        return current && current->IsRegisteredForCheckpoint() &&
++               current->CaptureWritesForCheckpoint() == snapshot;
++      };
++  auto complete = [reply, runner, validate](bool success) {
++    if (!reply->callback || !reply->remaining) {
++      return;
++    }
++    reply->success = reply->success && success;
++    if (--reply->remaining != 0) {
++      return;
++    }
++    runner->PostTask(FROM_HERE, base::BindOnce(
++        [reply, validate]() { reply->Complete(reply->success && validate()); }));
++  };
++  cookie_jar_->DrainWritesForCheckpoint(deadline, base::BindOnce(complete));
++  if (participant) {
++    participant->DrainWritesForCheckpoint(deadline, base::BindOnce(complete));
+   }
+-  cookie_jar_->DrainWritesForCheckpoint(deadline, std::move(callback));
+ }
+ 
++
+ bool Document::CookiesEnabled() const {
+   if (!dom_window_)
+     return false;
+diff --git a/third_party/blink/renderer/core/loader/build.gni b/third_party/blink/renderer/core/loader/build.gni
+index f1ceca5fccbc56661ab282cadca2a1882ccc24da..f87a258bece2e722f051e0db4fc1f669a77ddfd0 100644
+--- a/third_party/blink/renderer/core/loader/build.gni
++++ b/third_party/blink/renderer/core/loader/build.gni
+@@ -184,6 +184,7 @@ blink_core_tests_loader = [
+   "base_fetch_context_test.cc",
+   "connection_allowlist_preload_test.cc",
+   "cookie_checkpoint_participant_test.cc",
++  "document_cookie_cohort_test.cc",
+   "cookie_checkpoint_state_test.cc",
+   "document_load_timing_test.cc",
+   "document_loader_auto_speculation_rules_test.cc",
+diff --git a/third_party/blink/renderer/core/loader/document_cookie_cohort_test.cc b/third_party/blink/renderer/core/loader/document_cookie_cohort_test.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..1e117e25c02952d12e54de09a897f3dcda4aa967
+--- /dev/null
++++ b/third_party/blink/renderer/core/loader/document_cookie_cohort_test.cc
+@@ -0,0 +1,157 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h"
++
++#include <utility>
++
++#include "base/test/test_future.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/renderer/core/dom/document.h"
++#include "third_party/blink/renderer/core/execution_context/execution_context.h"
++#include "third_party/blink/renderer/core/loader/cookie_jar.h"
++#include "third_party/blink/renderer/core/testing/page_test_base.h"
++#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
++
++namespace blink {
++namespace {
++
++// A held second producer tests aggregation, not CookieStore's Mojo transport.
++class HeldCookieParticipant final
++    : public GarbageCollected<HeldCookieParticipant>,
++      public CookieCheckpointParticipant {
++ public:
++  explicit HeldCookieParticipant(ExecutionContext& context)
++      : CookieCheckpointParticipant(context) {}
++  bool Register() { return RegisterForCheckpoint(); }
++  std::optional<Snapshot> CaptureWritesForCheckpoint() const override {
++    if (!available_ || !IsRegisteredForCheckpoint()) {
++      return std::nullopt;
++    }
++    return Snapshot{1, epoch_};
++  }
++  void DrainWritesForCheckpoint(base::TimeTicks deadline,
++                                base::OnceCallback<void(bool)> callback) override {
++    EXPECT_FALSE(callback_);
++    deadline_ = deadline;
++    callback_ = std::move(callback);
++  }
++  void Reply(bool success) {
++    ASSERT_TRUE(callback_);
++    std::move(callback_).Run(success);
++  }
++  void Write() {
++    ++epoch_;
++    CookieJar::NoteExternalCookieProducerMutationForCheckpoint();
++  }
++  void Disconnect() {
++    available_ = false;
++    CookieJar::NoteExternalCookieProducerMutationForCheckpoint();
++  }
++  base::TimeTicks Deadline() const { return deadline_; }
++
++ private:
++  uint64_t epoch_ = 0;
++  bool available_ = true;
++  base::TimeTicks deadline_;
++  base::OnceCallback<void(bool)> callback_;
++};
++
++class DocumentCookieCohortTest : public PageTestBase {
++ public:
++  DocumentCookieCohortTest()
++      : PageTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
++
++ protected:
++  HeldCookieParticipant* CreateParticipant() {
++    auto* participant = MakeGarbageCollected<HeldCookieParticipant>(
++        *GetDocument().GetExecutionContext());
++    EXPECT_TRUE(participant->Register());
++    return participant;
++  }
++  base::TimeTicks Deadline() { return base::TimeTicks::Now() + base::Seconds(5); }
++};
++
++TEST_F(DocumentCookieCohortTest, UnusedModuleIsNotCreated) {
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(Deadline(), done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_TRUE(done.Get());
++  EXPECT_EQ(CookieCheckpointParticipant::GetIfExists(
++                *GetDocument().GetExecutionContext()), nullptr);
++}
++
++TEST_F(DocumentCookieCohortTest, FirstPipeCannotAuthorizeTheHeldSecondPipe) {
++  Persistent<HeldCookieParticipant> participant = CreateParticipant();
++  const auto deadline = Deadline();
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(deadline, done.GetCallback());
++  task_environment().RunUntilIdle();
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_EQ(participant->Deadline(), deadline);
++  participant->Reply(true);
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_F(DocumentCookieCohortTest, SecondPipeFailureRejectsTheCohort) {
++  Persistent<HeldCookieParticipant> participant = CreateParticipant();
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(Deadline(), done.GetCallback());
++  participant->Reply(false);
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCohortTest, MutationBeforeFinalDeliveryRejectsOldSuccess) {
++  Persistent<HeldCookieParticipant> participant = CreateParticipant();
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(Deadline(), done.GetCallback());
++  task_environment().RunUntilIdle();
++  participant->Reply(true);
++  participant->Write();
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCohortTest, LateRegistrationRejectsAnEmptyProducerSnapshot) {
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(Deadline(), done.GetCallback());
++  Persistent<HeldCookieParticipant> participant = CreateParticipant();
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCohortTest, DuplicateRegistrationPoisonsTheCapturedProducer) {
++  Persistent<HeldCookieParticipant> participant = CreateParticipant();
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(Deadline(), done.GetCallback());
++  auto* duplicate = MakeGarbageCollected<HeldCookieParticipant>(
++      *GetDocument().GetExecutionContext());
++  EXPECT_FALSE(duplicate->Register());
++  participant->Reply(true);
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCohortTest, DisconnectBeforeFinalDeliveryRejectsSuccess) {
++  Persistent<HeldCookieParticipant> participant = CreateParticipant();
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(Deadline(), done.GetCallback());
++  task_environment().RunUntilIdle();
++  participant->Reply(true);
++  participant->Disconnect();
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCohortTest, TimeoutDeliversOnceEvenWhenTheSecondReplyIsLate) {
++  Persistent<HeldCookieParticipant> participant = CreateParticipant();
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(Deadline(), done.GetCallback());
++  task_environment().FastForwardBy(base::Seconds(5));
++  ASSERT_TRUE(done.IsReady());
++  EXPECT_FALSE(done.Get());
++  participant->Reply(true);
++  task_environment().RunUntilIdle();
++}
++
++}  // namespace
++}  // namespace blink

@@ -1,5 +1,43 @@
 # Glint architecture
 
+## 2026-11-03: staged R17 browser execution contract
+
+The unselected R17 preparation adds a source/plan-bound browser dispatcher over
+the existing receipt-verified checkpoint runner. The plan contains 300 source
+declarations across seven binaries. Its 19 browser declarations include eight
+existing session-cookie policy cases; those are preserved, not filtered out.
+
+Ordinary PRE chains execute deepest-first in a fresh owned shared profile.
+The acknowledged-crash PRE case is routed separately and cannot be counted as
+a completed gtest. A separate process must reopen the exact profile and produce
+the exact successful recovery result. One shared deadline covers both phases;
+the crash/reopen phase additionally has a 300-second maximum.
+
+Owned Windows processes enter a non-breakaway kill-on-close job at creation.
+Recovery snapshots handles to job members before termination and waits for
+those handles to signal, including when their parent has already exited.
+Acknowledgement PIDs never select a process to terminate. Cancellation propagates
+after owned-tree cleanup. Binary/source/plan hashes are checked between phases.
+
+Installation preparation grants only Chromium's two specific installation
+capabilities inherited read/execute access on an owned verified package stage,
+after archive validation and before publication. It does not change existing
+runtime/profile ACLs, grant broad application-package access or disable sandbox.
+The original failed preserved-R11 probe remains recorded. A separate copy of all
+269 verified assets now starts with these exact capability ACLs, without disabling
+sandbox; owned-job cleanup passes and the original remains unchanged. The
+throwaway copy is removed after full integrity checks. R16 package/runtime
+verification is still pending.
+
+All of this remains staged source and host verification, not canonical source
+transition, compiled R17 execution, whole-profile checkpoint or release admission.
+The earlier R16 link OOM and R17 memory-admission failure remain retained negatives.
+R16 subsequently compiles/links successfully, but its native gate stops before
+execution because free space is 179.5 GiB against the unchanged 180 GiB threshold.
+Idle PDB compression then recovers 1,243,586,560 allocated bytes without deleting
+files or changing their contents; the native/runtime gates still need to resume.
+
+
 ## 2026-11-02: R13 native failures retained; next packet remains unselected
 
 The [R13 native attempt](drafts/upstream-156-checkpoint-r13/native-attempt-observations.json)

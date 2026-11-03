@@ -1,5 +1,31 @@
 # Glint browser test matrix
 
+## 2026-11-03: recovery runner preparation is not browser admission
+
+| Gate | Latest verified scope | Result / remaining work |
+| --- | --- | --- |
+| Full staged runtime/installer host suite | 636 checks, including scoped Windows ACL fixtures | Passed; no Chromium launch |
+| Portable publication tests | 94 checks: exact job ownership, cleanup/cancellation, strict source contract and scoped installation ACLs | Passed; host processes and mocked guards, not Chromium |
+| Owned crash protocol | Membership comes from exact Job Object handles, not reusable global parent-PID links | Passed in the portable suite; no PID-based taskkill fallback |
+| Crash/reopen and cancellation | 32 host checks, including parent exit, timeout and cancellation | Passed; owned descendants finish termination; foreign sentinel survives |
+| Complete browser dispatch | 29 routing checks; host-process simulation covers all 19 declared browser phases | Passed; 18 completed host gtests + 1 separately qualified forced phase |
+| Native-runner integration | 108 checks; compilation and native execution mocked | Passed; source-derived R17 plan retains all 300 declarations |
+| R17 C++ batch | Memory admission waited 30 minutes; no target executed | Not verified; resource failure retained, not a compiler result |
+| Latest R16 build | Windows compile/link succeeded; current core and GN hashes match its build receipt | Native gate stopped before execution at 179.5 GiB free; space restored, native/runtime checks pending |
+| Real preserved R11 bare startup | Sandbox executable access denied in the owned probe | Failed; synthetic ACL tests do not clear this failure |
+| Real fresh R11 installation copy | All 269 preserved assets verified; specific installation capabilities granted to the owned copy | Passed: ready blank page and exact-job cleanup; original unchanged, throwaway copy removed; no R16/fingerprint claim |
+| Real fingerprint / third-party sites | No new browser run in this batch | No new results; do not infer CAPTCHA or detection scores |
+
+These counts describe different host test scopes, not a native coverage or
+readiness percentage. Historical failures remain failures. Complete native
+discovery, execution, compiled provenance and full runtime regression are still
+required. A source replay, mocked pipeline or process simulation is not evidence
+that the corresponding Web API or persistent storage works in Chromium.
+
+See the [R16 build receipt](../native/drafts/upstream-156-recovery-r16/windows-build-20261104.json)
+and [scoped runner/installation observations](../native/drafts/upstream-156-worker-r17/runner-observations.json).
+
+
 ## 2026-11-03: R14 build failed; connected R15 registered
 
 R14 completed 851 build actions, then CookieJar failed because MainThread was

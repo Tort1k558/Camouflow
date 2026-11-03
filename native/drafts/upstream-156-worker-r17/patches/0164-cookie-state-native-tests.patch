@@ -1,0 +1,187 @@
+diff --git a/third_party/blink/renderer/core/loader/build.gni b/third_party/blink/renderer/core/loader/build.gni
+index b8d71894f946956c036d5787d9525f18b4c542bc..bcff0e4176a7df105700b2d267bea144ddac808f 100644
+--- a/third_party/blink/renderer/core/loader/build.gni
++++ b/third_party/blink/renderer/core/loader/build.gni
+@@ -181,6 +181,7 @@ blink_core_tests_loader = [
+   "anchor_element_interaction_test.cc",
+   "base_fetch_context_test.cc",
+   "connection_allowlist_preload_test.cc",
++  "cookie_checkpoint_state_test.cc",
+   "document_load_timing_test.cc",
+   "document_loader_auto_speculation_rules_test.cc",
+   "document_loader_test.cc",
+diff --git a/third_party/blink/renderer/core/loader/cookie_checkpoint_state_test.cc b/third_party/blink/renderer/core/loader/cookie_checkpoint_state_test.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..028c15d51e4a03d2e7b8e5f60e73a5f78f3a66a6
+--- /dev/null
++++ b/third_party/blink/renderer/core/loader/cookie_checkpoint_state_test.cc
+@@ -0,0 +1,169 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_state.h"
++
++#include <limits>
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace camouflow::native {
++
++class CookieCheckpointStateTestPeer {
++ public:
++  static void SetCounters(CookieCheckpointState& state,
++                          std::uint64_t generation,
++                          std::uint64_t epoch) {
++    state.generation_ = generation;
++    state.epoch_ = epoch;
++  }
++};
++
++namespace {
++
++using State = CookieCheckpointState;
++
++TEST(CookieCheckpointStateTest, EmptyStateCanAcknowledgeAnEmptyPrefix) {
++  State state;
++  EXPECT_TRUE(state.IsAvailable());
++  EXPECT_EQ(state.PendingWireRequests(), 0u);
++  EXPECT_TRUE(state.Acknowledge(state.Capture()));
++  EXPECT_EQ(state.LastWriteEpoch(), 0u);
++  EXPECT_EQ(state.AcknowledgedWriteEpoch(), 0u);
++}
++
++TEST(CookieCheckpointStateTest, AcknowledgedWriteSurvivesConnectionRetirement) {
++  State state;
++  ASSERT_TRUE(state.RecordWrite());
++  auto request = state.BeginWireRequest();
++  ASSERT_TRUE(request);
++  EXPECT_TRUE(state.RetireWireRequest(*request));
++  ASSERT_TRUE(state.Acknowledge(*request));
++  state.InvalidateConnection();
++  EXPECT_TRUE(state.IsAvailable());
++  EXPECT_FALSE(state.IsCurrent(*request));
++}
++
++TEST(CookieCheckpointStateTest, UnacknowledgedWriteMakesLostHistoryPermanent) {
++  State state;
++  ASSERT_TRUE(state.RecordWrite());
++  const auto old = state.Capture();
++  state.InvalidateConnection();
++  EXPECT_FALSE(state.IsAvailable());
++  EXPECT_FALSE(state.Acknowledge(old));
++  EXPECT_FALSE(state.Acknowledge(state.Capture()));
++  EXPECT_FALSE(state.BeginWireRequest());
++  ASSERT_TRUE(state.RecordWrite());
++  EXPECT_FALSE(state.IsAvailable());
++}
++
++TEST(CookieCheckpointStateTest, LaterWriteRejectsCapturedPrefix) {
++  State state;
++  auto request = state.BeginWireRequest();
++  ASSERT_TRUE(request);
++  ASSERT_TRUE(state.RecordWrite());
++  EXPECT_TRUE(state.RetireWireRequest(*request));
++  EXPECT_FALSE(state.Acknowledge(*request));
++  EXPECT_EQ(state.AcknowledgedWriteEpoch(), 0u);
++}
++
++TEST(CookieCheckpointStateTest, OldGenerationReplyCannotRetireNewRequest) {
++  State state;
++  auto old = state.BeginWireRequest();
++  ASSERT_TRUE(old);
++  state.InvalidateConnection();
++  auto current = state.BeginWireRequest();
++  ASSERT_TRUE(current);
++  EXPECT_FALSE(state.RetireWireRequest(*old));
++  EXPECT_EQ(state.PendingWireRequests(), 1u);
++  EXPECT_TRUE(state.RetireWireRequest(*current));
++  EXPECT_TRUE(state.Acknowledge(*current));
++}
++
++TEST(CookieCheckpointStateTest, PendingWireReservationsAreBounded) {
++  State state;
++  for (std::size_t i = 0; i < State::kMaximumPendingWireRequests; ++i) {
++    ASSERT_TRUE(state.BeginWireRequest());
++  }
++  EXPECT_EQ(state.PendingWireRequests(), 64u);
++  EXPECT_FALSE(state.BeginWireRequest());
++}
++
++TEST(CookieCheckpointStateTest, OnlyActualReplyReopensCapacity) {
++  State state;
++  auto first = state.BeginWireRequest();
++  ASSERT_TRUE(first);
++  for (std::size_t i = 1; i < State::kMaximumPendingWireRequests; ++i) {
++    ASSERT_TRUE(state.BeginWireRequest());
++  }
++  ASSERT_FALSE(state.BeginWireRequest());
++  EXPECT_TRUE(state.RetireWireRequest(*first));
++  EXPECT_TRUE(state.BeginWireRequest());
++  EXPECT_EQ(state.PendingWireRequests(), 64u);
++}
++
++TEST(CookieCheckpointStateTest, ConnectionRetirementClearsControlReservations) {
++  State state;
++  ASSERT_TRUE(state.BeginWireRequest());
++  state.InvalidateConnection();
++  EXPECT_EQ(state.PendingWireRequests(), 0u);
++  EXPECT_TRUE(state.IsAvailable());
++  EXPECT_TRUE(state.BeginWireRequest());
++}
++
++TEST(CookieCheckpointStateTest, ReplyUnderflowRejectsFurtherAcknowledgments) {
++  State state;
++  EXPECT_FALSE(state.RetireWireRequest(state.Capture()));
++  EXPECT_FALSE(state.IsAvailable());
++  EXPECT_FALSE(state.Acknowledge(state.Capture()));
++  EXPECT_FALSE(state.BeginWireRequest());
++}
++
++TEST(CookieCheckpointStateTest, ParallelRepliesCanAcknowledgeTheSamePrefix) {
++  State state;
++  ASSERT_TRUE(state.RecordWrite());
++  auto a = state.BeginWireRequest();
++  auto b = state.BeginWireRequest();
++  ASSERT_TRUE(a);
++  ASSERT_TRUE(b);
++  ASSERT_TRUE(state.RetireWireRequest(*b));
++  ASSERT_TRUE(state.Acknowledge(*b));
++  ASSERT_TRUE(state.RetireWireRequest(*a));
++  EXPECT_TRUE(state.Acknowledge(*a));
++  EXPECT_EQ(state.PendingWireRequests(), 0u);
++}
++
++TEST(CookieCheckpointStateTest, WriteEpochCannotWrap) {
++  State state;
++  CookieCheckpointStateTestPeer::SetCounters(
++      state, 0, std::numeric_limits<std::uint64_t>::max());
++  EXPECT_FALSE(state.RecordWrite());
++  EXPECT_FALSE(state.IsAvailable());
++  EXPECT_FALSE(state.BeginWireRequest());
++  EXPECT_EQ(state.Capture().epoch, std::numeric_limits<std::uint64_t>::max());
++}
++
++TEST(CookieCheckpointStateTest, ConnectionGenerationCannotWrap) {
++  State state;
++  CookieCheckpointStateTestPeer::SetCounters(
++      state, std::numeric_limits<std::uint64_t>::max(), 0);
++  state.InvalidateConnection();
++  EXPECT_FALSE(state.IsAvailable());
++  EXPECT_FALSE(state.Acknowledge(state.Capture()));
++  EXPECT_EQ(state.Capture().generation,
++            std::numeric_limits<std::uint64_t>::max());
++}
++
++TEST(CookieCheckpointStateTest, ConnectionMutationEpochCannotWrap) {
++  State state;
++  CookieCheckpointStateTestPeer::SetCounters(
++      state, 0, std::numeric_limits<std::uint64_t>::max());
++  state.InvalidateConnection();
++  EXPECT_FALSE(state.IsAvailable());
++  EXPECT_EQ(state.PendingWireRequests(), 0u);
++  EXPECT_EQ(state.Capture().epoch, std::numeric_limits<std::uint64_t>::max());
++}
++
++}  // namespace
++}  // namespace camouflow::native

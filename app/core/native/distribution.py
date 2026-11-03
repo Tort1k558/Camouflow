@@ -17,6 +17,7 @@ from app.storage.db import _unsafe_windows_name
 
 from .configuration import NativeConfiguration
 from .health import probe_native_binary
+from .windows_sandbox import configure_staged_sandbox_access
 
 MAX_ARCHIVE_BYTES = 2 * 1024 ** 3
 MAX_UNPACKED_BYTES = 8 * 1024 ** 3
@@ -293,6 +294,8 @@ class NativeBinaryStore:
                 metadata = self._inspect_directory(payload, digest)
                 if payload.resolve() != payload or not payload.is_relative_to(self.root) or target.resolve() != target:
                     raise ValueError("Native candidate escaped its owned store")
+                if sys.platform == "win32":
+                    configure_staged_sandbox_access(payload, stage)
                 payload.rename(target)
                 metadata["executable_path"] = str(target / checked_archive_name(metadata["executable"]))
                 return metadata

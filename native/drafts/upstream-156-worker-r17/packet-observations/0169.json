@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "f06e092e24110b85eb0367a21a2ea81484924f5b9c769bd2c3aa08bcc2f9cd44",
+  "normalized_patch_sha256": "fc5bdf583b3cb44cbb671b81f0b646d087bd1651ccd1b88642777ed7775dd46b",
+  "patch": "0169-browser-worker-cookie-endpoint.patch",
+  "before_source_sha256": {
+    "content/browser/service_worker/service_worker_version.h": "3fc6243538aaf339171734ce2d8fc8b1ac6da7bba843378d3ba4b1114d22f43e",
+    "content/browser/service_worker/service_worker_version.cc": "641c53b12f75c057b2e58f733c269a035086542c0f0541218b017a2ff4bece45"
+  },
+  "final_source_sha256": {
+    "content/browser/service_worker/service_worker_version.h": "89a0e0c1f322f47eaf20b0b42185e0851dd5a6f6824ebc7306ee2383a2886821",
+    "content/browser/service_worker/service_worker_version.cc": "851bb39a6288c3bea1bc2ef3424171e46aa95ce8084cd4831ea53bf283666ba9"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

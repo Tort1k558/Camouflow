@@ -1,0 +1,403 @@
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+--- a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+@@ -244,10 +244,10 @@
+   auto source = MakeGPUCanvasImageSource(true);
+   ASSERT_TRUE(source);
+   const std::array<uint8_t, 32> seed{};
+-  const auto rejected = ProtectGPUCanvasImageSource(source, seed, 127);
++  const auto rejected = ProtectGPUCanvasImageSource(source, seed, 63);
+   ASSERT_FALSE(rejected.has_value());
+   EXPECT_EQ(rejected.error(), CanvasCopyError::kMemoryLimit);
+-  const auto accepted = ProtectGPUCanvasImageSource(source, seed, 128);
++  const auto accepted = ProtectGPUCanvasImageSource(source, seed, 64);
+   EXPECT_TRUE(accepted.has_value());
+ }
+ 
+@@ -358,5 +358,169 @@
+   EXPECT_FALSE(IsNativeCanvasFrameSource(source));
+ }
+ 
++SkBitmap MakeOwnedCanvasRaster(size_t row_bytes = 0,
++                              SkColorType type = kRGBA_8888_SkColorType,
++                              SkAlphaType alpha = kUnpremul_SkAlphaType) {
++  const auto info = SkImageInfo::Make(4, 4, type, alpha, SkColorSpace::MakeSRGB());
++  SkBitmap bitmap;
++  if (!bitmap.tryAllocPixels(info, row_bytes ? row_bytes : info.minRowBytes())) {
++    return {};
++  }
++  std::array<uint8_t, 64> pixels{};
++  for (size_t y = 0; y < 4; ++y) {
++    for (size_t x = 0; x < 4; ++x) {
++      const size_t offset = (y * 4 + x) * 4;
++      pixels[offset] = static_cast<uint8_t>(x + 1);
++      pixels[offset + 1] = static_cast<uint8_t>(y + 1);
++      pixels[offset + 2] = 85;
++      pixels[offset + 3] = 255;
++    }
++  }
++  const auto input = SkImageInfo::Make(4, 4, kRGBA_8888_SkColorType,
++                                      kUnpremul_SkAlphaType,
++                                      SkColorSpace::MakeSRGB());
++  if (!bitmap.writePixels(SkPixmap(input, pixels.data(), 16))) {
++    return {};
++  }
++  return bitmap;
++}
++
++bool ReadOwnedCanvasRaster(const SkBitmap& bitmap,
++                          std::array<uint8_t, 64>& pixels) {
++  const auto info = SkImageInfo::Make(4, 4, kRGBA_8888_SkColorType,
++                                    kUnpremul_SkAlphaType,
++                                    SkColorSpace::MakeSRGB());
++  return bitmap.readPixels(info, pixels.data(), 16, 0, 0);
++}
++
++TEST(GlintOwnedCanvasCopyTest, ConsumesDenseAllocationAndInvalidatesGeneration) {
++  auto raster = MakeOwnedCanvasRaster();
++  ASSERT_TRUE(raster.getPixels());
++  const void* allocation = raster.getPixels();
++  const auto generation = raster.getGenerationID();
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(raster), seed, false);
++  ASSERT_TRUE(result.has_value());
++  EXPECT_EQ(result->getPixels(), allocation);
++  EXPECT_TRUE(result->isImmutable());
++  EXPECT_EQ(result->alphaType(), kUnpremul_SkAlphaType);
++  EXPECT_NE(result->getGenerationID(), generation);
++}
++
++TEST(GlintOwnedCanvasCopyTest, RejectsAliasedRasterWithoutChangingPixels) {
++  auto raster = MakeOwnedCanvasRaster();
++  ASSERT_TRUE(raster.getPixels());
++  SkBitmap alias = raster;
++  std::array<uint8_t, 64> before{}, after{};
++  ASSERT_TRUE(ReadOwnedCanvasRaster(alias, before));
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(raster), seed, false);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), CanvasCopyError::kInvalidLayout);
++  ASSERT_TRUE(ReadOwnedCanvasRaster(alias, after));
++  EXPECT_EQ(before, after);
++}
++
++TEST(GlintOwnedCanvasCopyTest, RejectsImmutableRaster) {
++  auto raster = MakeOwnedCanvasRaster();
++  ASSERT_TRUE(raster.getPixels());
++  raster.setImmutable();
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(raster), seed, false);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), CanvasCopyError::kInvalidLayout);
++}
++
++TEST(GlintOwnedCanvasCopyTest, RejectsPremultipliedInputUntilNormalized) {
++  auto raster = MakeOwnedCanvasRaster(0, kRGBA_8888_SkColorType, kPremul_SkAlphaType);
++  ASSERT_TRUE(raster.getPixels());
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(raster), seed, false);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), CanvasCopyError::kUnsupportedFormat);
++}
++
++TEST(GlintOwnedCanvasCopyTest, MatchesUnchangedPixelTransformOracle) {
++  auto raster = MakeOwnedCanvasRaster();
++  ASSERT_TRUE(raster.getPixels());
++  std::array<uint8_t, 64> expected{}, observed{};
++  ASSERT_TRUE(ReadOwnedCanvasRaster(raster, expected));
++  const std::array<uint8_t, 32> seed{};
++  ASSERT_TRUE(TransformEdgeCoherentCanvas(expected, 4, 4, seed));
++  auto result = TransformOwnedCanvasCopy(std::move(raster), seed, false);
++  ASSERT_TRUE(result.has_value());
++  ASSERT_TRUE(ReadOwnedCanvasRaster(result.value(), observed));
++  EXPECT_EQ(expected, observed);
++}
++
++TEST(GlintOwnedCanvasCopyTest, RejectsPaddedRows) {
++  auto raster = MakeOwnedCanvasRaster(20);
++  ASSERT_TRUE(raster.getPixels());
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(raster), seed, false);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), CanvasCopyError::kInvalidLayout);
++}
++
++TEST(GlintOwnedCanvasCopyTest, RejectsBgraUntilNormalized) {
++  auto raster = MakeOwnedCanvasRaster(0, kBGRA_8888_SkColorType);
++  ASSERT_TRUE(raster.getPixels());
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(raster), seed, false);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), CanvasCopyError::kUnsupportedFormat);
++}
++
++TEST(GlintOwnedCanvasCopyTest, RejectsSubsetBackingEvenAfterOriginalIsReleased) {
++  auto raster = MakeOwnedCanvasRaster();
++  ASSERT_TRUE(raster.getPixels());
++  SkBitmap subset;
++  ASSERT_TRUE(raster.extractSubset(&subset, SkIRect::MakeXYWH(1, 1, 2, 2)));
++  raster.reset();
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(subset), seed, false);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), CanvasCopyError::kInvalidLayout);
++}
++
++TEST(GlintOwnedCanvasCopyTest, KeepsF16DisplayP3ColourSpace) {
++  auto p3 = SkColorSpace::MakeRGB(SkNamedTransferFn::kSRGB, SkNamedGamut::kDisplayP3);
++  ASSERT_TRUE(p3);
++  SkBitmap raster;
++  ASSERT_TRUE(raster.tryAllocPixels(SkImageInfo::Make(
++      4, 4, kRGBA_F16_SkColorType, kUnpremul_SkAlphaType, p3)));
++  raster.eraseColor(SK_ColorRED);
++  const std::array<uint8_t, 32> seed{};
++  auto result = TransformOwnedCanvasCopy(std::move(raster), seed, false);
++  ASSERT_TRUE(result.has_value());
++  EXPECT_EQ(result->colorType(), kRGBA_F16_SkColorType);
++  EXPECT_TRUE(SkColorSpace::Equals(result->colorSpace(), p3.get()));
++  EXPECT_TRUE(result->isImmutable());
++}
++
++TEST(GlintOwnedCanvasCopyTest, Full4096RasterFitsUnchanged64MiBImageBudget) {
++  constexpr size_t kBudget = 64U * 1024U * 1024U;
++  SkBitmap bitmap;
++  ASSERT_TRUE(bitmap.tryAllocPixels(SkImageInfo::Make(
++      4096, 4096, kRGBA_8888_SkColorType, kOpaque_SkAlphaType,
++      SkColorSpace::MakeSRGB())));
++  bitmap.eraseColor(SK_ColorRED);
++  bitmap.setImmutable();
++  auto source = blink::UnacceleratedStaticBitmapImage::Create(
++      SkImages::RasterFromBitmap(bitmap));
++  ASSERT_TRUE(source);
++  source->SetOriginClean(false);
++  const std::array<uint8_t, 32> seed{};
++  auto rejected = CreateProtectedCanvasImage(source, seed, kBudget - 1);
++  ASSERT_FALSE(rejected.has_value());
++  EXPECT_EQ(rejected.error(), CanvasCopyError::kMemoryLimit);
++  auto result = CreateProtectedCanvasImage(source, seed, kBudget);
++  ASSERT_TRUE(result.has_value());
++  const auto info = result.value()->PaintImageForCurrentFrame().GetSkImageInfo();
++  EXPECT_EQ(info.width(), 4096);
++  EXPECT_EQ(info.height(), 4096);
++  EXPECT_FALSE(result.value()->OriginClean());
++}
++
+ }  // namespace
+ }  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h
+@@ -24,6 +24,14 @@
+ // Shared format check for the detached copy and image adapter.
+ bool IsSupportedCanvasCopyFormat(const SkImageInfo& info);
+ 
++// Consumes a uniquely referenced mutable full raster allocated by the caller.
++// Input must already be normalized RGBA8/F16, unpremultiplied or opaque, without
++// row padding/subset offsets. No second pixel allocation; failure discards it.
++base::expected<SkBitmap, CanvasCopyError> TransformOwnedCanvasCopy(
++    SkBitmap owned,
++    const std::array<uint8_t, 32>& partition_seed,
++    bool source_is_opaque);
++
+ // Full raster snapshot only, after the caller's native access checks.
+ // Returns owned immutable RGBA8 or RGBA_F16, unpremultiplied, in the
+ // original sRGB or Display-P3 color space. Never writes source.
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
+@@ -4,9 +4,11 @@
+ 
+ #include <limits>
+ #include <span>
++#include <utility>
+ 
+ #include "canvas_readback_candidate.h"
+ #include "third_party/skia/include/core/SkColorSpace.h"
++#include "third_party/skia/include/core/SkPixelRef.h"
+ 
+ namespace glint::candidate {
+ 
+@@ -27,10 +29,8 @@
+   return p3 && SkColorSpace::Equals(info.colorSpace(), p3.get());
+ }
+ 
+-base::expected<SkBitmap, CanvasCopyError> CreateProtectedCanvasCopy(
+-    const SkPixmap& source,
+-    const std::array<uint8_t, 32>& partition_seed,
+-    size_t memory_limit_bytes) {
++namespace {
++base::expected<size_t, CanvasCopyError> CanvasCopyBytes(const SkPixmap& source) {
+   if (!IsSupportedCanvasCopyFormat(source.info())) {
+     return base::unexpected(CanvasCopyError::kUnsupportedFormat);
+   }
+@@ -47,46 +47,91 @@
+       source.computeByteSize() == std::numeric_limits<size_t>::max()) {
+     return base::unexpected(CanvasCopyError::kInvalidLayout);
+   }
+-  const size_t bytes = width * height * pixel_bytes;
+-  if (bytes > memory_limit_bytes) {
++  return width * height * pixel_bytes;
++}
++}  // namespace
++
++base::expected<SkBitmap, CanvasCopyError> TransformOwnedCanvasCopy(
++    SkBitmap owned,
++    const std::array<uint8_t, 32>& partition_seed,
++    bool source_is_opaque) {
++  const auto bytes = CanvasCopyBytes(owned.pixmap());
++  if (!bytes.has_value()) {
++    return base::unexpected(bytes.error());
++  }
++  const bool half = owned.colorType() == kRGBA_F16_SkColorType;
++  if ((!half && owned.colorType() != kRGBA_8888_SkColorType) ||
++      (owned.alphaType() != kUnpremul_SkAlphaType &&
++       owned.alphaType() != kOpaque_SkAlphaType)) {
++    return base::unexpected(CanvasCopyError::kUnsupportedFormat);
++  }
++  const auto* pixels = owned.pixelRef();
++  if (!pixels || !pixels->unique() || owned.isImmutable() ||
++      pixels->pixels() != owned.getPixels() ||
++      pixels->width() != owned.width() || pixels->height() != owned.height() ||
++      pixels->rowBytes() != owned.rowBytes() ||
++      owned.rowBytes() != static_cast<size_t>(owned.width()) * (half ? 8 : 4)) {
++    return base::unexpected(CanvasCopyError::kInvalidLayout);
++  }
++  const bool opaque = source_is_opaque || owned.alphaType() == kOpaque_SkAlphaType;
++  if (!owned.setAlphaType(kUnpremul_SkAlphaType)) {
++    return base::unexpected(CanvasCopyError::kUnsupportedFormat);
++  }
++  bool transformed;
++  if (half) {
++    auto data = std::span(static_cast<uint16_t*>(owned.getPixels()), *bytes / 2);
++    if (opaque) {
++      for (size_t offset = 3; offset < data.size(); offset += 4) {
++        data[offset] = 0x3c00;
++      }
++    }
++    transformed = TransformEdgeCoherentCanvasF16(
++        data, owned.width(), owned.height(), partition_seed);
++  } else {
++    auto data = std::span(static_cast<uint8_t*>(owned.getPixels()), *bytes);
++    if (opaque) {
++      for (size_t offset = 3; offset < data.size(); offset += 4) {
++        data[offset] = 255;
++      }
++    }
++    transformed = TransformEdgeCoherentCanvas(
++        data, owned.width(), owned.height(), partition_seed);
++  }
++  if (!transformed) {
++    return base::unexpected(CanvasCopyError::kTransformFailed);
++  }
++  owned.notifyPixelsChanged();
++  owned.setImmutable();
++  return owned;
++}
++
++base::expected<SkBitmap, CanvasCopyError> CreateProtectedCanvasCopy(
++    const SkPixmap& source,
++    const std::array<uint8_t, 32>& partition_seed,
++    size_t memory_limit_bytes) {
++  const auto bytes = CanvasCopyBytes(source);
++  if (!bytes.has_value()) {
++    return base::unexpected(bytes.error());
++  }
++  if (*bytes > memory_limit_bytes) {
+     return base::unexpected(CanvasCopyError::kMemoryLimit);
+   }
++  const bool half = source.colorType() == kRGBA_F16_SkColorType ||
++                    source.colorType() == kRGBA_F16Norm_SkColorType;
+   const auto info = SkImageInfo::Make(source.width(), source.height(),
+                                      half ? kRGBA_F16_SkColorType
+                                           : kRGBA_8888_SkColorType,
+                                      kUnpremul_SkAlphaType,
+                                      source.refColorSpace());
+   SkBitmap copy;
+-  if (!copy.tryAllocPixels(info, width * pixel_bytes)) {
++  if (!copy.tryAllocPixels(info, static_cast<size_t>(source.width()) * (half ? 8 : 4))) {
+     return base::unexpected(CanvasCopyError::kAllocationFailed);
+   }
+   if (!source.readPixels(copy.pixmap(), 0, 0)) {
+     return base::unexpected(CanvasCopyError::kReadFailed);
+   }
+-  bool transformed;
+-  if (half) {
+-    auto pixels = std::span(static_cast<uint16_t*>(copy.getPixels()), bytes / 2);
+-    if (source.alphaType() == kOpaque_SkAlphaType) {
+-      for (size_t offset = 3; offset < pixels.size(); offset += 4) {
+-        pixels[offset] = 0x3c00;
+-      }
+-    }
+-    transformed = TransformEdgeCoherentCanvasF16(
+-        pixels, source.width(), source.height(), partition_seed);
+-  } else {
+-    auto pixels = std::span(static_cast<uint8_t*>(copy.getPixels()), bytes);
+-    if (source.alphaType() == kOpaque_SkAlphaType) {
+-      for (size_t offset = 3; offset < pixels.size(); offset += 4) {
+-        pixels[offset] = 255;
+-      }
+-    }
+-    transformed = TransformEdgeCoherentCanvas(
+-        pixels, source.width(), source.height(), partition_seed);
+-  }
+-  if (!transformed) {
+-    return base::unexpected(CanvasCopyError::kTransformFailed);
+-  }
+-  copy.setImmutable();
+-  return copy;
++  return TransformOwnedCanvasCopy(std::move(copy), partition_seed,
++                                 source.alphaType() == kOpaque_SkAlphaType);
+ }
++
+ }  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h
+@@ -12,7 +12,8 @@
+ inline constexpr size_t kCandidateAdditionalPixelBudget = 64U * 1024U * 1024U;
+ // Full Blink snapshot, after taint/layer/context checks. Readback only, not a
+ // replacement for GetImage/Snapshot used by drawing or presentation.
+-// Additional pixel memory is bounded across both raster copies.
++// The additional-memory bound covers one private full raster. Skia/GPU
++// internal staging is separate and is not claimed by this budget.
+ CORE_EXPORT base::expected<scoped_refptr<blink::StaticBitmapImage>, CanvasCopyError>
+ CreateProtectedCanvasImage(
+     scoped_refptr<blink::StaticBitmapImage> source,
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc
+@@ -42,8 +42,8 @@
+   if (bytes == std::numeric_limits<size_t>::max()) {
+     return base::unexpected(CanvasCopyError::kInvalidLayout);
+   }
+-  // Two detached buffers coexist before the input raster is released.
+-  if (bytes > memory_limit_bytes / 2) {
++  // One private raster is read, transformed and frozen in place.
++  if (bytes > memory_limit_bytes) {
+     return base::unexpected(CanvasCopyError::kMemoryLimit);
+   }
+   SkBitmap raster;
+@@ -55,12 +55,12 @@
+   if (!paint_image.readPixels(info, raster.getPixels(), row_bytes, 0, 0)) {
+     return base::unexpected(CanvasCopyError::kReadFailed);
+   }
+-  auto copy = CreateProtectedCanvasCopy(raster.pixmap(), partition_seed,
+-                                         memory_limit_bytes - bytes);
++  auto copy = TransformOwnedCanvasCopy(
++      std::move(raster), partition_seed,
++      source_info.alphaType() == kOpaque_SkAlphaType);
+   if (!copy.has_value()) {
+     return base::unexpected(copy.error());
+   }
+-  raster.reset();
+   auto image = SkImages::RasterFromBitmap(copy.value());
+   if (!image) {
+     return base::unexpected(CanvasCopyError::kAllocationFailed);
+@@ -71,6 +71,7 @@
+   if (!result) {
+     return base::unexpected(CanvasCopyError::kAllocationFailed);
+   }
++  result->SetOriginClean(source->OriginClean());
+   return result;
+ }
+ }  // namespace glint::candidate

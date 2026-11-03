@@ -33,6 +33,7 @@ PLAN_SPECS = {
     'upstream-156-producer-r14': (136, 163),
     'upstream-156-document-r15': (136, 175),
     'upstream-156-recovery-r16': (136, 225),
+    'upstream-156-worker-r17': (136, 300),
 }
 
 
@@ -46,7 +47,7 @@ def load_plan(candidate: dict) -> dict:
         raise ValueError('Unknown checkpoint candidate plan')
     first_patch, body_count = PLAN_SPECS[candidate['name']]
     expected_binaries = (tuple(sorted((*BINARIES, 'browser_tests')))
-                         if candidate['name'] == 'upstream-156-recovery-r16' else BINARIES)
+                         if candidate['name'] in ('upstream-156-recovery-r16', 'upstream-156-worker-r17') else BINARIES)
     plan = read_record(candidate['directory'] / 'native-case-plan.json')
     if (plan.get('candidate_manifest_sha256') != candidate['manifest_sha256']
             or plan.get('binaries') != list(expected_binaries)
@@ -72,7 +73,7 @@ def load_plan(candidate: dict) -> dict:
                           else 'net_unittests' if source.startswith('net/')
                           else 'services_unittests' if source.startswith('services/network/')
                           else 'blink_unittests' if source.startswith('third_party/blink/')
-                          else 'browser_tests' if candidate['name'] == 'upstream-156-recovery-r16'
+                          else 'browser_tests' if candidate['name'] in ('upstream-156-recovery-r16', 'upstream-156-worker-r17')
                           and source.startswith('chrome/') and source.endswith('_browsertest.cc')
                           else 'content_browsertests' if source.endswith('_browsertest.cc')
                           else 'content_unittests' if source.startswith('content/') else None)
@@ -239,8 +240,20 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
                 candidate['directory'] / 'native-case-plan.json'}
         if any(not p.is_file() or p != p.resolve() for p in paths):
             raise ValueError('Missing or linked checkpoint verification input')
+        if candidate['name'] == 'upstream-156-worker-r17':
+            from scripts import native_checkpoint_dispatch as browser_dispatch
+            from scripts import native_checkpoint_browser as browser_pairs
+            paths.update(Path(browser_dispatch.__file__).parent / name for name in (
+                'native_checkpoint_dispatch.py', 'native_checkpoint_browser.py',
+                'native_checkpoint_recovery.py', 'native_checkpoint_crash.py',
+                'native_checkpoint_process.py', 'native_checkpoint_contract.py'))
+            if any(not p.is_file() or p != p.resolve() for p in paths):
+                raise ValueError('Missing or linked R17 checkpoint controller input')
         inputs = {p: checksum(p) for p in paths}
         patches = units.verified_source_chain(workspace, candidate, candidate['lock'], env)
+        if candidate['name'] == 'upstream-156-worker-r17':
+            browser_dispatch.crash.validate_source_contract(
+                source, candidate['directory'] / 'native-case-plan.json')
         receipt = read_record(output / 'camouflow-build.json')
         validate_build_receipt(receipt, candidate['lock'], candidate=candidate)
         core = measure_runtime_core(output / 'chrome.exe')
@@ -276,7 +289,27 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
                            required_cases={suite: sorted(cases) for suite, cases in required.items()},
                            discovered_cases=sum(map(len, required.values())))
                 save()
-                if binary in ('content_browsertests', 'browser_tests'):
+                if binary == 'browser_tests' and candidate['name'] == 'upstream-156-worker-r17':
+                    routed = browser_dispatch.run_browser_dispatch(executable, required,
+                        plan_path=candidate['directory'] / 'native-case-plan.json', source=source,
+                        owner_root=report_dir, output=report_dir / 'browser-dispatch', cwd=source,
+                        env=env, expected_binary_sha256=binaries[binary], timeout_seconds=timeout)
+                    completed = routed['completed_gtest_cases']
+                    forced = routed['qualified_forced_termination_cases']
+                    row.update(browser_dispatch_report='browser-dispatch/report.json',
+                        executed_cases=completed, qualified_forced_termination_cases=forced,
+                        passed=(routed['passed'] is True and type(completed) is int
+                                and type(forced) is int and forced == 1
+                                and completed == row['discovered_cases'] - 1),
+                        listing_sha256=checksum(listing))
+                    if not row['passed']:
+                        row['error'] = 'R17 browser dispatch failed; forced exits are not gtest passes'
+                elif binary == 'content_browsertests' and candidate['name'] == 'upstream-156-worker-r17':
+                    runs = browser_pairs.run_browser_cases(executable, required, source=source, env=env,
+                        report_dir=report_dir, timeout=timeout)
+                    row.update(execution_runs=runs, passed=all(r['passed'] for r in runs),
+                        executed_cases=sum(r['passed'] is True for r in runs), listing_sha256=checksum(listing))
+                elif binary in ('content_browsertests', 'browser_tests'):
                     runs = run_browser_cases(executable, required, source=source, env=env,
                                              report_dir=report_dir, timeout=timeout)
                     row.update(execution_runs=runs, passed=all(r['passed'] for r in runs),

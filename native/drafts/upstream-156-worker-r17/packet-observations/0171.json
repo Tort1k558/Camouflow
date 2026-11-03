@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "cffc61353e3c957a0ea0917afd6f379f6dae494d773ec42ddc3076302e86f2b9",
+  "normalized_patch_sha256": "e2bdb5c41e1e6363b6b16d4d7d61939ed7b0012f66e1e1f6570a83449c1300a7",
+  "patch": "0171-partition-worker-cookie-fence.patch",
+  "before_source_sha256": {
+    "content/browser/BUILD.gn": "1591a3189a521e3494e51079293f5c90f33964b96bb3ea00e03eaa9ce787dd71",
+    "content/test/BUILD.gn": "03bed016fee24ab92618aa5ec6e7be35043c5944c1f9d58e249dc884d6bbe6bd"
+  },
+  "final_source_sha256": {
+    "content/browser/camouflow_native/glint/partition_worker_cookie_fence.h": "04fed9cd246b2d81489fc20a4290b276f2336d31642e531edb1d37f837cba367",
+    "content/browser/camouflow_native/glint/partition_worker_cookie_fence.cc": "2ebf7ca4dafc0903071f217fde53bf51c2cb483d98b74f723e8e62ac469280d8",
+    "content/browser/camouflow_native/glint/partition_worker_cookie_fence_unittest.cc": "0cf8217b7a92005428aeda166102309891a8a5ca37a4eafc720255e2e2bcc3ea",
+    "content/browser/BUILD.gn": "b3592550f16c39a8ae1aa8bc8e3dd77fc54140d85b1569684b2aa572459187cb",
+    "content/test/BUILD.gn": "5dd58383f92722adfb31bbc5deae158cc8690620d8b5a57a6a9275cb8c38c34a"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

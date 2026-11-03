@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "44bce078cbddffe657de18f71191196da36c3e374f0b6c0cd6949f615c614410",
+  "normalized_patch_sha256": "6d0b6b51bb9c86eeb982e02579e9c0782f50191b8014d8e3e9a1d44a87cf50df",
+  "patch": "0174-worker-cookie-browser-tests.patch",
+  "before_source_sha256": {
+    "content/test/BUILD.gn": "5dd58383f92722adfb31bbc5deae158cc8690620d8b5a57a6a9275cb8c38c34a",
+    "chrome/browser/net/BUILD.gn": "8845af86736c60a131e0ca62ee510a6404925bad67c14f86bda109ed7df79b2c"
+  },
+  "final_source_sha256": {
+    "content/public/test/glint_cookie_checkpoint_test_utils.h": "e6addf3763db31ff5e7bda94d71d67f1fdd190bbaef976c4374ff26f67d5c35d",
+    "content/public/test/glint_cookie_checkpoint_test_utils.cc": "5067a3dbd4876ff2d6c856d834ae51cf64934e4d0ce5dedf8e0de7cbaa173de5",
+    "chrome/browser/net/glint_cookie_prefix_browsertest.cc": "021e81f06b7ca0d4468392f37572540d72d704865595522d611fda984438d8cb",
+    "content/test/BUILD.gn": "7a3d8fd5d964f48edd618822b6c8b6f3a3edb95d078951862825d73f6a6c98cf",
+    "chrome/browser/net/BUILD.gn": "143b3fd25a6158e57015719c1fa0a1b689bb4aade4632611bb3d2bc4a8378263"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

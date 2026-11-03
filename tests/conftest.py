@@ -49,7 +49,7 @@ def host_sources_before_audio_pipeline(tmp_path):
 
 
 @pytest.fixture
-def host_sources_before_profile_surface(tmp_path, native_args_before_serial_links, host_sources_before_audio_pipeline):
+def host_sources_before_profile_surface(tmp_path, native_args_before_serial_links, host_sources_before_audio_pipeline, host_sources_before_worker_r17):
     """Recover manager and GN bytes used by older browser measurements."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -65,7 +65,8 @@ def host_sources_before_profile_surface(tmp_path, native_args_before_serial_link
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=15)
-    sources = {'native/args.gn': native_args_before_serial_links}
+    sources = {'native/args.gn': native_args_before_serial_links,
+               'app/core/native/distribution.py': host_sources_before_worker_r17['sources']['app/core/native/distribution.py']}
     for row in record['sources']:
         path = base / row['source']
         if row['before_sha256'] is None:
@@ -76,7 +77,7 @@ def host_sources_before_profile_surface(tmp_path, native_args_before_serial_link
             sources[row['source']] = value
     return {'sources': sources,
             'sha256': {name: hashlib.sha256(value).hexdigest() for name, value in sources.items()},
-            'absent': {row['source'] for row in record['sources'] if row['before_sha256'] is None}}
+            'absent': {row['source'] for row in record['sources'] if row['before_sha256'] is None} | host_sources_before_worker_r17['absent']}
 
 
 @pytest.fixture
@@ -102,7 +103,36 @@ def host_sources_before_monitor_gap_reset(tmp_path):
 
 
 @pytest.fixture
-def host_sources_before_recovery_r16(tmp_path):
+def host_sources_before_worker_r17(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'worker-r17-host-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-worker-r17'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        value = (root / row['source']).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == row['after_sha256']
+        target.write_bytes(value)
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources, absent = {}, set()
+    for row in record['sources']:
+        target = base / row['source']
+        if row['before_sha256'] is None:
+            assert not target.exists()
+            absent.add(row['source'])
+        else:
+            value = target.read_bytes()
+            assert hashlib.sha256(value).hexdigest() == row['before_sha256']
+            sources[row['source']] = value
+    return {'sources': sources, 'absent': absent}
+
+
+@pytest.fixture
+def host_sources_before_recovery_r16(tmp_path, host_sources_before_worker_r17):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'recovery-r16-host-source-upgrade.json').read_bytes())
@@ -110,7 +140,7 @@ def host_sources_before_recovery_r16(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        value = (root / row['source']).read_bytes()
+        value = host_sources_before_worker_r17['sources'][row['source']]
         assert hashlib.sha256(value).hexdigest() == row['after_sha256']
         target.write_bytes(value)
     patch = directory / record['patch']
@@ -884,7 +914,7 @@ def surface_sources_before_retained(tmp_path, worker_sources_before_integration,
 
 
 @pytest.fixture
-def historical_source_newlines():
+def historical_source_newlines(host_sources_before_worker_r17):
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / 'native/drafts/environment/historical-source-newlines.json').read_bytes())
     assert manifest['schema'] == 1
@@ -892,7 +922,8 @@ def historical_source_newlines():
     for record in manifest['sources']:
         name = record['source']
         assert name not in result and name in manifest['lf_checkout_sources']
-        source = (root / name).read_text(encoding='utf-8-sig').encode('utf-8')
+        data = host_sources_before_worker_r17['sources'][name] if name in host_sources_before_worker_r17['sources'] else (root / name).read_bytes()
+        source = data.decode('utf-8-sig').replace('\r\n', '\n').encode('utf-8')
         assert hashlib.sha256(source).hexdigest() == record['canonical_lf_sha256'], name
         lines = source.splitlines(keepends=True)
         alternate = set(record['alternate_eol_lines'])

@@ -1,0 +1,262 @@
+diff --git a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope_test.cc b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope_test.cc
+index b2ed5da10727096173319b52e4cb038f2d91f84d..705df859441d10f57214e829299179a832825eba 100644
+--- a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope_test.cc
++++ b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope_test.cc
+@@ -5,16 +5,23 @@
+ #include "third_party/blink/renderer/modules/service_worker/service_worker_global_scope.h"
+ 
+ #include <memory>
++#include <optional>
++#include <utility>
+ 
+ #include "base/memory/ptr_util.h"
++#include "base/memory/ref_counted.h"
++#include "base/notreached.h"
+ #include "base/run_loop.h"
+ #include "base/synchronization/waitable_event.h"
+ #include "base/test/metrics/histogram_tester.h"
++#include "base/test/test_future.h"
++#include "mojo/public/cpp/bindings/remote.h"
+ #include "net/base/net_errors.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "third_party/blink/public/common/tokens/tokens.h"
+ #include "third_party/blink/renderer/core/fetch/fetch_request_data.h"
+ #include "third_party/blink/renderer/core/inspector/worker_devtools_params.h"
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h"
+ #include "third_party/blink/renderer/core/workers/global_scope_creation_params.h"
+ #include "third_party/blink/renderer/core/workers/worker_backing_thread.h"
+ #include "third_party/blink/renderer/core/workers/worker_backing_thread_startup_data.h"
+@@ -30,6 +37,39 @@
+ 
+ namespace blink {
+ 
++namespace {
++
++// Exercises worker IPC/capture lifetime, not RestrictedCookieManager persistence.
++class WorkerCookieTestParticipant final
++    : public GarbageCollected<WorkerCookieTestParticipant>,
++      public CookieCheckpointParticipant {
++ public:
++  explicit WorkerCookieTestParticipant(ExecutionContext& context)
++      : CookieCheckpointParticipant(context) {}
++  bool Register() { return RegisterForCheckpoint(); }
++  std::optional<Snapshot> CaptureWritesForCheckpoint() const override {
++    if (!available_ || !IsRegisteredForCheckpoint()) {
++      return std::nullopt;
++    }
++    return Snapshot{1, epoch_};
++  }
++  void DrainWritesForCheckpoint(base::TimeTicks,
++                                base::OnceCallback<void(bool)> callback) override {
++    std::move(callback).Run(success_);
++  }
++  void Write() { ++epoch_; }
++  void Disconnect() { available_ = false; }
++  void FailDrain() { success_ = false; }
++
++ private:
++  uint64_t epoch_ = 0;
++  bool available_ = true;
++  bool success_ = true;
++};
++
++}  // namespace
++
++
+ class ServiceWorkerGlobalScopeTest : public testing::Test {
+  public:
+   ServiceWorkerGlobalScopeTest() = default;
+@@ -52,7 +92,94 @@ class ServiceWorkerGlobalScopeTest : public testing::Test {
+     }
+   }
+ 
++  enum class CookieAction { kRegister, kDuplicate, kWrite, kDisconnect, kFailDrain };
++
++  void StartCookieEndpoint(bool with_producer) {
++    const KURL script_url("https://example.com/cookie-worker.js");
++    worker_thread_->Start(GlobalScopeCreationParams::CreateForWorkerForTesting(
++                              security_origin_.get(), script_url),
++                          WorkerBackingThreadStartupData::CreateDefault(),
++                          std::make_unique<WorkerDevToolsParams>());
++    worker_thread_->EvaluateClassicScript(script_url, "// checkpoint fixture",
++                                          nullptr, v8_inspector::V8StackTraceId());
++    auto receiver = cookie_endpoint_.BindNewPipeAndPassReceiver();
++    PostCrossThreadTask(
++        *worker_thread_->GetWorkerBackingThread().BackingThread().GetTaskRunner(),
++        FROM_HERE,
++        CrossThreadBindOnce(
++            [](WorkerThread* thread, bool create_producer,
++               mojo::PendingReceiver<mojom::blink::ServiceWorker> pending) {
++              auto* scope = To<ServiceWorkerGlobalScope>(thread->GlobalScope());
++              if (create_producer) {
++                EXPECT_TRUE(MakeGarbageCollected<WorkerCookieTestParticipant>(*scope)
++                                ->Register());
++              }
++              scope->BindServiceWorker(std::move(pending));
++            },
++            CrossThreadUnretained(worker_thread_.get()), with_producer,
++            std::move(receiver)));
++  }
++
++  std::optional<uint64_t> CaptureCookieTicket() {
++    base::test::TestFuture<bool, uint64_t> captured;
++    cookie_endpoint_->CaptureCookieProducerForCheckpoint(captured.GetCallback());
++    if (!captured.Get<0>()) {
++      return std::nullopt;
++    }
++    return captured.Get<1>();
++  }
++
++  bool DrainCookieTicket(uint64_t ticket, base::TimeTicks deadline) {
++    base::test::TestFuture<bool> done;
++    cookie_endpoint_->DrainCookieWritesForCheckpoint(ticket, deadline,
++                                                     done.GetCallback());
++    return done.Get();
++  }
++
++  bool ChangeCookieProducer(CookieAction action) {
++    auto completed =
++        base::MakeRefCounted<base::RefCountedData<base::WaitableEvent>>();
++    PostCrossThreadTask(
++        *worker_thread_->GetWorkerBackingThread().BackingThread().GetTaskRunner(),
++        FROM_HERE,
++        CrossThreadBindOnce(
++            [](WorkerThread* thread, CookieAction selected,
++               scoped_refptr<base::RefCountedData<base::WaitableEvent>> completion) {
++              auto* scope = To<ServiceWorkerGlobalScope>(thread->GlobalScope());
++              if (selected == CookieAction::kRegister ||
++                  selected == CookieAction::kDuplicate) {
++                auto* added = MakeGarbageCollected<WorkerCookieTestParticipant>(*scope);
++                EXPECT_EQ(added->Register(), selected == CookieAction::kRegister);
++              } else {
++                auto* participant = static_cast<WorkerCookieTestParticipant*>(
++                    CookieCheckpointParticipant::GetIfExists(*scope));
++                EXPECT_NE(participant, nullptr);
++                if (participant) {
++                  switch (selected) {
++                    case CookieAction::kWrite:
++                      participant->Write();
++                      break;
++                    case CookieAction::kDisconnect:
++                      participant->Disconnect();
++                      break;
++                    case CookieAction::kFailDrain:
++                      participant->FailDrain();
++                      break;
++                    case CookieAction::kRegister:
++                    case CookieAction::kDuplicate:
++                      NOTREACHED();
++                  }
++                }
++              }
++              completion->data.Signal();
++            },
++            CrossThreadUnretained(worker_thread_.get()), action,
++            completed));
++    return completed->data.TimedWait(base::Seconds(5));
++  }
++
+  protected:
++  mojo::Remote<mojom::blink::ServiceWorker> cookie_endpoint_;
+   test::TaskEnvironment task_environment_;
+   scoped_refptr<const SecurityOrigin> security_origin_;
+   std::unique_ptr<WorkerReportingProxy> reporting_proxy_;
+@@ -419,4 +546,98 @@ TEST_F(ServiceWorkerGlobalScopeTest, RaceNetworkRequestLoaderStateTransitions) {
+       "ServiceWorker.FetchInFetchHandler.RaceURLLoaderNetError", 0, 1);
+ }
+ 
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieEmptyProducerCapturesAndDrains) {
++  StartCookieEndpoint(false);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  EXPECT_NE(*ticket, 0u);
++  EXPECT_TRUE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieNewCaptureInvalidatesOldTicket) {
++  StartCookieEndpoint(false);
++  auto first = CaptureCookieTicket();
++  auto second = CaptureCookieTicket();
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_GT(*second, *first);
++  EXPECT_FALSE(DrainCookieTicket(*first, base::TimeTicks::Now() + base::Seconds(5)));
++  EXPECT_TRUE(DrainCookieTicket(*second, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieCapturedTicketIsSingleUse) {
++  StartCookieEndpoint(false);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  EXPECT_TRUE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++  EXPECT_FALSE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieZeroTicketIsRejected) {
++  StartCookieEndpoint(false);
++  ASSERT_TRUE(CaptureCookieTicket());
++  EXPECT_FALSE(DrainCookieTicket(0, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieExpiredDeadlineIsRejected) {
++  StartCookieEndpoint(false);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  EXPECT_FALSE(DrainCookieTicket(*ticket, base::TimeTicks::Now()));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieUnboundedDeadlineIsRejected) {
++  StartCookieEndpoint(false);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  EXPECT_FALSE(DrainCookieTicket(*ticket, base::TimeTicks::Max()));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieLateProducerRegistrationIsRejected) {
++  StartCookieEndpoint(false);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  ASSERT_TRUE(ChangeCookieProducer(CookieAction::kRegister));
++  EXPECT_FALSE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieDuplicateRegistrationIsRejected) {
++  StartCookieEndpoint(true);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  ASSERT_TRUE(ChangeCookieProducer(CookieAction::kDuplicate));
++  EXPECT_FALSE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieWriteAfterCaptureIsRejected) {
++  StartCookieEndpoint(true);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  ASSERT_TRUE(ChangeCookieProducer(CookieAction::kWrite));
++  EXPECT_FALSE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieDisconnectAfterCaptureIsRejected) {
++  StartCookieEndpoint(true);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  ASSERT_TRUE(ChangeCookieProducer(CookieAction::kDisconnect));
++  EXPECT_FALSE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieTestProducerSuccessIsDelivered) {
++  StartCookieEndpoint(true);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  EXPECT_TRUE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_F(ServiceWorkerGlobalScopeTest, GlintCookieTestProducerFailureIsDelivered) {
++  StartCookieEndpoint(true);
++  auto ticket = CaptureCookieTicket();
++  ASSERT_TRUE(ticket);
++  ASSERT_TRUE(ChangeCookieProducer(CookieAction::kFailDrain));
++  EXPECT_FALSE(DrainCookieTicket(*ticket, base::TimeTicks::Now() + base::Seconds(5)));
++}
++
+ }  // namespace blink

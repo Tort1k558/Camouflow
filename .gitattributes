@@ -380,3 +380,19 @@ native/drafts/storage-aggregate-fence/source-observations.json text eol=lf
 native/drafts/storage-checkpoint-ipc/source-observations.json text eol=lf
 native/drafts/storage-commit-barrier/source-observations.json text eol=lf
 tests/test_native_patch_net_paths.py text eol=lf
+
+# R17 plan and byte-bound controller evidence must survive Windows checkout.
+native/drafts/upstream-156-worker-r17/*.json text eol=lf
+native/drafts/upstream-156-worker-r17/packet-observations/*.json text eol=lf
+scripts/native_checkpoint_*.py text eol=lf
+app/core/native/windows_sandbox.py text eol=lf
+tests/test_native_checkpoint_atomic_job.py text eol=lf
+tests/test_native_checkpoint_contract.py text eol=lf
+tests/test_native_checkpoint_crash.py text eol=lf
+tests/test_native_checkpoint_crash_guards.py text eol=lf
+tests/test_native_checkpoint_job_guards.py text eol=lf
+tests/test_native_checkpoint_recovery_cancel.py text eol=lf
+tests/test_native_checkpoint_recovery_job.py text eol=lf
+tests/test_native_windows_sandbox.py text eol=lf
+tests/fixtures/glint_checkpoint_host/*.py text eol=lf
+native/drafts/environment/worker-r17-host-source-upgrade.json text eol=lf

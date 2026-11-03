@@ -1,0 +1,122 @@
+diff --git a/content/browser/camouflow_native/glint/profile_document_commit_unittest.cc b/content/browser/camouflow_native/glint/profile_document_commit_unittest.cc
+index ad9d856d52594ff9a8dcf43f5bbfa936a2581d0f..6f2215e85243f10bdd9ecb0a5b32b320a2daf4ee 100644
+--- a/content/browser/camouflow_native/glint/profile_document_commit_unittest.cc
++++ b/content/browser/camouflow_native/glint/profile_document_commit_unittest.cc
+@@ -396,4 +396,117 @@ TEST_F(ProfileDocumentCommitTest, MissingContextPostsOwnerFailure) {
+   EXPECT_EQ(result.Get().status, Status::kOwnerGone);
+ }
+ 
++TEST_F(ProfileDocumentCommitTest, ExplicitDocumentScopePreservesLegacySuccess) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::StartWithScope(context_.get(),
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback(),
++      Commit::Scope::kDocuments);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyCookie(true);
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kCommittedDocumentPrefix);
++}
++
++TEST_F(ProfileDocumentCommitTest, WorkerCookieScopeUsesItsOwnSuccessStatus) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::StartWithScope(context_.get(),
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback(),
++      Commit::Scope::kDocumentsAndWorkerCookies);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyCookie(true);
++  environment_.RunUntilIdle();
++  EXPECT_FALSE(result.IsReady());
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kCommittedDocumentAndWorkerCookiePrefix);
++  EXPECT_EQ(cookies_.legacy_flushes, 0u);
++  EXPECT_EQ(local_storage_.legacy_flushes, 0u);
++}
++
++TEST_F(ProfileDocumentCommitTest, WorkerCookieScopeStillWaitsForDocumentProducers) {
++  CommitRenderer renderer(context_.get());
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::StartWithScope(context_.get(),
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback(),
++      Commit::Scope::kDocumentsAndWorkerCookies);
++  ASSERT_EQ(renderer.local_replies.size(), 1u);
++  ASSERT_EQ(renderer.cookie_replies.size(), 1u);
++  environment_.RunUntilIdle();
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++  std::move(renderer.local_replies.front()).Run(true);
++  std::move(renderer.cookie_replies.front()).Run(true);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyCookie(true);
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kCommittedDocumentAndWorkerCookiePrefix);
++}
++
++TEST_F(ProfileDocumentCommitTest, WorkerCookieScopeDocumentRejectionNeverFlushes) {
++  CommitRenderer renderer(context_.get());
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::StartWithScope(context_.get(),
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback(),
++      Commit::Scope::kDocumentsAndWorkerCookies);
++  ASSERT_EQ(renderer.local_replies.size(), 1u);
++  std::move(renderer.local_replies.front()).Run(false);
++  EXPECT_EQ(result.Get().status, Status::kProducerRejected);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++}
++
++TEST_F(ProfileDocumentCommitTest, WorkerCookieScopeRetainsPartitionTopology) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::StartWithScope(context_.get(),
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback(),
++      Commit::Scope::kDocumentsAndWorkerCookies);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ASSERT_NE(context_->GetStoragePartition(StoragePartitionConfig::Create(
++                context_.get(), "glint-tests", "late-worker-scope", true)), nullptr);
++  ReplyCookie(true);
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kTopologyChanged);
++}
++
++TEST_F(ProfileDocumentCommitTest, WorkerCookieScopeOwnerLossRejectsBackendReplies) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::StartWithScope(context_.get(),
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback(),
++      Commit::Scope::kDocumentsAndWorkerCookies);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyCookie(true);
++  environment_.RunUntilIdle();
++  DestroyContext();
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kOwnerGone);
++}
++
++TEST_F(ProfileDocumentCommitTest, WorkerCookieScopeRejectsOverlongDeadline) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::StartWithScope(context_.get(),
++      base::TimeTicks::Now() + base::Seconds(31), result.GetCallback(),
++      Commit::Scope::kDocumentsAndWorkerCookies);
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Status::kTimedOut);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++}
++
++TEST_F(ProfileDocumentCommitTest, UnknownWorkerScopeCannotFallBackToDocuments) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::StartWithScope(context_.get(),
++      base::TimeTicks::Now() + base::Seconds(5), result.GetCallback(),
++      static_cast<Commit::Scope>(99));
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Status::kInvalidScope);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++}
++
+ }  // namespace content

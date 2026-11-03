@@ -1,0 +1,495 @@
+diff --git a/content/browser/storage_partition_impl.h b/content/browser/storage_partition_impl.h
+--- a/content/browser/storage_partition_impl.h
++++ b/content/browser/storage_partition_impl.h
+@@ -175,6 +175,13 @@
+   BackgroundSyncContextImpl* GetBackgroundSyncContext() override;
+   storage::FileSystemContext* GetFileSystemContext() override;
+   DOMStorageContextWrapper* GetDOMStorageContext() override;
++
++  // Commit writes already received by the existing cookie store. Does not start
++  // a service, fence producers, retain session cookies or acknowledge a
++  // profile. UI sequence; caller delivery is posted and rechecks the owner
++  // generation.
++  void FlushCookiesForCheckpoint(base::TimeTicks deadline,
++                                 base::OnceCallback<void(bool)> callback);
+   storage::mojom::LocalStorageControl* GetLocalStorageControl() override;
+   LockManager<storage::BucketId>*
+   GetLockManager();  // override; TODO: Add to interface
+@@ -644,6 +651,12 @@
+   friend class ServiceWorkerRegistrationTest;
+   friend class ServiceWorkerUpdateJobTest;
+   friend class StoragePartitionImplMap;
++  friend class CookieCheckpointOwnerTest;
++
++  struct CookieCheckpointRequest;
++  void RejectCookieCheckpoints();
++  void OnCookieCheckpointVersion(uint64_t id, uint32_t version);
++  void OnCookieCheckpointComplete(uint64_t id, bool success);
+   FRIEND_TEST_ALL_PREFIXES(StoragePartitionShaderClearTest, ClearShaderCache);
+   FRIEND_TEST_ALL_PREFIXES(StoragePartitionImplTest,
+                            RemoveQuotaManagedDataForeverBoth);
+@@ -947,6 +960,12 @@
+   std::unique_ptr<DeclarativePerformanceObserverStore>
+       declarative_performance_observer_store_;
+ 
++  bool cookie_checkpoint_shutdown_ = false;
++  uint64_t next_cookie_checkpoint_id_ = 0;
++  base::flat_map<uint64_t, std::unique_ptr<CookieCheckpointRequest>>
++      cookie_checkpoints_;
++  base::WeakPtrFactory<StoragePartitionImpl> cookie_checkpoint_weak_factory_{
++      this};
+   base::WeakPtrFactory<StoragePartitionImpl> weak_factory_{this};
+ };
+ 
+diff --git a/content/browser/storage_partition_impl.cc b/content/browser/storage_partition_impl.cc
+--- a/content/browser/storage_partition_impl.cc
++++ b/content/browser/storage_partition_impl.cc
+@@ -7,6 +7,7 @@
+ #include <stdint.h>
+ 
+ #include <functional>
++#include <limits>
+ #include <memory>
+ #include <optional>
+ #include <utility>
+@@ -38,6 +39,7 @@
+ #include "base/task/thread_pool.h"
+ #include "base/threading/sequence_local_storage_slot.h"
+ #include "base/timer/elapsed_timer.h"
++#include "base/timer/timer.h"
+ #include "base/types/optional_util.h"
+ #include "base/unguessable_token.h"
+ #include "build/build_config.h"
+@@ -1221,6 +1223,28 @@
+   mojo::Remote<network::mojom::NetworkContext> network_context;
+ };
+ 
++struct StoragePartitionImpl::CookieCheckpointRequest {
++  CookieCheckpointRequest(base::TimeTicks expires,
++                          base::OnceCallback<void(bool)> done)
++      : deadline(expires), callback(std::move(done)) {
++    timer.Start(FROM_HERE, expires - base::TimeTicks::Now(),
++                base::BindOnce(&CookieCheckpointRequest::Reject,
++                               base::Unretained(this)));
++  }
++
++  void Reject() {
++    timer.Stop();
++    if (callback) {
++      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++          FROM_HERE, base::BindOnce(std::move(callback), false));
++    }
++  }
++
++  const base::TimeTicks deadline;
++  base::OnceCallback<void(bool)> callback;
++  base::OneShotTimer timer;
++};
++
+ StoragePartitionImpl::StoragePartitionImpl(
+     BrowserContext* browser_context,
+     const StoragePartitionConfig& config,
+@@ -1258,6 +1282,7 @@
+ }
+ 
+ StoragePartitionImpl::~StoragePartitionImpl() {
++  RejectCookieCheckpoints();
+ #if DCHECK_IS_ON()
+   CHECK(on_browser_context_will_be_destroyed_called_,
+         base::NotFatalUntil::M159);
+@@ -1290,6 +1315,8 @@
+ }
+ 
+ void StoragePartitionImpl::OnBrowserContextWillBeDestroyed() {
++  cookie_checkpoint_shutdown_ = true;
++  RejectCookieCheckpoints();
+ #if DCHECK_IS_ON()
+   on_browser_context_will_be_destroyed_called_ = true;
+ #endif
+@@ -1687,11 +1714,95 @@
+   if (!cookie_manager_for_browser_process_ ||
+       !cookie_manager_for_browser_process_.is_connected()) {
+     // Reset `cookie_manager_for_browser_process_` before binding it again.
++    RejectCookieCheckpoints();
+     cookie_manager_for_browser_process_.reset();
+     GetNetworkContext()->GetCookieManager(
+         cookie_manager_for_browser_process_.BindNewPipeAndPassReceiver());
++    cookie_manager_for_browser_process_.set_disconnect_handler(
++        base::BindOnce(&StoragePartitionImpl::RejectCookieCheckpoints,
++                       cookie_checkpoint_weak_factory_.GetWeakPtr()));
+   }
+   return cookie_manager_for_browser_process_.get();
++}
++
++void StoragePartitionImpl::RejectCookieCheckpoints() {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  cookie_checkpoint_weak_factory_.InvalidateWeakPtrs();
++  for (auto& [id, request] : cookie_checkpoints_) {
++    request->Reject();
++  }
++  cookie_checkpoints_.clear();
++}
++
++void StoragePartitionImpl::FlushCookiesForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  CHECK(callback);
++  if (cookie_checkpoint_shutdown_ || !browser_context_ ||
++      browser_context_->ShutdownStarted() ||
++      browser_context_->IsOffTheRecord() || config_.in_memory() ||
++      deadline.is_max() || deadline <= base::TimeTicks::Now() ||
++      !cookie_manager_for_browser_process_.is_bound() ||
++      !cookie_manager_for_browser_process_.is_connected() ||
++      cookie_checkpoints_.size() >= 64 ||
++      next_cookie_checkpoint_id_ == std::numeric_limits<uint64_t>::max()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(callback), false));
++    return;
++  }
++  const uint64_t id = ++next_cookie_checkpoint_id_;
++  cookie_checkpoints_.emplace(id, std::make_unique<CookieCheckpointRequest>(
++                                      deadline, std::move(callback)));
++  cookie_manager_for_browser_process_.QueryVersion(
++      base::BindOnce(&StoragePartitionImpl::OnCookieCheckpointVersion,
++                     cookie_checkpoint_weak_factory_.GetWeakPtr(), id));
++}
++
++void StoragePartitionImpl::OnCookieCheckpointVersion(uint64_t id,
++                                                     uint32_t version) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  const auto it = cookie_checkpoints_.find(id);
++  if (it == cookie_checkpoints_.end()) {
++    return;
++  }
++  if (version < 1 || !it->second->callback ||
++      base::TimeTicks::Now() >= it->second->deadline ||
++      !cookie_manager_for_browser_process_.is_connected()) {
++    OnCookieCheckpointComplete(id, false);
++    return;
++  }
++  cookie_manager_for_browser_process_->FlushCookieStoreForCheckpoint(
++      base::BindOnce(&StoragePartitionImpl::OnCookieCheckpointComplete,
++                     cookie_checkpoint_weak_factory_.GetWeakPtr(), id));
++}
++
++void StoragePartitionImpl::OnCookieCheckpointComplete(uint64_t id,
++                                                      bool success) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  const auto it = cookie_checkpoints_.find(id);
++  if (it == cookie_checkpoints_.end()) {
++    return;
++  }
++  it->second->timer.Stop();
++  if (it->second->callback) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(
++            [](base::WeakPtr<StoragePartitionImpl> owner, bool success,
++               base::TimeTicks deadline,
++               base::OnceCallback<void(bool)> callback) {
++              std::move(callback).Run(
++                  success && base::TimeTicks::Now() < deadline && owner &&
++                  !owner->cookie_checkpoint_shutdown_ &&
++                  owner->browser_context_ &&
++                  !owner->browser_context_->ShutdownStarted() &&
++                  owner->cookie_manager_for_browser_process_.is_connected());
++            },
++            cookie_checkpoint_weak_factory_.GetWeakPtr(), success,
++            it->second->deadline, std::move(it->second->callback)));
++  }
++  cookie_checkpoints_.erase(it);
+ }
+ 
+ void StoragePartitionImpl::CreateRestrictedCookieManager(
+@@ -3493,6 +3604,8 @@
+ }
+ 
+ void StoragePartitionImpl::InitNetworkContext() {
++  RejectCookieCheckpoints();
++  cookie_manager_for_browser_process_.reset();
+   network::mojom::NetworkContextParamsPtr context_params =
+       network::mojom::NetworkContextParams::New();
+   cert_verifier::mojom::CertVerifierCreationParamsPtr
+diff --git a/content/browser/storage_partition_impl_unittest.cc b/content/browser/storage_partition_impl_unittest.cc
+--- a/content/browser/storage_partition_impl_unittest.cc
++++ b/content/browser/storage_partition_impl_unittest.cc
+@@ -94,6 +94,7 @@
+ #include "services/network/public/cpp/features.h"
+ #include "services/network/public/mojom/network_context.mojom.h"
+ #include "services/network/test/mock_device_bound_session_manager.h"
++#include "services/network/test/test_cookie_manager.h"
+ #include "storage/browser/quota/quota_client_type.h"
+ #include "storage/browser/quota/quota_manager.h"
+ #include "storage/browser/quota/quota_manager_proxy.h"
+@@ -655,6 +656,270 @@
+   scoped_refptr<storage::MockQuotaManager> quota_manager_;
+ };
+ 
++class CookieCheckpointOwnerTest : public testing::Test {
++ public:
++  class Backend : public network::TestCookieManager {
++   public:
++    void FlushCookieStoreForCheckpoint(
++        FlushCookieStoreForCheckpointCallback callback) override {
++      replies.push_back(std::move(callback));
++    }
++    void FlushCookieStore(FlushCookieStoreCallback callback) override {
++      ++legacy_flushes;
++    }
++    std::vector<FlushCookieStoreForCheckpointCallback> replies;
++    size_t legacy_flushes = 0;
++  };
++
++  void SetUp() override {
++    partition_ = static_cast<StoragePartitionImpl*>(
++        browser_.GetDefaultStoragePartition());
++    Bind();
++  }
++
++  void TearDown() override {
++    partition_->RejectCookieCheckpoints();
++    partition_->cookie_manager_for_browser_process_.reset();
++    receiver_.reset();
++  }
++
++  void Bind() {
++    partition_->RejectCookieCheckpoints();
++    partition_->cookie_manager_for_browser_process_.reset();
++    receiver_.reset();
++    receiver_.Bind(partition_->cookie_manager_for_browser_process_
++                       .BindNewPipeAndPassReceiver());
++    partition_->cookie_manager_for_browser_process_.set_disconnect_handler(
++        base::BindOnce(
++            &StoragePartitionImpl::RejectCookieCheckpoints,
++            partition_->cookie_checkpoint_weak_factory_.GetWeakPtr()));
++  }
++
++  void Start(base::test::TestFuture<bool>& result) {
++    partition_->FlushCookiesForCheckpoint(
++        base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  }
++  void Reject() { partition_->RejectCookieCheckpoints(); }
++  void QueueSuccessThenRebind() {
++    partition_->OnCookieCheckpointComplete(
++        partition_->next_cookie_checkpoint_id_, true);
++    Bind();
++  }
++  void QueueSuccess() {
++    partition_->OnCookieCheckpointComplete(
++        partition_->next_cookie_checkpoint_id_, true);
++  }
++  void UseMemoryPartition() {
++    partition_ = static_cast<StoragePartitionImpl*>(
++        browser_.GetStoragePartition(StoragePartitionConfig::Create(
++            &browser_, "glint-test", "memory", true)));
++    Bind();
++  }
++  void Shutdown() {
++    partition_->cookie_checkpoint_shutdown_ = true;
++    partition_->RejectCookieCheckpoints();
++  }
++  size_t Slots() { return partition_->cookie_checkpoints_.size(); }
++  void SimulateOldVersion() {
++    partition_->OnCookieCheckpointVersion(
++        partition_->next_cookie_checkpoint_id_, 0);
++  }
++
++ protected:
++  BrowserTaskEnvironment tasks_{
++      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
++  TestBrowserContext browser_;
++  raw_ptr<StoragePartitionImpl> partition_ = nullptr;
++  Backend backend_;
++  mojo::Receiver<network::mojom::CookieManager> receiver_{&backend_};
++};
++
++TEST_F(CookieCheckpointOwnerTest, SuccessIsPostedAfterBackendReply) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  EXPECT_FALSE(result.IsReady());
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(backend_.replies.size(), 1u);
++  EXPECT_FALSE(result.IsReady());
++  std::move(backend_.replies.front()).Run(true);
++  EXPECT_TRUE(result.Get());
++  EXPECT_EQ(backend_.legacy_flushes, 0u);
++}
++
++TEST_F(CookieCheckpointOwnerTest, BackendFailureNeverFallsBack) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(backend_.replies.size(), 1u);
++  std::move(backend_.replies.front()).Run(false);
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(backend_.legacy_flushes, 0u);
++}
++
++TEST_F(CookieCheckpointOwnerTest, DeadlineRetainsOutstandingWireSlot) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(backend_.replies.size(), 1u);
++  tasks_.FastForwardBy(base::Seconds(5));
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(Slots(), 1u);
++  std::move(backend_.replies.front()).Run(true);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(Slots(), 0u);
++}
++
++TEST_F(CookieCheckpointOwnerTest, RebindRejectsPendingAndLateReplies) {
++  base::test::TestFuture<bool> old_result;
++  Start(old_result);
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(backend_.replies.size(), 1u);
++  Bind();
++  EXPECT_FALSE(old_result.Get());
++  std::move(backend_.replies.front()).Run(true);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(Slots(), 0u);
++  base::test::TestFuture<bool> fresh;
++  Start(fresh);
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(backend_.replies.size(), 2u);
++  std::move(backend_.replies.back()).Run(true);
++  EXPECT_TRUE(fresh.Get());
++}
++
++TEST_F(CookieCheckpointOwnerTest, DisconnectRejectsWithoutWaitingForDeadline) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  tasks_.RunUntilIdle();
++  receiver_.reset();
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(Slots(), 0u);
++}
++
++TEST_F(CookieCheckpointOwnerTest, ExpiredDeadlineNeverContactsBackend) {
++  base::test::TestFuture<bool> result;
++  partition_->FlushCookiesForCheckpoint(base::TimeTicks::Now(),
++                                        result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++  EXPECT_TRUE(backend_.replies.empty());
++}
++
++TEST_F(CookieCheckpointOwnerTest, MissingConnectionDoesNotStartService) {
++  receiver_.reset();
++  tasks_.RunUntilIdle();
++  base::test::TestFuture<bool> result;
++  Start(result);
++  EXPECT_FALSE(result.Get());
++  EXPECT_TRUE(backend_.replies.empty());
++}
++
++TEST_F(CookieCheckpointOwnerTest, OutstandingRequestsAreBoundedAfterTimeouts) {
++  std::vector<std::unique_ptr<base::test::TestFuture<bool>>> results;
++  for (size_t i = 0; i < 64; ++i) {
++    auto result = std::make_unique<base::test::TestFuture<bool>>();
++    Start(*result);
++    results.push_back(std::move(result));
++  }
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(backend_.replies.size(), 64u);
++  tasks_.FastForwardBy(base::Seconds(5));
++  for (auto& result : results) {
++    EXPECT_FALSE(result->Get());
++  }
++  base::test::TestFuture<bool> overflow;
++  Start(overflow);
++  EXPECT_FALSE(overflow.Get());
++  EXPECT_EQ(Slots(), 64u);
++  EXPECT_EQ(backend_.replies.size(), 64u);
++}
++
++TEST_F(CookieCheckpointOwnerTest, OldVersionRejectsWithoutLegacyFlush) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  SimulateOldVersion();
++  EXPECT_FALSE(result.Get());
++  tasks_.RunUntilIdle();
++  EXPECT_TRUE(backend_.replies.empty());
++  EXPECT_EQ(backend_.legacy_flushes, 0u);
++}
++
++TEST_F(CookieCheckpointOwnerTest, RejectIsIdempotent) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  Reject();
++  Reject();
++  EXPECT_FALSE(result.Get());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(Slots(), 0u);
++}
++
++TEST_F(CookieCheckpointOwnerTest, QueuedSuccessRechecksOwnerGeneration) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(backend_.replies.size(), 1u);
++  QueueSuccessThenRebind();
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CookieCheckpointOwnerTest, ShutdownRejectsExistingAndNewRequests) {
++  base::test::TestFuture<bool> pending;
++  Start(pending);
++  tasks_.RunUntilIdle();
++  Shutdown();
++  EXPECT_FALSE(pending.Get());
++  base::test::TestFuture<bool> fresh;
++  Start(fresh);
++  EXPECT_FALSE(fresh.Get());
++  EXPECT_EQ(backend_.replies.size(), 1u);
++}
++
++TEST_F(CookieCheckpointOwnerTest, InfiniteDeadlineNeverContactsBackend) {
++  base::test::TestFuture<bool> result;
++  partition_->FlushCookiesForCheckpoint(base::TimeTicks::Max(),
++                                        result.GetCallback());
++  EXPECT_FALSE(result.Get());
++  EXPECT_TRUE(backend_.replies.empty());
++}
++
++TEST_F(CookieCheckpointOwnerTest, QueuedSuccessCannotOutliveOriginalDeadline) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(backend_.replies.size(), 1u);
++  QueueSuccess();
++  tasks_.AdvanceClock(base::Seconds(5));
++  EXPECT_FALSE(result.Get());
++}
++
++TEST_F(CookieCheckpointOwnerTest, VersionReplyAfterDeadlineDoesNotFlushStore) {
++  base::test::TestFuture<bool> result;
++  Start(result);
++  tasks_.AdvanceClock(base::Seconds(5));
++  EXPECT_FALSE(result.Get());
++  tasks_.RunUntilIdle();
++  EXPECT_TRUE(backend_.replies.empty());
++}
++
++TEST_F(CookieCheckpointOwnerTest,
++       InMemoryPartitionNeverAcknowledgesDiskCommit) {
++  UseMemoryPartition();
++  base::test::TestFuture<bool> result;
++  Start(result);
++  EXPECT_FALSE(result.Get());
++  EXPECT_TRUE(backend_.replies.empty());
++}
++
++TEST_F(CookieCheckpointOwnerTest, OffTheRecordOwnerRejectsExistingDiskBinding) {
++  browser_.set_is_off_the_record(true);
++  base::test::TestFuture<bool> result;
++  Start(result);
++  EXPECT_FALSE(result.Get());
++  EXPECT_TRUE(backend_.replies.empty());
++}
++
+ // Runs each local storage test twice: once with SQLite and once with LevelDB.
+ class LocalStoragePartitionImplTest
+     : public testing::WithParamInterface</*is_sqlite_enabled=*/bool>,

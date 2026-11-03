@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "ad51febee63eadfc2f22d4c18ad40bbc2ffdcb08742134f21e6fbd3f5aeaa899",
+  "normalized_patch_sha256": "1a07f12dfbc866fdef9df871e3178a5518613b023f78405089111a1ac9b95be3",
+  "patch": "0172-profile-worker-commit.patch",
+  "before_source_sha256": {
+    "content/browser/camouflow_native/glint/profile_document_commit.h": "140e83e3483500f774d0f1857ba0a3d8ff08f453a404816ea117d3c02a83938f",
+    "content/browser/camouflow_native/glint/profile_document_commit.cc": "63efe1f55869938171b5a4701f041ad58b4b5ab321228ed192268aaafbf55210"
+  },
+  "final_source_sha256": {
+    "content/browser/camouflow_native/glint/profile_document_commit.h": "47805ca9ea319ee6726cd68710eb51e5a5130ae6a2aac4c3d19e1aa6ded3f00d",
+    "content/browser/camouflow_native/glint/profile_document_commit.cc": "f2c799b183b16c2d2d09c3d11180daf25e0282dd27a39e9c37736a043ee479d1"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

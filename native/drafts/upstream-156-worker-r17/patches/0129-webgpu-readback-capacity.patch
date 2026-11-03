@@ -1,0 +1,594 @@
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -7,11 +7,18 @@
+ 
+ #include <algorithm>
+ #include <limits>
++#include <new>
+ 
+ namespace gpu::webgpu {
+ namespace {
+ using namespace glint::candidate;
+ using dawn::native::GlintReadbackMapStatus;
++
++size_t CaptureCapacity(const GlintReadbackLimits& limits) {
++  const size_t buffers = std::min(limits.buffers,
++      kWebGpuSnapshotSlotLimit / kWebGpuReadbackRegionLimit);
++  return buffers * kWebGpuReadbackRegionLimit;
++}
+ 
+ class ScopedSeed {
+  public:
+@@ -54,18 +61,31 @@
+     : policy_(std::move(policy)),
+       epoch_(epoch),
+       limits_(limits),
++      capture_capacity_(CaptureCapacity(limits)),
+       snapshots_(epoch,
+                  policy_ ? policy_->generation() : 0,
+                  limits.snapshots,
+-                 limits.shadow) {
++                 limits.shadow, capture_capacity_) {
+   failed_ = !policy_ || policy_->generation() == 0 || epoch == 0 ||
+-            limits.buffers == 0 || limits.snapshots == 0 || limits.shadow == 0;
++            limits.buffers == 0 || limits.snapshots == 0 || limits.shadow == 0 || capture_capacity_ == 0;
++  if (!failed_) pending_.reset(new (std::nothrow) PendingCapture[capture_capacity_]);
++  failed_ = failed_ || !pending_ || snapshots_.snapshot_capacity() != capture_capacity_;
+ }
+ GlintWebGPUReadbackObserver::~GlintWebGPUReadbackObserver() = default;
+ bool GlintWebGPUReadbackObserver::IsHealthy() const {
+   std::lock_guard lock(mutex_);
+   return !failed_;
+ }
++GlintWebGPUReadbackObserver::PendingCapture* GlintWebGPUReadbackObserver::AcquirePending() {
++  auto free = std::find_if(Pending().begin(), Pending().end(), [](const PendingCapture& value) {
++    return value.token.snapshot_id == 0;
++  });
++  if (free != Pending().end()) return &*free;
++  if (!pending_ || pending_used_ >= capture_capacity_) return nullptr;
++  ++pending_used_;
++  return &Pending().back();
++}
++
+ void GlintWebGPUReadbackObserver::Drop(PendingCapture& capture) {
+   if (capture.token.snapshot_id != 0) {
+     snapshots_.Release(capture.token);
+@@ -82,7 +102,7 @@
+   active_scope_ = 0;
+   scoped_outputs_.clear();
+   buffers_.clear();
+-  for (auto& capture : pending_) {
++  for (auto& capture : Pending()) {
+     Drop(capture);
+   }
+   snapshots_.Destroy();
+@@ -123,25 +143,26 @@
+               .first->second;
+ }
+ void GlintWebGPUReadbackObserver::Collect() {
+-  std::array<bool, kWebGpuReadbackRegionLimit> referenced{};
++  std::array<bool, kWebGpuSnapshotSlotLimit> referenced{};
+   for (const auto& [handle, buffer] : buffers_) {
+     if (buffer.unsafe) {
+       continue;
+     }
+     const auto plan = buffer.provenance.PlanMap(0, buffer.size);
+     for (size_t index = 0; index < plan.count; ++index) {
+-      for (size_t slot = 0; slot < pending_.size(); ++slot) {
+-        if (pending_[slot].token == plan.regions[index].snapshot) {
++      for (size_t slot = 0; slot < Pending().size(); ++slot) {
++        if (Pending()[slot].token == plan.regions[index].snapshot) {
+           referenced[slot] = true;
+         }
+       }
+     }
+   }
+-  for (size_t slot = 0; slot < pending_.size(); ++slot) {
+-    if (!referenced[slot] && pending_[slot].token.snapshot_id != 0) {
+-      Drop(pending_[slot]);
+-    }
+-  }
++  for (size_t slot = 0; slot < Pending().size(); ++slot) {
++    if (!referenced[slot] && Pending()[slot].token.snapshot_id != 0) {
++      Drop(Pending()[slot]);
++    }
++  }
++  while (pending_used_ != 0 && Pending().back().token.snapshot_id == 0) --pending_used_;
+ }
+ void GlintWebGPUReadbackObserver::OnTextureToBufferCopy(
+     const dawn::native::GlintTextureToBufferCopy& copy,
+@@ -157,14 +178,12 @@
+     return;
+   }
+   const auto format = PixelFormat(copy.format);
+-  auto free = std::find_if(
+-      pending_.begin(), pending_.end(),
+-      [](const PendingCapture& value) { return value.token.snapshot_id == 0; });
++  auto* free = AcquirePending();
+   if (buffer->unsafe || !native || !format ||
+       native->GetFormat() != copy.format ||
+       copy.destinationRowPitch > std::numeric_limits<uint32_t>::max() ||
+       snapshot_id_ == std::numeric_limits<uint64_t>::max() ||
+-      free == pending_.end()) {
++      !free) {
+     buffer->unsafe = true;
+     Collect();
+     return;
+@@ -346,13 +365,14 @@
+       if (++bufferRegions > kWebGpuReadbackRegionLimit) return nullptr;
+       if (region.snapshot.device_epoch != epoch_ ||
+           region.snapshot.policy_generation != policy_->generation()) return nullptr;
+-      const auto capture = std::find_if(pending_.begin(), pending_.end(),
++      const auto capture = std::find_if(Pending().begin(), Pending().end(),
+           [&](const auto& value) { return value.token == region.snapshot; });
+-      if (capture == pending_.end()) return nullptr;
++      if (capture == Pending().end()) return nullptr;
+       // Existing trusted shader-byte results already have protected GPU contents.
+       // Preserve the established eligibility contract without a pixel-plane rewrite.
+       if (region.kind == WebGpuReadbackRegionKind::kCapturedBytes) {
+-        if (!capture->byte_native ||
++        if (!capture->byte_native || !WebGpuCapturedByteMaskValid(region.byte_mask) ||
++            (region.byte_mask.stride != 0 && region.byte_mask.end > capture->byte_native->GetByteSize()) ||
+             region.snapshot_offset > capture->byte_native->GetByteSize() ||
+             region.size > capture->byte_native->GetByteSize() - region.snapshot_offset) return nullptr;
+         continue;
+@@ -442,6 +462,7 @@
+   for (size_t index = 0; index < plan.count; ++index) {
+     const auto& region = plan.regions[index];
+     if (region.kind != WebGpuReadbackRegionKind::kCapturedBytes ||
++        !WebGpuCapturedByteMaskValid(region.byte_mask) ||
+         region.snapshot.device_epoch != epoch_ ||
+         region.snapshot.policy_generation != policy_->generation()) {
+       return false;
+@@ -521,13 +542,12 @@
+     }
+     merged.push_back(request);
+   }
+-  if (merged.size() > pending_.size()) {
+-    return {};
+-  }
+-  const auto free_slots = static_cast<size_t>(std::count_if(
+-      pending_.begin(), pending_.end(), [](const PendingCapture& value) {
+-        return value.token.snapshot_id == 0;
++  if (merged.size() > capture_capacity_) return {};
++  const auto occupied = static_cast<size_t>(std::count_if(
++      Pending().begin(), Pending().end(), [](const PendingCapture& value) {
++        return value.token.snapshot_id != 0;
+       }));
++  const size_t free_slots = capture_capacity_ - occupied;
+   if (merged.size() > free_slots) {
+     return {};
+   }
+@@ -597,11 +617,8 @@
+   for (size_t index = 0; index < results.size(); ++index) {
+     const auto& output = scoped_outputs_[index];
+     auto* buffer = GetBuffer(output.request.buffer);
+-    auto slot = std::find_if(pending_.begin(), pending_.end(),
+-                             [](const PendingCapture& value) {
+-                               return value.token.snapshot_id == 0;
+-                             });
+-    if (!buffer || slot == pending_.end() ||
++    auto* slot = AcquirePending();
++    if (!buffer || !slot ||
+         !buffer->provenance.RecordCapturedByteCopy(
+             output.token.source_version, output.request.offset,
+             output.request.size, output.token)) {
+@@ -706,10 +723,10 @@
+   using dawn::native::GlintReadbackStatus;
+   for (size_t index = 0; index < plan.count; ++index) {
+     auto found = std::find_if(
+-        pending_.begin(), pending_.end(), [&](const PendingCapture& value) {
++        Pending().begin(), Pending().end(), [&](const PendingCapture& value) {
+           return value.token == plan.regions[index].snapshot;
+         });
+-    if (found == pending_.end()) {
++    if (found == Pending().end()) {
+       return GlintReadbackStatus::Failed;
+     }
+     if (found->complete) {
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -7,6 +7,7 @@
+ #include <map>
+ #include <memory>
+ #include <mutex>
++#include <span>
+ 
+ #include "dawn/native/DawnNative.h"
+ #include "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h"
+@@ -106,6 +107,7 @@
+   uint64_t NextSequence();
+   void Fail();
+   void Drop(PendingCapture& capture);
++  PendingCapture* AcquirePending();
+   void Collect();
+   dawn::native::GlintReadbackStatus Complete(
+       const glint::candidate::WebGpuReadbackPlan& plan);
+@@ -119,10 +121,13 @@
+   bool failed_ = false;
+   uint64_t sequence_ = 0;
+   uint64_t snapshot_id_ = 0;
++  size_t capture_capacity_ = 0;
+   glint::candidate::WebGpuReadbackSnapshots snapshots_;
+   std::map<WGPUBuffer, BufferState> buffers_;
+-  std::array<PendingCapture, glint::candidate::kWebGpuReadbackRegionLimit>
+-      pending_;
++  std::unique_ptr<PendingCapture[]> pending_;
++  size_t pending_used_ = 0;
++  std::span<PendingCapture> Pending() { return {pending_.get(), pending_ ? pending_used_ : 0}; }
++  std::span<const PendingCapture> Pending() const { return {pending_.get(), pending_ ? pending_used_ : 0}; }
+   mutable std::mutex mutex_;
+ };
+ }  // namespace gpu::webgpu
+--- a/gpu/command_buffer/common/glint/webgpu_readback_provenance.cc
++++ b/gpu/command_buffer/common/glint/webgpu_readback_provenance.cc
+@@ -21,9 +21,19 @@
+ }
+ 
+ bool ContainsTrackedData(const WebGpuReadbackRegion& region) {
+-  if (region.kind == WebGpuReadbackRegionKind::kShaderDerived ||
+-      region.kind == WebGpuReadbackRegionKind::kCapturedBytes) {
++  if (region.kind == WebGpuReadbackRegionKind::kShaderDerived) {
+     return region.size != 0;
++  }
++  if (region.kind == WebGpuReadbackRegionKind::kCapturedBytes) {
++    if (!WebGpuCapturedByteMaskValid(region.byte_mask) || region.size == 0 ||
++        region.size > std::numeric_limits<uint64_t>::max() - region.snapshot_offset) return false;
++    const auto& mask = region.byte_mask;
++    if (mask.stride == 0) return true;
++    const uint64_t begin = std::max(region.snapshot_offset, mask.begin);
++    const uint64_t end = std::min(region.snapshot_offset + region.size, mask.end);
++    if (begin >= end) return false;
++    const uint64_t residue = (begin % mask.stride + mask.stride - mask.phase) % mask.stride;
++    return residue < mask.width || mask.stride - residue < end - begin;
+   }
+   const auto end = WebGpuReadbackEnd(region.snapshot_layout,
+                                      std::numeric_limits<size_t>::max());
+@@ -49,6 +59,28 @@
+ }
+ }  // namespace
+ 
++bool WebGpuCapturedByteMaskValid(const WebGpuCapturedByteMask& mask) {
++  if (mask.stride == 0) return mask.width == 0 && mask.phase == 0 && mask.begin == 0 && mask.end == 0;
++  return mask.stride <= std::numeric_limits<uint32_t>::max() &&
++      mask.width > 0 && mask.width < mask.stride && mask.phase < mask.stride && mask.begin < mask.end;
++}
++
++std::optional<size_t> WebGpuCapturedByte(const WebGpuReadbackRegion& region,
++                                        uint64_t buffer_offset) {
++  if (region.kind != WebGpuReadbackRegionKind::kCapturedBytes ||
++      !WebGpuCapturedByteMaskValid(region.byte_mask) || buffer_offset < region.buffer_offset ||
++      buffer_offset - region.buffer_offset >= region.size ||
++      buffer_offset - region.buffer_offset > std::numeric_limits<uint64_t>::max() - region.snapshot_offset) {
++    return std::nullopt;
++  }
++  const uint64_t source = region.snapshot_offset + (buffer_offset - region.buffer_offset);
++  if (source > std::numeric_limits<size_t>::max()) return std::nullopt;
++  const auto& mask = region.byte_mask;
++  if (mask.stride != 0 && (source < mask.begin || source >= mask.end ||
++      (source % mask.stride + mask.stride - mask.phase) % mask.stride >= mask.width)) return std::nullopt;
++  return static_cast<size_t>(source);
++}
++
+ WebGpuReadbackProvenance::WebGpuReadbackProvenance(size_t buffer_bytes,
+                                                    uint64_t device_epoch)
+     : buffer_bytes_(buffer_bytes),
+@@ -82,6 +114,8 @@
+       region.kind != WebGpuReadbackRegionKind::kCapturedBytes) {
+     return Poison();
+   }
++  if (!WebGpuCapturedByteMaskValid(region.byte_mask) ||
++      (region.kind != WebGpuReadbackRegionKind::kCapturedBytes && region.byte_mask.stride != 0)) return Poison();
+   if (!ContainsTrackedData(region)) {
+     return true;
+   }
+@@ -135,7 +169,8 @@
+     const uint64_t region_end = region.buffer_offset + region.size;
+     if ((preserve_derived &&
+          region.kind == WebGpuReadbackRegionKind::kShaderDerived) ||
+-        offset >= region_end || end <= region.buffer_offset) {
++        offset >= region_end || end <= region.buffer_offset ||
++        !ContainsTrackedData(Clip(region, std::max(offset, region.buffer_offset), std::min(end, region_end)))) {
+       if (!Append(region)) {
+         return false;
+       }
+@@ -148,6 +183,45 @@
+         return false;
+       }
+     }
++  }
++  return true;
++}
++
++bool WebGpuReadbackProvenance::EraseTexture(const WebGpuReadbackLayout& layout) {
++  const uint64_t row_bytes = uint64_t{layout.width} * 4;
++  const uint64_t pitch = layout.row_pitch == 0 ? row_bytes : layout.row_pitch;
++  if (layout.height == 1 || pitch == row_bytes) return Erase(layout.offset, row_bytes * layout.height);
++  const uint64_t texture_end = *WebGpuReadbackEnd(layout, buffer_bytes_);
++  const uint64_t first_gap = layout.offset + row_bytes;
++  const uint64_t last_gap_end = texture_end - row_bytes;
++  const auto old = regions_;
++  const size_t old_count = count_;
++  count_ = 0;
++  for (size_t index = 0; index < old_count; ++index) {
++    const auto& region = old[index];
++    const uint64_t region_end = region.buffer_offset + region.size;
++    if (region.kind != WebGpuReadbackRegionKind::kCapturedBytes || region.byte_mask.stride != 0 ||
++        region_end <= layout.offset || region.buffer_offset >= texture_end) {
++      if (!Append(region)) return false;
++      continue;
++    }
++    if (region.buffer_offset < layout.offset &&
++        !Append(Clip(region, region.buffer_offset, layout.offset))) return false;
++    const uint64_t begin = std::max(region.buffer_offset, layout.offset);
++    const uint64_t end = std::min(region_end, texture_end);
++    const uint64_t gap_begin = std::max(begin, first_gap);
++    const uint64_t gap_end = std::min(end, last_gap_end);
++    if (gap_begin < gap_end) {
++      auto padding = Clip(region, begin, end);
++      padding.byte_mask = {pitch, pitch - row_bytes,
++          (region.snapshot_offset % pitch + first_gap % pitch + pitch - region.buffer_offset % pitch) % pitch,
++          padding.snapshot_offset + gap_begin - begin, padding.snapshot_offset + gap_end - begin};
++      if (!Append(padding)) return false;
++    }
++    if (texture_end < region_end && !Append(Clip(region, texture_end, region_end))) return false;
++  }
++  for (uint32_t row = 0; row < layout.height && count_ != 0; ++row) {
++    if (!Erase(layout.offset + uint64_t{row} * pitch, row_bytes)) return false;
+   }
+   return true;
+ }
+@@ -175,13 +249,7 @@
+                                source_rect.full_height, layout.format})) {
+     return Poison();
+   }
+-  const uint64_t row_bytes = static_cast<uint64_t>(layout.width) * 4;
+-  for (uint32_t row = 0; row < layout.height && count_ != 0; ++row) {
+-    if (!Erase(layout.offset + static_cast<uint64_t>(row) * layout.row_pitch,
+-               row_bytes)) {
+-      return false;
+-    }
+-  }
++  if (!EraseTexture(layout)) return false;
+   return Append({layout.offset, *end - layout.offset, layout.offset, layout,
+                  snapshot, source_rect});
+ }
+--- a/gpu/command_buffer/common/glint/webgpu_readback_provenance.h
++++ b/gpu/command_buffer/common/glint/webgpu_readback_provenance.h
+@@ -29,6 +29,17 @@
+ 
+ enum class WebGpuReadbackRegionKind { kPixels, kShaderDerived, kCapturedBytes };
+ 
++// Captured-byte coverage in immutable snapshot coordinates. Zero means dense.
++struct WebGpuCapturedByteMask {
++  uint64_t stride = 0;
++  uint64_t width = 0;
++  uint64_t phase = 0;
++  uint64_t begin = 0;
++  uint64_t end = 0;
++};
++GPU_COMMAND_BUFFER_COMMON_EXPORT bool WebGpuCapturedByteMaskValid(
++    const WebGpuCapturedByteMask& mask);
++
+ struct WebGpuReadbackRegion {
+   uint64_t buffer_offset = 0;
+   uint64_t size = 0;
+@@ -37,6 +48,7 @@
+   WebGpuSnapshotToken snapshot;
+   WebGpuSourceRect source_rect;
+   WebGpuReadbackRegionKind kind = WebGpuReadbackRegionKind::kPixels;
++  WebGpuCapturedByteMask byte_mask{};
+ };
+ 
+ enum class WebGpuMapProvenance {
+@@ -46,6 +58,9 @@
+   kUnreliable,
+   kDestroyed
+ };
++GPU_COMMAND_BUFFER_COMMON_EXPORT std::optional<size_t> WebGpuCapturedByte(
++    const WebGpuReadbackRegion& region, uint64_t buffer_offset);
++
+ constexpr size_t kWebGpuReadbackRegionLimit = 16;
+ 
+ struct WebGpuReadbackPlan {
+@@ -97,6 +112,7 @@
+   bool Poison();
+   bool Erase(uint64_t offset, uint64_t size, bool preserve_derived = false);
+   bool Append(const WebGpuReadbackRegion& region);
++  bool EraseTexture(const WebGpuReadbackLayout& layout);
+   bool Fits(uint64_t offset, uint64_t size) const;
+ 
+   size_t buffer_bytes_;
+--- a/gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc
++++ b/gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc
+@@ -12,18 +12,32 @@
+ WebGpuReadbackSnapshots::WebGpuReadbackSnapshots(uint64_t device_epoch,
+                                                  uint64_t policy_generation,
+                                                  size_t snapshot_limit_bytes,
+-                                                 size_t shadow_limit_bytes)
++                                                 size_t shadow_limit_bytes,
++                                                 size_t snapshot_slots)
+     : device_epoch_(device_epoch),
+       policy_generation_(policy_generation),
+       snapshot_limit_bytes_(snapshot_limit_bytes),
+       shadow_limit_bytes_(shadow_limit_bytes),
+-      destroyed_(device_epoch == 0 || policy_generation == 0) {}
++      destroyed_(device_epoch == 0 || policy_generation == 0) {
++  if (!destroyed_ && snapshot_slots > 0 && snapshot_slots <= kWebGpuSnapshotSlotLimit) {
++    snapshots_.reset(new (std::nothrow) Snapshot[snapshot_slots]);
++    if (snapshots_) snapshot_capacity_ = snapshot_slots;
++  }
++  if (!snapshots_) destroyed_ = true;
++}
+ 
+ WebGpuReadbackSnapshots::~WebGpuReadbackSnapshots() = default;
+ WebGpuReadbackSnapshots::WebGpuReadbackSnapshots(
+     WebGpuReadbackSnapshots&&) noexcept = default;
+ WebGpuReadbackSnapshots& WebGpuReadbackSnapshots::operator=(
+     WebGpuReadbackSnapshots&&) noexcept = default;
++
++WebGpuReadbackSnapshots::Snapshot* WebGpuReadbackSnapshots::AcquireSlot() {
++  auto slot = std::find_if(Slots().begin(), Slots().end(), [](const Snapshot& value) {
++    return value.state == Snapshot::State::kFree;
++  });
++  return slot == Slots().end() ? nullptr : &*slot;
++}
+ 
+ bool WebGpuReadbackSnapshots::BeginCapture(
+     const WebGpuSnapshotToken& token,
+@@ -39,11 +53,8 @@
+       *packed > (snapshot_limit_bytes_ - reserved_bytes_) / 2) {
+     return false;
+   }
+-  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(),
+-                           [](const Snapshot& value) {
+-                             return value.state == Snapshot::State::kFree;
+-                           });
+-  if (slot == snapshots_.end()) {
++  auto* slot = AcquireSlot();
++  if (!slot) {
+     return false;
+   }
+   slot->state = Snapshot::State::kPending;
+@@ -66,10 +77,8 @@
+       bytes > snapshot_limit_bytes_ - reserved_bytes_) {
+     return false;
+   }
+-  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(), [](const Snapshot& value) {
+-    return value.state == Snapshot::State::kFree;
+-  });
+-  if (slot == snapshots_.end()) return false;
++  auto* slot = AcquireSlot();
++  if (!slot) return false;
+   slot->state = Snapshot::State::kPending;
+   slot->byte_capture = true;
+   slot->token = token;
+@@ -82,10 +91,10 @@
+ bool WebGpuReadbackSnapshots::CompleteByteCapture(
+     const WebGpuSnapshotToken& token, std::span<const uint8_t> captured) {
+   if (destroyed_ || token.snapshot_id == 0) return false;
+-  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(), [&](const Snapshot& value) {
++  auto slot = std::find_if(Slots().begin(), Slots().end(), [&](const Snapshot& value) {
+     return value.state == Snapshot::State::kPending && value.byte_capture && value.token == token;
+   });
+-  if (slot == snapshots_.end()) return false;
++  if (slot == Slots().end()) return false;
+   if (captured.size() != slot->size) {
+     Release(token);
+     return false;
+@@ -112,10 +121,10 @@
+     return false;
+   }
+   auto slot = std::find_if(
+-      snapshots_.begin(), snapshots_.end(), [&token](const Snapshot& value) {
++      Slots().begin(), Slots().end(), [&token](const Snapshot& value) {
+         return value.state == Snapshot::State::kPending && !value.byte_capture && value.token == token;
+       });
+-  if (slot == snapshots_.end()) {
++  if (slot == Slots().end()) {
+     return false;
+   }
+   const auto cancel = [&]() {
+@@ -165,14 +174,14 @@
+ 
+ size_t WebGpuReadbackSnapshots::pending_count() const {
+   return static_cast<size_t>(std::count_if(
+-      snapshots_.begin(), snapshots_.end(), [](const Snapshot& value) {
++      Slots().begin(), Slots().end(), [](const Snapshot& value) {
+         return value.state == Snapshot::State::kPending;
+       }));
+ }
+ 
+ const WebGpuReadbackSnapshots::Snapshot* WebGpuReadbackSnapshots::Find(
+     const WebGpuSnapshotToken& token) const {
+-  for (const auto& snapshot : snapshots_) {
++  for (const auto& snapshot : Slots()) {
+     if (snapshot.state == Snapshot::State::kReady && snapshot.token == token) {
+       return &snapshot;
+     }
+@@ -212,19 +221,24 @@
+   for (size_t index = 0; index < plan.count; ++index) {
+     const auto& region = plan.regions[index];
+     const auto* snapshot = Find(region.snapshot);
++    if (!WebGpuCapturedByteMaskValid(region.byte_mask) ||
++        (region.kind != WebGpuReadbackRegionKind::kCapturedBytes && region.byte_mask.stride != 0)) return std::nullopt;
+     if (region.kind == WebGpuReadbackRegionKind::kCapturedBytes) {
+       if (!snapshot || !snapshot->byte_capture || !snapshot->original || region.size == 0 ||
+           region.buffer_offset < mapping_offset ||
+           region.buffer_offset - mapping_offset > mapped.size() ||
+           region.size > mapped.size() - (region.buffer_offset - mapping_offset) ||
+           region.snapshot_offset > snapshot->size ||
+-          region.size > snapshot->size - region.snapshot_offset) {
++          region.size > snapshot->size - region.snapshot_offset ||
++          (region.byte_mask.stride != 0 && region.byte_mask.end > snapshot->size)) {
+         return std::nullopt;
+       }
+       const std::span<const uint8_t> captured(snapshot->original.get(), snapshot->size);
+       for (uint64_t byte = 0; byte < region.size; ++byte) {
+         const size_t local = static_cast<size_t>(region.buffer_offset - mapping_offset + byte);
+-        const size_t source = static_cast<size_t>(region.snapshot_offset + byte);
++        const auto captured_byte = WebGpuCapturedByte(region, region.buffer_offset + byte);
++        if (!captured_byte) continue;
++        const size_t source = *captured_byte;
+         const uint8_t bit = static_cast<uint8_t>(1u << (local % 8));
+         if ((markers[local / 8] & bit) != 0 || mapped[local] != captured[source]) {
+           return std::nullopt;
+@@ -304,7 +318,7 @@
+ }
+ 
+ bool WebGpuReadbackSnapshots::Release(const WebGpuSnapshotToken& token) {
+-  for (auto& snapshot : snapshots_) {
++  for (auto& snapshot : Slots()) {
+     if (snapshot.state != Snapshot::State::kFree && snapshot.token == token) {
+       const size_t charge = snapshot.size * (snapshot.byte_capture ? 1 : 2);
+       reserved_bytes_ -= charge;
+@@ -320,7 +334,7 @@
+ 
+ void WebGpuReadbackSnapshots::Destroy() {
+   destroyed_ = true;
+-  for (auto& snapshot : snapshots_) {
++  for (auto& snapshot : Slots()) {
+     snapshot = Snapshot{};
+   }
+   retained_bytes_ = 0;
+--- a/gpu/command_buffer/common/glint/webgpu_readback_snapshot.h
++++ b/gpu/command_buffer/common/glint/webgpu_readback_snapshot.h
+@@ -14,6 +14,7 @@
+ #include "webgpu_readback_provenance.h"
+ 
+ namespace glint::candidate {
++inline constexpr size_t kWebGpuSnapshotSlotLimit = 4096;
+ struct WebGpuMappedShadow {
+   std::unique_ptr<uint8_t[]> bytes;
+   size_t size = 0;
+@@ -29,7 +30,8 @@
+   WebGpuReadbackSnapshots(uint64_t device_epoch,
+                           uint64_t policy_generation,
+                           size_t snapshot_limit_bytes,
+-                          size_t shadow_limit_bytes);
++                          size_t shadow_limit_bytes,
++                          size_t snapshot_slots = kWebGpuReadbackRegionLimit);
+   ~WebGpuReadbackSnapshots();
+   WebGpuReadbackSnapshots(WebGpuReadbackSnapshots&&) noexcept;
+   WebGpuReadbackSnapshots& operator=(WebGpuReadbackSnapshots&&) noexcept;
+@@ -63,6 +65,7 @@
+   size_t retained_bytes() const { return retained_bytes_; }
+   size_t reserved_bytes() const { return reserved_bytes_; }
+   size_t pending_count() const;
++  size_t snapshot_capacity() const { return snapshots_ ? snapshot_capacity_ : 0; }
+ 
+  private:
+   struct Snapshot {
+@@ -88,7 +91,11 @@
+   size_t retained_bytes_ = 0;
+   size_t reserved_bytes_ = 0;
+   bool destroyed_ = false;
+-  std::array<Snapshot, kWebGpuReadbackRegionLimit> snapshots_{};
++  std::unique_ptr<Snapshot[]> snapshots_;
++  size_t snapshot_capacity_ = 0;
++  std::span<Snapshot> Slots() { return {snapshots_.get(), snapshot_capacity()}; }
++  std::span<const Snapshot> Slots() const { return {snapshots_.get(), snapshot_capacity()}; }
++  Snapshot* AcquireSlot();
+ };
+ }  // namespace glint::candidate
+ #endif

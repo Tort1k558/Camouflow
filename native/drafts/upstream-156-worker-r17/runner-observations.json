@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "scope": "R17 preparation and supporting checks; no R17 native/runtime admission",
+  "native_declarations_prepared": 300,
+  "native_binaries_prepared": 7,
+  "native_declarations_executed": 0,
+  "candidate_registered": false,
+  "portable_host_tests": 94,
+  "dispatcher_host_tests": 29,
+  "mocked_native_wiring_tests": 108,
+  "r16": {
+    "compiled": true,
+    "candidate_manifest_sha256": "51b733c15fb623451096e30ca1a949d84bb93a3e5e21fdf9a8fa0756a9cffa3b",
+    "build_receipt": "../upstream-156-recovery-r16/windows-build-20261104.json",
+    "build_receipt_sha256": "8e1c0ac3b3237a9095cd4dcbbfee4149520e394156d6c33c80afff9d77e6f722",
+    "current_runtime_core_matches_receipt": true,
+    "native_executed": false,
+    "runtime_verified": false,
+    "native_preflight_failure": "180 GiB required, 179.5 GiB available; no native target started",
+    "original_build_receipt_sha256": "fcd68fa9e762350dc37554d3cc955c8fffe9eaca14e9bd62f03b1c07aaacb237"
+  },
+  "installation_probe": {
+    "candidate": "upstream-156-image-r11",
+    "candidate_manifest_sha256": "719b251f1a0a1d5db322564a7121174128cc13ff7a5c731617ec9cd8150b3fce",
+    "runtime_core_sha256": {
+      "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+      "chrome.dll": "0e2dc956a173f32017f3756c695a393d7320df606159ebbdbd0b527aacbfe3c9",
+      "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+    },
+    "measured_assets": 269,
+    "startup_ready": true,
+    "owned_processes_measured": 9,
+    "sandbox_disabled": false,
+    "original_runtime_preserved": true,
+    "throwaway_copy_removed": true,
+    "exact_owned_job_cleanup": true,
+    "fingerprint_verified": false,
+    "sandbox_helper_sha256": "472e0c19e56b3202808f94dd7ab6e6e6d13775f650f364a2ad9731af0b425be0",
+    "raw_probe_report_sha256": "dc86b66ddac6d12c1d799d07d9065cd165892dbf52e8e588a3040ea6ac781cee",
+    "raw_copy_report_sha256": "04b86f17c5ce4309717a6a91064832749ab35dce6aaa51cdcee619276c4bd248"
+  },
+  "resource_recovery": {
+    "deleted_files": 0,
+    "minimum_free_gib": 180,
+    "allocated_bytes_reclaimed": 1243586560,
+    "compressed_debug_symbol_bytes_preserved": true
+  },
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "source_sha256": {
+    "scripts\\native_checkpoint_browser.py": "300b9bae67ecb58259eb3976538ae150c0037c7e916238359eea4d5d4536bb2c",
+    "scripts\\native_checkpoint_contract.py": "16f54c3b1ac65e2c5805d4d664d887b673f426accd101c668f266e5d890da6dc",
+    "scripts\\native_checkpoint_crash.py": "4d643f030b58c35fe46090454b600ab7eee2d194326f238a63a1445d79e80300",
+    "scripts\\native_checkpoint_dispatch.py": "58e4c8cdbd80cd95fa7f5be8cd22936959ec58c33a248db86a26538cfcd6ae18",
+    "scripts\\native_checkpoint_process.py": "473306a29c1fbcf0d53f31365f677849973231c619a5646aa7a8c738b9a9a2be",
+    "scripts\\native_checkpoint_recovery.py": "643ebdc2421add3d60dbaa5932a8ad68d92f784980fd46bfd6782d5e7c6ed9f2",
+    "scripts/native_checkpoint_browser.py": "14280315ec0b5d6bd52239291047f8b36471e2d4da3c757ccfd02fe735fd3679"
+  },
+  "browser_helper_eof_normalized_before_final_host_gate": true
+}

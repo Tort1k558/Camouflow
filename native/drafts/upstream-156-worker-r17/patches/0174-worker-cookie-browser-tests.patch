@@ -1,0 +1,288 @@
+diff --git a/chrome/browser/net/BUILD.gn b/chrome/browser/net/BUILD.gn
+index ad8bf42b63e6151853bf475bdee0893ff5bca927..ce2865f51a4517002b81cb0ccf64bc4e63423850 100644
+--- a/chrome/browser/net/BUILD.gn
++++ b/chrome/browser/net/BUILD.gn
+@@ -491,6 +491,7 @@ if (!is_android) {
+       "explicitly_allowed_network_ports_browsertest.cc",
+       "explicitly_allowed_ports_switch_browsertest.cc",
+       "external_protocol_browsertest.cc",
++      "glint_cookie_prefix_browsertest.cc",
+       "load_timing_browsertest.cc",
+       "log_net_log_browsertest.cc",
+       "net_error_tab_helper_browsertest.cc",
+diff --git a/chrome/browser/net/glint_cookie_prefix_browsertest.cc b/chrome/browser/net/glint_cookie_prefix_browsertest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..8b2c44f2bac929e9aac2af7c891a46aa4cc65524
+--- /dev/null
++++ b/chrome/browser/net/glint_cookie_prefix_browsertest.cc
+@@ -0,0 +1,160 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#include <memory>
++#include <string>
++
++#include "base/functional/bind.h"
++#include "base/test/test_future.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/test/base/in_process_browser_test.h"
++#include "chrome/test/base/ui_test_utils.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/test/browser_test.h"
++#include "content/public/test/browser_test_utils.h"
++#include "content/public/test/glint_cookie_checkpoint_test_utils.h"
++#include "net/dns/mock_host_resolver.h"
++#include "net/http/http_status_code.h"
++#include "net/test/embedded_test_server/embedded_test_server.h"
++#include "net/test/embedded_test_server/http_request.h"
++#include "net/test/embedded_test_server/http_response.h"
++
++namespace {
++
++constexpr char kWorkerScript[] = R"JS(
++self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));
++self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
++self.addEventListener('message', event => {
++  if (event.data !== 'write-cookie' || event.ports.length !== 1) return;
++  event.waitUntil((async () => {
++    try {
++      await cookieStore.set({name: 'glint_worker', value: 'worker_value', path: '/',
++        sameSite: 'lax', expires: Date.now() + 3600000});
++      event.ports[0].postMessage({ok: true});
++    } catch (error) {
++      event.ports[0].postMessage({ok: false, error: String(error)});
++    }
++  })());
++});
++)JS";
++
++constexpr char kWriteWindowCookies[] = R"JS(
++(async () => {
++  if (!isSecureContext || !globalThis.cookieStore) throw new Error('CookieStore unavailable');
++  document.cookie = 'glint_document=document_value; Path=/; Max-Age=3600; Secure; SameSite=Lax';
++  await cookieStore.set({name: 'glint_window', value: 'window_value', path: '/',
++    sameSite: 'lax', expires: Date.now() + 3600000});
++  return true;
++})()
++)JS";
++
++constexpr char kWriteWorkerCookie[] = R"JS(
++(async () => {
++  await navigator.serviceWorker.register('/glint-cookie-worker.js', {scope: '/'});
++  const registration = await navigator.serviceWorker.ready;
++  await new Promise((resolve, reject) => {
++    const channel = new MessageChannel();
++    channel.port1.onmessage = event => {
++      channel.port1.close();
++      if (event.data.ok) resolve(); else reject(new Error(event.data.error));
++    };
++    registration.active.postMessage('write-cookie', [channel.port2]);
++  });
++  return true;
++})()
++)JS";
++
++constexpr char kAllCookiesPresent[] = R"JS(
++(() => {
++  const cookies = new Map(document.cookie.split(';').filter(Boolean).map(part => {
++    const value = part.trim();
++    const separator = value.indexOf('=');
++    return [value.slice(0, separator), value.slice(separator + 1)];
++  }));
++  return cookies.get('glint_document') === 'document_value' &&
++    cookies.get('glint_window') === 'window_value' &&
++    cookies.get('glint_worker') === 'worker_value';
++})()
++)JS";
++
++std::unique_ptr<net::test_server::HttpResponse> ServeCheckpointPage(
++    const net::test_server::HttpRequest& request) {
++  auto response = std::make_unique<net::test_server::BasicHttpResponse>();
++  response->set_code(net::HTTP_OK);
++  response->AddCustomHeader("Cache-Control", "no-store");
++  if (request.relative_url == "/glint-cookie-worker.js") {
++    response->set_content_type("application/javascript");
++    response->AddCustomHeader("Service-Worker-Allowed", "/");
++    response->set_content(kWorkerScript);
++  } else if (request.relative_url == "/glint-cookie-checkpoint.html") {
++    response->set_content_type("text/html");
++    response->set_content("<!doctype html><title>Glint cookie checkpoint fixture</title>");
++  } else {
++    return nullptr;
++  }
++  return response;
++}
++
++class GlintCookiePrefixBrowserTest : public InProcessBrowserTest {
++ protected:
++  void SetUpOnMainThread() override {
++    InProcessBrowserTest::SetUpOnMainThread();
++    host_resolver()->AddRule("a.test", "127.0.0.1");
++    https_.SetSSLConfig(net::EmbeddedTestServer::CERT_TEST_NAMES);
++    https_.RegisterRequestHandler(base::BindRepeating(&ServeCheckpointPage));
++    ASSERT_TRUE(https_.Start());
++    ASSERT_TRUE(ui_test_utils::NavigateToURL(
++        browser(), https_.GetURL("a.test", "/glint-cookie-checkpoint.html")));
++  }
++
++  content::WebContents* Contents() {
++    return browser()->tab_strip_model()->GetActiveWebContents();
++  }
++  content::GlintCookiePrefixCommitTestResult CommitCookies() {
++    base::test::TestFuture<content::GlintCookiePrefixCommitTestResult> done;
++    auto operation = content::BeginGlintCookiePrefixCommitForTesting(
++        browser()->profile(), base::TimeTicks::Now() + base::Seconds(15),
++        done.GetCallback());
++    return done.Get();
++  }
++
++  net::EmbeddedTestServer https_{net::EmbeddedTestServer::TYPE_HTTPS};
++};
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, WindowCookieStorePrefix) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWindowCookies));
++  const auto result = CommitCookies();
++  EXPECT_TRUE(result.committed_prefix) << "coordinator status=" << result.coordinator_status;
++  EXPECT_EQ(result.running_workers_observed, 0u);
++  EXPECT_EQ(true, content::EvalJs(Contents(),
++      "document.cookie.includes('glint_window=window_value')"));
++}
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, ActiveWorkerCookieStorePrefix) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  const auto result = CommitCookies();
++  ASSERT_GE(result.running_workers_observed, 1u);
++  EXPECT_TRUE(result.committed_prefix) << "coordinator status=" << result.coordinator_status;
++  EXPECT_EQ(true, content::EvalJs(Contents(),
++      "document.cookie.includes('glint_worker=worker_value')"));
++}
++
++// A clean PRE_/post restart checks persisted cookie values, not crash-after-ack
++// durability, worker lifecycle restoration or an atomic full-profile snapshot.
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, PRE_MixedPrefixesSurviveRestart) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWindowCookies));
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  const auto result = CommitCookies();
++  ASSERT_GE(result.running_workers_observed, 1u);
++  ASSERT_TRUE(result.committed_prefix) << "coordinator status=" << result.coordinator_status;
++  EXPECT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
++}
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, MixedPrefixesSurviveRestart) {
++  EXPECT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
++}
++
++}  // namespace
+diff --git a/content/public/test/glint_cookie_checkpoint_test_utils.cc b/content/public/test/glint_cookie_checkpoint_test_utils.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..515ca444e5440d8c273d29f43ec90e6eba8a788b
+--- /dev/null
++++ b/content/public/test/glint_cookie_checkpoint_test_utils.cc
+@@ -0,0 +1,53 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#include "content/public/test/glint_cookie_checkpoint_test_utils.h"
++
++#include <memory>
++#include <utility>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "content/browser/camouflow_native/glint/profile_document_commit.h"
++#include "content/browser/service_worker/service_worker_context_wrapper.h"
++#include "content/browser/storage_partition_impl.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/storage_partition.h"
++
++namespace content {
++
++base::ScopedClosureRunner BeginGlintCookiePrefixCommitForTesting(
++    BrowserContext* context,
++    base::TimeTicks deadline,
++    base::OnceCallback<void(GlintCookiePrefixCommitTestResult)> callback) {
++  CHECK_CURRENTLY_ON(BrowserThread::UI);
++  CHECK(callback);
++  size_t running_workers = 0;
++  if (context) {
++    context->ForEachLoadedStoragePartition(
++        [&running_workers](StoragePartition* partition) {
++          auto* workers = static_cast<StoragePartitionImpl*>(partition)
++                              ->GetServiceWorkerContext();
++          if (workers) {
++            running_workers += workers->GetRunningServiceWorkerInfos().size();
++          }
++        });
++  }
++  using Commit = camouflow::native::ProfileDocumentCommit;
++  auto operation = Commit::StartWithScope(
++      context, deadline,
++      base::BindOnce(
++          [](base::OnceCallback<void(GlintCookiePrefixCommitTestResult)> reply,
++             size_t workers, Commit::Result result) {
++            std::move(reply).Run(GlintCookiePrefixCommitTestResult{
++                result.status == Commit::Status::kCommittedDocumentAndWorkerCookiePrefix,
++                workers, static_cast<int>(result.status)});
++          },
++          std::move(callback), running_workers),
++      Commit::Scope::kDocumentsAndWorkerCookies);
++  return base::ScopedClosureRunner(base::BindOnce(
++      [](std::unique_ptr<Commit> pending) { pending.reset(); }, std::move(operation)));
++}
++
++}  // namespace content
+diff --git a/content/public/test/glint_cookie_checkpoint_test_utils.h b/content/public/test/glint_cookie_checkpoint_test_utils.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..724e0af6df7ba8b4b88b30166a1f501875da208a
+--- /dev/null
++++ b/content/public/test/glint_cookie_checkpoint_test_utils.h
+@@ -0,0 +1,32 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#ifndef CONTENT_PUBLIC_TEST_GLINT_COOKIE_CHECKPOINT_TEST_UTILS_H_
++#define CONTENT_PUBLIC_TEST_GLINT_COOKIE_CHECKPOINT_TEST_UTILS_H_
++
++#include <cstddef>
++
++#include "base/functional/callback.h"
++#include "base/functional/callback_helpers.h"
++#include "base/time/time.h"
++
++namespace content {
++class BrowserContext;
++
++struct GlintCookiePrefixCommitTestResult {
++  bool committed_prefix;
++  size_t running_workers_observed;
++  int coordinator_status;
++};
++
++// UI only. Calls the real explicit document+worker coordinator, without creating
++// a partition or starting a worker. Keep the returned guard through the callback;
++// destroying it cancels the owned operation. This is not a persistence bypass.
++[[nodiscard]] base::ScopedClosureRunner BeginGlintCookiePrefixCommitForTesting(
++    BrowserContext* context,
++    base::TimeTicks deadline,
++    base::OnceCallback<void(GlintCookiePrefixCommitTestResult)> callback);
++
++}  // namespace content
++
++#endif
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index 30f088976ba70b24867ba1ffbd88a0b8e3fd7f6a..409902c6cb7bd4e53494bbf749c3c33e27b994c0 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -238,6 +238,8 @@ static_library("test_support") {
+     "../public/test/frame_load_waiter.h",
+     "../public/test/frame_test_utils.cc",
+     "../public/test/frame_test_utils.h",
++    "../public/test/glint_cookie_checkpoint_test_utils.cc",
++    "../public/test/glint_cookie_checkpoint_test_utils.h",
+     "../public/test/hit_test_region_observer.cc",
+     "../public/test/hit_test_region_observer.h",
+     "../public/test/ipc_interfaces_dumper.h",

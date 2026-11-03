@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "894467dcb800c4c959596af1036232e5831748fda74bc1a4ebd38cafd8f3e7fe",
+  "normalized_patch_sha256": "041223b1472303be35413c4cbeccade08f0755ce85125c835fc96887d4e9ee83",
+  "patch": "0164-cookie-state-native-tests.patch",
+  "before_source_sha256": {
+    "third_party/blink/renderer/core/loader/build.gni": "2cd1a7382bdb009564a0d6aa7ec3a71585b71c51b07d8059f50f72bf68702076"
+  },
+  "final_source_sha256": {
+    "third_party/blink/renderer/core/loader/build.gni": "78320cbcba345f91aa83b3713eb00134dc3af8fbd118654f13a379133133d7c0",
+    "third_party/blink/renderer/core/loader/cookie_checkpoint_state_test.cc": "54dde7babdeb322af0266f266c6468aa6b9723d099b4f73ea3fd17370c3a957b"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

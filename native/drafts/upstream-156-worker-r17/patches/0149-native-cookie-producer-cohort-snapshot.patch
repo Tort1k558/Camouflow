@@ -1,0 +1,306 @@
+diff --git a/third_party/blink/renderer/core/loader/cookie_jar.h b/third_party/blink/renderer/core/loader/cookie_jar.h
+--- a/third_party/blink/renderer/core/loader/cookie_jar.h
++++ b/third_party/blink/renderer/core/loader/cookie_jar.h
+@@ -49,6 +49,11 @@
+   // No worker/HTTP producers or disk commit are covered.
+   void DrainWritesForCheckpoint(base::TimeTicks deadline,
+                                 base::OnceCallback<void(bool)> callback);
++  // Main-thread process revision for detecting writes/rebinds or newly created
++  // document producers after an earlier document has already acknowledged.
++  // Saturation permanently returns nullopt instead of wrapping.
++  static std::optional<uint64_t> CheckpointProducerEpoch();
++  bool IsCheckpointProducerAvailable() const;
+   void SetCookieManager(
+       mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager>
+           cookie_manager);
+diff --git a/third_party/blink/renderer/core/loader/cookie_jar.cc b/third_party/blink/renderer/core/loader/cookie_jar.cc
+--- a/third_party/blink/renderer/core/loader/cookie_jar.cc
++++ b/third_party/blink/renderer/core/loader/cookie_jar.cc
+@@ -29,6 +29,7 @@
+ #include "third_party/blink/renderer/core/probe/core_probes.h"
+ #include "third_party/blink/renderer/platform/heap/persistent.h"
+ #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
++#include "third_party/blink/renderer/platform/scheduler/public/thread.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl_hash.h"
+ #include "third_party/blink/renderer/platform/wtf/functional.h"
+@@ -38,6 +39,27 @@
+ 
+ namespace blink {
+ namespace {
++
++constexpr std::optional<uint64_t> NextCheckpointProducerEpoch(
++    std::optional<uint64_t> current) {
++  if (!current || *current == std::numeric_limits<uint64_t>::max()) {
++    return std::nullopt;
++  }
++  return *current + 1;
++}
++
++static_assert(NextCheckpointProducerEpoch(0) == 1);
++static_assert(
++    !NextCheckpointProducerEpoch(std::numeric_limits<uint64_t>::max()));
++static_assert(!NextCheckpointProducerEpoch(std::nullopt));
++
++std::optional<uint64_t> g_checkpoint_producer_epoch = 0;
++
++void AdvanceCheckpointProducerEpoch() {
++  CHECK(Thread::MainThread()->IsCurrentThread());
++  g_checkpoint_producer_epoch =
++      NextCheckpointProducerEpoch(g_checkpoint_producer_epoch);
++}
+ 
+ enum class CookieCacheLookupResult {
+   kCacheMissFirstAccess = 0,
+@@ -86,7 +108,20 @@
+ };
+ 
+ CookieJar::CookieJar(blink::Document* document)
+-    : backend_(document->GetExecutionContext()), document_(document) {}
++    : backend_(document->GetExecutionContext()), document_(document) {
++  AdvanceCheckpointProducerEpoch();
++}
++
++std::optional<uint64_t> CookieJar::CheckpointProducerEpoch() {
++  CHECK(Thread::MainThread()->IsCurrentThread());
++  return g_checkpoint_producer_epoch;
++}
++
++bool CookieJar::IsCheckpointProducerAvailable() const {
++  return !checkpoint_tracking_broken_ && !checkpoint_history_lost_ &&
++         (!backend_.is_bound() ? checkpoint_last_write_epoch_ == 0
++                               : backend_.is_connected());
++}
+ 
+ CookieJar::~CookieJar() = default;
+ 
+@@ -135,6 +170,7 @@
+ }
+ 
+ void CookieJar::MarkCheckpointCookieWrite() {
++  AdvanceCheckpointProducerEpoch();
+   if (checkpoint_epoch_ == std::numeric_limits<uint64_t>::max()) {
+     checkpoint_tracking_broken_ = true;
+     return;
+@@ -143,6 +179,7 @@
+ }
+ 
+ void CookieJar::InvalidateCheckpointConnection() {
++  AdvanceCheckpointProducerEpoch();
+   checkpoint_history_lost_ |=
+       checkpoint_last_write_epoch_ > checkpoint_acknowledged_write_epoch_;
+   if (checkpoint_generation_ == std::numeric_limits<uint64_t>::max() ||
+diff --git a/third_party/blink/public/web/web_document.h b/third_party/blink/public/web/web_document.h
+--- a/third_party/blink/public/web/web_document.h
++++ b/third_party/blink/public/web/web_document.h
+@@ -31,9 +31,12 @@
+ #ifndef THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_DOCUMENT_H_
+ #define THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_DOCUMENT_H_
+ 
++#include <cstdint>
+ #include <optional>
+ #include <vector>
+ 
++#include "base/functional/callback_forward.h"
++#include "base/time/time.h"
+ #include "base/types/expected.h"
+ #include "base/unguessable_token.h"
+ #include "net/cookies/site_for_cookies.h"
+@@ -185,6 +188,14 @@
+   // https://wicg.github.io/nav-speculation/prerendering.html#document-post-prerendering-activation-steps-list
+   void AddPostPrerenderingActivationStep(base::OnceClosure callback);
+ 
++  // Internal main-thread producer-cohort API, not a script API or disk commit.
++  // Compare the revision again at posted aggregate completion; never treat an
++  // unavailable revision as a stable producer set.
++  static std::optional<uint64_t> CookieProducerEpochForCheckpoint();
++  bool IsCookieProducerAvailableForCheckpoint() const;
++  void DrainCookieWritesForCheckpoint(base::TimeTicks deadline,
++                                      base::OnceCallback<void(bool)> callback);
++
+   // Sets a cookie manager which can be used for this document.
+   void SetCookieManager(
+       CrossVariantMojoRemote<
+diff --git a/third_party/blink/renderer/core/exported/web_document.cc b/third_party/blink/renderer/core/exported/web_document.cc
+--- a/third_party/blink/renderer/core/exported/web_document.cc
++++ b/third_party/blink/renderer/core/exported/web_document.cc
+@@ -31,7 +31,10 @@
+ #include "third_party/blink/public/web/web_document.h"
+ 
+ #include "base/containers/to_vector.h"
++#include "base/functional/bind.h"
++#include "base/location.h"
+ #include "base/memory/scoped_refptr.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "base/unguessable_token.h"
+ #include "net/storage_access_api/status.h"
+ #include "services/network/public/mojom/referrer_policy.mojom-blink.h"
+@@ -71,6 +74,7 @@
+ #include "third_party/blink/renderer/core/html/html_link_element.h"
+ #include "third_party/blink/renderer/core/html/plugin_document.h"
+ #include "third_party/blink/renderer/core/layout/layout_object.h"
++#include "third_party/blink/renderer/core/loader/cookie_jar.h"
+ #include "third_party/blink/renderer/core/page/page.h"
+ #include "third_party/blink/renderer/core/script_tools/model_context_supplement.h"
+ #include "third_party/blink/renderer/core/script_tools/script_tool_types.h"
+@@ -364,6 +368,28 @@
+     base::OnceClosure callback) {
+   return Unwrap<Document>()->AddPostPrerenderingActivationStep(
+       std::move(callback));
++}
++
++std::optional<uint64_t> WebDocument::CookieProducerEpochForCheckpoint() {
++  return CookieJar::CheckpointProducerEpoch();
++}
++
++void WebDocument::DrainCookieWritesForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  CHECK(callback);
++  if (IsNull()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(callback), false));
++    return;
++  }
++  Unwrap<Document>()->DrainCookieWritesForCheckpoint(deadline,
++                                                     std::move(callback));
++}
++
++bool WebDocument::IsCookieProducerAvailableForCheckpoint() const {
++  return !IsNull() &&
++         ConstUnwrap<Document>()->IsCookieProducerAvailableForCheckpoint();
+ }
+ 
+ void WebDocument::SetCookieManager(
+diff --git a/third_party/blink/renderer/core/dom/document_test.cc b/third_party/blink/renderer/core/dom/document_test.cc
+--- a/third_party/blink/renderer/core/dom/document_test.cc
++++ b/third_party/blink/renderer/core/dom/document_test.cc
+@@ -34,6 +34,7 @@
+ #include <memory>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "base/run_loop.h"
+ #include "base/strings/stringprintf.h"
+ #include "base/test/test_future.h"
+ #include "base/time/time.h"
+@@ -46,6 +47,7 @@
+ #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/common/permissions_policy/document_policy_features.h"
+ #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
++#include "third_party/blink/public/web/web_document.h"
+ #include "third_party/blink/public/web/web_print_page_description.h"
+ #include "third_party/blink/renderer/bindings/core/v8/isolated_world_csp.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_tester.h"
+@@ -90,6 +92,7 @@
+ #include "third_party/blink/renderer/core/html/html_link_element.h"
+ #include "third_party/blink/renderer/core/html/html_unknown_element.h"
+ #include "third_party/blink/renderer/core/layout/layout_box.h"
++#include "third_party/blink/renderer/core/loader/cookie_jar.h"
+ #include "third_party/blink/renderer/core/loader/document_loader.h"
+ #include "third_party/blink/renderer/core/page/focus_controller.h"
+ #include "third_party/blink/renderer/core/page/page.h"
+@@ -2634,4 +2637,78 @@
+   EXPECT_FALSE(done.Get());
+ }
+ 
++TEST_F(DocumentTest, GlintCookieProducerEpochReadIsStable) {
++  auto before = WebDocument::CookieProducerEpochForCheckpoint();
++  ASSERT_TRUE(before);
++  EXPECT_EQ(before, WebDocument::CookieProducerEpochForCheckpoint());
++}
++
++TEST_F(DocumentTest, GlintCookieProducerCreationChangesCohortEpoch) {
++  auto before = WebDocument::CookieProducerEpochForCheckpoint();
++  ASSERT_TRUE(before);
++  auto* jar = MakeGarbageCollected<CookieJar>(&GetDocument());
++  EXPECT_NE(jar, nullptr);
++  auto after = WebDocument::CookieProducerEpochForCheckpoint();
++  ASSERT_TRUE(after);
++  EXPECT_GT(*after, *before);
++}
++
++TEST_F(DocumentTest, GlintCookieProducerRebindChangesCohortEpoch) {
++  auto* jar = MakeGarbageCollected<CookieJar>(&GetDocument());
++  auto before = WebDocument::CookieProducerEpochForCheckpoint();
++  ASSERT_TRUE(before);
++  mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager> remote;
++  auto receiver = remote.InitWithNewPipeAndPassReceiver();
++  jar->SetCookieManager(std::move(remote));
++  auto after = WebDocument::CookieProducerEpochForCheckpoint();
++  ASSERT_TRUE(after);
++  EXPECT_GT(*after, *before);
++}
++
++TEST_F(DocumentTest, GlintWebDocumentNullCookieDrainFailsPosted) {
++  WebDocument document;
++  base::test::TestFuture<bool> done;
++  document.DrainCookieWritesForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentTest, GlintWebDocumentEmptyCookieDrainIsPosted) {
++  WebDocument document(&GetDocument());
++  base::test::TestFuture<bool> done;
++  document.DrainCookieWritesForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_F(DocumentTest, GlintWebDocumentDetachedCookieDrainFails) {
++  WebDocument document(&GetDocument());
++  base::test::TestFuture<bool> done;
++  document.DrainCookieWritesForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), done.GetCallback());
++  GetDocument().GetFrame()->DetachDocument();
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentTest, GlintWebDocumentDisconnectedCookiePipeIsUnavailable) {
++  WebDocument document(&GetDocument());
++  mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager> remote;
++  auto receiver = remote.InitWithNewPipeAndPassReceiver();
++  GetDocument().SetCookieManager(std::move(remote));
++  EXPECT_TRUE(document.IsCookieProducerAvailableForCheckpoint());
++  receiver.reset();
++  base::RunLoop().RunUntilIdle();
++  EXPECT_FALSE(document.IsCookieProducerAvailableForCheckpoint());
++}
++
++TEST_F(DocumentTest, GlintWebDocumentAvailabilityDoesNotBindCookiePipe) {
++  WebDocument document(&GetDocument());
++  const auto before = WebDocument::CookieProducerEpochForCheckpoint();
++  EXPECT_TRUE(document.IsCookieProducerAvailableForCheckpoint());
++  EXPECT_EQ(before, WebDocument::CookieProducerEpochForCheckpoint());
++  EXPECT_FALSE(WebDocument().IsCookieProducerAvailableForCheckpoint());
++}
++
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/renderer/core/dom/document.h
+--- a/third_party/blink/renderer/core/dom/document.h
++++ b/third_party/blink/renderer/core/dom/document.h
+@@ -1371,6 +1371,7 @@
+   void setCookie(const String&, ExceptionState&);
+   bool CookiesEnabled() const;
+   // Existing document producer only; no connection is created for a checkpoint.
++  bool IsCookieProducerAvailableForCheckpoint() const;
+   void DrainCookieWritesForCheckpoint(base::TimeTicks deadline,
+                                       base::OnceCallback<void(bool)> callback);
+ 
+diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
+--- a/third_party/blink/renderer/core/dom/document.cc
++++ b/third_party/blink/renderer/core/dom/document.cc
+@@ -6927,6 +6927,11 @@
+   }
+ }
+ 
++bool Document::IsCookieProducerAvailableForCheckpoint() const {
++  return IsActive() && GetFrame() && cookie_jar_ &&
++         cookie_jar_->IsCheckpointProducerAvailable();
++}
++
+ void Document::DrainCookieWritesForCheckpoint(
+     base::TimeTicks deadline,
+     base::OnceCallback<void(bool)> callback) {

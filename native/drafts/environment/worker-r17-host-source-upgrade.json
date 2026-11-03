@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "patch": "worker-r17-host-source-upgrade.patch",
+  "patch_sha256": "d2ba17cb12bf9797fa2881731f4e36d2f43f29e93338a2eaf527eeaf0e09497a",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "4b9a463c53117f354cd3d895d2035d67476027a7167369913f858219bded7a07",
+      "after_sha256": "b3a275ec0b56e29e08a619b0eae6821017fdcb5ec4d79241b0327e0fd59eb569"
+    },
+    {
+      "source": "scripts/verify_native_checkpoint_units.py",
+      "before_sha256": "fddfb363e8cf7b6d1dd91c5608d3c30f679758ad5dff9d226073ed80f67ce99d",
+      "after_sha256": "d317c356c9d415e697c6dfbed6d81d0ebc62fa1d63d2c3cb4e864448eea430d7"
+    },
+    {
+      "source": "app/core/native/distribution.py",
+      "before_sha256": "3192955bda482b4cae1dfad87a059662a380d80f457a5a1178bdd1347ae34563",
+      "after_sha256": "1c908003814e1314e239721712d2c81137e1c62a843c93d828362fe6bd75e8b4"
+    },
+    {
+      "source": "app/core/native/windows_sandbox.py",
+      "before_sha256": null,
+      "after_sha256": "472e0c19e56b3202808f94dd7ab6e6e6d13775f650f364a2ad9731af0b425be0"
+    },
+    {
+      "source": "scripts/native_checkpoint_browser.py",
+      "before_sha256": null,
+      "after_sha256": "14280315ec0b5d6bd52239291047f8b36471e2d4da3c757ccfd02fe735fd3679"
+    },
+    {
+      "source": "scripts/native_checkpoint_contract.py",
+      "before_sha256": null,
+      "after_sha256": "16f54c3b1ac65e2c5805d4d664d887b673f426accd101c668f266e5d890da6dc"
+    },
+    {
+      "source": "scripts/native_checkpoint_crash.py",
+      "before_sha256": null,
+      "after_sha256": "4d643f030b58c35fe46090454b600ab7eee2d194326f238a63a1445d79e80300"
+    },
+    {
+      "source": "scripts/native_checkpoint_dispatch.py",
+      "before_sha256": null,
+      "after_sha256": "58e4c8cdbd80cd95fa7f5be8cd22936959ec58c33a248db86a26538cfcd6ae18"
+    },
+    {
+      "source": "scripts/native_checkpoint_process.py",
+      "before_sha256": null,
+      "after_sha256": "473306a29c1fbcf0d53f31365f677849973231c619a5646aa7a8c738b9a9a2be"
+    },
+    {
+      "source": "scripts/native_checkpoint_recovery.py",
+      "before_sha256": null,
+      "after_sha256": "643ebdc2421add3d60dbaa5932a8ad68d92f784980fd46bfd6782d5e7c6ed9f2"
+    }
+  ],
+  "scope": "Recover exact pre-R17 host sources and helper absence; no historical hash rewriting",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

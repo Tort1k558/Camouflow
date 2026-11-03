@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "53b73ba63f4e8caad84c5c3a929fd73dfb0374e880b608561d50bc20a3d52c7c",
+  "normalized_patch_sha256": "dcded69492122cce378306ede22d14ffa06ccc48c6ee76522ccd72952d2826ee",
+  "patch": "0176-worker-cookie-lifecycle-browser-tests.patch",
+  "before_source_sha256": {
+    "chrome/browser/net/glint_cookie_prefix_browsertest.cc": "68963b3c5cd8558b59821adbaa3a9d11a8f2a1c393cce8b724be7b63a208c444"
+  },
+  "final_source_sha256": {
+    "chrome/browser/net/glint_cookie_prefix_browsertest.cc": "d2dc47f839c83bfc4b2ff8df1da684da2b9e3eadf4a21936fdae06bc7816c454"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

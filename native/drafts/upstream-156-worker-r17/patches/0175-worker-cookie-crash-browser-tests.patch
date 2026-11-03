@@ -1,0 +1,125 @@
+diff --git a/chrome/browser/net/glint_cookie_prefix_browsertest.cc b/chrome/browser/net/glint_cookie_prefix_browsertest.cc
+index 8b2c44f2bac929e9aac2af7c891a46aa4cc65524..6288e7d6805a13e8d6f84014380682f8ee2ab423 100644
+--- a/chrome/browser/net/glint_cookie_prefix_browsertest.cc
++++ b/chrome/browser/net/glint_cookie_prefix_browsertest.cc
+@@ -1,15 +1,28 @@
+ // Copyright 2026 CamouFlow contributors.
+ // SPDX-License-Identifier: MIT
+ 
++#include <algorithm>
+ #include <memory>
+ #include <string>
+ 
++#include "base/command_line.h"
++#include "base/containers/span.h"
++#include "base/files/file.h"
++#include "base/files/file_path.h"
++#include "base/files/file_util.h"
+ #include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/path_service.h"
++#include "base/process/process_handle.h"
++#include "base/run_loop.h"
+ #include "base/test/test_future.h"
++#include "base/threading/thread_restrictions.h"
+ #include "base/time/time.h"
++#include "base/values.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/common/chrome_paths.h"
+ #include "chrome/test/base/in_process_browser_test.h"
+ #include "chrome/test/base/ui_test_utils.h"
+ #include "content/public/browser/web_contents.h"
+@@ -121,6 +134,47 @@ class GlintCookiePrefixBrowserTest : public InProcessBrowserTest {
+     return done.Get();
+   }
+ 
++  bool WriteCrashAcknowledgment(
++      const content::GlintCookiePrefixCommitTestResult& result) {
++    const auto* command = base::CommandLine::ForCurrentProcess();
++    const auto challenge = command->GetSwitchValueASCII("glint-crash-challenge");
++    const auto destination = command->GetSwitchValuePath("glint-crash-ack");
++    base::FilePath user_data;
++    if (!result.committed_prefix || result.running_workers_observed == 0 ||
++        result.running_workers_observed > 512 || challenge.size() != 64 ||
++        !std::all_of(challenge.begin(), challenge.end(), [](char ch) {
++          return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f');
++        }) || !destination.IsAbsolute() || destination.ReferencesParent() ||
++        destination.BaseName().MaybeAsASCII() != "ack.json" ||
++        !base::PathService::Get(chrome::DIR_USER_DATA, &user_data) ||
++        destination.DirName() != user_data.DirName()) {
++      return false;
++    }
++    base::ScopedAllowBlockingForTesting allow_blocking;
++    base::DictValue payload;
++    payload.Set("schema", 1);
++    payload.Set("challenge", challenge);
++    payload.Set("pid", static_cast<int>(base::GetCurrentProcId()));
++    payload.Set("profile", user_data.AsUTF8Unsafe());
++    payload.Set("acknowledged", true);
++    payload.Set("workers", static_cast<int>(result.running_workers_observed));
++    payload.Set("scope", "document-and-worker-cookie-prefix");
++    std::string encoded;
++    if (!base::JSONWriter::Write(payload, &encoded)) {
++      return false;
++    }
++    const auto temporary = destination.AddExtensionASCII("tmp");
++    {
++      base::File file(temporary, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
++      if (!file.IsValid() || !file.WriteAtCurrentPosAndCheck(base::as_byte_span(encoded))) {
++        return false;
++      }
++    }
++    // Receipt visibility is a control signal, not a disk-durability claim. Do
++    // not flush or shut down browser state before the parent forces termination.
++    return !base::PathExists(destination) && base::Move(temporary, destination);
++  }
++
+   net::EmbeddedTestServer https_{net::EmbeddedTestServer::TYPE_HTTPS};
+ };
+ 
+@@ -157,4 +211,43 @@ IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, MixedPrefixesSurviveRestart
+   EXPECT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
+ }
+ 
++// This PRE body intentionally never completes as a gtest PASS. Only the explicit
++// acknowledged-crash controller may qualify its forced termination, and recovery
++// must then pass in a distinct process using the same fresh owned profile.
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, PRE_CrashAfterAcknowledgedPrefix) {
++  const auto challenge = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++      "glint-crash-challenge");
++  ASSERT_EQ(challenge.size(), 64u);
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWindowCookies));
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  ASSERT_EQ(true, content::EvalJs(Contents(), content::JsReplace(R"JS(
++    (async () => {
++      await cookieStore.set({name: 'glint_crash_nonce', value: $1, path: '/',
++        sameSite: 'lax', expires: Date.now() + 3600000});
++      return true;
++    })()
++  )JS", challenge)));
++  const auto result = CommitCookies();
++  ASSERT_GE(result.running_workers_observed, 1u);
++  ASSERT_TRUE(result.committed_prefix) << "coordinator status=" << result.coordinator_status;
++  ASSERT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
++  ASSERT_TRUE(WriteCrashAcknowledgment(result));
++  base::RunLoop wait_for_owned_parent_termination;
++  wait_for_owned_parent_termination.Run();
++  ADD_FAILURE() << "Intentional crash phase unexpectedly resumed instead of being terminated";
++}
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, CrashAfterAcknowledgedPrefix) {
++  const auto challenge = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
++      "glint-crash-challenge");
++  ASSERT_EQ(challenge.size(), 64u);
++  ASSERT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
++  EXPECT_EQ(true, content::EvalJs(Contents(), content::JsReplace(R"JS(
++    (async () => {
++      const cookie = await cookieStore.get('glint_crash_nonce');
++      return cookie !== null && cookie.value === $1;
++    })()
++  )JS", challenge)));
++}
++
+ }  // namespace

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "8dbe98d9910272798ce5f0081196d96e85f5dc0cc3904677ec9bcbb22bde1c44",
+  "normalized_patch_sha256": "5bc25ccc8b11903b855cf57bf929bb2bfb7fd5e833df72dd61819c78cb6ccc27",
+  "patch": "0166-cookie-document-cohort.patch",
+  "before_source_sha256": {
+    "third_party/blink/renderer/core/dom/document.cc": "3cb6a2c1271ec06db0f3f351fc36d52eb8714f25538a5811441efd47b7097cbd",
+    "third_party/blink/renderer/core/loader/build.gni": "ed60dfb3eeaed6c92884a85567532177f81b4b1c9202d8f6db7d80161cef91ff"
+  },
+  "final_source_sha256": {
+    "third_party/blink/renderer/core/dom/document.cc": "a47b27fa638a7972500e497417da039ba18e32d892e06f19b07b2a310ffc110d",
+    "third_party/blink/renderer/core/loader/build.gni": "b2b1aa89be52c2aed607be1e6335e634347aeedcd242f4b3612c909bd3e64c1e",
+    "third_party/blink/renderer/core/loader/document_cookie_cohort_test.cc": "29a8cfd44273b01be1bd44545dbd33633ef0f3818082dcd60dfeb0c80d41bdb3"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "4158bb1a0b8debc5da48ebedffadf82d9b566eadd05b99f5920ee63206534aa8",
+  "normalized_patch_sha256": "0a2441bd0e7aa99650b462b9e6628d5b2bb7f01bd13f35e89d20394015a7f4e5",
+  "patch": "0165-cookie-context-registration.patch",
+  "before_source_sha256": {
+    "third_party/blink/renderer/modules/cookie_store/cookie_store.h": "1d9fc14bdb612ad3e191823006d47bb6bcbce0ea7c0e4283b145f004ef48cd99",
+    "third_party/blink/renderer/modules/cookie_store/cookie_store.cc": "5d44cffb0636fb50240d6902300df8d7d16f299dc88e5869acb25e5cb2e4ebd3",
+    "third_party/blink/renderer/core/loader/build.gni": "78320cbcba345f91aa83b3713eb00134dc3af8fbd118654f13a379133133d7c0"
+  },
+  "final_source_sha256": {
+    "third_party/blink/renderer/modules/cookie_store/cookie_store.h": "0c99931b0ae664859cec32cc0432a174353b75f37fb7981ae2a6634702fe6a96",
+    "third_party/blink/renderer/modules/cookie_store/cookie_store.cc": "fcd5a69e46cdfaf3e1ee1a1e3fa1dd0d938dc6a4225269bf8141739557435086",
+    "third_party/blink/renderer/core/loader/build.gni": "ed60dfb3eeaed6c92884a85567532177f81b4b1c9202d8f6db7d80161cef91ff",
+    "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h": "f43ac5767e8d20a991fad897c4667d8e8e8054da01fbdb3972a0bdb6de2b0d4c",
+    "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.cc": "e35a19e348d7f404eab2bb0f725e7e471ec9f30cdb14e240047fff7e98bc1db4",
+    "third_party/blink/renderer/core/loader/cookie_checkpoint_participant_test.cc": "4f7f701c78aab7500e431506e63cb52c3ea336bcf02274dd3a533db50e8c6d1c"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

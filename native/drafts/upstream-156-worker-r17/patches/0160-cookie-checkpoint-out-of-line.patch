@@ -1,0 +1,99 @@
+diff --git a/content/renderer/document_cookie_checkpoint.h b/content/renderer/document_cookie_checkpoint.h
+--- a/content/renderer/document_cookie_checkpoint.h
++++ b/content/renderer/document_cookie_checkpoint.h
+@@ -12,6 +12,7 @@
+ #include <utility>
+ 
+ #include "base/check.h"
++#include "base/check_op.h"
+ #include "base/containers/flat_map.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback.h"
+@@ -19,13 +20,14 @@
+ #include "base/memory/ref_counted.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/time/time.h"
++#include "content/common/content_export.h"
+ #include "third_party/blink/public/common/tokens/tokens.h"
+ 
+ namespace content {
+ 
+ // Renderer-main-thread producer acknowledgment only. No cookie data, worker or
+ // HTTP producers, backend flush or whole-profile durability is represented.
+-class DocumentCookieCheckpoint
++class CONTENT_EXPORT DocumentCookieCheckpoint
+     : public base::RefCounted<DocumentCookieCheckpoint> {
+  public:
+   static constexpr size_t kMaximumDocuments = 512;
+@@ -55,8 +57,8 @@
+  private:
+   friend class base::RefCounted<DocumentCookieCheckpoint>;
+   struct Reply {
+-    Reply(base::TimeTicks deadline, base::OnceCallback<void(bool)> callback)
+-        : deadline(deadline), callback(std::move(callback)) {}
++    Reply(base::TimeTicks deadline, base::OnceCallback<void(bool)> callback);
++    ~Reply();
+     static void Complete(std::shared_ptr<Reply> reply, bool success) {
+       if (reply->callback) {
+         std::move(reply->callback)
+@@ -69,12 +71,8 @@
+   DocumentCookieCheckpoint(base::TimeTicks deadline,
+                            Capture capture,
+                            Drain drain,
+-                           base::OnceCallback<void(bool)> callback)
+-      : deadline_(deadline),
+-        capture_(std::move(capture)),
+-        drain_(std::move(drain)),
+-        reply_(std::make_shared<Reply>(deadline, std::move(callback))) {}
+-  ~DocumentCookieCheckpoint() = default;
++                           base::OnceCallback<void(bool)> callback);
++  ~DocumentCookieCheckpoint();
+ 
+   void Start() {
+     const auto now = base::TimeTicks::Now();
+diff --git a/content/renderer/BUILD.gn b/content/renderer/BUILD.gn
+--- a/content/renderer/BUILD.gn
++++ b/content/renderer/BUILD.gn
+@@ -60,6 +60,7 @@
+     "client_navigation_throttler.h",
+     "content_security_policy_util.cc",
+     "content_security_policy_util.h",
++    "document_cookie_checkpoint.cc",
+     "document_cookie_checkpoint.h",
+     "document_state.cc",
+     "document_state.h",
+diff --git a/content/renderer/document_cookie_checkpoint.cc b/content/renderer/document_cookie_checkpoint.cc
+new file mode 100644
+--- /dev/null
++++ b/content/renderer/document_cookie_checkpoint.cc
+@@ -0,0 +1,30 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "content/renderer/document_cookie_checkpoint.h"
++
++#include <memory>
++#include <utility>
++
++namespace content {
++
++DocumentCookieCheckpoint::Reply::Reply(base::TimeTicks deadline,
++                                       base::OnceCallback<void(bool)> callback)
++    : deadline(deadline), callback(std::move(callback)) {}
++
++DocumentCookieCheckpoint::Reply::~Reply() = default;
++
++DocumentCookieCheckpoint::DocumentCookieCheckpoint(
++    base::TimeTicks deadline,
++    Capture capture,
++    Drain drain,
++    base::OnceCallback<void(bool)> callback)
++    : deadline_(deadline),
++      capture_(std::move(capture)),
++      drain_(std::move(drain)),
++      reply_(std::make_shared<Reply>(deadline, std::move(callback))) {}
++
++DocumentCookieCheckpoint::~DocumentCookieCheckpoint() = default;
++
++}  // namespace content
