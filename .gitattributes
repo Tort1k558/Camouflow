@@ -360,3 +360,4 @@ native/drafts/environment/checkpoint-r14-host-source-upgrade.patch text eol=lf
 native/drafts/environment/checkpoint-r14-host-source-upgrade.json text eol=lf
 native/drafts/upstream-156-recovery-r16/** text eol=lf
 native/drafts/environment/recovery-r16-host-source-upgrade.json text eol=lf
+scripts/verify_native_checkpoint_units.py text eol=lf

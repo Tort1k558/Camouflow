@@ -87,6 +87,7 @@ def test_reverse_archive_preserves_pre_r16_host_bytes(host_sources_before_recove
 def test_recovery_recipe_hashes_are_checkout_platform_independent():
     attributes = (ROOT / '.gitattributes').read_text(encoding='utf-8-sig')
     assert 'native/drafts/upstream-156-recovery-r16/** text eol=lf' in attributes.splitlines()
+    assert 'scripts/verify_native_checkpoint_units.py text eol=lf' in attributes.splitlines()
     for path in DIRECTORY.rglob('*'):
         if path.is_file():
             raw = path.read_bytes()
