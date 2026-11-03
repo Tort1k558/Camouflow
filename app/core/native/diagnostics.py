@@ -1,5 +1,6 @@
 """Read actual Native browser values; never replace fingerprint APIs."""
 
+import asyncio
 from dataclasses import asdict
 import json
 import math
@@ -204,8 +205,12 @@ OBSERVE = """async () => {
 
 
 def compare_observed(configuration: NativeConfiguration, observed: dict) -> list[str]:
+    if not isinstance(observed, dict):
+        return ["Native observation is not an object"]
+    document = observed.get("document")
+    if not isinstance(document, dict):
+        return ["Document values could not be observed"]
     mismatches = []
-    document = observed["document"]
     policy = configuration.privacy_policy
     for key, choices in MEDIA_PREFERENCES.items():
         expected = getattr(configuration, key)
@@ -257,15 +262,17 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
                         or type(screen.get(size)) is not int or not 0 <= screen[available] <= screen[size]):
                     mismatches.append(f"Document screen {available} is inconsistent with {size}")
     worker = observed.get("worker")
-    if worker is None:
-        mismatches.append(observed.get("workerError") or "Worker values could not be observed")
+    if not isinstance(worker, dict):
+        error = observed.get("workerError")
+        mismatches.append(error if isinstance(error, str) and error else "Worker values could not be observed")
     else:
         for key in NAVIGATOR_IDENTITY_FIELDS:
             if worker.get(key) != document.get(key):
                 mismatches.append(f"Document and dedicated worker disagree on {key}")
-        if "canvas" in document and "canvas" in worker:
-            first, second = document["canvas"], worker["canvas"]
-            if not isinstance(first, dict) or not isinstance(second, dict):
+        if "canvas" in document or "canvas" in worker:
+            first, second = document.get("canvas"), worker.get("canvas")
+            if (not isinstance(first, dict) or not isinstance(second, dict)
+                    or type(first.get("available")) is not bool or type(second.get("available")) is not bool):
                 mismatches.append("Canvas observations could not be compared")
             elif first.get("available") != second.get("available"):
                 mismatches.append("Document and dedicated worker disagree on canvas availability")
@@ -289,8 +296,8 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
             mismatches.append("WebGL observations could not be compared")
         else:
             for kind in ("webgl", "webgl2"):
-                if kind in document_graphics and kind in worker_graphics:
-                    first, second = document_graphics[kind], worker_graphics[kind]
+                if kind in document_graphics or kind in worker_graphics:
+                    first, second = document_graphics.get(kind), worker_graphics.get(kind)
                     if (not isinstance(first, dict) or not isinstance(second, dict)
                             or type(first.get("available")) is not bool or type(second.get("available")) is not bool):
                         mismatches.append(f"{kind} observations could not be compared")
@@ -304,9 +311,13 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
                             if first.get(key) != second.get(key):
                                 mismatches.append(f"Document and dedicated worker disagree on {kind} {key}")
     for scope in ("document", "worker"):
-        if (observed.get(scope) or {}).get("userAgentDataError"):
-            mismatches.append(f"{scope.capitalize()} high-entropy client hints could not be observed: "
-                              + observed[scope]["userAgentDataError"])
+        values = observed.get(scope)
+        if isinstance(values, dict) and "userAgentDataError" in values:
+            error = values["userAgentDataError"]
+            if not isinstance(error, str):
+                mismatches.append(f"{scope.capitalize()} high-entropy client hints error observation is malformed")
+            elif error:
+                mismatches.append(f"{scope.capitalize()} high-entropy client hints could not be observed: " + error)
     return mismatches
 
 
@@ -568,9 +579,24 @@ def audit_observed_graphics(observed: dict) -> list[str]:
 
 async def inspect_native_profile(page, configuration: NativeConfiguration, browser_version: str) -> dict:
     configuration.validate()
-    observed = await page.evaluate(OBSERVE)
-    mismatches = (compare_observed(configuration, observed) + audit_observed_identity(observed, browser_version)
-                  + audit_observed_graphics(observed) + audit_observed_canvas(observed))
+    deadline = asyncio.timeout(30)
+    try:
+        async with deadline:
+            observed = await page.evaluate(OBSERVE)
+    except TimeoutError as error:
+        if not deadline.expired():
+            raise
+        raise TimeoutError("Native profile diagnostics timed out after 30 seconds") from error
+    mismatches = compare_observed(configuration, observed)
+    if isinstance(observed, dict) and isinstance(observed.get("document"), dict):
+        mismatches += (audit_observed_identity(observed, browser_version)
+                       + audit_observed_graphics(observed) + audit_observed_canvas(observed))
+        for scope in ("document", "worker"):
+            values = observed.get(scope)
+            if isinstance(values, dict):
+                for surface in ("canvas", "graphics", "webgpu"):
+                    if surface not in values:
+                        mismatches.append(f"{scope.capitalize()} {surface} observation is missing")
     return {"browser_version": browser_version, "configuration": asdict(configuration),
             "observed": observed, "mismatches": mismatches,
             "limitations": configuration.limitations(), "native_patch_capabilities": []}

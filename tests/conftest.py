@@ -49,7 +49,29 @@ def host_sources_before_audio_pipeline(tmp_path):
 
 
 @pytest.fixture
-def host_sources_before_profile_surface(tmp_path, native_args_before_serial_links, host_sources_before_audio_pipeline, host_sources_before_worker_r17):
+def host_sources_before_diagnostic_coverage(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'diagnostic-coverage-host-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-diagnostic-coverage'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        value = (root / row['source']).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == row['after_sha256']
+        target.write_bytes(value)
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources = {row['source']: (base / row['source']).read_bytes() for row in record['sources']}
+    assert all(hashlib.sha256(sources[row['source']]).hexdigest() == row['before_sha256']
+               for row in record['sources'])
+    return sources
+
+
+@pytest.fixture
+def host_sources_before_profile_surface(tmp_path, native_args_before_serial_links, host_sources_before_audio_pipeline, host_sources_before_worker_r17, host_sources_before_diagnostic_coverage):
     """Recover manager and GN bytes used by older browser measurements."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -65,7 +87,7 @@ def host_sources_before_profile_surface(tmp_path, native_args_before_serial_link
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=15)
-    sources = {'native/args.gn': native_args_before_serial_links,
+    sources = {**host_sources_before_diagnostic_coverage, 'native/args.gn': native_args_before_serial_links,
                'app/core/native/distribution.py': host_sources_before_worker_r17['sources']['app/core/native/distribution.py']}
     for row in record['sources']:
         path = base / row['source']
@@ -914,7 +936,7 @@ def surface_sources_before_retained(tmp_path, worker_sources_before_integration,
 
 
 @pytest.fixture
-def historical_source_newlines(host_sources_before_worker_r17):
+def historical_source_newlines(host_sources_before_worker_r17, host_sources_before_diagnostic_coverage):
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / 'native/drafts/environment/historical-source-newlines.json').read_bytes())
     assert manifest['schema'] == 1
@@ -922,7 +944,7 @@ def historical_source_newlines(host_sources_before_worker_r17):
     for record in manifest['sources']:
         name = record['source']
         assert name not in result and name in manifest['lf_checkout_sources']
-        data = host_sources_before_worker_r17['sources'][name] if name in host_sources_before_worker_r17['sources'] else (root / name).read_bytes()
+        data = host_sources_before_diagnostic_coverage.get(name, host_sources_before_worker_r17['sources'].get(name, (root / name).read_bytes()))
         source = data.decode('utf-8-sig').replace('\r\n', '\n').encode('utf-8')
         assert hashlib.sha256(source).hexdigest() == record['canonical_lf_sha256'], name
         lines = source.splitlines(keepends=True)

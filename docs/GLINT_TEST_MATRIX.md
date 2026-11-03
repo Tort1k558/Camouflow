@@ -1,17 +1,20 @@
 # Glint browser test matrix
 
-## 2026-11-03: recovery runner preparation is not browser admission
+## 2026-11-04: diagnostic coverage verified; R16 native execution pending
 
 | Gate | Latest verified scope | Result / remaining work |
 | --- | --- | --- |
-| Full staged runtime/installer host suite | 636 checks, including scoped Windows ACL fixtures | Passed; no Chromium launch |
+| Full manager host regression | **6354 passed, 1 skipped** in a separate Windows checkout; exact source and original checkout postguards passed | Passing diagnostic packet, not native C++ execution |
+| Diagnostic failure controls | 44 regression cases; 40 fail against the original diagnostic module | Missing/malformed observations rejected; 30-second deadline preserves cancellation and original evaluation errors |
+| Real diagnostic compatibility | Upstream Chromium **148.0.7778.96**, document + dedicated worker on controlled localhost | No mismatches; disposable profile removed, core hashes unchanged; not Glint R16/R17 |
+| Hosted Windows CI baseline | [e327a14 workflow](https://github.com/Tort1k558/Camouflow/actions/runs/41726961332): Python/QML, C++ policy and packaged Camoufox/CloakBrowser checks | Passed before this diagnostic packet; upstream lifecycle probes are not own-fork admission |
 | Portable publication tests | 94 checks: exact job ownership, cleanup/cancellation, strict source contract and scoped installation ACLs | Passed; host processes and mocked guards, not Chromium |
 | Owned crash protocol | Membership comes from exact Job Object handles, not reusable global parent-PID links | Passed in the portable suite; no PID-based taskkill fallback |
 | Crash/reopen and cancellation | 32 host checks, including parent exit, timeout and cancellation | Passed; owned descendants finish termination; foreign sentinel survives |
 | Complete browser dispatch | 29 routing checks; host-process simulation covers all 19 declared browser phases | Passed; 18 completed host gtests + 1 separately qualified forced phase |
 | Native-runner integration | 108 checks; compilation and native execution mocked | Passed; source-derived R17 plan retains all 300 declarations |
-| R17 C++ batch | Memory admission waited 30 minutes; no target executed | Not verified; resource failure retained, not a compiler result |
-| Latest R16 build | Windows compile/link succeeded; current core and GN hashes match its build receipt | Native gate stopped before execution at 179.5 GiB free; space restored, native/runtime checks pending |
+| R17 C++ batch | All 23 translation units prepared; queued behind the complete R16 native gate | Not executed yet; previous memory-admission failure retained |
+| Latest R16 build | Windows compile/link succeeded; core and GN hashes match the build receipt | Full 225-declaration/seven-binary native gate resumed; test executables still building, result and runtime checks pending |
 | Real preserved R11 bare startup | Sandbox executable access denied in the owned probe | Failed; synthetic ACL tests do not clear this failure |
 | Real fresh R11 installation copy | All 269 preserved assets verified; specific installation capabilities granted to the owned copy | Passed: ready blank page and exact-job cleanup; original unchanged, throwaway copy removed; no R16/fingerprint claim |
 | Real fingerprint / third-party sites | No new browser run in this batch | No new results; do not infer CAPTCHA or detection scores |

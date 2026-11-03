@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "scope": "Exact reversible diagnostic coverage change; historical measured evidence unchanged",
+  "patch": "diagnostic-coverage-host-source-upgrade.patch",
+  "patch_sha256": "f6a60eb4e9410a5ed806d8fbcca3632a0fb68e87211527e792bc56c571a9a1cf",
+  "sources": [
+    {
+      "source": "app/core/native/diagnostics.py",
+      "before_sha256": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+      "after_sha256": "f5391e4783f71a5d716e3d267dd21dfe376e79886d55de597aca6913c4a86fe8"
+    }
+  ]
+}
