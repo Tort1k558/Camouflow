@@ -11,6 +11,8 @@ on:
       - "native/**"
       - "tests/**"
       - "pytest.ini"
+      - ".gitattributes"
+      - "**/.gitattributes"
       - ".github/workflows/desktop.yml"
   pull_request:
     paths:
@@ -22,6 +24,8 @@ on:
       - "native/**"
       - "tests/**"
       - "pytest.ini"
+      - ".gitattributes"
+      - "**/.gitattributes"
       - ".github/workflows/desktop.yml"
 
 jobs:
