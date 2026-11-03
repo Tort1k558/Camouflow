@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 @((ConvertFrom-Json $env:GLINT_TEST_ACL_PATHS) | ForEach-Object {
   $acl = Get-Acl -LiteralPath $_
   [pscustomobject]@{path=$_; sddl=$acl.Sddl; rules=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | ForEach-Object {
-    [pscustomobject]@{sid=$_.IdentityReference.Value; mask=[long]$_.FileSystemRights; kind=$_.AccessControlType.ToString(); inherit=[int]$_.InheritanceFlags}
+    [pscustomobject]@{sid=$_.IdentityReference.Value; mask=[long]$_.FileSystemRights; kind=$_.AccessControlType.ToString(); inherit=[int]$_.InheritanceFlags; propagation=[int]$_.PropagationFlags; inherited=$_.IsInherited}
   })}
 }) | ConvertTo-Json -Depth 6 -Compress
 '''
@@ -50,6 +50,10 @@ def owned(tmp_path):
 def test_exact_install_capabilities_get_rx_without_touching_private_profiles(owned):
     stage, payload, executable, profile = owned
     paths = [payload, executable, payload / 'locales', profile]
+    # Normalize deferred Windows inheritance before asserting exact ACL preservation.
+    subprocess.run([str(sandbox._system_icacls()), str(payload), '/inheritancelevel:e', '/Q'],
+        stdin=subprocess.DEVNULL, capture_output=True, check=True, timeout=30,
+        creationflags=subprocess.CREATE_NO_WINDOW)
     before = acls(paths)
     original_bytes = executable.read_bytes()
     sandbox.configure_staged_sandbox_access(payload, stage)
