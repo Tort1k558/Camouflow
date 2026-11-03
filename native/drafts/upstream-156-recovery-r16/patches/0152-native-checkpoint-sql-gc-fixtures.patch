@@ -1,0 +1,89 @@
+diff --git a/net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc b/net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc
+--- a/net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc
++++ b/net/extras/sqlite/sqlite_persistent_cookie_store_unittest.cc
+@@ -2713,20 +2713,20 @@
+   sql::test::ScopedErrorExpecter errors;
+   errors.ExpectError(SQLITE_CONSTRAINT);
+   InitializeStore(false, false);
++  AddCookie("checkpoint_seed", "value", "example.test", "/", base::Time::Now());
++  Flush();
+   {
+     sql::Database database(sql::test::kTestTag);
+     ASSERT_TRUE(database.Open(temp_dir_.GetPath().Append(kCookieFilename)));
+     ASSERT_TRUE(database.Execute(
+-        "ALTER TABLE cookies ADD COLUMN checkpoint_guard INTEGER "
+-        "CHECK (name != 'lost')"));
++        "CREATE UNIQUE INDEX checkpoint_guard ON cookies(value)"));
+   }
+   AddCookie("lost", "value", "example.test", "/", base::Time::Now());
+   Flush();
+   {
+     sql::Database database(sql::test::kTestTag);
+     ASSERT_TRUE(database.Open(temp_dir_.GetPath().Append(kCookieFilename)));
+-    ASSERT_TRUE(
+-        database.Execute("ALTER TABLE cookies DROP COLUMN checkpoint_guard"));
++    ASSERT_TRUE(database.Execute("DROP INDEX checkpoint_guard"));
+   }
+   AddCookie("later", "value", "example.test", "/", base::Time::Now());
+   base::test::TestFuture<bool> result;
+@@ -2748,12 +2748,13 @@
+   sql::test::ScopedErrorExpecter errors;
+   errors.ExpectError(SQLITE_CONSTRAINT);
+   InitializeStore(false, false);
++  AddCookie("checkpoint_seed", "value", "example.test", "/", base::Time::Now());
++  Flush();
+   {
+     sql::Database database(sql::test::kTestTag);
+     ASSERT_TRUE(database.Open(temp_dir_.GetPath().Append(kCookieFilename)));
+     ASSERT_TRUE(database.Execute(
+-        "ALTER TABLE cookies ADD COLUMN checkpoint_guard INTEGER "
+-        "CHECK (name != 'lost')"));
++        "CREATE UNIQUE INDEX checkpoint_guard ON cookies(value)"));
+   }
+   AddCookie("lost", "value", "example.test", "/", base::Time::Now());
+   base::test::TestFuture<bool> result;
+diff --git a/third_party/blink/renderer/modules/storage/storage_controller.h b/third_party/blink/renderer/modules/storage/storage_controller.h
+--- a/third_party/blink/renderer/modules/storage/storage_controller.h
++++ b/third_party/blink/renderer/modules/storage/storage_controller.h
+@@ -92,6 +92,7 @@
+   }
+ 
+  private:
++  friend class LocalStorageCheckpointAggregationTest;
+   void EnsureLocalStorageNamespaceCreated();
+ 
+   // mojom::blink::DomStorageClient:
+diff --git a/third_party/blink/renderer/modules/storage/storage_controller_test.cc b/third_party/blink/renderer/modules/storage/storage_controller_test.cc
+--- a/third_party/blink/renderer/modules/storage/storage_controller_test.cc
++++ b/third_party/blink/renderer/modules/storage/storage_controller_test.cc
+@@ -25,6 +25,7 @@
+ #include "third_party/blink/renderer/modules/storage/storage_namespace.h"
+ #include "third_party/blink/renderer/modules/storage/testing/fake_area_source.h"
+ #include "third_party/blink/renderer/modules/storage/testing/mock_storage_area.h"
++#include "third_party/blink/renderer/platform/heap/thread_state.h"
+ #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
+ #include "third_party/blink/renderer/platform/storage/blink_storage_key.h"
+ #include "third_party/blink/renderer/platform/testing/scoped_mocked_url.h"
+@@ -288,6 +289,22 @@
+     source2_ = MakeGarbageCollected<FakeAreaSource>(
+         KURL("http://checkpoint-two.test/"), window2_.Get());
+   }
++  void TearDown() override {
++    area1_.reset();
++    area2_.reset();
++    web1_.Reset();
++    web2_.Reset();
++    source1_.Clear();
++    source2_.Clear();
++    window1_.Clear();
++    window2_.Clear();
++    namespace_.Clear();
++    controller_->local_storage_namespace_.Clear();
++    // Oilpan must release namespace raw_ptrs while the controller still lives.
++    ThreadState::Current()->CollectAllGarbageForTesting();
++    task_environment_.RunUntilIdle();
++  }
++
+   void CreateFirst(bool controller_owned = false) {
+     area1_ = controller_owned ? controller_->GetLocalStorageArea(
+                                     window1_, backend1_.GetInterfaceRemote())

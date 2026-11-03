@@ -32,6 +32,7 @@ PLAN_SPECS = {
     'upstream-156-checkpoint-r13': (136, 85),
     'upstream-156-producer-r14': (136, 163),
     'upstream-156-document-r15': (136, 175),
+    'upstream-156-recovery-r16': (136, 225),
 }
 
 
@@ -44,9 +45,11 @@ def load_plan(candidate: dict) -> dict:
     if candidate.get('name') not in PLAN_SPECS:
         raise ValueError('Unknown checkpoint candidate plan')
     first_patch, body_count = PLAN_SPECS[candidate['name']]
+    expected_binaries = (tuple(sorted((*BINARIES, 'browser_tests')))
+                         if candidate['name'] == 'upstream-156-recovery-r16' else BINARIES)
     plan = read_record(candidate['directory'] / 'native-case-plan.json')
     if (plan.get('candidate_manifest_sha256') != candidate['manifest_sha256']
-            or plan.get('binaries') != list(BINARIES)
+            or plan.get('binaries') != list(expected_binaries)
             or type(plan.get('native_case_bodies_prepared')) is not int
             or plan.get('native_case_bodies_prepared') != body_count
             or not isinstance(plan.get('cases'), list) or len(plan['cases']) != body_count):
@@ -69,6 +72,8 @@ def load_plan(candidate: dict) -> dict:
                           else 'net_unittests' if source.startswith('net/')
                           else 'services_unittests' if source.startswith('services/network/')
                           else 'blink_unittests' if source.startswith('third_party/blink/')
+                          else 'browser_tests' if candidate['name'] == 'upstream-156-recovery-r16'
+                          and source.startswith('chrome/') and source.endswith('_browsertest.cc')
                           else 'content_browsertests' if source.endswith('_browsertest.cc')
                           else 'content_unittests' if source.startswith('content/') else None)
                 if binary is None:
@@ -216,6 +221,7 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
                   prepared_body_count=len(plan['cases']), targets=[], build_invocations=0,
                   postguards_passed=False, browser_runtime_verified=False,
                   privacy_admitted=False, production_admitted=False)
+    planned_binaries = tuple(plan['binaries'])
     inputs, initial, binaries = {}, {}, {}
 
     def save():
@@ -253,10 +259,10 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
         save()
         with (report_dir / 'build.log').open('xb') as log:
             subprocess.run(build.depot_command('autoninja', workspace) +
-                           ['-C', 'out/CamouFlowNative', '-j', str(jobs), *BINARIES],
+                           ['-C', 'out/CamouFlowNative', '-j', str(jobs), *planned_binaries],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
-        binaries = {name: checksum(output / (name + '.exe')) for name in BINARIES}
-        for binary in BINARIES:
+        binaries = {name: checksum(output / (name + '.exe')) for name in planned_binaries}
+        for binary in planned_binaries:
             row = dict(binary=binary, passed=False, test_binary_sha256=binaries[binary])
             report['targets'].append(row)
             try:
@@ -270,7 +276,7 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
                            required_cases={suite: sorted(cases) for suite, cases in required.items()},
                            discovered_cases=sum(map(len, required.values())))
                 save()
-                if binary == 'content_browsertests':
+                if binary in ('content_browsertests', 'browser_tests'):
                     runs = run_browser_cases(executable, required, source=source, env=env,
                                              report_dir=report_dir, timeout=timeout)
                     row.update(execution_runs=runs, passed=all(r['passed'] for r in runs),
@@ -292,7 +298,7 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
             except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
                 row['error'] = str(error)
             save()
-        report['passed'] = len(report['targets']) == len(BINARIES) and all(r['passed'] for r in report['targets'])
+        report['passed'] = len(report['targets']) == len(planned_binaries) and all(r['passed'] for r in report['targets'])
     except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
         report['error'] = str(error)
     finally:

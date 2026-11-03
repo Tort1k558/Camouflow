@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "terminal": true,
+  "passed": true,
+  "cpp_typechecked": true,
+  "native_executed": false,
+  "source_modified": false,
+  "new_graph_generated": false,
+  "browser_compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "style_checks_disabled": false,
+  "input_postguards_passed": true,
+  "scope": "Thirteen composed VFS frontend checks with existing source-set flags; not code generation or linking",
+  "targets": [
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6914580480,
+        "available_commit": 9265938432
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/browser/storage_partition_impl.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6588563456,
+        "available_commit": 8920047616
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/browser/storage_partition_impl_unittest.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6596034560,
+        "available_commit": 8856059904
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 7014289408,
+        "available_commit": 9336082432
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6596489216,
+        "available_commit": 8801103872
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6526398464,
+        "available_commit": 8701673472
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6501302272,
+        "available_commit": 8716541952
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "chrome/browser/net/profile_network_context_service.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6773596160,
+        "available_commit": 9034153984
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "chrome/browser/net/profile_network_context_service_browsertest.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6515564544,
+        "available_commit": 8782495744
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/browser/camouflow_native/glint/profile_document_commit.cc",
+      "generated_reference_source": "content/browser/camouflow_native/glint/profile_producer_fence.cc"
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6913634304,
+        "available_commit": 9280589824
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/browser/camouflow_native/glint/profile_document_commit_unittest.cc",
+      "generated_reference_source": "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc"
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6911922176,
+        "available_commit": 9241743360
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/renderer/render_thread_impl.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 6514745344,
+        "available_commit": 8824860672
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/renderer/render_thread_impl_unittest.cc",
+      "generated_reference_source": null
+    },
+    {
+      "returncode": 0,
+      "memory_before": {
+        "available_physical": 7088508928,
+        "available_commit": 8804741120
+      },
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "content/renderer/document_cookie_checkpoint.cc",
+      "generated_reference_source": "content/renderer/render_thread_impl.cc"
+    }
+  ],
+  "negative_style_control": {
+    "returncode": 1,
+    "memory_before": {
+      "available_physical": 6617677824,
+      "available_commit": 8943329280
+    },
+    "log_sha256": "69b1d4ad8794d5b73b2f8d771da644feb8a1434bc96361953c6ab891154e9f8d",
+    "expected_style_failure_confirmed": true
+  },
+  "full_report_sha256": "d1bf573cded1674483611b57bb409d97653b2a9b30367fece3bac19cc69c257a"
+}

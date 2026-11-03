@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Source packet with Git diff metadata normalization; native execution pending",
+  "patch": "0159-profile-document-commit-tests.patch",
+  "original_patch_sha256": "1b67d1f80be18e51a9700389f4da7ed4a64adf50c7d598924321e289643716f6",
+  "normalized_patch_sha256": "e1d70aafcb7588a25a95774d450d0e15e416108663606a04b58cc39e0c3860f6",
+  "before_source_sha256": {
+    "content/browser/storage_partition_impl.h": "68a0527a06eb1a6aaff03dce48dc6e0d35b285e7c55e1dc14c466c0b0090af7d",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h": "60c48ff9cbcd0be8f56720c14a7710f664744330a5819225df4f50e5aa35b33d",
+    "content/test/BUILD.gn": "06245408e030adc1cca03c09e7a51596b9e9357d9ce9e2d35997bfa0388ddfb8"
+  },
+  "final_source_sha256": {
+    "content/browser/storage_partition_impl.h": "ff5f331f33d740cb6e01577748bc7b878d9b29e3bdc3c5536738676d220c3b54",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h": "3646748469ed8048f8420dfec8c9e9615e7109bf094c25136309e1b739a294cd",
+    "content/test/BUILD.gn": "03bed016fee24ab92618aa5ec6e7be35043c5944c1f9d58e249dc884d6bbe6bd",
+    "content/browser/camouflow_native/glint/profile_document_commit_unittest.cc": "6f8736d15b9633eef60df621aface2cbfc90bcdb7105b67e118ba8011b329948"
+  },
+  "source_files": [
+    "content/browser/storage_partition_impl.h",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h",
+    "content/test/BUILD.gn",
+    "content/browser/camouflow_native/glint/profile_document_commit_unittest.cc"
+  ],
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

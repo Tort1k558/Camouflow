@@ -1,0 +1,257 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index 3162721..8a576cf 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -25,6 +25,7 @@ import("//printing/buildflags/buildflags.gni")
+ import("//services/device/public/cpp/compute_pressure/buildflags.gni")
+ import("//services/network/public/cpp/features.gni")
+ import("//testing/libfuzzer/fuzzer_test.gni")
++import("//testing/test.gni")
+ import("//third_party/blink/public/public_features.gni")
+ import("//tools/ipc_fuzzer/ipc_fuzzer.gni")
+ 
+@@ -3711,3 +3712,30 @@ fuzzer_test("content_sms_parser_fuzzer") {
+     "//content/public/renderer:renderer_sources",
+   ]
+ }
++
++source_set("camouflow_native_privacy") {
++  sources = [
++    "camouflow_native/privacy_key_derivation.cc",
++    "camouflow_native/privacy_key_derivation.h",
++    "camouflow_native/privacy_partition.h",
++  ]
++  deps = [
++    "//base",
++    "//crypto",
++    "//third_party/blink/public/common",
++  ]
++}
++
++test("camouflow_native_privacy_unittests") {
++  sources = [
++    "//base/test/run_all_unittests.cc",
++    "camouflow_native/privacy_key_derivation_unittest.cc",
++  ]
++  deps = [
++    ":camouflow_native_privacy",
++    "//base/test:test_support",
++    "//net",
++    "//testing/gtest",
++    "//url",
++  ]
++}
+diff --git a/content/browser/camouflow_native/privacy_key_derivation.cc b/content/browser/camouflow_native/privacy_key_derivation.cc
+new file mode 100644
+index 0000000..5bca1a4
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_key_derivation.cc
+@@ -0,0 +1,25 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_key_derivation.h"
++
++#include "content/browser/camouflow_native/privacy_partition.h"
++#include "crypto/hmac.h"
++
++namespace camouflow::native {
++
++std::optional<std::array<uint8_t, 32>> DerivePrivacyPartitionKey(
++    base::span<const uint8_t, 32> profile_key,
++    const blink::StorageKey& storage_key,
++    std::string_view surface) {
++  const auto partition = storage_key.SerializeForNativePrivacy();
++  if (!partition) {
++    return std::nullopt;
++  }
++  const auto message = PrivacyDerivationMessage(*partition, surface);
++  if (!message) {
++    return std::nullopt;
++  }
++  return crypto::hmac::SignSha256(profile_key, base::as_byte_span(*message));
++}
++
++}  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/privacy_key_derivation.h b/content/browser/camouflow_native/privacy_key_derivation.h
+new file mode 100644
+index 0000000..246ef6d
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_key_derivation.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_KEY_DERIVATION_H_
++#define CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_KEY_DERIVATION_H_
++
++#include <array>
++#include <optional>
++#include <string_view>
++
++#include "base/containers/span.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace camouflow::native {
++
++// Browser-owned profile key and StorageKey only; no caller URL or renderer seed.
++std::optional<std::array<uint8_t, 32>> DerivePrivacyPartitionKey(
++    base::span<const uint8_t, 32> profile_key,
++    const blink::StorageKey& storage_key,
++    std::string_view surface);
++
++}  // namespace camouflow::native
++
++#endif  // CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_KEY_DERIVATION_H_
+diff --git a/content/browser/camouflow_native/privacy_key_derivation_unittest.cc b/content/browser/camouflow_native/privacy_key_derivation_unittest.cc
+new file mode 100644
+index 0000000..67b7972
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_key_derivation_unittest.cc
+@@ -0,0 +1,106 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_key_derivation.h"
++
++#include <numeric>
++
++#include "base/strings/string_number_conversions.h"
++#include "base/unguessable_token.h"
++#include "net/base/schemeful_site.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/mojom/storage_key/ancestor_chain_bit.mojom.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace camouflow::native {
++namespace {
++
++std::array<uint8_t, 32> ProfileKey() {
++  std::array<uint8_t, 32> key;
++  std::iota(key.begin(), key.end(), 0);
++  return key;
++}
++
++blink::StorageKey TrustedKey() {
++  return blink::StorageKey::Create(
++      url::Origin::Create(GURL("https://sub.example.test:8443/a")),
++      net::SchemefulSite(GURL("https://top.test")),
++      blink::mojom::AncestorChainBit::kCrossSite);
++}
++
++struct Vector {
++  const char* surface;
++  const char* expected;
++};
++
++class NativePrivacyKeyVectorTest : public testing::TestWithParam<Vector> {};
++
++TEST_P(NativePrivacyKeyVectorTest, MatchesIndependentPythonVector) {
++  const auto key = DerivePrivacyPartitionKey(ProfileKey(), TrustedKey(), GetParam().surface);
++  ASSERT_TRUE(key);
++  EXPECT_EQ(base::HexEncodeLower(*key), GetParam().expected);
++}
++
++INSTANTIATE_TEST_SUITE_P(All, NativePrivacyKeyVectorTest, testing::Values(
++    Vector{"canvas", "9f23acffa6e82a360ff7e073aeffd8d3db27c4117957f31c1c90bab4ea445f6a"},
++    Vector{"webgl", "cb1eaf5d9bc879419cff65bad7e9157be73c014e1a0bd458792c73a037583026"},
++    Vector{"webgpu", "73c38167947743fc464a752e558fec3afd72ffbbceb47d209db71ccab0851460"},
++    Vector{"audio", "b39431872d60ef5f0f61a263f7925c63bace48855c814742c51fdd44c8e42bc3"}));
++
++TEST(NativePrivacyKeyTest, RepeatedAndCopiedPartitionsAreStable) {
++  const auto key = TrustedKey();
++  const auto first = DerivePrivacyPartitionKey(ProfileKey(), key, "canvas");
++  ASSERT_TRUE(first);
++  EXPECT_EQ(first, DerivePrivacyPartitionKey(ProfileKey(), key, "canvas"));
++  EXPECT_EQ(first, DerivePrivacyPartitionKey(ProfileKey(), blink::StorageKey(key), "canvas"));
++}
++
++TEST(NativePrivacyKeyTest, ProfilesAreSeparated) {
++  auto second_profile = ProfileKey();
++  second_profile[0] ^= 1;
++  const auto first = DerivePrivacyPartitionKey(ProfileKey(), TrustedKey(), "canvas");
++  const auto second = DerivePrivacyPartitionKey(second_profile, TrustedKey(), "canvas");
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_NE(first, second);
++}
++
++TEST(NativePrivacyKeyTest, SurfacesAreSeparated) {
++  const auto canvas = DerivePrivacyPartitionKey(ProfileKey(), TrustedKey(), "canvas");
++  const auto audio = DerivePrivacyPartitionKey(ProfileKey(), TrustedKey(), "audio");
++  ASSERT_TRUE(canvas);
++  ASSERT_TRUE(audio);
++  EXPECT_NE(canvas, audio);
++}
++
++TEST(NativePrivacyKeyTest, TopLevelSitesAreSeparated) {
++  const auto origin = url::Origin::Create(GURL("https://embedded.test"));
++  const auto first_partition = blink::StorageKey::Create(origin, net::SchemefulSite(GURL("https://first.test")),
++                                                        blink::mojom::AncestorChainBit::kCrossSite);
++  const auto second_partition = blink::StorageKey::Create(origin, net::SchemefulSite(GURL("https://second.test")),
++                                                         blink::mojom::AncestorChainBit::kCrossSite);
++  const auto first = DerivePrivacyPartitionKey(ProfileKey(), first_partition, "canvas");
++  const auto second = DerivePrivacyPartitionKey(ProfileKey(), second_partition, "canvas");
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_NE(first, second);
++}
++
++TEST(NativePrivacyKeyTest, OpaquePartitionsAreSeparatedAndCopyStable) {
++  const auto first_partition = blink::StorageKey::CreateFirstParty(url::Origin());
++  const auto second_partition = blink::StorageKey::CreateFirstParty(url::Origin());
++  const auto first = DerivePrivacyPartitionKey(ProfileKey(), first_partition, "canvas");
++  const auto second = DerivePrivacyPartitionKey(ProfileKey(), second_partition, "canvas");
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_NE(first, second);
++  EXPECT_EQ(first, DerivePrivacyPartitionKey(ProfileKey(), blink::StorageKey(first_partition), "canvas"));
++}
++
++TEST(NativePrivacyKeyTest, UnknownSurfaceIsRejected) {
++  EXPECT_FALSE(DerivePrivacyPartitionKey(ProfileKey(), TrustedKey(), ""));
++  EXPECT_FALSE(DerivePrivacyPartitionKey(ProfileKey(), TrustedKey(), "unknown"));
++}
++
++}  // namespace
++}  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/privacy_partition.h b/content/browser/camouflow_native/privacy_partition.h
+new file mode 100644
+index 0000000..30f7c35
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_partition.h
+@@ -0,0 +1,36 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CAMOUFLOW_NATIVE_CORE_PRIVACY_PARTITION_H_
++#define CAMOUFLOW_NATIVE_CORE_PRIVACY_PARTITION_H_
++
++#include <optional>
++#include <string>
++#include <string_view>
++
++namespace camouflow::native {
++
++// The browser must supply its canonical storage partition, not a caller URL.
++// Sign this message with crypto::hmac::SignSha256 and the private profile key.
++inline std::optional<std::string> PrivacyDerivationMessage(
++    std::string_view partition, std::string_view surface) {
++  if (partition.empty() || partition.size() > 8192 ||
++      (surface != "canvas" && surface != "webgl" && surface != "webgpu" &&
++       surface != "audio")) {
++    return std::nullopt;
++  }
++  std::string message("CamouFlowNative/privacy/v1");
++  message.push_back('\0');
++  const auto append_length = [&message](std::size_t length) {
++    for (int shift = 24; shift >= 0; shift -= 8)
++      message.push_back(static_cast<char>((length >> shift) & 0xff));
++  };
++  append_length(surface.size());
++  message.append(surface);
++  append_length(partition.size());
++  message.append(partition);
++  return message;
++}
++
++}  // namespace camouflow::native
++
++#endif  // CAMOUFLOW_NATIVE_CORE_PRIVACY_PARTITION_H_

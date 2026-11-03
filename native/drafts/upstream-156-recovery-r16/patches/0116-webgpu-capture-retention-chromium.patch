@@ -1,0 +1,21 @@
+diff --git a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -725,7 +725,7 @@
+         return GlintReadbackStatus::Failed;
+       }
+       found->complete = true;
+-      found->byte_native.reset();
++      // Keep the native capability until provenance collection drops this capture.
+       continue;
+     }
+     if (!found->native) {
+@@ -741,7 +741,7 @@
+       return GlintReadbackStatus::Failed;
+     }
+     found->complete = true;
+-    found->native.reset();
++    // CPU completion does not retire dependent GPU input capabilities.
+   }
+   return GlintReadbackStatus::Ready;
+ }

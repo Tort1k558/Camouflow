@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Source packet with Git diff metadata normalization; native execution pending",
+  "patch": "0161-local-storage-test-bindings.patch",
+  "original_patch_sha256": "d8656e3a82331d8c7cb757cbe91345212bf798dc157812c9487d8ece72c6c574",
+  "normalized_patch_sha256": "86f0eed71f6065b9350470ebffdf7640ed092bfa27a2eb68de3dc42fb40bf7c4",
+  "before_source_sha256": {
+    "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc": "dba95330be4a27c1709f2489f11367115d3fad7042d59f4a87c222152837808b"
+  },
+  "final_source_sha256": {
+    "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc": "289ee7e020cc386df933a5cdeaf8acf1dd9212660961f884f84579b0ab31973a"
+  },
+  "source_files": [
+    "content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc"
+  ],
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

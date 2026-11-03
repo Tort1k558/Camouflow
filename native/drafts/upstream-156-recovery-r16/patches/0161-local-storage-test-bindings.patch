@@ -1,0 +1,43 @@
+diff --git a/content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc b/content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc
+--- a/content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc
++++ b/content/browser/dom_storage/dom_storage_context_wrapper_unittest.cc
+@@ -9,6 +9,7 @@
+ 
+ #include "base/functional/bind.h"
+ #include "base/run_loop.h"
++#include "base/test/bind.h"
+ #include "base/test/test_future.h"
+ #include "base/time/time.h"
+ #include "base/uuid.h"
+@@ -244,10 +245,11 @@
+   CheckpointLocalStorageControl backend(BindCheckpointControl());
+   backend.hang = true;
+   int completions = 0;
+-  context_->FlushLocalStorageForCheckpoint(base::BindOnce([&](bool success) {
+-    EXPECT_FALSE(success);
+-    ++completions;
+-  }));
++  context_->FlushLocalStorageForCheckpoint(
++      base::BindLambdaForTesting([&](bool success) {
++        EXPECT_FALSE(success);
++        ++completions;
++      }));
+   task_environment_.RunUntilIdle();
+   EXPECT_EQ(completions, 0);
+   task_environment_.FastForwardBy(base::Seconds(30));
+@@ -289,10 +291,11 @@
+   backend.hang = true;
+   int failures = 0;
+   for (int i = 0; i < 64; ++i) {
+-    context_->FlushLocalStorageForCheckpoint(base::BindOnce([&](bool success) {
+-      EXPECT_FALSE(success);
+-      ++failures;
+-    }));
++    context_->FlushLocalStorageForCheckpoint(
++        base::BindLambdaForTesting([&](bool success) {
++          EXPECT_FALSE(success);
++          ++failures;
++        }));
+   }
+   task_environment_.RunUntilIdle();
+   EXPECT_EQ(backend.calls, 64);

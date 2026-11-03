@@ -25,11 +25,13 @@ def result(required):
     ('upstream-156-checkpoint-r12', 85), ('upstream-156-checkpoint-r13', 85),
     ('upstream-156-producer-r14', 163),
     ('upstream-156-document-r15', 175),
+    ('upstream-156-recovery-r16', 225),
 ])
 def test_native_plan_is_derived_from_every_registered_packet(candidate_name, count):
     candidate = build.load_candidate(candidate_name)
     plan = units.load_plan(candidate)
-    assert len(plan['cases']) == count and plan['binaries'] == list(units.BINARIES)
+    expected = sorted((*units.BINARIES, 'browser_tests')) if count == 225 else list(units.BINARIES)
+    assert len(plan['cases']) == count and plan['binaries'] == expected
 
 
 @pytest.mark.parametrize('change', ('missing', 'duplicate', 'binary', 'source', 'hash', 'count-type'))
@@ -172,8 +174,9 @@ def test_invalid_resource_limits_fail_before_workspace_access(monkeypatch, jobs,
 
 
 @pytest.mark.parametrize('fault', [None, 'case', 'listing', 'input', 'binary', 'receipt', 'build'])
-def test_native_batch_pipeline_retains_failures_and_checks_postguards(monkeypatch, tmp_path, fault):
-    candidate = build.load_candidate(units.CANDIDATE)
+@pytest.mark.parametrize('candidate_name', ('upstream-156-checkpoint-r12', 'upstream-156-recovery-r16'))
+def test_native_batch_pipeline_retains_failures_and_checks_postguards(monkeypatch, tmp_path, fault, candidate_name):
+    candidate = build.load_candidate(candidate_name)
     plan = units.load_plan(candidate)
     source = tmp_path / 'workspace/chromium/src'
     output = source / 'out/CamouFlowNative'
@@ -201,11 +204,11 @@ def test_native_batch_pipeline_retains_failures_and_checks_postguards(monkeypatc
     monkeypatch.setattr(units.build, 'depot_command', lambda *a: ['autoninja'])
 
     def compile_binaries(command, **kwargs):
-        assert command[-6:] == list(units.BINARIES)
+        assert command[-len(plan['binaries']):] == plan['binaries']
         assert command[command.index('-j') + 1] == '4'
         if fault == 'build':
             raise subprocess.CalledProcessError(1, command)
-        for name in units.BINARIES:
+        for name in plan['binaries']:
             (output / (name + '.exe')).write_bytes(name.encode())
         if fault == 'input':
             watched.write_text('changed', encoding='utf-8')
@@ -229,6 +232,8 @@ def test_native_batch_pipeline_retains_failures_and_checks_postguards(monkeypatc
                                    for suite, cases in required.items()), encoding='utf-8')
             return
         selected = next(arg.split('=', 1)[1] for arg in command if arg.startswith('--gtest_filter='))
+        if binary in ('browser_tests', 'content_browsertests'):
+            assert ':' not in selected and '--single-process-tests' in command
         required = {}
         for name in selected.split(':'):
             suite, case = name.split('.', 1)
@@ -250,13 +255,13 @@ def test_native_batch_pipeline_retains_failures_and_checks_postguards(monkeypatc
     if fault in ('receipt', 'build'):
         assert report['targets'] == []
     else:
-        assert len(report['targets']) == 6
+        assert len(report['targets']) == len(plan['binaries'])
     if fault in ('case', 'listing'):
         assert not report['targets'][0]['passed']
         assert all(row['passed'] for row in report['targets'][1:])
     if fault is None:
-        assert sum(r['prepared_bodies'] for r in report['targets']) == 85
-        assert sum(r['executed_cases'] for r in report['targets']) > 85
+        assert sum(r['prepared_bodies'] for r in report['targets']) == len(plan['cases'])
+        assert sum(r['executed_cases'] for r in report['targets']) > len(plan['cases'])
 
 
 @pytest.mark.parametrize('failed', (None, 'A'))
@@ -318,7 +323,8 @@ def test_fixture_corrected_candidate_preserves_the_derived_checkpoint_cases():
     assert corrected['manifest_sha256'] != original['manifest_sha256']
 
 
-@pytest.mark.parametrize('candidate', ('upstream-156-checkpoint-r12', 'upstream-156-checkpoint-r13'))
+@pytest.mark.parametrize('candidate', ('upstream-156-checkpoint-r12', 'upstream-156-checkpoint-r13',
+                                       'upstream-156-recovery-r16'))
 def test_checkpoint_cli_forwards_explicit_candidate(tmp_path, monkeypatch, candidate):
     execute = Mock(return_value={'passed': True})
     monkeypatch.setattr(units, 'verify', execute)

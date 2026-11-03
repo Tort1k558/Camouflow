@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "patch": "recovery-r16-host-source-upgrade.patch",
+  "patch_sha256": "377ec0d82d835068e35e50765dbcb7a3e37c11a08659de993270a701dd9f7706",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "30679293697de412d95b406638b74faaa2002a374e873366c984909b40be508f",
+      "after_sha256": "4b9a463c53117f354cd3d895d2035d67476027a7167369913f858219bded7a07"
+    },
+    {
+      "source": "scripts/verify_native_checkpoint_units.py",
+      "before_sha256": "0c805dcd1eeeafb2b85a8296f9e2ed977c601d9a68ba5354144654c2ca6a0346",
+      "after_sha256": "fddfb363e8cf7b6d1dd91c5608d3c30f679758ad5dff9d226073ed80f67ce99d"
+    }
+  ],
+  "scope": "Recover exact pre-R16 host sources for historical evidence; no hash rewriting",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

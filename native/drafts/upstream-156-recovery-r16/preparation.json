@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Complete isolated source replay and case enumeration only",
+  "patches": 161,
+  "forward_patches": 161,
+  "reverse_patches": 161,
+  "final_owned_files_matched": 481,
+  "upstream_files_restored": 338,
+  "manifest_sha256": "5cbdab249c060e5167a06ca732d44f05a8d12e354b254246cc7424710b2964d5",
+  "prepared_bodies": 225,
+  "baseline_bodies_preserved": 175,
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "replay_report_sha256": "c68c0d4276a476efebd6151d466c478e3e129e3f4a468b00f633fbed6de10180",
+  "cpp_typechecked": true,
+  "cxx_translation_units": 13,
+  "cxx_observations_sha256": "e1bf24d3ace6520cf2bfeaa739f2510bd5952eae3c364f72f167f7f312e78cb6"
+}

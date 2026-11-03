@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Source packet with Git diff metadata normalization; native execution pending",
+  "patch": "0158-profile-document-commit.patch",
+  "original_patch_sha256": "67b0e0b61f2389f24c517a0f54bce069617f0c0fde0b8edd9774ec3d0f34e3e7",
+  "normalized_patch_sha256": "ce3bcb37793fbfa75cb8ba3abf52fbf2c6fe90dfd8c4cf9a703000b042fdd3d7",
+  "before_source_sha256": {
+    "content/browser/storage_partition_impl.h": "e304df6032ec181595c5f4db05863dde324412bd91968265589b4f909497adab",
+    "content/browser/storage_partition_impl.cc": "e9c30a0fa83f39de73f04358cb679fbd8b322849850e0eb1a67b08eab0cadb28",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h": "9873e252a6d06c6ccf638028d47e47ac3445ec2224024c34b567ec3869446023",
+    "content/browser/dom_storage/dom_storage_context_wrapper.cc": "2232539a417486fefbd272c84ebd4b85f0ac752556a8218891981bf4138bb62b",
+    "content/browser/BUILD.gn": "382a7eb963427118e3ab84008148bf56ead48dcea071cb48a54c0f5d98ad3bd9"
+  },
+  "final_source_sha256": {
+    "content/browser/storage_partition_impl.h": "68a0527a06eb1a6aaff03dce48dc6e0d35b285e7c55e1dc14c466c0b0090af7d",
+    "content/browser/storage_partition_impl.cc": "4eaecf44ce19934fc502fd2af8cc12593bf825ca7fc47072db761f3b1dbfa46f",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h": "60c48ff9cbcd0be8f56720c14a7710f664744330a5819225df4f50e5aa35b33d",
+    "content/browser/dom_storage/dom_storage_context_wrapper.cc": "f2a6085ac5dd24563dec4846b97ecc8d6d25a985217ff112ec2a660047225fff",
+    "content/browser/BUILD.gn": "1591a3189a521e3494e51079293f5c90f33964b96bb3ea00e03eaa9ce787dd71",
+    "content/browser/camouflow_native/glint/profile_document_commit.h": "140e83e3483500f774d0f1857ba0a3d8ff08f453a404816ea117d3c02a83938f",
+    "content/browser/camouflow_native/glint/profile_document_commit.cc": "63efe1f55869938171b5a4701f041ad58b4b5ab321228ed192268aaafbf55210"
+  },
+  "source_files": [
+    "content/browser/storage_partition_impl.h",
+    "content/browser/storage_partition_impl.cc",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h",
+    "content/browser/dom_storage/dom_storage_context_wrapper.cc",
+    "content/browser/BUILD.gn",
+    "content/browser/camouflow_native/glint/profile_document_commit.h",
+    "content/browser/camouflow_native/glint/profile_document_commit.cc"
+  ],
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

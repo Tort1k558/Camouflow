@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Source packet with Git diff metadata normalization; native execution pending",
+  "patch": "0160-cookie-checkpoint-out-of-line.patch",
+  "original_patch_sha256": "28471e04ddb88e7e2791bceb0e7073fdbf88fb48a40fa1ec13dc8dee5ec329cc",
+  "normalized_patch_sha256": "b9880571417f4562cc762df97308a4eee36ebc31511764e1818bbe97ae05ced0",
+  "before_source_sha256": {
+    "content/renderer/document_cookie_checkpoint.h": "d7168202973778495a53651a9417845108549f1314cb974dcfec1e49d567d2fd",
+    "content/renderer/BUILD.gn": "d6c7095fb035c9d16ffceb1ced0416577a3dcba876165a5ba63c96129c531d2c"
+  },
+  "final_source_sha256": {
+    "content/renderer/document_cookie_checkpoint.h": "882d93476324521412c967c6e9ade78d5437b80caf9cecdeb5647b064644f006",
+    "content/renderer/BUILD.gn": "0d3348e090b641169e6bbdc79843ee91d4e28142bb29bd35c636afbba386ceb2",
+    "content/renderer/document_cookie_checkpoint.cc": "b8e9c984fe9511d84bb76953286561cbf2c7bd76385b0bf3a7ba42bafb666554"
+  },
+  "source_files": [
+    "content/renderer/document_cookie_checkpoint.h",
+    "content/renderer/BUILD.gn",
+    "content/renderer/document_cookie_checkpoint.cc"
+  ],
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

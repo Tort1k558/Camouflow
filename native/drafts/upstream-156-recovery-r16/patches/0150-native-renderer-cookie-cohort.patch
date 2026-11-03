@@ -1,0 +1,562 @@
+diff --git a/content/common/storage_checkpoint.mojom b/content/common/storage_checkpoint.mojom
+--- a/content/common/storage_checkpoint.mojom
++++ b/content/common/storage_checkpoint.mojom
+@@ -14,4 +14,9 @@
+   [MinVersion=1, AllowedContext=sandbox.mojom.Context.kBrowser]
+   FenceLocalStorageForCheckpoint(mojo_base.mojom.TimeTicks deadline)
+       => (bool success);
++
++  // Document cookie producers only; no network/worker or disk acknowledgment.
++  [MinVersion=2, AllowedContext=sandbox.mojom.Context.kBrowser]
++  FenceDocumentCookiesForCheckpoint(mojo_base.mojom.TimeTicks deadline)
++      => (bool success);
+ };
+diff --git a/content/renderer/BUILD.gn b/content/renderer/BUILD.gn
+--- a/content/renderer/BUILD.gn
++++ b/content/renderer/BUILD.gn
+@@ -60,6 +60,7 @@
+     "client_navigation_throttler.h",
+     "content_security_policy_util.cc",
+     "content_security_policy_util.h",
++    "document_cookie_checkpoint.h",
+     "document_state.cc",
+     "document_state.h",
+     "dom_automation_controller.cc",
+diff --git a/content/renderer/render_thread_impl.h b/content/renderer/render_thread_impl.h
+--- a/content/renderer/render_thread_impl.h
++++ b/content/renderer/render_thread_impl.h
+@@ -428,6 +428,9 @@
+   void FenceLocalStorageForCheckpoint(
+       base::TimeTicks deadline,
+       FenceLocalStorageForCheckpointCallback callback) override;
++  void FenceDocumentCookiesForCheckpoint(
++      base::TimeTicks deadline,
++      FenceDocumentCookiesForCheckpointCallback callback) override;
+ #if BUILDFLAG(CLANG_PROFILING_INSIDE_SANDBOX)
+   void WriteClangProfilingProfile(
+       WriteClangProfilingProfileCallback callback) override;
+diff --git a/content/renderer/render_thread_impl.cc b/content/renderer/render_thread_impl.cc
+--- a/content/renderer/render_thread_impl.cc
++++ b/content/renderer/render_thread_impl.cc
+@@ -91,6 +91,7 @@
+ #include "content/public/renderer/render_thread_observer.h"
+ #include "content/renderer/agent_scheduling_group.h"
+ #include "content/renderer/browser_exposed_renderer_interfaces.h"
++#include "content/renderer/document_cookie_checkpoint.h"
+ #include "content/renderer/effective_connection_type_helper.h"
+ #include "content/renderer/media/media_factory.h"
+ #include "content/renderer/media/render_media_client.h"
+@@ -235,6 +236,46 @@
+ 
+ namespace {
+ 
++class CookieDocumentSnapshotVisitor final : public RenderFrameVisitor {
++ public:
++  bool Visit(RenderFrame* frame) override {
++    auto* web_frame = frame->GetWebFrame();
++    if (!web_frame) {
++      valid = false;
++      return false;
++    }
++    auto document = web_frame->GetDocument();
++    if (document.IsNull() || !document.IsActive() ||
++        !document.IsCookieProducerAvailableForCheckpoint() ||
++        snapshot.documents.size() >=
++            DocumentCookieCheckpoint::kMaximumDocuments) {
++      valid = false;
++      return false;
++    }
++    const auto [entry, inserted] = snapshot.documents.emplace(
++        web_frame->GetLocalFrameToken(), document.Token());
++    valid = inserted;
++    return valid;
++  }
++  bool valid = true;
++  DocumentCookieCheckpoint::Snapshot snapshot;
++};
++
++std::optional<DocumentCookieCheckpoint::Snapshot> CaptureCookieDocuments() {
++  auto epoch = blink::WebDocument::CookieProducerEpochForCheckpoint();
++  if (!epoch) {
++    return std::nullopt;
++  }
++  CookieDocumentSnapshotVisitor visitor;
++  RenderFrame::ForEach(&visitor);
++  if (!visitor.valid ||
++      blink::WebDocument::CookieProducerEpochForCheckpoint() != epoch) {
++    return std::nullopt;
++  }
++  visitor.snapshot.epoch = *epoch;
++  return std::move(visitor.snapshot);
++}
++
+ using ::base::PassKey;
+ using ::blink::WebDocument;
+ using ::blink::WebFrame;
+@@ -1379,6 +1420,66 @@
+       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(reply), false));
+ }
+ 
++void RenderThreadImpl::FenceDocumentCookiesForCheckpoint(
++    base::TimeTicks deadline,
++    FenceDocumentCookiesForCheckpointCallback callback) {
++  const bool admitted =
++      !deadline.is_max() && deadline > base::TimeTicks::Now() &&
++      deadline - base::TimeTicks::Now() <= base::Seconds(30) &&
++      storage_checkpoint_calls_ < 64;
++  if (admitted) {
++    ++storage_checkpoint_calls_;
++  }
++  auto owner = weak_factory_.GetWeakPtr();
++  auto reply = base::BindOnce(
++      [](base::WeakPtr<RenderThreadImpl> owner, base::TimeTicks deadline,
++         bool admitted, FenceDocumentCookiesForCheckpointCallback callback,
++         bool success) {
++        if (owner && admitted) {
++          CHECK_GT(owner->storage_checkpoint_calls_, 0u);
++          --owner->storage_checkpoint_calls_;
++        }
++        std::move(callback).Run(success && owner &&
++                                base::TimeTicks::Now() < deadline);
++      },
++      owner, deadline, admitted, std::move(callback));
++  if (!admitted) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(reply), false));
++    return;
++  }
++  DocumentCookieCheckpoint::Run(
++      deadline,
++      base::BindRepeating(
++          [](base::WeakPtr<RenderThreadImpl> owner)
++              -> std::optional<DocumentCookieCheckpoint::Snapshot> {
++            return owner ? CaptureCookieDocuments() : std::nullopt;
++          },
++          owner),
++      base::BindRepeating(
++          [](base::WeakPtr<RenderThreadImpl> owner,
++             const blink::LocalFrameToken& frame,
++             const blink::DocumentToken& expected, base::TimeTicks deadline,
++             base::OnceCallback<void(bool)> callback) {
++            auto* web_frame =
++                owner ? blink::WebLocalFrame::FromFrameToken(frame) : nullptr;
++            if (!web_frame) {
++              std::move(callback).Run(false);
++              return;
++            }
++            auto document = web_frame->GetDocument();
++            if (document.IsNull() || !document.IsActive() ||
++                document.Token() != expected) {
++              std::move(callback).Run(false);
++              return;
++            }
++            document.DrainCookieWritesForCheckpoint(deadline,
++                                                    std::move(callback));
++          },
++          owner),
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(reply), false));
++}
++
+ void RenderThreadImpl::SetIsLockedToSite() {
+   DCHECK(blink_platform_impl_);
+   blink_platform_impl_->SetIsLockedToSite();
+diff --git a/content/renderer/render_thread_impl_unittest.cc b/content/renderer/render_thread_impl_unittest.cc
+--- a/content/renderer/render_thread_impl_unittest.cc
++++ b/content/renderer/render_thread_impl_unittest.cc
+@@ -3,9 +3,15 @@
+ // found in the LICENSE file.
+ 
+ #include "content/renderer/render_thread_impl.h"
++
++#include <string>
++#include <vector>
++
++#include "base/test/bind.h"
++#include "base/test/task_environment.h"
++#include "base/test/test_future.h"
++#include "content/renderer/document_cookie_checkpoint.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+-
+-#include <string>
+ 
+ namespace content {
+ 
+@@ -95,8 +101,212 @@
+ }
+ 
+ TEST_F(RenderThreadImplUnittest, CheckpointRendererInterfaceHasVersionOne) {
+-  EXPECT_EQ(1u, mojom::StorageCheckpoint::Version_);
++  EXPECT_EQ(2u, mojom::StorageCheckpoint::Version_);
+   EXPECT_EQ(0u, mojom::Renderer::Version_);
+ }
+ 
++class DocumentCookieCheckpointTest : public testing::Test {
++ protected:
++  using Snapshot = DocumentCookieCheckpoint::Snapshot;
++  void AddDocument() {
++    snapshot->documents.emplace(blink::LocalFrameToken(),
++                                blink::DocumentToken());
++  }
++  void Start(base::test::TestFuture<bool>& done,
++             base::TimeTicks deadline = base::TimeTicks()) {
++    if (deadline.is_null()) {
++      deadline = base::TimeTicks::Now() + base::Seconds(5);
++    }
++    DocumentCookieCheckpoint::Run(
++        deadline, base::BindLambdaForTesting([this] {
++          tasks.AdvanceClock(capture_delay);
++          return snapshot;
++        }),
++        base::BindLambdaForTesting(
++            [this](const blink::LocalFrameToken&, const blink::DocumentToken&,
++                   base::TimeTicks, base::OnceCallback<void(bool)> callback) {
++              if (synchronous) {
++                std::move(callback).Run(true);
++              } else {
++                replies.push_back(std::move(callback));
++              }
++            }),
++        done.GetCallback());
++  }
++  base::test::TaskEnvironment tasks{
++      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
++  std::optional<Snapshot> snapshot = Snapshot{};
++  std::vector<base::OnceCallback<void(bool)>> replies;
++  bool synchronous = false;
++  base::TimeDelta capture_delay;
++};
++
++TEST_F(DocumentCookieCheckpointTest, EmptyCohortIsRecheckedAndPosted) {
++  base::test::TestFuture<bool> done;
++  Start(done);
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, OutOfOrderRepliesWaitForEveryDocument) {
++  AddDocument();
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  ASSERT_EQ(2u, replies.size());
++  std::move(replies[1]).Run(true);
++  tasks.RunUntilIdle();
++  EXPECT_FALSE(done.IsReady());
++  std::move(replies[0]).Run(true);
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, EarlyAcknowledgersNewWriteRejectsCohort) {
++  AddDocument();
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  std::move(replies[0]).Run(true);
++  ++snapshot->epoch;
++  std::move(replies[1]).Run(true);
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, WriteBeforeFinalPostedDeliveryRejects) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  std::move(replies[0]).Run(true);
++  ++snapshot->epoch;
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, NavigationChangesDocumentToken) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  snapshot->documents.begin()->second = blink::DocumentToken();
++  std::move(replies[0]).Run(true);
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, NewFrameRejectsCohort) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  AddDocument();
++  std::move(replies[0]).Run(true);
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, RemovedFrameRejectsCohort) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  snapshot->documents.clear();
++  std::move(replies[0]).Run(true);
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, LostOwnerRejectsCohort) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  snapshot.reset();
++  std::move(replies[0]).Run(true);
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, DroppedCallbacksStillReplyAtDeadline) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  replies.clear();
++  tasks.FastForwardBy(base::Seconds(6));
++  ASSERT_TRUE(done.IsReady());
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, DeadlineBeforePostedSuccessRejects) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  std::move(replies[0]).Run(true);
++  tasks.AdvanceClock(base::Seconds(6));
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, FailedThenLateReplyCannotPromote) {
++  AddDocument();
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  std::move(replies[0]).Run(false);
++  EXPECT_FALSE(done.Get());
++  std::move(replies[1]).Run(true);
++  tasks.FastForwardBy(base::Seconds(6));
++}
++
++TEST_F(DocumentCookieCheckpointTest, SynchronousProducerRepliesAreStillPosted) {
++  AddDocument();
++  AddDocument();
++  synchronous = true;
++  base::test::TestFuture<bool> done;
++  Start(done);
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_F(DocumentCookieCheckpointTest, ExpiredDeadlineDoesNotContactProducers) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done, base::TimeTicks::Now());
++  EXPECT_FALSE(done.Get());
++  EXPECT_TRUE(replies.empty());
++}
++
++TEST_F(DocumentCookieCheckpointTest, UnboundedDeadlineDoesNotContactProducers) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done, base::TimeTicks::Max());
++  EXPECT_FALSE(done.Get());
++  EXPECT_TRUE(replies.empty());
++}
++
++TEST_F(DocumentCookieCheckpointTest, TooManyDocumentsRejectsBeforeDrain) {
++  for (size_t i = 0; i <= DocumentCookieCheckpoint::kMaximumDocuments; ++i) {
++    AddDocument();
++  }
++  base::test::TestFuture<bool> done;
++  Start(done);
++  EXPECT_FALSE(done.Get());
++  EXPECT_TRUE(replies.empty());
++}
++
++TEST_F(DocumentCookieCheckpointTest, CaptureCannotExtendOriginalDeadline) {
++  AddDocument();
++  capture_delay = base::Seconds(6);
++  base::test::TestFuture<bool> done;
++  Start(done);
++  EXPECT_FALSE(done.Get());
++  EXPECT_TRUE(replies.empty());
++}
++
++TEST_F(DocumentCookieCheckpointTest, LongDeadlineDoesNotContactProducers) {
++  AddDocument();
++  base::test::TestFuture<bool> done;
++  Start(done, base::TimeTicks::Now() + base::Seconds(31));
++  EXPECT_FALSE(done.Get());
++  EXPECT_TRUE(replies.empty());
++}
++
++TEST_F(DocumentCookieCheckpointTest, UnavailableInitialCaptureFailsPosted) {
++  snapshot.reset();
++  base::test::TestFuture<bool> done;
++  Start(done);
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_FALSE(done.Get());
++  EXPECT_TRUE(replies.empty());
++}
++
+ }  // namespace content
+diff --git a/content/renderer/document_cookie_checkpoint.h b/content/renderer/document_cookie_checkpoint.h
+new file mode 100644
+--- /dev/null
++++ b/content/renderer/document_cookie_checkpoint.h
+@@ -0,0 +1,160 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CONTENT_RENDERER_DOCUMENT_COOKIE_CHECKPOINT_H_
++#define CONTENT_RENDERER_DOCUMENT_COOKIE_CHECKPOINT_H_
++
++#include <cstddef>
++#include <cstdint>
++#include <memory>
++#include <optional>
++#include <utility>
++
++#include "base/check.h"
++#include "base/containers/flat_map.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback.h"
++#include "base/location.h"
++#include "base/memory/ref_counted.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
++
++namespace content {
++
++// Renderer-main-thread producer acknowledgment only. No cookie data, worker or
++// HTTP producers, backend flush or whole-profile durability is represented.
++class DocumentCookieCheckpoint
++    : public base::RefCounted<DocumentCookieCheckpoint> {
++ public:
++  static constexpr size_t kMaximumDocuments = 512;
++  struct Snapshot {
++    uint64_t epoch = 0;
++    base::flat_map<blink::LocalFrameToken, blink::DocumentToken> documents;
++    bool operator==(const Snapshot&) const = default;
++  };
++  using Capture = base::RepeatingCallback<std::optional<Snapshot>()>;
++  using Drain = base::RepeatingCallback<void(const blink::LocalFrameToken&,
++                                             const blink::DocumentToken&,
++                                             base::TimeTicks,
++                                             base::OnceCallback<void(bool)>)>;
++
++  static void Run(base::TimeTicks deadline,
++                  Capture capture,
++                  Drain drain,
++                  base::OnceCallback<void(bool)> callback) {
++    CHECK(capture);
++    CHECK(drain);
++    CHECK(callback);
++    auto request = base::WrapRefCounted(new DocumentCookieCheckpoint(
++        deadline, std::move(capture), std::move(drain), std::move(callback)));
++    request->Start();
++  }
++
++ private:
++  friend class base::RefCounted<DocumentCookieCheckpoint>;
++  struct Reply {
++    Reply(base::TimeTicks deadline, base::OnceCallback<void(bool)> callback)
++        : deadline(deadline), callback(std::move(callback)) {}
++    static void Complete(std::shared_ptr<Reply> reply, bool success) {
++      if (reply->callback) {
++        std::move(reply->callback)
++            .Run(success && base::TimeTicks::Now() < reply->deadline);
++      }
++    }
++    const base::TimeTicks deadline;
++    base::OnceCallback<void(bool)> callback;
++  };
++  DocumentCookieCheckpoint(base::TimeTicks deadline,
++                           Capture capture,
++                           Drain drain,
++                           base::OnceCallback<void(bool)> callback)
++      : deadline_(deadline),
++        capture_(std::move(capture)),
++        drain_(std::move(drain)),
++        reply_(std::make_shared<Reply>(deadline, std::move(callback))) {}
++  ~DocumentCookieCheckpoint() = default;
++
++  void Start() {
++    const auto now = base::TimeTicks::Now();
++    if (deadline_.is_max() || deadline_ <= now ||
++        deadline_ - now > base::Seconds(30)) {
++      Complete(false);
++      return;
++    }
++    snapshot_ = capture_.Run();
++    if (!snapshot_ || snapshot_->documents.size() > kMaximumDocuments) {
++      Complete(false);
++      return;
++    }
++    pending_ = snapshot_->documents.size();
++    const auto remaining = deadline_ - base::TimeTicks::Now();
++    if (remaining <= base::TimeDelta()) {
++      Complete(false);
++      return;
++    }
++    // The timeout owns only the reply, never a request/timer ownership cycle.
++    // Dropped document callbacks cannot suppress the caller's deadline reply.
++    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++        FROM_HERE, base::BindOnce(&Reply::Complete, reply_, false), remaining);
++    if (pending_ == 0) {
++      Complete(true);
++      return;
++    }
++    for (const auto& [frame, document] : snapshot_->documents) {
++      if (delivery_scheduled_) {
++        break;
++      }
++      drain_.Run(frame, document, deadline_,
++                 base::BindOnce(&DocumentCookieCheckpoint::OnDocument,
++                                base::RetainedRef(this)));
++    }
++  }
++
++  void OnDocument(bool success) {
++    if (!reply_->callback || delivery_scheduled_) {
++      return;
++    }
++    if (!success) {
++      Complete(false);
++      return;
++    }
++    CHECK_GT(pending_, 0u);
++    if (--pending_ == 0) {
++      Complete(true);
++    }
++  }
++
++  void Complete(bool success) {
++    if (!reply_->callback || delivery_scheduled_) {
++      return;
++    }
++    delivery_scheduled_ = true;
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&DocumentCookieCheckpoint::Deliver,
++                                  base::RetainedRef(this), success));
++  }
++
++  void Deliver(bool success) {
++    if (!reply_->callback) {
++      return;
++    }
++    // Recheck inside final posted delivery, not before posting it. This catches
++    // an early acknowledger writing while another document was still pending.
++    success = success && base::TimeTicks::Now() < deadline_ && snapshot_ &&
++              capture_.Run() == snapshot_;
++    Reply::Complete(reply_, success);
++  }
++
++  const base::TimeTicks deadline_;
++  Capture capture_;
++  Drain drain_;
++  const std::shared_ptr<Reply> reply_;
++  std::optional<Snapshot> snapshot_;
++  size_t pending_ = 0;
++  bool delivery_scheduled_ = false;
++};
++
++}  // namespace content
++#endif  // CONTENT_RENDERER_DOCUMENT_COOKIE_CHECKPOINT_H_

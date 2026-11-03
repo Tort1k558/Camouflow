@@ -1,5 +1,36 @@
 # Glint: план проверки и развития
 
+## 2026-11-03: R16 recovery source prepared; compilation remains open
+
+[R16](../native/drafts/upstream-156-recovery-r16/README.md) preserves all 154 R15
+patches and adds seven connected packets: existing-cookie-store checkpoint,
+explicit session-cookie restoration policy, retained producer-cohort validation,
+document-prefix commit coordination and its fixtures, renderer out-of-line
+lifecycle definitions, and capturing test callback bindings.
+
+The complete isolated chain applies and reverses all 161 patches: 481 final
+sources match and 338 upstream originals are restored. Its source-derived plan
+contains 225 declarations across seven binaries, including eight Chrome browser
+cases; all 175 R15 declarations remain. The prospective host runner passes 90
+host tests. The registered runner then passes the complete host regression:
+6202 passed, one skipped, zero failures; final targeted checks pass 100 cases.
+This is not native test execution or browser verification.
+
+R15's main build failed first on LLVM memory exhaustion, then on four Chromium
+style diagnostics in the inline renderer checkpoint lifecycle. The previous
+private C++ batch passed 12 of 13 translation units, including the renderer
+correction; the remaining capturing test callbacks are corrected in R16. The
+complete repeat passes all 13 translation units with the original Chromium style
+plugin enabled, an expected failing unmodified-renderer negative control, and
+final source/SDK/module postguards. R16 is registered without changing the R12
+default. Selection, full compilation, native execution and independent browser QA
+remain pending. The measured R11 runtime is preserved.
+
+A document-prefix commit is not an atomic whole-profile snapshot. Global mutation
+coordination, worker/HTTP producers, IndexedDB/CacheStorage, real crash-after-ack
+and session-cookie restoration, resource and package/update/rollback gates remain
+open. No manager feature is enabled by this preparation.
+
 ## 2026-11-03: R14 build failed; connected R15 registered
 
 R14 completed 851 build actions, then CookieJar failed because MainThread was

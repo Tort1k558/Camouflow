@@ -1,0 +1,193 @@
+diff --git a/content/browser/camouflow_native/glint/profile_producer_fence.h b/content/browser/camouflow_native/glint/profile_producer_fence.h
+--- a/content/browser/camouflow_native/glint/profile_producer_fence.h
++++ b/content/browser/camouflow_native/glint/profile_producer_fence.h
+@@ -63,8 +63,14 @@
+       content::BrowserContext* context,
+       base::TimeTicks deadline,
+       Callback callback,
+-      ProducerScope producers = ProducerScope::kLocalStorage);
++      ProducerScope producers = ProducerScope::kLocalStorage,
++      bool retain_cohort = false);
+   ~ProfileProducerFence() override;
++
++  // Only for explicitly retained, successfully acknowledged operations. Recheck
++  // after backend completion and again before caller delivery. Does not freeze
++  // mutations or turn a producer prefix into an atomic snapshot.
++  Status CheckRetainedCohort();
+ 
+   ProfileProducerFence(const ProfileProducerFence&) = delete;
+   ProfileProducerFence& operator=(const ProfileProducerFence&) = delete;
+@@ -76,7 +82,8 @@
+   ProfileProducerFence(content::BrowserContext* context,
+                        base::TimeTicks deadline,
+                        Callback callback,
+-                       ProducerScope producers);
++                       ProducerScope producers,
++                       bool retain_cohort);
+   void Begin();
+   Status Capture(std::set<content::ChildProcessId>& renderers,
+                  std::set<content::StoragePartitionConfig>& partitions);
+@@ -84,6 +91,7 @@
+   void Changed();
+   void Finish(Status status);
+   void Deliver(Status status);
++  Status Revalidate(Status status);
+ 
+   void RenderProcessReady(content::RenderProcessHost* host) override;
+   void RenderProcessExited(
+@@ -97,6 +105,8 @@
+   base::WeakPtr<content::BrowserContext> context_;
+   const base::TimeTicks deadline_;
+   const ProducerScope producers_;
++  const bool retain_cohort_;
++  bool acknowledged_ = false;
+   Callback callback_;
+   std::set<content::ChildProcessId> renderers_;
+   std::set<content::StoragePartitionConfig> partitions_;
+diff --git a/content/browser/camouflow_native/glint/profile_producer_fence.cc b/content/browser/camouflow_native/glint/profile_producer_fence.cc
+--- a/content/browser/camouflow_native/glint/profile_producer_fence.cc
++++ b/content/browser/camouflow_native/glint/profile_producer_fence.cc
+@@ -21,11 +21,13 @@
+     content::BrowserContext* context,
+     base::TimeTicks deadline,
+     Callback callback,
+-    ProducerScope producers) {
++    ProducerScope producers,
++    bool retain_cohort) {
+   CHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   CHECK(callback);
+-  auto operation = std::unique_ptr<ProfileProducerFence>(
+-      new ProfileProducerFence(context, deadline, std::move(callback), producers));
++  auto operation =
++      std::unique_ptr<ProfileProducerFence>(new ProfileProducerFence(
++          context, deadline, std::move(callback), producers, retain_cohort));
+   operation->Begin();
+   return operation;
+ }
+@@ -33,11 +35,13 @@
+ ProfileProducerFence::ProfileProducerFence(content::BrowserContext* context,
+                                            base::TimeTicks deadline,
+                                            Callback callback,
+-                                           ProducerScope producers)
++                                           ProducerScope producers,
++                                           bool retain_cohort)
+     : context_(context ? context->GetWeakPtr()
+                        : base::WeakPtr<content::BrowserContext>()),
+       deadline_(deadline),
+       producers_(producers),
++      retain_cohort_(retain_cohort),
+       callback_(std::move(callback)) {}
+ 
+ ProfileProducerFence::~ProfileProducerFence() {
+@@ -179,7 +183,7 @@
+                                 weak_factory_.GetWeakPtr(), status));
+ }
+ 
+-void ProfileProducerFence::Deliver(Status status) {
++ProfileProducerFence::Status ProfileProducerFence::Revalidate(Status status) {
+   if (!context_ || context_->ShutdownStarted()) {
+     status = Status::kOwnerGone;
+   } else if (status == Status::kAcknowledged) {
+@@ -195,7 +199,26 @@
+       status = Status::kTopologyChanged;
+     }
+   }
+-  observations_.RemoveAllObservations();
++  return status;
++}
++
++ProfileProducerFence::Status ProfileProducerFence::CheckRetainedCohort() {
++  CHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!retain_cohort_) {
++    return Status::kInvalidScope;
++  }
++  if (!acknowledged_) {
++    return Status::kNotReady;
++  }
++  return Revalidate(Status::kAcknowledged);
++}
++
++void ProfileProducerFence::Deliver(Status status) {
++  status = Revalidate(status);
++  acknowledged_ = status == Status::kAcknowledged;
++  if (!retain_cohort_ || !acknowledged_) {
++    observations_.RemoveAllObservations();
++  }
+   auto callback = std::move(callback_);
+   std::move(callback).Run(
+       Result{status, renderers_.size(), partitions_.size()});
+diff --git a/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc b/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc
+--- a/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc
++++ b/content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc
+@@ -80,6 +80,71 @@
+   content::TestBrowserContext context_;
+ };
+ 
++TEST_F(ProfileProducerFenceTest,
++       RetainedCohortRequiresCompletedAcknowledgment) {
++  CheckpointHost host(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kLocalStorage, true);
++  EXPECT_EQ(operation->CheckRetainedCohort(), Status::kNotReady);
++  host.Reply(true);
++  EXPECT_EQ(result.Get().status, Status::kAcknowledged);
++  EXPECT_EQ(operation->CheckRetainedCohort(), Status::kAcknowledged);
++}
++
++TEST_F(ProfileProducerFenceTest, RetainedCohortRejectsRendererLossAfterAck) {
++  auto host = std::make_unique<CheckpointHost>(&context_);
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kLocalStorage, true);
++  host->Reply(true);
++  ASSERT_EQ(result.Get().status, Status::kAcknowledged);
++  host.reset();
++  EXPECT_EQ(operation->CheckRetainedCohort(), Status::kTopologyChanged);
++}
++
++TEST_F(ProfileProducerFenceTest, RetainedCohortLatchesTransientNewRenderer) {
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kLocalStorage, true);
++  ASSERT_EQ(result.Get().status, Status::kAcknowledged);
++  {
++    CheckpointHost transient(&context_);
++  }
++  EXPECT_EQ(operation->CheckRetainedCohort(), Status::kTopologyChanged);
++}
++
++TEST_F(ProfileProducerFenceTest, RetainedCohortRejectsNewPartitionAfterAck) {
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kLocalStorage, true);
++  ASSERT_EQ(result.Get().status, Status::kAcknowledged);
++  ASSERT_NE(context_.GetDefaultStoragePartition(), nullptr);
++  EXPECT_EQ(operation->CheckRetainedCohort(), Status::kTopologyChanged);
++}
++
++TEST_F(ProfileProducerFenceTest, RetainedCohortKeepsOriginalDeadline) {
++  base::test::TestFuture<Result> result;
++  auto operation = ProfileProducerFence::Start(
++      &context_, Deadline(), result.GetCallback(),
++      ProfileProducerFence::ProducerScope::kLocalStorage, true);
++  ASSERT_EQ(result.Get().status, Status::kAcknowledged);
++  environment_.AdvanceClock(base::Seconds(5));
++  EXPECT_EQ(operation->CheckRetainedCohort(), Status::kTimedOut);
++}
++
++TEST_F(ProfileProducerFenceTest, DefaultOperationCannotAuthorizeBackendPhase) {
++  base::test::TestFuture<Result> result;
++  auto operation =
++      ProfileProducerFence::Start(&context_, Deadline(), result.GetCallback());
++  ASSERT_EQ(result.Get().status, Status::kAcknowledged);
++  EXPECT_EQ(operation->CheckRetainedCohort(), Status::kInvalidScope);
++}
++
+ TEST_F(ProfileProducerFenceTest, CombinedWaitsForBothKindsAcrossRenderers) {
+   CheckpointHost first(&context_);
+   CheckpointHost second(&context_);

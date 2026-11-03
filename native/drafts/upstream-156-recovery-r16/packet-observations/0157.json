@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Source packet with Git diff metadata normalization; native execution pending",
+  "patch": "0157-retained-producer-cohort.patch",
+  "original_patch_sha256": "35923d324e07e4267053827ef7ef70c5b3d2e9e7ea18329aa4d6d859fd5c5d9f",
+  "normalized_patch_sha256": "466e528695c3a18fbface3062057c9eaf3f7a677ab46f9aac0ae66cbcd57fedb",
+  "before_source_sha256": {
+    "content/browser/camouflow_native/glint/profile_producer_fence.h": "29250167f31d4f5cc251813ae1270bbf20a578ee148ac84457dd3d1441a0cd75",
+    "content/browser/camouflow_native/glint/profile_producer_fence.cc": "bd468fa1da37ab2f4c052d91ab13825dcf40fa38caae30a3a0c8563820ca6966",
+    "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc": "9f1bf63e4c393230aa33111384a5f0608043e9e7831b3ad69b1383a634157454"
+  },
+  "final_source_sha256": {
+    "content/browser/camouflow_native/glint/profile_producer_fence.h": "bf7042c50affe9461ef880f4771cc1ece1e901ef83e20cd2d61c5c3397901dda",
+    "content/browser/camouflow_native/glint/profile_producer_fence.cc": "1286189707cf6973b40b508c590c9ae8965500a3a74fd4dae6e0b073b7efdf18",
+    "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc": "b356c8cce78344872b4e11f842b76bfdb91b3174c4a3febf16a9f43fa822dd1f"
+  },
+  "source_files": [
+    "content/browser/camouflow_native/glint/profile_producer_fence.h",
+    "content/browser/camouflow_native/glint/profile_producer_fence.cc",
+    "content/browser/camouflow_native/glint/profile_producer_fence_unittest.cc"
+  ],
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

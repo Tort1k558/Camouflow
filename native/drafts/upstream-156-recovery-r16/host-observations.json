@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Python host regression and source checks only; not native/browser execution",
+  "full_host": {
+    "passed": 6202,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0,
+    "junit_sha256": "fa434d9b510b062bd30aa3e591de65035b87499f9db3e2dec6aca1aaf4d32619",
+    "log_sha256": "87e122c455e14c2d888e20fd62c455c31cbb190a26793c08e3fd7d3ca9f2f6e0"
+  },
+  "final_targeted_host": {
+    "passed": 100,
+    "junit_sha256": "b3838256f38bbd876ed45bb39f9cbf7dcee6dd9ac359c6f12570a702a0140927"
+  },
+  "lint_target": "py312",
+  "native_executed": false,
+  "browser_runtime_verified": false,
+  "production_admitted": false
+}

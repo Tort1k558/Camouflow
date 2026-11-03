@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Source packet with Git diff metadata normalization; native execution pending",
+  "patch": "0156-session-cookie-policy.patch",
+  "original_patch_sha256": "f08b6a4dfe5f30b170035c23110d5b6656c6bf3fb397b54dfb66208a49dd3b29",
+  "normalized_patch_sha256": "8fcc5955d6abe4a01934000bc9bf57c420e6e3453f4d20efac02d3c569ee46c3",
+  "before_source_sha256": {
+    "chrome/browser/net/profile_network_context_service.h": "108659b286cb60cc3a15db8b5413f248d3b1b2b32fb1c39f8cecf8c9751bf2b3",
+    "chrome/browser/net/profile_network_context_service.cc": "d26336c8ec47e5c292916cd24ea158134f2a993bfec458f5ea41d529f55b365a",
+    "chrome/browser/net/profile_network_context_service_browsertest.cc": "5433a1a2bb2c832ef1aeb296af9e067e4fb467bd78dbf4fcbcc5f2d91202ea54"
+  },
+  "final_source_sha256": {
+    "chrome/browser/net/profile_network_context_service.h": "7e73e2f02f5afe2015b6539669176ade4e8f0be41ab2f752fc2df01eddd785f7",
+    "chrome/browser/net/profile_network_context_service.cc": "a2b8c04af453627e6aee490ce48140aa2eb09aca3a9db9cb8fb07bcab182d1fd",
+    "chrome/browser/net/profile_network_context_service_browsertest.cc": "3713f57cc9722b1cef1089f416779f0ea8c8b5da7d8ee6b4a1c733ea61b13f1f"
+  },
+  "source_files": [
+    "chrome/browser/net/profile_network_context_service.h",
+    "chrome/browser/net/profile_network_context_service.cc",
+    "chrome/browser/net/profile_network_context_service_browsertest.cc"
+  ],
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

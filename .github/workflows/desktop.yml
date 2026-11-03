@@ -68,7 +68,7 @@ jobs:
         run: python -m compileall -q app main.py scripts
 
       - name: Undefined names and syntax errors
-        run: ruff check app scripts --select F821,F822,F823,E9
+        run: ruff check app scripts --select F821,F822,F823,E9 --target-version py312
 
   qml-smoke:
     env:

@@ -1,0 +1,683 @@
+diff --git a/third_party/blink/public/web/web_storage_checkpoint.h b/third_party/blink/public/web/web_storage_checkpoint.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/web/web_storage_checkpoint.h
+@@ -0,0 +1,25 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_STORAGE_CHECKPOINT_H_
++#define THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_STORAGE_CHECKPOINT_H_
++
++#include "base/functional/callback_forward.h"
++#include "base/time/time.h"
++#include "third_party/blink/public/platform/web_common.h"
++
++namespace blink {
++
++class BLINK_EXPORT WebStorageCheckpoint {
++ public:
++  // Renderer main thread only. Fences existing localStorage producers, not disk
++  // commits or a whole profile. Requires a finite deadline; never creates a
++  // storage controller solely to manufacture a successful result.
++  static void FenceLocalStorage(base::TimeTicks deadline,
++                                base::OnceCallback<void(bool)> callback);
++};
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_PUBLIC_WEB_WEB_STORAGE_CHECKPOINT_H_
+diff --git a/third_party/blink/public/BUILD.gn b/third_party/blink/public/BUILD.gn
+--- a/third_party/blink/public/BUILD.gn
++++ b/third_party/blink/public/BUILD.gn
+@@ -377,6 +377,7 @@
+     "web/web_shared_worker.h",
+     "web/web_shared_worker_client.h",
+     "web/web_spelling_marker.h",
++    "web/web_storage_checkpoint.h",
+     "web/web_testing_support.h",
+     "web/web_text_check_client.h",
+     "web/web_text_checking_completion.h",
+diff --git a/third_party/blink/renderer/modules/storage/storage_controller.h b/third_party/blink/renderer/modules/storage/storage_controller.h
+--- a/third_party/blink/renderer/modules/storage/storage_controller.h
++++ b/third_party/blink/renderer/modules/storage/storage_controller.h
+@@ -46,6 +46,7 @@
+  public:
+   // Returns the one global StorageController instance.
+   static StorageController* GetInstance();
++  static StorageController* GetExistingInstance();
+ 
+   static bool CanAccessStorageArea(LocalFrame* frame,
+                                    StorageArea::StorageType type);
+diff --git a/third_party/blink/renderer/modules/storage/storage_controller.cc b/third_party/blink/renderer/modules/storage/storage_controller.cc
+--- a/third_party/blink/renderer/modules/storage/storage_controller.cc
++++ b/third_party/blink/renderer/modules/storage/storage_controller.cc
+@@ -14,6 +14,7 @@
+ #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
+ #include "third_party/blink/public/platform/platform.h"
+ #include "third_party/blink/public/platform/web_content_settings_client.h"
++#include "third_party/blink/public/web/web_storage_checkpoint.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/modules/storage/cached_storage_area.h"
+ #include "third_party/blink/renderer/modules/storage/storage_namespace.h"
+@@ -25,6 +26,8 @@
+ namespace blink {
+ 
+ namespace {
++
++StorageController* g_checkpoint_storage_controller = nullptr;
+ 
+ const size_t kStorageControllerTotalCacheLimitInBytesLowEnd = 1 * 1024 * 1024;
+ const size_t kStorageControllerTotalCacheLimitInBytes = 5 * 1024 * 1024;
+@@ -51,7 +54,36 @@
+                        base::SysInfo::IsLowEndDeviceOrPartialLowEndModeEnabled()
+                            ? kStorageControllerTotalCacheLimitInBytesLowEnd
+                            : kStorageControllerTotalCacheLimitInBytes));
++  g_checkpoint_storage_controller = &gCachedStorageAreaController;
+   return &gCachedStorageAreaController;
++}
++
++StorageController* StorageController::GetExistingInstance() {
++  CHECK(Thread::MainThread()->IsCurrentThread());
++  return g_checkpoint_storage_controller;
++}
++
++void WebStorageCheckpoint::FenceLocalStorage(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  CHECK(Thread::MainThread()->IsCurrentThread());
++  CHECK(callback);
++  StorageController* existing = StorageController::GetExistingInstance();
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](StorageController* captured, base::TimeTicks deadline,
++         base::OnceCallback<void(bool)> callback, bool success) {
++        std::move(callback).Run(success && base::TimeTicks::Now() < deadline &&
++                                StorageController::GetExistingInstance() ==
++                                    captured);
++      },
++      existing, deadline, std::move(callback)));
++  if (deadline.is_max() || deadline <= base::TimeTicks::Now()) {
++    std::move(reply).Run(false);
++  } else if (existing) {
++    existing->FenceLocalStorageForCheckpoint(deadline, std::move(reply));
++  } else {
++    std::move(reply).Run(true);
++  }
+ }
+ 
+ // static
+diff --git a/third_party/blink/renderer/modules/storage/storage_controller_test.cc b/third_party/blink/renderer/modules/storage/storage_controller_test.cc
+--- a/third_party/blink/renderer/modules/storage/storage_controller_test.cc
++++ b/third_party/blink/renderer/modules/storage/storage_controller_test.cc
+@@ -18,6 +18,7 @@
+ #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/common/tokens/tokens.h"
+ #include "third_party/blink/public/platform/scheduler/test/renderer_scheduler_test_support.h"
++#include "third_party/blink/public/web/web_storage_checkpoint.h"
+ #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/modules/storage/cached_storage_area.h"
+@@ -542,4 +543,28 @@
+   }
+ }
+ 
++TEST(StorageControllerTest,
++     CheckpointFacadeRejectsExpiredDeadlineWithoutCreation) {
++  test::TaskEnvironment environment;
++  StorageController* before = StorageController::GetExistingInstance();
++  base::test::TestFuture<bool> result;
++  WebStorageCheckpoint::FenceLocalStorage(base::TimeTicks::Now(),
++                                          result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(before, StorageController::GetExistingInstance());
++}
++
++TEST(StorageControllerTest,
++     CheckpointFacadeRejectsUnboundedDeadlineWithoutCreation) {
++  test::TaskEnvironment environment;
++  StorageController* before = StorageController::GetExistingInstance();
++  base::test::TestFuture<bool> result;
++  WebStorageCheckpoint::FenceLocalStorage(base::TimeTicks::Max(),
++                                          result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(before, StorageController::GetExistingInstance());
++}
++
+ }  // namespace blink
+diff --git a/content/common/storage_checkpoint.mojom b/content/common/storage_checkpoint.mojom
+new file mode 100644
+--- /dev/null
++++ b/content/common/storage_checkpoint.mojom
+@@ -0,0 +1,17 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++module content.mojom;
++
++import "mojo/public/mojom/base/time.mojom";
++import "sandbox/policy/mojom/context.mojom";
++
++// Separate browser-owned endpoint; the primordial Renderer protocol is unchanged.
++interface StorageCheckpoint {
++  // Producer acknowledgment only, not a database commit or profile checkpoint.
++  // Version 1 is deliberately required: an absent/old endpoint must fail closed.
++  [MinVersion=1, AllowedContext=sandbox.mojom.Context.kBrowser]
++  FenceLocalStorageForCheckpoint(mojo_base.mojom.TimeTicks deadline)
++      => (bool success);
++};
+diff --git a/content/renderer/render_thread_impl.h b/content/renderer/render_thread_impl.h
+--- a/content/renderer/render_thread_impl.h
++++ b/content/renderer/render_thread_impl.h
+@@ -40,6 +40,7 @@
+ #include "content/common/render_message_filter.mojom.h"
+ #include "content/common/renderer.mojom.h"
+ #include "content/common/renderer_host.mojom.h"
++#include "content/common/storage_checkpoint.mojom.h"
+ #include "content/public/renderer/render_thread.h"
+ #include "content/renderer/blink_isolates_pressure_listener.h"
+ #include "content/renderer/memory_reclaimer_pressure_listener.h"
+@@ -53,6 +54,7 @@
+ #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/receiver.h"
++#include "mojo/public/cpp/bindings/receiver_set.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+ #include "net/base/network_change_notifier.h"
+ #include "net/nqe/effective_connection_type.h"
+@@ -118,9 +120,12 @@
+     : public RenderThread,
+       public ChildThreadImpl,
+       public mojom::Renderer,
++      public mojom::StorageCheckpoint,
+       public viz::mojom::CompositingModeWatcher {
+  public:
+   static RenderThreadImpl* current();
++  void BindStorageCheckpoint(
++      mojo::PendingReceiver<mojom::StorageCheckpoint> receiver);
+ 
+   // Returns the task runner for the main thread where the RenderThread lives.
+   static scoped_refptr<base::SingleThreadTaskRunner>
+@@ -420,6 +425,9 @@
+   void SetProcessState(base::Process::Priority priority,
+                        mojom::RenderProcessVisibleState visible_state) override;
+   void SetIsLockedToSite() override;
++  void FenceLocalStorageForCheckpoint(
++      base::TimeTicks deadline,
++      FenceLocalStorageForCheckpointCallback callback) override;
+ #if BUILDFLAG(CLANG_PROFILING_INSIDE_SANDBOX)
+   void WriteClangProfilingProfile(
+       WriteClangProfilingProfileCallback callback) override;
+@@ -599,6 +607,8 @@
+   std::optional<base::ThreadPoolInstance::ScopedRestrictedTasks>
+       restrict_thread_pool_;
+ 
++  mojo::ReceiverSet<mojom::StorageCheckpoint> storage_checkpoint_receivers_;
++  size_t storage_checkpoint_calls_ = 0;
+   base::WeakPtrFactory<RenderThreadImpl> weak_factory_{this};
+ };
+ 
+diff --git a/content/renderer/render_thread_impl.cc b/content/renderer/render_thread_impl.cc
+--- a/content/renderer/render_thread_impl.cc
++++ b/content/renderer/render_thread_impl.cc
+@@ -3,7 +3,6 @@
+ // found in the LICENSE file.
+ 
+ #include "content/renderer/render_thread_impl.h"
+-#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+ 
+ #include <algorithm>
+ #include <atomic>
+@@ -141,6 +140,7 @@
+ #include "skia/ext/font_utils.h"
+ #include "skia/ext/skia_memory_dump_provider.h"
+ #include "third_party/blink/public/common/features.h"
++#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+ #include "third_party/blink/public/common/origin_trials/origin_trials_settings_provider.h"
+ #include "third_party/blink/public/common/page/launching_process_state.h"
+ #include "third_party/blink/public/common/switches.h"
+@@ -161,6 +161,7 @@
+ #include "third_party/blink/public/web/web_frame.h"
+ #include "third_party/blink/public/web/web_render_theme.h"
+ #include "third_party/blink/public/web/web_security_policy.h"
++#include "third_party/blink/public/web/web_storage_checkpoint.h"
+ #include "third_party/blink/public/web/web_user_level_memory_pressure_signal_generator.h"
+ #include "third_party/blink/public/web/web_v8_features.h"
+ #include "third_party/blink/public/web/web_view.h"
+@@ -1340,6 +1341,44 @@
+   blink::SetBatterySaverModeForAllIsolates(battery_saver_mode_enabled);
+ }
+ 
++void RenderThreadImpl::BindStorageCheckpoint(
++    mojo::PendingReceiver<mojom::StorageCheckpoint> receiver) {
++  if (storage_checkpoint_receivers_.size() >= 64) {
++    return;
++  }
++  storage_checkpoint_receivers_.Add(this, std::move(receiver));
++}
++
++void RenderThreadImpl::FenceLocalStorageForCheckpoint(
++    base::TimeTicks deadline,
++    FenceLocalStorageForCheckpointCallback callback) {
++  const bool admitted = !deadline.is_max() &&
++                        deadline > base::TimeTicks::Now() &&
++                        storage_checkpoint_calls_ < 64;
++  if (admitted) {
++    ++storage_checkpoint_calls_;
++  }
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](base::WeakPtr<RenderThreadImpl> owner, base::TimeTicks deadline,
++         bool admitted, FenceLocalStorageForCheckpointCallback callback,
++         bool success) {
++        if (owner && admitted) {
++          CHECK_GT(owner->storage_checkpoint_calls_, 0u);
++          --owner->storage_checkpoint_calls_;
++        }
++        std::move(callback).Run(success && owner &&
++                                base::TimeTicks::Now() < deadline);
++      },
++      weak_factory_.GetWeakPtr(), deadline, admitted, std::move(callback)));
++  if (!admitted) {
++    std::move(reply).Run(false);
++    return;
++  }
++  blink::WebStorageCheckpoint::FenceLocalStorage(
++      deadline,
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(reply), false));
++}
++
+ void RenderThreadImpl::SetIsLockedToSite() {
+   DCHECK(blink_platform_impl_);
+   blink_platform_impl_->SetIsLockedToSite();
+diff --git a/content/renderer/render_thread_impl_unittest.cc b/content/renderer/render_thread_impl_unittest.cc
+--- a/content/renderer/render_thread_impl_unittest.cc
++++ b/content/renderer/render_thread_impl_unittest.cc
+@@ -94,4 +94,9 @@
+   EXPECT_FALSE(histogram_customizer_.IsAlexaTop10NonGoogleSite("madeup"));
+ }
+ 
++TEST_F(RenderThreadImplUnittest, CheckpointRendererInterfaceHasVersionOne) {
++  EXPECT_EQ(1u, mojom::StorageCheckpoint::Version_);
++  EXPECT_EQ(0u, mojom::Renderer::Version_);
++}
++
+ }  // namespace content
+diff --git a/content/public/browser/render_process_host.h b/content/public/browser/render_process_host.h
+--- a/content/public/browser/render_process_host.h
++++ b/content/public/browser/render_process_host.h
+@@ -21,6 +21,7 @@
+ #include "base/process/kill.h"
+ #include "base/process/process.h"
+ #include "base/supports_user_data.h"
++#include "base/time/time.h"
+ #include "build/build_config.h"
+ #include "content/common/buildflags.h"
+ #include "content/common/content_export.h"
+@@ -640,6 +641,13 @@
+   // internal use only, and is only exposed here to support
+   // MockRenderProcessHost usage in tests.
+   virtual mojom::Renderer* GetRendererInterface() = 0;
++
++  // Browser UI thread only; fences this live renderer's localStorage producers.
++  // Unsupported hosts reject asynchronously. Does not start a renderer, commit
++  // a database or advertise whole-profile checkpoint support.
++  virtual void FenceLocalStorageForCheckpoint(
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback);
+ 
+   // Whether this process is locked out from ever being reused for sites other
+   // than the ones it currently has.
+diff --git a/content/browser/renderer_host/render_process_host_impl.h b/content/browser/renderer_host/render_process_host_impl.h
+--- a/content/browser/renderer_host/render_process_host_impl.h
++++ b/content/browser/renderer_host/render_process_host_impl.h
+@@ -49,6 +49,7 @@
+ #include "content/common/media/media_log_records.mojom-forward.h"
+ #include "content/common/renderer.mojom.h"
+ #include "content/common/renderer_host.mojom.h"
++#include "content/common/storage_checkpoint.mojom.h"
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/process_allocation_context.h"
+@@ -335,6 +336,9 @@
+   void DisableRefCounts() override;
+   bool AreRefCountsDisabled() override;
+   mojom::Renderer* GetRendererInterface() override;
++  void FenceLocalStorageForCheckpoint(
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback) override;
+ 
+   blink::mojom::CallStackGenerator* GetJavaScriptCallStackGeneratorInterface();
+ 
+@@ -1709,6 +1713,9 @@
+   // Most cases should use this factory, so the resulting WeakPtrs are no longer
+   // valid after DeleteSoon is called, when the RenderProcessHost is in a partly
+   // torn-down state.
++  mojo::Remote<mojom::StorageCheckpoint> storage_checkpoint_interface_;
++  uint64_t storage_checkpoint_interface_generation_ = 0;
++  size_t storage_checkpoint_wire_calls_ = 0;
+   base::WeakPtrFactory<RenderProcessHostImpl> instance_weak_factory_{this};
+ 
+   // A WeakPtrFactory which should only be used for creating SafeRefs. All other
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -5,11 +5,7 @@
+ // Represents the browser side of the browser <--> renderer communication
+ // channel. There will be one RenderProcessHost per renderer process.
+ 
+-#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
+-#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #include "content/browser/renderer_host/render_process_host_impl.h"
+-
+-#include "content/browser/renderer_host/camouflow_hardware_limits.h"
+ 
+ #include <algorithm>
+ #include <atomic>
+@@ -42,6 +38,7 @@
+ #include "base/memory/ptr_util.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/read_only_shared_memory_region.h"
++#include "base/memory/ref_counted.h"
+ #include "base/memory/structured_shared_memory.h"
+ #include "base/memory/unsafe_shared_memory_region.h"
+ #include "base/message_loop/message_pump_type.h"
+@@ -65,17 +62,24 @@
+ #include "base/strings/stringprintf.h"
+ #include "base/supports_user_data.h"
+ #include "base/system/sys_info.h"
++#include "base/task/bind_post_task.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/task/thread_pool.h"
+ #include "base/threading/thread.h"
+ #include "base/threading/thread_restrictions.h"
+ #include "base/time/time.h"
++#include "base/timer/timer.h"
+ #include "base/trace_event/memory_dump_manager.h"
+ #include "base/trace_event/trace_event.h"
+ #include "base/trace_event/typed_macros.h"
+ #include "base/tracing/protos/chrome_track_event.pbzero.h"
+ #include "build/build_config.h"
++#include "content/browser/renderer_host/camouflow_hardware_limits.h"
++#include "content/common/storage_checkpoint.mojom.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "third_party/blink/public/common/native_privacy/glint/canvas_rendering_command.h"
++#include "third_party/blink/public/common/native_privacy/glint/profile_surface_activation.h"
+ #if BUILDFLAG(IS_WIN)
+ #include "ui/gfx/win/glint_font_rasterization_policy.h"
+ #endif
+@@ -3199,6 +3203,114 @@
+   return are_ref_counts_disabled_;
+ }
+ 
++void RenderProcessHost::FenceLocalStorageForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  base::BindPostTaskToCurrentDefault(std::move(callback)).Run(false);
++}
++
++void RenderProcessHostImpl::FenceLocalStorageForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  CHECK_CURRENTLY_ON(BrowserThread::UI);
++  CHECK(callback);
++  auto owner = instance_weak_factory_.GetWeakPtr();
++  const bool admitted =
++      !deadline.is_max() && deadline > base::TimeTicks::Now() &&
++      IsInitializedAndNotDead() && IsReady() &&
++      renderer_interface_.is_bound() && storage_checkpoint_wire_calls_ < 64;
++  if (admitted && !storage_checkpoint_interface_.is_bound()) {
++    CHECK_LT(storage_checkpoint_interface_generation_,
++             std::numeric_limits<uint64_t>::max());
++    ++storage_checkpoint_interface_generation_;
++    BindReceiver(storage_checkpoint_interface_.BindNewPipeAndPassReceiver());
++    storage_checkpoint_interface_.reset_on_disconnect();
++  }
++  auto posted = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](base::WeakPtr<RenderProcessHostImpl> owner, uint64_t generation,
++         base::TimeTicks deadline, base::OnceCallback<void(bool)> callback,
++         bool success) {
++        std::move(callback).Run(
++            success && owner &&
++            owner->storage_checkpoint_interface_generation_ == generation &&
++            owner->storage_checkpoint_interface_.is_bound() &&
++            owner->storage_checkpoint_interface_.is_connected() &&
++            owner->IsReady() && owner->IsInitializedAndNotDead() &&
++            base::TimeTicks::Now() < deadline);
++      },
++      owner, storage_checkpoint_interface_generation_, deadline,
++      std::move(callback)));
++  if (!admitted) {
++    std::move(posted).Run(false);
++    return;
++  }
++  ++storage_checkpoint_wire_calls_;
++  // Keep the wire slot until its callback settles, even after a deadline. A
++  // hung live renderer cannot accumulate unbounded timed-out Mojo callbacks.
++  base::ScopedClosureRunner slot(base::BindOnce(
++      [](base::WeakPtr<RenderProcessHostImpl> owner) {
++        if (owner) {
++          CHECK_GT(owner->storage_checkpoint_wire_calls_, 0u);
++          --owner->storage_checkpoint_wire_calls_;
++        }
++      },
++      owner));
++  using ReplyState = base::RefCountedData<base::OnceCallback<void(bool)>>;
++  auto reply = base::MakeRefCounted<ReplyState>(std::move(posted));
++  auto complete = [](scoped_refptr<ReplyState> state, bool success) {
++    if (state->data) {
++      std::move(state->data).Run(success);
++    }
++  };
++  auto timer = std::make_unique<base::OneShotTimer>();
++  timer->Start(FROM_HERE, deadline - base::TimeTicks::Now(),
++               base::BindOnce(complete, reply, false));
++  storage_checkpoint_interface_.QueryVersion(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindOnce(
++              [](base::WeakPtr<RenderProcessHostImpl> owner,
++                 uint64_t generation, base::TimeTicks deadline,
++                 scoped_refptr<ReplyState> reply,
++                 std::unique_ptr<base::OneShotTimer> timer,
++                 base::ScopedClosureRunner slot, uint32_t version) {
++                if (!reply->data) {
++                  return;
++                }
++                if (!owner ||
++                    owner->storage_checkpoint_interface_generation_ !=
++                        generation ||
++                    !owner->storage_checkpoint_interface_.is_bound() ||
++                    !owner->storage_checkpoint_interface_.is_connected() ||
++                    version < 1 || !owner->IsReady() ||
++                    !owner->IsInitializedAndNotDead() ||
++                    base::TimeTicks::Now() >= deadline) {
++                  timer->Stop();
++                  std::move(reply->data).Run(false);
++                  return;
++                }
++                owner->storage_checkpoint_interface_
++                    ->FenceLocalStorageForCheckpoint(
++                        deadline,
++                        mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++                            base::BindOnce(
++                                [](scoped_refptr<ReplyState> reply,
++                                   std::unique_ptr<base::OneShotTimer> timer,
++                                   base::ScopedClosureRunner slot,
++                                   bool success) {
++                                  timer->Stop();
++                                  if (reply->data) {
++                                    std::move(reply->data).Run(success);
++                                  }
++                                },
++                                std::move(reply), std::move(timer),
++                                std::move(slot)),
++                            false));
++              },
++              owner, storage_checkpoint_interface_generation_, deadline, reply,
++              std::move(timer), std::move(slot)),
++          0u));
++}
++
+ mojom::Renderer* RenderProcessHostImpl::GetRendererInterface() {
+   return renderer_interface_.get();
+ }
+@@ -5852,6 +5964,8 @@
+     storage_partition_impl_->UnbindDomStorage(receiver_id);
+ 
+   instance_weak_factory_.InvalidateWeakPtrs();
++  storage_checkpoint_wire_calls_ = 0;
++  storage_checkpoint_interface_.reset();
+ 
+   // It's important not to wait for the DeleteTask to delete the channel
+   // proxy. Kill it off now. That way, in case the profile is going away, the
+diff --git a/content/browser/renderer_host/render_process_host_unittest.cc b/content/browser/renderer_host/render_process_host_unittest.cc
+--- a/content/browser/renderer_host/render_process_host_unittest.cc
++++ b/content/browser/renderer_host/render_process_host_unittest.cc
+@@ -12,6 +12,7 @@
+ #include "base/run_loop.h"
+ #include "base/test/metrics/histogram_tester.h"
+ #include "base/test/scoped_feature_list.h"
++#include "base/test/test_future.h"
+ #include "build/build_config.h"
+ #include "content/browser/renderer_host/render_process_host_impl.h"
+ #include "content/browser/renderer_host/spare_render_process_host_manager_impl.h"
+@@ -1411,4 +1412,16 @@
+             contents2->GetPrimaryMainFrame()->GetProcess());
+ }
+ 
++TEST_F(RenderProcessHostUnitTest,
++       CheckpointUnsupportedHostRejectsWithoutStartingRenderer) {
++  MockRenderProcessHost host(browser_context());
++  const bool before = host.IsInitializedAndNotDead();
++  base::test::TestFuture<bool> result;
++  host.FenceLocalStorageForCheckpoint(base::TimeTicks::Now() + base::Seconds(5),
++                                      result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(before, host.IsInitializedAndNotDead());
++}
++
+ }  // namespace content
+diff --git a/content/common/BUILD.gn b/content/common/BUILD.gn
+--- a/content/common/BUILD.gn
++++ b/content/common/BUILD.gn
+@@ -454,6 +454,7 @@
+     "renderer.mojom",
+     "renderer_host.mojom",
+     "renderer_variations_configuration.mojom",
++    "storage_checkpoint.mojom",
+     "synthetic_trial_configuration.mojom",
+     "web_ui.mojom",
+   ]
+@@ -590,6 +591,7 @@
+     "//media/capture/mojom:video_capture",
+     "//media/mojo/mojom",
+     "//mojo/public/mojom/base",
++    "//sandbox/policy/mojom",
+     "//services/audio/public/mojom",
+     "//services/network/public/mojom",
+     "//services/network/public/mojom:mojom_permissions_policy",
+diff --git a/content/renderer/browser_exposed_renderer_interfaces.cc b/content/renderer/browser_exposed_renderer_interfaces.cc
+--- a/content/renderer/browser_exposed_renderer_interfaces.cc
++++ b/content/renderer/browser_exposed_renderer_interfaces.cc
+@@ -22,6 +22,7 @@
+ #include "components/vrp_flags/buildflags.h"
+ #include "content/common/features.h"
+ #include "content/common/frame.mojom.h"
++#include "content/common/storage_checkpoint.mojom.h"
+ #include "content/public/common/content_client.h"
+ #include "content/public/common/resource_usage_reporter.mojom.h"
+ #include "content/public/common/resource_usage_reporter_type_converters.h"
+@@ -215,6 +216,10 @@
+     mojo::BinderMap* binders) {
+   DCHECK(render_thread);
+ 
++  binders->Add<mojom::StorageCheckpoint>(
++      base::BindRepeating(&RenderThreadImpl::BindStorageCheckpoint,
++                          render_thread),
++      base::SingleThreadTaskRunner::GetCurrentDefault());
+   binders->Add<blink::mojom::SharedWorkerFactory>(
+       &SharedWorkerFactoryImpl::Create,
+       base::SingleThreadTaskRunner::GetCurrentDefault());
+diff --git a/content/browser/renderer_host/render_process_host_browsertest.cc b/content/browser/renderer_host/render_process_host_browsertest.cc
+--- a/content/browser/renderer_host/render_process_host_browsertest.cc
++++ b/content/browser/renderer_host/render_process_host_browsertest.cc
+@@ -3065,4 +3065,75 @@
+   EXPECT_TRUE(future.Get());
+ }
+ 
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       CheckpointLiveRendererProducerFence) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  ASSERT_TRUE(
++      ExecJs(shell(), "localStorage.setItem('checkpoint-producer', 'value')"));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  base::test::TestFuture<bool> result;
++  host->FenceLocalStorageForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(10), result.GetCallback());
++  EXPECT_TRUE(result.Get());
++  EXPECT_EQ("value",
++            EvalJs(shell(), "localStorage.getItem('checkpoint-producer')"));
++}
++
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       CheckpointExpiredDeadlinePreservesRenderer) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  base::test::TestFuture<bool> result;
++  host->FenceLocalStorageForCheckpoint(base::TimeTicks::Now(),
++                                       result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(2, EvalJs(shell(), "1 + 1"));
++}
++
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       CheckpointRendererExitRejectsInflightFence) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  ScopedAllowRendererCrashes allow(host);
++  RenderProcessHostWatcher exit(
++      host, RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
++  base::test::TestFuture<bool> result;
++  host->FenceLocalStorageForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(10), result.GetCallback());
++  ASSERT_TRUE(host->Shutdown(0));
++  exit.Wait();
++  EXPECT_FALSE(result.Get());
++}
++
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       CheckpointHungRendererUsesBrowserDeadline) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  ScopedAllowRendererCrashes allow(host);
++  DOMMessageQueue messages(shell()->web_contents());
++  ExecuteScriptAsync(
++      shell(),
++      "domAutomationController.send('checkpoint-busy'); while (true) {}");
++  std::string message;
++  ASSERT_TRUE(messages.WaitForMessage(&message));
++  ASSERT_EQ(JsReplace("$1", "checkpoint-busy"), message);
++  base::test::TestFuture<bool> result;
++  host->FenceLocalStorageForCheckpoint(
++      base::TimeTicks::Now() + base::Milliseconds(100), result.GetCallback());
++  EXPECT_FALSE(result.Get());
++  RenderProcessHostWatcher exit(
++      host, RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
++  ASSERT_TRUE(host->Shutdown(0));
++  exit.Wait();
++}
++
+ }  // namespace content

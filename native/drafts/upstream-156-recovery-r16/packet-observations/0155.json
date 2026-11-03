@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Source packet with Git diff metadata normalization; native execution pending",
+  "patch": "0155-cookie-checkpoint-owner.patch",
+  "original_patch_sha256": "6171958deedacde91968ff2159f40a265c0982da56f3dc7811a14e110e9c7a0e",
+  "normalized_patch_sha256": "d89e69b3a6914fcc1329c49c7b59255b2bd9b2b9c05d8ecb3c2d2bee9de3950f",
+  "before_source_sha256": {
+    "content/browser/storage_partition_impl.h": "1ed36c683817fbea22daf0266a8910172f3a0b14fd143fcd0bcd98c41529bb7f",
+    "content/browser/storage_partition_impl.cc": "1da4737624ab997ebcd8a1095375a2fa7d95a98b4cd11582b831d3803d1faadf",
+    "content/browser/storage_partition_impl_unittest.cc": "459ebc6fc028efd9efc0152c325895077025d4a9043bafbc0c50450f45d2a556"
+  },
+  "final_source_sha256": {
+    "content/browser/storage_partition_impl.h": "e304df6032ec181595c5f4db05863dde324412bd91968265589b4f909497adab",
+    "content/browser/storage_partition_impl.cc": "e9c30a0fa83f39de73f04358cb679fbd8b322849850e0eb1a67b08eab0cadb28",
+    "content/browser/storage_partition_impl_unittest.cc": "e9b23ad0411f7e7686ae498df6928a245ae0e190a3e813882746a358016a98d1"
+  },
+  "source_files": [
+    "content/browser/storage_partition_impl.h",
+    "content/browser/storage_partition_impl.cc",
+    "content/browser/storage_partition_impl_unittest.cc"
+  ],
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}
