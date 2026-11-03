@@ -82,3 +82,12 @@ def test_reverse_archive_preserves_pre_r16_host_bytes(host_sources_before_recove
         assert hashlib.sha256(host_sources_before_recovery_r16[row['source']]).hexdigest() == row['before_sha256']
     native = next(row for row in record['sources'] if row['source'] == 'scripts/native_build.py')
     assert native['before_sha256'] == previous['sources'][0]['after_sha256']
+
+
+def test_recovery_recipe_hashes_are_checkout_platform_independent():
+    attributes = (ROOT / '.gitattributes').read_text(encoding='utf-8-sig')
+    assert 'native/drafts/upstream-156-recovery-r16/** text eol=lf' in attributes.splitlines()
+    for path in DIRECTORY.rglob('*'):
+        if path.is_file():
+            raw = path.read_bytes()
+            assert b'\r\n' not in raw and not raw.startswith(b'\xef\xbb\xbf'), path

@@ -11,11 +11,12 @@
     "log_sha256": "87e122c455e14c2d888e20fd62c455c31cbb190a26793c08e3fd7d3ca9f2f6e0"
   },
   "final_targeted_host": {
-    "passed": 100,
-    "junit_sha256": "b3838256f38bbd876ed45bb39f9cbf7dcee6dd9ac359c6f12570a702a0140927"
+    "passed": 250,
+    "junit_sha256": "57a90d3353afff5b667c5f8916ded7827a4f20069611b8b8c2ab1d1bfbd2c8da"
   },
   "lint_target": "py312",
   "native_executed": false,
   "browser_runtime_verified": false,
-  "production_admitted": false
+  "production_admitted": false,
+  "git_recipe_roundtrip_verified": true
 }

@@ -3082,49 +3082,49 @@
     "packets": [
       {
         "packet": "native/drafts/upstream-156-recovery-r16/packet-observations/0155.json",
-        "packet_sha256": "ac52f4606c13cd2e0fbf9dc22eeb327c7a35838576ad768bce7e21f6843ce842",
+        "packet_sha256": "3692ea5078f1c1dbf5505717eb4ec4c9fba25d980b47465353dd257394a98efd",
         "patches": [
           "0155-cookie-checkpoint-owner.patch"
         ]
       },
       {
         "packet": "native/drafts/upstream-156-recovery-r16/packet-observations/0156.json",
-        "packet_sha256": "3bd656ba48db7c6544016674b6385edd8a839c8062c8e273a3da3c7a7bbcb9a1",
+        "packet_sha256": "6d38ada84d9a89bdc60908249ac6f05d6417ce18219616071ee289a516d70d63",
         "patches": [
           "0156-session-cookie-policy.patch"
         ]
       },
       {
         "packet": "native/drafts/upstream-156-recovery-r16/packet-observations/0157.json",
-        "packet_sha256": "356c4cd3ffd663650fa321c08b854096fdbd274f5e8e6444a01919d3d49ae23a",
+        "packet_sha256": "7d9f892de34da025fcb554c8dc3d0e493b0bcea6d8d06d2bc0331964c00da2f5",
         "patches": [
           "0157-retained-producer-cohort.patch"
         ]
       },
       {
         "packet": "native/drafts/upstream-156-recovery-r16/packet-observations/0158.json",
-        "packet_sha256": "a32a7e4a9bf1112e5aa81e1f96c8c6fa7590e7f1a84a27292db79f3f1b5e3ab7",
+        "packet_sha256": "bf54427a7b49fb96a83afee93f67f4854cd5281dd36620f86a66981ecd9e9b36",
         "patches": [
           "0158-profile-document-commit.patch"
         ]
       },
       {
         "packet": "native/drafts/upstream-156-recovery-r16/packet-observations/0159.json",
-        "packet_sha256": "69390087508852ed685c2e56e973fd727300e5e50d8315bcf61c12a75449e2cd",
+        "packet_sha256": "137db92fb04f7eda4b12396d5e0e2269b01872085c31e577f23315c67f7f6651",
         "patches": [
           "0159-profile-document-commit-tests.patch"
         ]
       },
       {
         "packet": "native/drafts/upstream-156-recovery-r16/packet-observations/0160.json",
-        "packet_sha256": "01bdd46e7865261d8383e102cbfcf677f25174395e61e1883965147ad78b2e9c",
+        "packet_sha256": "f7ec66eddf8c967bfab361c55a93a17ef5bb2ca7587195d286b164f72b44075d",
         "patches": [
           "0160-cookie-checkpoint-out-of-line.patch"
         ]
       },
       {
         "packet": "native/drafts/upstream-156-recovery-r16/packet-observations/0161.json",
-        "packet_sha256": "5b3cd8facd968a44923726eb9abdd311befd428ae353384602de3fe2168ffa1a",
+        "packet_sha256": "9d9927ff6858fef9165d812925d273697d16e7cd33e7a1c69be8ea9ad9dc423a",
         "patches": [
           "0161-local-storage-test-bindings.patch"
         ]

@@ -13,7 +13,7 @@ sources match and 338 upstream originals are restored. Its source-derived plan
 contains 225 declarations across seven binaries, including eight Chrome browser
 cases; all 175 R15 declarations remain. The prospective host runner passes 90
 host tests. The registered runner then passes the complete host regression:
-6202 passed, one skipped, zero failures; final targeted checks pass 100 cases.
+6202 passed, one skipped, zero failures; final targeted checks pass 250 cases.
 This is not native test execution or browser verification.
 
 R15's main build failed first on LLVM memory exhaustion, then on four Chromium
