@@ -366,7 +366,7 @@ scripts/verify_native_checkpoint_units.py text eol=lf
 native/drafts/audio-context-ownership/observations.json text eol=lf
 native/drafts/audio-context-ownership/packet.json text eol=lf
 native/drafts/audio-lifecycle-runtime/r7-observations.json text eol=lf
-native/drafts/browser-storage-fence/source-observations.json -text
+native/drafts/browser-storage-fence/source-observations.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 native/drafts/checkpoint-native-fixture-fixes/source-observations.json text eol=lf
 native/drafts/cookie-checkpoint-ipc/source-observations.json text eol=lf
 native/drafts/cookie-checkpoint/source-observations.json text eol=lf
