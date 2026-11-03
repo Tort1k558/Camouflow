@@ -361,3 +361,21 @@ native/drafts/environment/checkpoint-r14-host-source-upgrade.json text eol=lf
 native/drafts/upstream-156-recovery-r16/** text eol=lf
 native/drafts/environment/recovery-r16-host-source-upgrade.json text eol=lf
 scripts/verify_native_checkpoint_units.py text eol=lf
+
+# Byte-bound evidence and archived checker inputs must survive Windows checkout.
+native/drafts/audio-context-ownership/observations.json text eol=lf
+native/drafts/audio-context-ownership/packet.json text eol=lf
+native/drafts/audio-lifecycle-runtime/r7-observations.json text eol=lf
+native/drafts/browser-storage-fence/source-observations.json -text
+native/drafts/checkpoint-native-fixture-fixes/source-observations.json text eol=lf
+native/drafts/cookie-checkpoint-ipc/source-observations.json text eol=lf
+native/drafts/cookie-checkpoint/source-observations.json text eol=lf
+native/drafts/cookie-main-thread-include/source-observations.json text eol=lf
+native/drafts/profile-document-producers/source-observations.json text eol=lf
+native/drafts/renderer-storage-fence/source-observations.json text eol=lf
+native/drafts/scoped-patch-index-r8/check.py text eol=lf
+native/drafts/scoped-patch-index-r8/packet.json text eol=lf
+native/drafts/storage-aggregate-fence/source-observations.json text eol=lf
+native/drafts/storage-checkpoint-ipc/source-observations.json text eol=lf
+native/drafts/storage-commit-barrier/source-observations.json text eol=lf
+tests/test_native_patch_net_paths.py text eol=lf
