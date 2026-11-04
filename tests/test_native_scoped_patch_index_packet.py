@@ -6,13 +6,16 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / 'native/drafts/scoped-patch-index'
 
 
-def test_scoped_index_packet_binds_exact_public_inputs():
+def test_scoped_index_packet_binds_exact_public_inputs(host_sources_before_desktop_build_paths):
     packet = json.loads((PACKET / 'packet.json').read_bytes())
     sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     assert sha(PACKET / 'next.patch') == packet['patch_sha256']
     assert sha(PACKET / 'check.py') == packet['checker_sha256']
     assert sha(ROOT / 'native/drafts/upstream-156-webgpu-r7/manifest.json') == packet['base_candidate_manifest_sha256']
-    assert all(sha(ROOT / name) == digest for name, digest in packet['test_inputs_sha256'].items())
+    for name, digest in packet['test_inputs_sha256'].items():
+        source = (host_sources_before_desktop_build_paths[name] if name in host_sources_before_desktop_build_paths
+                  else (ROOT / name).read_bytes())
+        assert hashlib.sha256(source).hexdigest() == digest, name
 
 
 def test_scoped_index_packet_preserves_archived_builder_base_and_scope():

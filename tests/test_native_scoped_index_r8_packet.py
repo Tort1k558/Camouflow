@@ -18,7 +18,7 @@ def test_scoped_index_r8_keeps_measured_implementation_and_checker_unchanged():
     assert record['predecessor_packet_sha256'] == hashlib.sha256((PREVIOUS / 'packet.json').read_bytes()).hexdigest()
 
 
-def test_scoped_index_r8_pins_archived_r8_builder_not_a_new_runtime_claim():
+def test_scoped_index_r8_pins_archived_r8_builder_not_a_new_runtime_claim(host_sources_before_desktop_build_paths):
     record = json.loads((PACKET / 'packet.json').read_bytes())
     archive = json.loads((ROOT / 'native/drafts/environment/audio-r8-host-source-upgrade.json').read_bytes())
     builder = next(row for row in archive['sources'] if row['source'] == 'scripts/native_build.py')
@@ -26,7 +26,9 @@ def test_scoped_index_r8_pins_archived_r8_builder_not_a_new_runtime_claim():
     assert record['before_sha256'] == builder['after_sha256']
     assert record['base_candidate_manifest_sha256'] == native_build.load_candidate('upstream-156-audio-r8')['manifest_sha256']
     for name, digest in record['test_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        source = (host_sources_before_desktop_build_paths[name] if name in host_sources_before_desktop_build_paths
+                  else (ROOT / name).read_bytes())
+        assert hashlib.sha256(source).hexdigest() == digest, name
     assert record['selected'] is record['compiled'] is record['runtime_verified'] is record['production_admitted'] is False
 
 
