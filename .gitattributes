@@ -396,3 +396,7 @@ tests/test_native_checkpoint_recovery_job.py text eol=lf
 tests/test_native_windows_sandbox.py text eol=lf
 tests/fixtures/glint_checkpoint_host/*.py text eol=lf
 native/drafts/environment/worker-r17-host-source-upgrade.json text eol=lf
+
+# Byte-bound live provider verification source snapshots.
+scripts/verify_ai_provider.py text eol=lf
+scripts/verify_ai_workflows.py text eol=lf

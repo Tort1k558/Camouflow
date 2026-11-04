@@ -197,6 +197,27 @@ used the pinned staged driver, verified core/receipt and browser-default policy;
 it does not admit protected policies or an arbitrary executable supplied to the CLI.
 Camoufox/CloakBrowser invocation defaults are unchanged.
 
+For an **opt-in live provider** check, the existing provider verifier also accepts
+the Native adapter. It extracts the synthetic catalog and replays the generated
+scenario against changed catalog data:
+
+```powershell
+.venv\Scripts\python.exe -B scripts/verify_ai_provider.py `
+  --engine native --settings-file C:\Private\camouflow-settings.json `
+  --native-executable D:\GlintQA\runtime\chrome.exe `
+  --work-dir D:\GlintQA\live-ai-new `
+  --report D:\GlintQA\live-ai-new\report.json
+```
+
+This calls the configured model and **may incur provider charges**. Use an
+appropriate free model or approved budget; never commit the settings file.
+The verifier rejects an active build in the runtime's scope, uses fresh storage
+without copying saved profiles/scenarios, redacts the provider key from transcripts,
+and binds a passing result to unchanged executable/DLL hashes. The report must be
+new and inside the fresh workspace. Success proves only the named AI workflow,
+not fingerprint, CAPTCHA or release readiness. Native execution still requires
+an idle, independently verified runtime.
+
 ## GPU compatibility diagnostics
 
 [Source-bound GPU checks](drafts/gpu/README.md#current-source-bound-diagnostics)

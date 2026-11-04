@@ -21,7 +21,10 @@ def parse_args(argv=None):
     parser.add_argument("engine", nargs="?", choices=("camoufox", "cloakbrowser", "native"), default="camoufox")
     parser.add_argument("--native-executable", type=Path)
     parser.add_argument("--work-dir", type=Path)
-    args = parser.parse_args(argv)
+    return validate_browser_paths(parser.parse_args(argv), parser)
+
+
+def validate_browser_paths(args, parser):
     if args.engine == "native":
         path = args.native_executable
         if (os.name != "nt" or path is None or not path.is_absolute() or path != path.resolve()

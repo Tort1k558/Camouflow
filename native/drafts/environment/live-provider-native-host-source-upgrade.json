@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "scope": "Exact reversible native live-provider CLI extension; historical measurements unchanged",
+  "patch": "live-provider-native-host-source-upgrade.patch",
+  "patch_sha256": "c4c0d1d364d8ea1180d1fb511d09bed1797d19ea84f8484fe50bf2266aed6f74",
+  "sources": [
+    {
+      "source": "scripts/verify_ai_provider.py",
+      "before_sha256": "ba16af4383e519cec07410c1fdb565b5b3e4ff32cbcd1074fbcf384c0b659a44",
+      "before_normalized_sha256": "744de5ffddb1356ec86350332301e5fca2ad06d9188c2606bd52a1361f621520",
+      "before_newline": "CRLF",
+      "after_sha256": "d2e2a46c1e576878a9fb474f4b357f0d78988c2eacd79402bdbca7f12d2f861d"
+    },
+    {
+      "source": "scripts/verify_ai_workflows.py",
+      "before_sha256": "88697c7175911b1a49f24fdff08ffc77c4bd0e5935ce0c498b97f0cdfa90a91e",
+      "before_normalized_sha256": "be8ef6cf667536e77b3664581e8c4fc85d6b87ceee7ae464578bf1674273a441",
+      "before_newline": "CRLF",
+      "after_sha256": "b6f044f3ae178f40e13e0e1f09fb233e8fb31cf9c5b6423a2cebe3c264503c0e"
+    }
+  ]
+}

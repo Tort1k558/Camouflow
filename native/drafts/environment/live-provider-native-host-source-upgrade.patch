@@ -1,0 +1,143 @@
+--- a/scripts/verify_ai_provider.py
++++ b/scripts/verify_ai_provider.py
+@@ -13,7 +13,7 @@
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ 
+-async def verify(engine, config, root, repeats):
++async def verify(engine, config, root, repeats, browser_settings=None):
+     from app.core.browser_interface import BrowserInterface
+     from app.services.ai_agent import templates
+     from app.services.ai_agent.llm import LLMClient
+@@ -22,7 +22,16 @@
+     from app.services.scenario_engine import ScenarioExecutor
+     from app.storage import db
+ 
+-    db.init_db()
++    browser_settings = {"headless": True, **(browser_settings or {})}
++    if engine == "native":
++        if db.DATA_ROOT.resolve() != root.resolve() or db.ACCOUNTS_FILE.exists() or db.SETTINGS_FILE.exists():
++            raise ValueError("Native provider verification requires fresh isolated application storage")
++        for directory in (db.SETTINGS_DIR, db.PROFILES_DIR, db.SCENARIOS_DIR, db.OUTPUTS_DIR):
++            directory.mkdir(parents=True, exist_ok=True)
++        db.ACCOUNTS_FILE.write_text("[]\n", encoding="utf-8")
++        db.SETTINGS_FILE.write_text("{}\n", encoding="utf-8")
++    else:
++        db.init_db()
+     server = templates.DemoServer()
+     original_html = templates.DEMO_HTML
+     runs = []
+@@ -32,7 +41,7 @@
+             browser = BrowserInterface(
+                 f"provider-{engine}-{index}",
+                 browser_engine=engine,
+-                browser_settings={"headless": True},
++                browser_settings=dict(browser_settings),
+             )
+             client = LLMClient(config)
+             try:
+@@ -51,6 +60,8 @@
+             finally:
+                 await browser.close(force=True)
+             artifacts = root / "outputs" / "ai-runs" / f"{engine}-{index}"
++            if config.api_key:
++                result = {**result, "redactions": [*result.get("redactions", []), config.api_key]}
+             save_transcript(result, artifacts)
+             row = {
+                 key: result[key]
+@@ -86,7 +97,7 @@
+                     {
+                         "name": f"replay-{engine}-{index}",
+                         "_browser_engine": engine,
+-                        "_browser_settings": {"headless": True},
++                        "_browser_settings": dict(browser_settings),
+                         "extra_fields": {"catalog_url": server.url},
+                     },
+                     "",
+@@ -121,15 +132,28 @@
+     }
+ 
+ 
+-def main():
++def parse_args(argv=None):
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--settings-file", required=True, type=Path)
+-    parser.add_argument("--engine", choices=("camoufox", "cloakbrowser"), required=True)
++    parser.add_argument("--engine", choices=("camoufox", "cloakbrowser", "native"), required=True)
+     parser.add_argument("--repeats", type=int, choices=(1, 2, 3), default=1)
+     parser.add_argument("--report", required=True, type=Path)
+-    args = parser.parse_args()
++    parser.add_argument("--native-executable", type=Path)
++    parser.add_argument("--work-dir", type=Path)
++    from scripts.verify_ai_workflows import validate_browser_paths
++
++    args = validate_browser_paths(parser.parse_args(argv), parser)
++    if args.engine == "native" and (
++            not args.report.is_absolute() or args.report != args.report.resolve()
++            or args.report.exists() or not args.report.is_relative_to(args.work_dir)):
++        parser.error("Native report must be a new canonical path inside --work-dir")
++    return args
++
++
++def main():
++    args = parse_args()
+     settings = json.loads(args.settings_file.read_text(encoding="utf-8-sig"))
+-    root = Path(tempfile.mkdtemp(prefix="camouflow-real-provider-"))
++    root = args.work_dir or Path(tempfile.mkdtemp(prefix="camouflow-real-provider-"))
+     os.environ["CAMOUFLOW_DATA_DIR"] = str(root)
+     from app.services.ai_agent.llm import LLMConfig
+ 
+@@ -140,8 +164,27 @@
+     )
+     if not config.base_url or not config.model:
+         raise SystemExit("AI base URL/model are not configured")
++    phase = "native-preflight" if args.engine == "native" else "provider-workflow"
+     try:
+-        report = asyncio.run(verify(args.engine, config, root, args.repeats))
++        browser_settings = {"headless": True}
++        if args.engine == "native":
++            from scripts.verify_native_privacy_units import require_idle_builder
++            from scripts.verify_native_runtime import measure_runtime_core
++
++            require_idle_builder(args.native_executable.parent)
++            core_before = measure_runtime_core(args.native_executable)
++            browser_settings["executable_path"] = str(args.native_executable)
++        if args.work_dir is not None:
++            root.mkdir()
++        phase = "provider-workflow"
++        report = asyncio.run(verify(args.engine, config, root, args.repeats, browser_settings))
++        if args.engine == "native":
++            phase = "native-postguards"
++            unchanged = measure_runtime_core(args.native_executable) == core_before
++            report.update(executable=str(args.native_executable), runtime_core_sha256_measured=core_before,
++                          runtime_core_unchanged=unchanged, privacy_admitted=False,
++                          scope="Configured provider extraction/replay only; not native fingerprint or release admission")
++            report["passed"] = report["passed"] and unchanged
+     except Exception:
+         # Provider error messages can echo request credentials. Keep the public report generic.
+         report = {
+@@ -150,7 +193,10 @@
+             "model": config.model,
+             "data_root": str(root),
+             "error": "Verification failed; inspect the isolated transcript",
++            "failed_phase": phase,
+         }
++    if args.engine == "native" and args.report.exists():
++        raise FileExistsError("Refusing to overwrite existing Native verification evidence")
+     args.report.parent.mkdir(parents=True, exist_ok=True)
+     args.report.write_text(
+         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+--- a/scripts/verify_ai_workflows.py
++++ b/scripts/verify_ai_workflows.py
+@@ -21,7 +21,10 @@
+     parser.add_argument("engine", nargs="?", choices=("camoufox", "cloakbrowser", "native"), default="camoufox")
+     parser.add_argument("--native-executable", type=Path)
+     parser.add_argument("--work-dir", type=Path)
+-    args = parser.parse_args(argv)
++    return validate_browser_paths(parser.parse_args(argv), parser)
++
++
++def validate_browser_paths(args, parser):
+     if args.engine == "native":
+         path = args.native_executable
+         if (os.name != "nt" or path is None or not path.is_absolute() or path != path.resolve()
