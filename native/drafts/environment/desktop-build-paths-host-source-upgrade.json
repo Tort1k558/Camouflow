@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "scope": "Reversible desktop build host-test source history; no native/browser admission",
+  "patch": "desktop-build-paths-host-source-upgrade.patch",
+  "patch_sha256": "94541efecf4468df7e1e806ed9ae13c21930fe5047ffa663dfd47bc2a60e13be",
+  "sources": [
+    {
+      "source": "tests/test_release_tools.py",
+      "before_sha256": "438b9e7c7e6e5b1b9f62a48ccefb85ee8d64edc079a557afb8e2c561384ac937",
+      "before_normalized_sha256": "438b9e7c7e6e5b1b9f62a48ccefb85ee8d64edc079a557afb8e2c561384ac937",
+      "before_newline": "LF",
+      "after_sha256": "9ba2070fc811b281cb290dd2e1a8d55b03d6cdf0a6818d68be784a07c2cda455"
+    }
+  ]
+}

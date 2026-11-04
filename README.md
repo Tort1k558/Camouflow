@@ -121,6 +121,17 @@ python main.py
 
 Build the desktop app with `build.bat`.
 Output: `dist\<build-id>\CamouFlow\CamouFlow.exe`.
+To keep desktop packages, work files and temporary files on another drive:
+
+```powershell
+$env:CAMOUFLOW_BUILD_ROOT = 'D:\CamouFlowDesktopBuilds'
+.\build.bat
+```
+
+Output then goes to `D:\CamouFlowDesktopBuilds\dist\<build-id>`;
+work and temporary files stay under its `build` directory. This changes only
+desktop packaging paths, not user profiles or the separate Chromium workspace.
+An unavailable output directory fails the build; it never falls back to C:.
 Glint has a separate [Chromium build guide](native/BUILDING.md).
 
 </details>

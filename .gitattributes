@@ -403,3 +403,6 @@ scripts/verify_ai_workflows.py text eol=lf
 
 # Bind environment collector observations independently of Windows checkout EOL.
 native/drafts/environment/environment-media-host-source-upgrade.json text eol=lf
+
+# Reconstruct historical desktop packaging host tests exactly.
+native/drafts/environment/desktop-build-paths-host-source-upgrade.json text eol=lf

@@ -1,0 +1,123 @@
+diff --git a/tests/test_release_tools.py b/tests/test_release_tools.py
+--- a/tests/test_release_tools.py
++++ b/tests/test_release_tools.py
+@@ -6,6 +6,119 @@
+ import pytest
+ 
+ from scripts import verify_release
++
++
++@pytest.fixture
++def desktop_batch_workspace(tmp_path):
++    import shutil
++    import venv
++
++    workspace = tmp_path / "owned app"
++    workspace.mkdir()
++    root = Path(__file__).resolve().parents[1]
++    shutil.copyfile(root / "build.bat", workspace / "build.bat")
++    (workspace / "camouflow.spec").write_text("# owned fixture", encoding="utf-8")
++    venv.EnvBuilder(with_pip=False).create(workspace / ".venv")
++    modules = workspace / "fixture-modules"
++    package = modules / "PyInstaller"
++    package.mkdir(parents=True)
++    (package / "__init__.py").write_text("", encoding="utf-8")
++    (package / "__main__.py").write_text(
++        "import json, os, sys\nfrom pathlib import Path\n"
++        "Path(os.environ['BUILD_TEST_RECORD']).write_text(json.dumps(dict("
++        "args=sys.argv[1:], cwd=os.getcwd(), temp=os.environ['TEMP'], tmp=os.environ['TMP'])), encoding='utf-8')\n"
++        "raise SystemExit(int(os.environ.get('BUILD_TEST_EXIT', '0')))\n",
++        encoding="utf-8",
++    )
++    return workspace, modules
++
++
++def run_desktop_batch(workspace, modules, record, *, output_root=None, failure=False, without_date_command=False):
++    import os
++    import subprocess
++
++    environment = dict(os.environ, PYTHONPATH=str(modules), BUILD_TEST_RECORD=str(record),
++                       BUILD_TEST_EXIT="13" if failure else "0", PSModulePath="missing-owned-module-path",
++                       BUILD_ID="owned-stale-id")
++    if without_date_command:
++        environment["PATH"] = ""
++    environment.pop("CAMOUFLOW_BUILD_ROOT", None)
++    if output_root is not None:
++        environment["CAMOUFLOW_BUILD_ROOT"] = str(output_root)
++    return subprocess.run([os.environ["COMSPEC"], "/d", "/c", ".\\build.bat"], cwd=workspace,
++                          env=environment, capture_output=True, timeout=60)
++
++
++@pytest.mark.skipif(sys.platform != "win32", reason="Real Windows batch execution")
++@pytest.mark.parametrize("external", [False, True])
++def test_desktop_batch_routes_all_build_files_without_changing_profiles(desktop_batch_workspace, tmp_path, external):
++    import json
++    import re
++
++    workspace, modules = desktop_batch_workspace
++    output = tmp_path / "output with spaces & bang!" if external else workspace
++    sentinel = workspace / "profiles" / "owned.txt"
++    sentinel.parent.mkdir()
++    sentinel.write_text("preserve", encoding="utf-8")
++    record = tmp_path / "record.json"
++    result = run_desktop_batch(workspace, modules, record, output_root=output if external else None)
++    assert result.returncode == 0, (result.stdout, result.stderr)
++    values = json.loads(record.read_bytes())
++    assert values["args"][:2] == ["--clean", "camouflow.spec"]
++    dist = Path(values["args"][values["args"].index("--distpath") + 1])
++    work = Path(values["args"][values["args"].index("--workpath") + 1])
++    assert dist.parent == output / "dist" and work.parent == output / "build"
++    assert dist.name == work.name
++    assert re.fullmatch(r"\d{8}-\d{6}-\d{3}", work.name)
++    assert Path(values["temp"]) == Path(values["tmp"]) == output / "build" / (work.name + "-tmp")
++    assert Path(values["temp"]).is_dir()
++    assert Path(values["cwd"]) == workspace
++    assert sentinel.read_text(encoding="utf-8") == "preserve"
++    if external:
++        assert not (workspace / "build").exists() and not (workspace / "dist").exists()
++
++
++@pytest.mark.skipif(sys.platform != "win32", reason="Real Windows batch execution")
++def test_desktop_batch_invalid_root_does_not_fall_back_to_project(desktop_batch_workspace, tmp_path):
++    workspace, modules = desktop_batch_workspace
++    output = tmp_path / "not-a-directory"
++    output.write_bytes(b"preserve")
++    record = tmp_path / "record.json"
++    result = run_desktop_batch(workspace, modules, record, output_root=output)
++    assert result.returncode != 0 and not record.exists()
++    assert output.read_bytes() == b"preserve"
++    assert not (workspace / "build").exists() and not (workspace / "dist").exists()
++
++
++@pytest.mark.skipif(sys.platform != "win32", reason="Real Windows batch execution")
++def test_desktop_batch_propagates_packaging_failure_without_retry(desktop_batch_workspace, tmp_path):
++    workspace, modules = desktop_batch_workspace
++    record = tmp_path / "record.json"
++    result = run_desktop_batch(workspace, modules, record, output_root=tmp_path / "output", failure=True)
++    assert result.returncode != 0 and record.exists()
++    assert not (workspace / "build").exists() and not (workspace / "dist").exists()
++
++
++@pytest.mark.skipif(sys.platform != "win32", reason="Real Windows batch execution")
++def test_desktop_batch_missing_interpreter_creates_no_outputs(tmp_path):
++    import shutil
++
++    workspace = tmp_path / "owned app"
++    workspace.mkdir()
++    shutil.copyfile(Path(__file__).resolve().parents[1] / "build.bat", workspace / "build.bat")
++    record = tmp_path / "record.json"
++    result = run_desktop_batch(workspace, tmp_path, record, output_root=tmp_path / "output")
++    assert result.returncode != 0 and not record.exists()
++    assert not (tmp_path / "output").exists()
++
++
++@pytest.mark.skipif(sys.platform != "win32", reason="Real Windows batch execution")
++def test_desktop_batch_date_failure_cannot_reuse_inherited_build_id(desktop_batch_workspace, tmp_path):
++    workspace, modules = desktop_batch_workspace
++    record = tmp_path / "record.json"
++    result = run_desktop_batch(workspace, modules, record, output_root=tmp_path / "output", without_date_command=True)
++    assert result.returncode != 0 and not record.exists()
++    assert not (tmp_path / "output").exists()
+ 
+ 
+ def test_native_suite_collects_failures_and_continues_without_reusing_reports(tmp_path, monkeypatch):
