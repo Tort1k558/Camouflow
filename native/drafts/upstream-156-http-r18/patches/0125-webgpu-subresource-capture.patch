@@ -1,0 +1,136 @@
+--- a/src/dawn/native/d3d12/glint/texture_capture.h
++++ b/src/dawn/native/d3d12/glint/texture_capture.h
+@@ -45,7 +45,9 @@
+                           ID3D12Fence* completion_fence,
+                           uint64_t completion_value,
+                           uint64_t allocation_budget,
+-                          std::unique_ptr<TextureCapture>* result);
++                          std::unique_ptr<TextureCapture>* result,
++                          uint32_t mip_level = 0,
++                          uint32_t array_layer = 0);
+     // The caller must enqueue retirement_handle(), not just retirement_resource().
+     // Aggregate allocation bytes stay charged while either CPU or GPU owns the handle.
+     static HRESULT RecordBudgeted(ID3D12Device* device,
+@@ -54,7 +56,9 @@
+                                   ID3D12Fence* completion_fence,
+                                   uint64_t completion_value,
+                                   const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
+-                                  std::unique_ptr<TextureCapture>* result);
++                                  std::unique_ptr<TextureCapture>* result,
++                                  uint32_t mip_level = 0,
++                                  uint32_t array_layer = 0);
+     // Exact private byte snapshot, not a pixel surface. Caller validates logical
+     // ownership, initialized contents and COPY_SOURCE state on an open DIRECT list.
+     // ReadCompleted returns the original byte range; it does not transform it.
+@@ -89,7 +93,9 @@
+                               uint64_t completion_value,
+                               uint64_t allocation_limit,
+                               const std::shared_ptr<CaptureMemoryBudget>& budget,
+-                              std::unique_ptr<TextureCapture>* result);
++                              std::unique_ptr<TextureCapture>* result,
++                              uint32_t mip_level,
++                              uint32_t array_layer);
+     static HRESULT AllocateReadback(ID3D12Device* device,
+                                     ID3D12Resource* source_resource,
+                                     ID3D12Fence* completion_fence,
+--- a/src/dawn/native/d3d12/glint/texture_capture.cc
++++ b/src/dawn/native/d3d12/glint/texture_capture.cc
+@@ -2,6 +2,7 @@
+ // SPDX-License-Identifier: MIT
+ #include "texture_capture.h"
+ 
++#include <algorithm>
+ #include <limits>
+ #include <new>
+ #include <utility>
+@@ -79,9 +80,11 @@
+                                ID3D12Fence* completion_fence,
+                                uint64_t completion_value,
+                                uint64_t allocation_budget,
+-                               std::unique_ptr<TextureCapture>* result) {
++                               std::unique_ptr<TextureCapture>* result,
++                               uint32_t mip_level,
++                               uint32_t array_layer) {
+     return RecordImpl(device, commands, texture, completion_fence, completion_value,
+-                      allocation_budget, nullptr, result);
++                      allocation_budget, nullptr, result, mip_level, array_layer);
+ }
+ 
+ HRESULT TextureCapture::RecordBudgeted(
+@@ -91,12 +94,14 @@
+     ID3D12Fence* completion_fence,
+     uint64_t completion_value,
+     const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
+-    std::unique_ptr<TextureCapture>* result) {
++    std::unique_ptr<TextureCapture>* result,
++    uint32_t mip_level,
++    uint32_t array_layer) {
+     if (!allocation_budget || allocation_budget->limit_bytes() == 0) {
+         return E_INVALIDARG;
+     }
+     return RecordImpl(device, commands, texture, completion_fence, completion_value,
+-                      allocation_budget->limit_bytes(), allocation_budget, result);
++                      allocation_budget->limit_bytes(), allocation_budget, result, mip_level, array_layer);
+ }
+ 
+ HRESULT TextureCapture::RecordImpl(ID3D12Device* device,
+@@ -106,7 +111,9 @@
+                                uint64_t completion_value,
+                                uint64_t allocation_budget,
+                                const std::shared_ptr<CaptureMemoryBudget>& budget,
+-                               std::unique_ptr<TextureCapture>* result) {
++                               std::unique_ptr<TextureCapture>* result,
++                               uint32_t mip_level,
++                               uint32_t array_layer) {
+     if (!result || *result) {
+         return E_INVALIDARG;
+     }
+@@ -128,7 +135,9 @@
+         source.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+     }
+     if (source.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D || source.Width == 0 ||
+-        source.Height == 0 || source.DepthOrArraySize != 1 || source.MipLevels != 1 ||
++        source.Height == 0 || source.DepthOrArraySize == 0 || source.MipLevels == 0 ||
++        mip_level >= source.MipLevels || mip_level >= 32 ||
++        array_layer >= source.DepthOrArraySize ||
+         source.SampleDesc.Count != 1 ||
+         (source.Format != DXGI_FORMAT_R8G8B8A8_UNORM &&
+          source.Format != DXGI_FORMAT_B8G8R8A8_UNORM) ||
+@@ -153,11 +162,15 @@
+         fence_device.Get() != device) {
+         return E_INVALIDARG;
+     }
++    const uint32_t subresource = mip_level + array_layer * source.MipLevels;
++    const uint64_t width = std::max(uint64_t{1}, source.Width >> mip_level);
++    const uint32_t height = std::max(uint32_t{1}, source.Height >> mip_level);
+     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
+     UINT rows = 0;
+     UINT64 row_bytes = 0, total_bytes = 0;
+-    device->GetCopyableFootprints(&source, 0, 1, 0, &footprint, &rows, &row_bytes, &total_bytes);
+-    if (rows != source.Height || row_bytes != source.Width * 4 || footprint.Offset != 0 ||
++    device->GetCopyableFootprints(&source, subresource, 1, 0, &footprint, &rows, &row_bytes, &total_bytes);
++    if (rows != height || row_bytes != width * 4 ||
++        footprint.Footprint.Width != width || footprint.Footprint.Height != height || footprint.Offset != 0 ||
+         footprint.Footprint.Depth != 1 || footprint.Footprint.RowPitch < row_bytes ||
+         footprint.Footprint.RowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT != 0) {
+         return E_INVALIDARG;
+@@ -171,8 +184,8 @@
+     hr = AllocateReadback(device, texture, completion_fence, completion_value,
+                           mapped_bytes, allocation_budget, budget, &capture);
+     if (FAILED(hr)) return hr;
+-    capture->width_ = static_cast<uint32_t>(source.Width);
+-    capture->height_ = source.Height;
++    capture->width_ = static_cast<uint32_t>(width);
++    capture->height_ = height;
+     capture->row_pitch_ = footprint.Footprint.RowPitch;
+     capture->format_ = source.Format;
+     D3D12_TEXTURE_COPY_LOCATION destination_location{};
+@@ -182,7 +195,7 @@
+     D3D12_TEXTURE_COPY_LOCATION source_location{};
+     source_location.pResource = texture;
+     source_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+-    source_location.SubresourceIndex = 0;
++    source_location.SubresourceIndex = subresource;
+     commands->CopyTextureRegion(&destination_location, 0, 0, 0, &source_location, nullptr);
+     *result = std::move(capture);
+     return S_OK;

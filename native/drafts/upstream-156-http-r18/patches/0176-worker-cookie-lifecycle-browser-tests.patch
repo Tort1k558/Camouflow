@@ -1,0 +1,99 @@
+diff --git a/chrome/browser/net/glint_cookie_prefix_browsertest.cc b/chrome/browser/net/glint_cookie_prefix_browsertest.cc
+index 6288e7d6805a13e8d6f84014380682f8ee2ab423..cd35f98c569d229d1677ba07fdfdf42690ede739 100644
+--- a/chrome/browser/net/glint_cookie_prefix_browsertest.cc
++++ b/chrome/browser/net/glint_cookie_prefix_browsertest.cc
+@@ -25,6 +25,9 @@
+ #include "chrome/common/chrome_paths.h"
+ #include "chrome/test/base/in_process_browser_test.h"
+ #include "chrome/test/base/ui_test_utils.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/service_worker_context.h"
++#include "content/public/browser/storage_partition.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/test/browser_test.h"
+ #include "content/public/test/browser_test_utils.h"
+@@ -123,6 +126,10 @@ class GlintCookiePrefixBrowserTest : public InProcessBrowserTest {
+         browser(), https_.GetURL("a.test", "/glint-cookie-checkpoint.html")));
+   }
+ 
++  content::ServiceWorkerContext* WorkerContext() {
++    return browser()->profile()->GetDefaultStoragePartition()->GetServiceWorkerContext();
++  }
++
+   content::WebContents* Contents() {
+     return browser()->tab_strip_model()->GetActiveWebContents();
+   }
+@@ -250,4 +257,73 @@ IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, CrashAfterAcknowledgedPrefi
+   )JS", challenge)));
+ }
+ 
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, CancelPendingActiveWorkerPrefix) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  base::test::TestFuture<content::GlintCookiePrefixCommitTestResult> done;
++  auto operation = content::BeginGlintCookiePrefixCommitForTesting(
++      browser()->profile(), base::TimeTicks::Now() + base::Seconds(15),
++      done.GetCallback());
++  operation.RunAndReset();
++  EXPECT_FALSE(done.IsReady());
++  const auto result = done.Get();
++  EXPECT_FALSE(result.committed_prefix);
++  EXPECT_GE(result.running_workers_observed, 1u);
++  EXPECT_TRUE(CommitCookies().committed_prefix);
++}
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, WorkerStopRejectsPendingPrefix) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  base::test::TestFuture<content::GlintCookiePrefixCommitTestResult> done;
++  auto operation = content::BeginGlintCookiePrefixCommitForTesting(
++      browser()->profile(), base::TimeTicks::Now() + base::Seconds(15),
++      done.GetCallback());
++  base::test::TestFuture<void> stopped;
++  WorkerContext()->StopAllServiceWorkers(stopped.GetCallback());
++  const auto result = done.Get();
++  EXPECT_FALSE(result.committed_prefix);
++  EXPECT_GE(result.running_workers_observed, 1u);
++  ASSERT_TRUE(stopped.Wait());
++  EXPECT_TRUE(WorkerContext()->GetRunningServiceWorkerInfos().empty());
++}
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, CommitDoesNotStartStoppedWorker) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  base::test::TestFuture<void> stopped;
++  WorkerContext()->StopAllServiceWorkers(stopped.GetCallback());
++  ASSERT_TRUE(stopped.Wait());
++  ASSERT_TRUE(WorkerContext()->GetRunningServiceWorkerInfos().empty());
++  const auto result = CommitCookies();
++  EXPECT_TRUE(result.committed_prefix);
++  EXPECT_EQ(result.running_workers_observed, 0u);
++  EXPECT_TRUE(WorkerContext()->GetRunningServiceWorkerInfos().empty());
++  EXPECT_EQ(true, content::EvalJs(Contents(),
++      "document.cookie.includes('glint_worker=worker_value')"));
++}
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, ExpiredDeadlineCannotCertifyActiveWorker) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  base::test::TestFuture<content::GlintCookiePrefixCommitTestResult> done;
++  auto operation = content::BeginGlintCookiePrefixCommitForTesting(
++      browser()->profile(), base::TimeTicks::Now() - base::Seconds(1),
++      done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  const auto result = done.Get();
++  EXPECT_FALSE(result.committed_prefix);
++  EXPECT_GE(result.running_workers_observed, 1u);
++  EXPECT_TRUE(CommitCookies().committed_prefix);
++}
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, OversizedDeadlineCannotCertifyActiveWorker) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  base::test::TestFuture<content::GlintCookiePrefixCommitTestResult> done;
++  auto operation = content::BeginGlintCookiePrefixCommitForTesting(
++      browser()->profile(), base::TimeTicks::Now() + base::Seconds(31),
++      done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  const auto result = done.Get();
++  EXPECT_FALSE(result.committed_prefix);
++  EXPECT_GE(result.running_workers_observed, 1u);
++  EXPECT_TRUE(CommitCookies().committed_prefix);
++}
++
+ }  // namespace

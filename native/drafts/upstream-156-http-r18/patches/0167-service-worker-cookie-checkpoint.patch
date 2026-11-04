@@ -1,0 +1,253 @@
+diff --git a/content/browser/service_worker/fake_service_worker.cc b/content/browser/service_worker/fake_service_worker.cc
+index 314cc065cf334e5addca3e980f2add4111d907ad..624722c695d8951deca0a520b640c3ef2c35ee1f 100644
+--- a/content/browser/service_worker/fake_service_worker.cc
++++ b/content/browser/service_worker/fake_service_worker.cc
+@@ -285,4 +285,17 @@ void FakeServiceWorker::CallOnConnectionError() {
+   OnConnectionError();
+ }
+ 
++void FakeServiceWorker::CaptureCookieProducerForCheckpoint(
++    CaptureCookieProducerForCheckpointCallback callback) {
++  // This fake has no cookie producer and must not certify persistence.
++  std::move(callback).Run(false, 0);
++}
++
++void FakeServiceWorker::DrainCookieWritesForCheckpoint(
++    uint64_t ticket,
++    base::TimeTicks deadline,
++    DrainCookieWritesForCheckpointCallback callback) {
++  std::move(callback).Run(false);
++}
++
+ }  // namespace content
+diff --git a/content/browser/service_worker/fake_service_worker.h b/content/browser/service_worker/fake_service_worker.h
+index b566da4e34221a3fc03a46c0d1a8eeef00c5e02b..cc3a9a5cfed7a7177259b260cb92ab969c94f5cf 100644
+--- a/content/browser/service_worker/fake_service_worker.h
++++ b/content/browser/service_worker/fake_service_worker.h
+@@ -150,6 +150,14 @@ class FakeServiceWorker : public blink::mojom::ServiceWorker {
+                             bool wants_result,
+                             ExecuteScriptForTestCallback callback) override;
+ 
++  void CaptureCookieProducerForCheckpoint(
++      CaptureCookieProducerForCheckpointCallback callback) override;
++  void DrainCookieWritesForCheckpoint(
++      uint64_t ticket,
++      base::TimeTicks deadline,
++      DrainCookieWritesForCheckpointCallback callback) override;
++
++
+   virtual void OnConnectionError();
+ 
+  private:
+diff --git a/third_party/blink/public/mojom/service_worker/service_worker.mojom b/third_party/blink/public/mojom/service_worker/service_worker.mojom
+index fab1fcf2d45610edf9b6ae8893fd7d2b9d1a443c..984f0baacee3f9ec88479427a547194eba3caac0 100644
+--- a/third_party/blink/public/mojom/service_worker/service_worker.mojom
++++ b/third_party/blink/public/mojom/service_worker/service_worker.mojom
+@@ -358,4 +358,12 @@ interface ServiceWorker {
+       mojo_base.mojom.BigString16 javascript,
+       bool wants_result)
+       => (mojo_base.mojom.Value result, string? error);
++
++  // Existing worker-local CookieStore only; no startup, HTTP writes or disk commit.
++  // Tickets are single-use and scoped to this live ServiceWorker endpoint.
++  [MinVersion=1]
++  CaptureCookieProducerForCheckpoint() => (bool available, uint64 ticket);
++  [MinVersion=1]
++  DrainCookieWritesForCheckpoint(uint64 ticket, mojo_base.mojom.TimeTicks deadline)
++      => (bool success);
+ };
+diff --git a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc
+index 84233c2714c56d9cc0ed44d90bf124eb34e312ac..e6fd827011d4918a1cdd620656ca950e8375cce3 100644
+--- a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc
++++ b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc
+@@ -33,16 +33,19 @@
+ #include <stdint.h>
+ 
+ #include <algorithm>
++#include <limits>
+ #include <memory>
+ #include <utility>
+ 
+ #include "base/check_is_test.h"
+ #include "base/feature_list.h"
++#include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/ptr_util.h"
+ #include "base/metrics/field_trial_params.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/numerics/safe_conversions.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "base/time/time.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "net/base/net_errors.h"
+@@ -136,6 +139,7 @@
+ #include "third_party/blink/renderer/modules/service_worker/wait_until_observer.h"
+ #include "third_party/blink/renderer/modules/service_worker/web_service_worker_fetch_context_impl.h"
+ #include "third_party/blink/renderer/modules/webusb/usb.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
+ #include "third_party/blink/renderer/platform/bindings/script_state.h"
+ #include "third_party/blink/renderer/platform/bindings/source_location.h"
+ #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
+@@ -363,8 +367,111 @@ void ServiceWorkerGlobalScope::FetchAndRunModuleScript(
+                         ScriptController()->GetScriptState()));
+ }
+ 
++bool ServiceWorkerGlobalScope::IsCookieCheckpointCaptureCurrent(
++    uint64_t ticket) const {
++  if (!ticket || ticket != cookie_checkpoint_ticket_ ||
++      !cookie_checkpoint_capture_valid_ || cookie_checkpoint_disposed_ ||
++      IsClosing() || IsContextDestroyed() || !receiver_.is_bound()) {
++    return false;
++  }
++  auto* current = CookieCheckpointParticipant::GetIfExists(*this);
++  if (current != cookie_checkpoint_producer_.Get()) {
++    return false;
++  }
++  if (!cookie_checkpoint_snapshot_) {
++    return !current;
++  }
++  return current && current->IsRegisteredForCheckpoint() &&
++         current->CaptureWritesForCheckpoint() == cookie_checkpoint_snapshot_;
++}
++
++void ServiceWorkerGlobalScope::CaptureCookieProducerForCheckpoint(
++    CaptureCookieProducerForCheckpointCallback callback) {
++  DCHECK(IsContextThread());
++  cookie_checkpoint_capture_valid_ = false;
++  cookie_checkpoint_draining_ = false;
++  cookie_checkpoint_producer_.Clear();
++  cookie_checkpoint_snapshot_.reset();
++  if (cookie_checkpoint_ticket_ == std::numeric_limits<uint64_t>::max()) {
++    std::move(callback).Run(false, 0);
++    return;
++  }
++  ++cookie_checkpoint_ticket_;
++  if (cookie_checkpoint_disposed_ || IsClosing() || IsContextDestroyed() ||
++      !receiver_.is_bound()) {
++    std::move(callback).Run(false, 0);
++    return;
++  }
++  auto* participant = CookieCheckpointParticipant::GetIfExists(*this);
++  if (participant) {
++    auto snapshot = participant->CaptureWritesForCheckpoint();
++    if (!snapshot) {
++      std::move(callback).Run(false, 0);
++      return;
++    }
++    cookie_checkpoint_snapshot_ = *snapshot;
++    cookie_checkpoint_producer_ = participant;
++  }
++  cookie_checkpoint_capture_valid_ = true;
++  std::move(callback).Run(true, cookie_checkpoint_ticket_);
++}
++
++void ServiceWorkerGlobalScope::DrainCookieWritesForCheckpoint(
++    uint64_t ticket,
++    base::TimeTicks deadline,
++    DrainCookieWritesForCheckpointCallback callback) {
++  DCHECK(IsContextThread());
++  CHECK(callback);
++  auto runner = base::SequencedTaskRunner::GetCurrentDefault();
++  const auto now = base::TimeTicks::Now();
++  if (now >= deadline || deadline > now + base::Seconds(30) ||
++      cookie_checkpoint_draining_ || !IsCookieCheckpointCaptureCurrent(ticket)) {
++    runner->PostTask(FROM_HERE, base::BindOnce(std::move(callback), false));
++    return;
++  }
++  cookie_checkpoint_draining_ = true;
++  struct Reply {
++    explicit Reply(DrainCookieWritesForCheckpointCallback completion)
++        : callback(std::move(completion)) {}
++    void Complete(bool success) {
++      if (callback) {
++        std::move(callback).Run(success);
++      }
++    }
++    DrainCookieWritesForCheckpointCallback callback;
++  };
++  auto reply = std::make_shared<Reply>(std::move(callback));
++  runner->PostDelayedTask(
++      FROM_HERE,
++      base::BindOnce([](std::shared_ptr<Reply> pending) { pending->Complete(false); },
++                     reply),
++      deadline - now);
++  auto delivered = base::BindOnce(
++      [reply, runner, owner = WeakPersistent<ServiceWorkerGlobalScope>(this),
++       ticket, deadline](bool success) {
++        runner->PostTask(FROM_HERE, base::BindOnce(
++            [reply, owner, ticket, deadline, success]() {
++              const bool valid = owner && base::TimeTicks::Now() < deadline &&
++                                 owner->IsCookieCheckpointCaptureCurrent(ticket);
++              if (owner && owner->cookie_checkpoint_ticket_ == ticket) {
++                owner->cookie_checkpoint_capture_valid_ = false;
++              }
++              reply->Complete(success && valid);
++            }));
++      });
++  if (auto* participant = cookie_checkpoint_producer_.Get()) {
++    participant->DrainWritesForCheckpoint(deadline, std::move(delivered));
++  } else {
++    runner->PostTask(FROM_HERE, base::BindOnce(std::move(delivered), true));
++  }
++}
++
+ void ServiceWorkerGlobalScope::Dispose() {
+   DCHECK(IsContextThread());
++  cookie_checkpoint_disposed_ = true;
++  cookie_checkpoint_capture_valid_ = false;
++  cookie_checkpoint_producer_.Clear();
++  cookie_checkpoint_snapshot_.reset();
+   controller_receivers_.Clear();
+   event_queue_.reset();
+   service_worker_host_.reset();
+@@ -698,6 +805,7 @@ void ServiceWorkerGlobalScope::DispatchExtendableEventWithRespondWith(
+ }
+ 
+ void ServiceWorkerGlobalScope::Trace(Visitor* visitor) const {
++  visitor->Trace(cookie_checkpoint_producer_);
+   visitor->Trace(clients_);
+   visitor->Trace(registration_);
+   visitor->Trace(service_worker_);
+diff --git a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.h b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.h
+index b59ea11d53922f61cb971b3c161ac6c3eac1e210..2d841e3428a218d210984aa3e355654725c974fb 100644
+--- a/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.h
++++ b/third_party/blink/renderer/modules/service_worker/service_worker_global_scope.h
+@@ -33,6 +33,7 @@
+ #include <stdint.h>
+ 
+ #include <memory>
++#include <optional>
+ 
+ #include "base/memory/raw_ptr.h"
+ #include "base/time/time.h"
+@@ -51,6 +52,7 @@
+ #include "third_party/blink/public/mojom/service_worker/service_worker_ancestor_frame_type.mojom-blink.h"
+ #include "third_party/blink/public/mojom/service_worker/service_worker_fetch_handler_type.mojom-blink.h"
+ #include "third_party/blink/public/mojom/service_worker/service_worker_stream_handle.mojom-blink-forward.h"
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h"
+ #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+ #include "third_party/blink/renderer/modules/modules_export.h"
+ #include "third_party/blink/renderer/modules/service_worker/cross_origin_resource_policy_checker.h"
+@@ -581,6 +583,22 @@ class MODULES_EXPORT ServiceWorkerGlobalScope final
+                             bool wants_result,
+                             ExecuteScriptForTestCallback callback) override;
+ 
++  void CaptureCookieProducerForCheckpoint(
++      CaptureCookieProducerForCheckpointCallback callback) override;
++  void DrainCookieWritesForCheckpoint(
++      uint64_t ticket,
++      base::TimeTicks deadline,
++      DrainCookieWritesForCheckpointCallback callback) override;
++
++  bool IsCookieCheckpointCaptureCurrent(uint64_t ticket) const;
++  uint64_t cookie_checkpoint_ticket_ = 0;
++  bool cookie_checkpoint_capture_valid_ = false;
++  bool cookie_checkpoint_draining_ = false;
++  bool cookie_checkpoint_disposed_ = false;
++  WeakMember<CookieCheckpointParticipant> cookie_checkpoint_producer_;
++  std::optional<CookieCheckpointParticipant::Snapshot> cookie_checkpoint_snapshot_;
++
++
+   void NoteNewFetchEvent(const mojom::blink::FetchAPIRequest& request);
+   void NoteRespondedToFetchEvent(const KURL& request_url, bool range_request);
+ 

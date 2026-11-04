@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "e69e53843e50e7f7c1ac4be88261a6febab24bd43b9984175c13ad9ab06bac90",
+  "normalized_patch_sha256": "072b1bf224b83bad633cea9faffcea485fd30c0d18cd2e6426025db005880755",
+  "patch": "0180-restricted-cookie-test-callback-fix.patch",
+  "before_source_sha256": {
+    "services/network/restricted_cookie_manager_unittest.cc": "42e4de28a4a39418c34067f8fef5f53db36bddf4545126271defe6ff91e55034"
+  },
+  "final_source_sha256": {
+    "services/network/restricted_cookie_manager_unittest.cc": "ee35e76da66a9f86129628ffee94f58e18a076ab5e1e3fdf701bb36d375a9a07"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

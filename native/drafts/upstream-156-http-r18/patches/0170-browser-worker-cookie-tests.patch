@@ -1,0 +1,157 @@
+diff --git a/content/browser/service_worker/service_worker_version_unittest.cc b/content/browser/service_worker/service_worker_version_unittest.cc
+index 32d3601537afea1909b6a9eab11aa89566ae4ab1..a585065bfeefe1c6899469b4c8393072b89ec2ab 100644
+--- a/content/browser/service_worker/service_worker_version_unittest.cc
++++ b/content/browser/service_worker/service_worker_version_unittest.cc
+@@ -3034,5 +3034,152 @@ TEST_P(ServiceWorkerVersionTest, OnStopped_MultipleInflightRequests) {
+   EXPECT_TRUE(error_callback2_called);
+ }
+ 
++namespace {
++
++// Certifies wrapper/IPC behavior only; deliberately not a persistent producer.
++class CookieCheckpointTestWorker final : public FakeServiceWorker {
++ public:
++  using FakeServiceWorker::FakeServiceWorker;
++  void HoldCapture() { hold_capture_ = true; }
++  void CaptureCookieProducerForCheckpoint(
++      CaptureCookieProducerForCheckpointCallback callback) override {
++    if (hold_capture_) {
++      held_capture_ = std::move(callback);
++      return;
++    }
++    std::move(callback).Run(true, 17);
++  }
++  void DrainCookieWritesForCheckpoint(
++      uint64_t ticket,
++      base::TimeTicks deadline,
++      DrainCookieWritesForCheckpointCallback callback) override {
++    std::move(callback).Run(ticket == 17 && deadline > base::TimeTicks::Now());
++  }
++
++ private:
++  bool hold_capture_ = false;
++  CaptureCookieProducerForCheckpointCallback held_capture_;
++};
++
++bool StartCookieCheckpointTestWorker(ServiceWorkerVersion* version) {
++  base::test::TestFuture<blink::ServiceWorkerStatusCode> started;
++  version->StartWorker(ServiceWorkerMetrics::EventType::UNKNOWN,
++                       started.GetCallback());
++  return started.Get() == blink::ServiceWorkerStatusCode::kOk &&
++         version->running_status() == blink::EmbeddedWorkerStatus::kRunning &&
++         version->start_worker_token().has_value();
++}
++
++}  // namespace
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieStoppedCaptureFailsPosted) {
++  base::test::TestFuture<bool, uint64_t> done;
++  version_->CaptureCookieProducerForCheckpoint(
++      blink::ServiceWorkerToken(), base::TimeTicks::Now() + base::Seconds(5),
++      done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_FALSE(done.Get<0>());
++  EXPECT_EQ(done.Get<1>(), 0u);
++  EXPECT_EQ(version_->running_status(), blink::EmbeddedWorkerStatus::kStopped);
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieStoppedDrainFailsPosted) {
++  base::test::TestFuture<bool> done;
++  version_->DrainCookieWritesForCheckpoint(
++      blink::ServiceWorkerToken(), 17,
++      base::TimeTicks::Now() + base::Seconds(5), done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_FALSE(done.Get());
++  EXPECT_EQ(version_->running_status(), blink::EmbeddedWorkerStatus::kStopped);
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieLiveRunIdentityIsChecked) {
++  ASSERT_TRUE(StartCookieCheckpointTestWorker(version_.get()));
++  const auto expected = *version_->start_worker_token();
++  EXPECT_TRUE(version_->IsCookieCheckpointEndpointCurrent(
++      expected, base::TimeTicks::Now() + base::Seconds(5)));
++  EXPECT_FALSE(version_->IsCookieCheckpointEndpointCurrent(
++      blink::ServiceWorkerToken(), base::TimeTicks::Now() + base::Seconds(5)));
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieForeignRunCaptureIsRejected) {
++  ASSERT_TRUE(StartCookieCheckpointTestWorker(version_.get()));
++  base::test::TestFuture<bool, uint64_t> done;
++  version_->CaptureCookieProducerForCheckpoint(
++      blink::ServiceWorkerToken(), base::TimeTicks::Now() + base::Seconds(5),
++      done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_FALSE(done.Get<0>());
++  EXPECT_EQ(done.Get<1>(), 0u);
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieExpiredCaptureIsRejected) {
++  ASSERT_TRUE(StartCookieCheckpointTestWorker(version_.get()));
++  base::test::TestFuture<bool, uint64_t> done;
++  version_->CaptureCookieProducerForCheckpoint(
++      *version_->start_worker_token(), base::TimeTicks::Now(), done.GetCallback());
++  EXPECT_FALSE(done.Get<0>());
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieUnboundedDrainIsRejected) {
++  ASSERT_TRUE(StartCookieCheckpointTestWorker(version_.get()));
++  base::test::TestFuture<bool> done;
++  version_->DrainCookieWritesForCheckpoint(*version_->start_worker_token(), 17,
++      base::TimeTicks::Max(), done.GetCallback());
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieZeroTicketIsRejected) {
++  ASSERT_TRUE(StartCookieCheckpointTestWorker(version_.get()));
++  base::test::TestFuture<bool> done;
++  version_->DrainCookieWritesForCheckpoint(*version_->start_worker_token(), 0,
++      base::TimeTicks::Now() + base::Seconds(5), done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieDefaultFakeCannotCertifyAPrefix) {
++  helper_->AddNewPendingServiceWorker<FakeServiceWorker>(helper_.get());
++  ASSERT_TRUE(StartCookieCheckpointTestWorker(version_.get()));
++  base::test::TestFuture<bool, uint64_t> done;
++  version_->CaptureCookieProducerForCheckpoint(*version_->start_worker_token(),
++      base::TimeTicks::Now() + base::Seconds(5), done.GetCallback());
++  EXPECT_FALSE(done.Get<0>());
++  EXPECT_EQ(done.Get<1>(), 0u);
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieTestProducerRoundTrip) {
++  helper_->AddNewPendingServiceWorker<CookieCheckpointTestWorker>(helper_.get());
++  ASSERT_TRUE(StartCookieCheckpointTestWorker(version_.get()));
++  const auto expected = *version_->start_worker_token();
++  const auto deadline = base::TimeTicks::Now() + base::Seconds(5);
++  base::test::TestFuture<bool, uint64_t> captured;
++  version_->CaptureCookieProducerForCheckpoint(expected, deadline,
++                                               captured.GetCallback());
++  EXPECT_FALSE(captured.IsReady());
++  ASSERT_TRUE(captured.Get<0>());
++  EXPECT_EQ(captured.Get<1>(), 17u);
++  base::test::TestFuture<bool> done;
++  version_->DrainCookieWritesForCheckpoint(expected, captured.Get<1>(), deadline,
++                                            done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_P(ServiceWorkerVersionTest, GlintCookieStopDuringCaptureRejectsDroppedReply) {
++  auto* worker =
++      helper_->AddNewPendingServiceWorker<CookieCheckpointTestWorker>(helper_.get());
++  worker->HoldCapture();
++  ASSERT_TRUE(StartCookieCheckpointTestWorker(version_.get()));
++  base::test::TestFuture<bool, uint64_t> captured;
++  version_->CaptureCookieProducerForCheckpoint(*version_->start_worker_token(),
++      base::TimeTicks::Now() + base::Seconds(5), captured.GetCallback());
++  base::RunLoop().RunUntilIdle();
++  EXPECT_FALSE(captured.IsReady());
++  version_->StopWorker(base::DoNothing());
++  EXPECT_FALSE(captured.Get<0>());
++  EXPECT_EQ(captured.Get<1>(), 0u);
++}
++
+ }  // namespace service_worker_version_unittest
+ }  // namespace content

@@ -1,0 +1,597 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index c35280028daab50b4e413e8f754e3a557c6aa151..2889005e1c36a0f0b0eca4a9a45d48bd1f32868c 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -632,6 +632,8 @@ source_set("browser") {
+     "camouflow_native/glint/document_surface_commit_producer.cc",
+     "camouflow_native/glint/window_privacy_readiness.cc",
+     "camouflow_native/glint/window_privacy_readiness.h",
++    "camouflow_native/glint/partition_worker_cookie_fence.cc",
++    "camouflow_native/glint/partition_worker_cookie_fence.h",
+     "camouflow_native/glint/profile_document_commit.cc",
+     "camouflow_native/glint/profile_document_commit.h",
+     "camouflow_native/glint/profile_producer_fence.cc",
+diff --git a/content/browser/camouflow_native/glint/partition_worker_cookie_fence.cc b/content/browser/camouflow_native/glint/partition_worker_cookie_fence.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..6314dd098c3fc907dcbf95626863bc1cf20b02b9
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/partition_worker_cookie_fence.cc
+@@ -0,0 +1,335 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#include "content/browser/camouflow_native/glint/partition_worker_cookie_fence.h"
++
++#include <utility>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted.h"
++#include "base/task/bind_post_task.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/uuid.h"
++#include "content/browser/service_worker/embedded_worker_instance.h"
++#include "content/browser/service_worker/service_worker_context_core.h"
++#include "content/browser/service_worker/service_worker_context_wrapper.h"
++#include "content/browser/service_worker/service_worker_version.h"
++#include "content/browser/storage_partition_impl.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_process_host.h"
++
++namespace camouflow::native {
++
++struct PartitionWorkerCookieFence::Actor {
++  scoped_refptr<content::ServiceWorkerVersion> version;
++  blink::ServiceWorkerToken token;
++  content::ChildProcessId process;
++  base::Uuid request_id;
++  uint64_t ticket = 0;
++  bool leased = false;
++};
++
++std::unique_ptr<PartitionWorkerCookieFence> PartitionWorkerCookieFence::Start(
++    content::StoragePartitionImpl* partition,
++    base::TimeTicks deadline,
++    Callback callback) {
++  CHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  CHECK(callback);
++  auto operation = std::unique_ptr<PartitionWorkerCookieFence>(
++      new PartitionWorkerCookieFence(partition, deadline, std::move(callback)));
++  operation->Begin();
++  return operation;
++}
++
++PartitionWorkerCookieFence::PartitionWorkerCookieFence(
++    content::StoragePartitionImpl* partition,
++    base::TimeTicks deadline,
++    Callback callback)
++    : partition_(partition ? partition->GetWeakPtr()
++                           : base::WeakPtr<content::StoragePartitionImpl>()),
++      deadline_(deadline), callback_(std::move(callback)) {}
++
++PartitionWorkerCookieFence::~PartitionWorkerCookieFence() {
++  CHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  weak_factory_.InvalidateWeakPtrs();
++  timer_.Stop();
++  observation_.Reset();
++  ReleaseLeases();
++  if (callback_) {
++    base::BindPostTaskToCurrentDefault(std::move(callback_))
++        .Run(Result{Status::kCancelled, actors_.size()});
++  }
++}
++
++PartitionWorkerCookieFence::Status PartitionWorkerCookieFence::CaptureActors() {
++  if (!partition_ || !owner_ || !core_ ||
++      partition_->GetServiceWorkerContext() != owner_.get() ||
++      owner_->context() != core_.get()) {
++    return Status::kOwnerGone;
++  }
++  if (core_->GetLiveVersions().size() > kMaxLiveVersions ||
++      owner_->GetRunningServiceWorkerInfos().size() > kMaxWorkers) {
++    return Status::kTooManyActors;
++  }
++  for (const auto& [id, version] : core_->GetLiveVersions()) {
++    const auto state = version->running_status();
++    if (state != blink::EmbeddedWorkerStatus::kRunning &&
++        state != blink::EmbeddedWorkerStatus::kStopped) {
++      return Status::kNotReady;
++    }
++    if (state == blink::EmbeddedWorkerStatus::kRunning &&
++        !owner_->GetRunningServiceWorkerInfos().contains(id)) {
++      return Status::kNotReady;
++    }
++  }
++  for (const auto& [id, info] : owner_->GetRunningServiceWorkerInfos()) {
++    auto* version = owner_->GetLiveVersion(id);
++    auto* host = content::RenderProcessHost::FromID(info.render_process_id);
++    if (!version || !host || !host->IsInitializedAndNotDead() || !host->IsReady() ||
++        host->FastShutdownStarted() ||
++        !version->IsCookieCheckpointEndpointCurrent(info.token, deadline_) ||
++        version->embedded_worker()->process_id() != info.render_process_id) {
++      return Status::kNotReady;
++    }
++    actors_.push_back(std::make_unique<Actor>(Actor{
++        base::WrapRefCounted(version), info.token, info.render_process_id,
++        base::Uuid::GenerateRandomV4()}));
++  }
++  return Status::kAcknowledged;
++}
++
++void PartitionWorkerCookieFence::Begin() {
++  const auto now = base::TimeTicks::Now();
++  if (deadline_ <= now || deadline_ > now + base::Seconds(30)) {
++    Finish(Status::kTimedOut);
++    return;
++  }
++  if (!partition_ || !partition_->GetServiceWorkerContext() ||
++      !partition_->GetServiceWorkerContext()->context()) {
++    Finish(Status::kOwnerGone);
++    return;
++  }
++  owner_ = partition_->GetServiceWorkerContext();
++  core_ = owner_->context()->AsWeakPtr();
++  observation_.Observe(owner_.get());
++  const auto status = CaptureActors();
++  if (status != Status::kAcknowledged) {
++    Finish(status);
++    return;
++  }
++  timer_.Start(FROM_HERE, deadline_ - base::TimeTicks::Now(),
++               base::BindOnce(&PartitionWorkerCookieFence::Expired,
++                              weak_factory_.GetWeakPtr()));
++  for (auto& actor : actors_) {
++    if (base::TimeTicks::Now() >= deadline_) {
++      Finish(Status::kTimedOut);
++      return;
++    }
++    const auto result = actor->version->StartExternalRequest(
++        actor->request_id, content::ServiceWorkerExternalRequestTimeoutType::kDefault);
++    actor->leased = result == content::ServiceWorkerExternalRequestResult::kOk;
++    if (completion_queued_) {
++      ReleaseLeases();
++      return;
++    }
++    if (!actor->leased) {
++      Finish(Status::kNotReady);
++      return;
++    }
++  }
++  remaining_ = actors_.size();
++  if (actors_.empty()) {
++    Finish(Status::kAcknowledged);
++    return;
++  }
++  for (size_t index = 0; index < actors_.size(); ++index) {
++    if (completion_queued_) {
++      return;
++    }
++    auto& actor = *actors_[index];
++    actor.version->CaptureCookieProducerForCheckpoint(
++        actor.token, deadline_,
++        base::BindOnce(&PartitionWorkerCookieFence::Captured,
++                       weak_factory_.GetWeakPtr(), index));
++  }
++}
++
++PartitionWorkerCookieFence::Status PartitionWorkerCookieFence::Revalidate() {
++  if (base::TimeTicks::Now() >= deadline_) {
++    return Status::kTimedOut;
++  }
++  if (topology_changed_) {
++    return Status::kTopologyChanged;
++  }
++  if (!partition_ || !owner_ || !core_ ||
++      partition_->GetServiceWorkerContext() != owner_.get() ||
++      owner_->context() != core_.get()) {
++    return Status::kOwnerGone;
++  }
++  if (core_->GetLiveVersions().size() > kMaxLiveVersions) {
++    return Status::kTooManyActors;
++  }
++  if (owner_->GetRunningServiceWorkerInfos().size() != actors_.size()) {
++    return Status::kTopologyChanged;
++  }
++  for (const auto& [id, version] : core_->GetLiveVersions()) {
++    const auto state = version->running_status();
++    if (state != blink::EmbeddedWorkerStatus::kRunning &&
++        state != blink::EmbeddedWorkerStatus::kStopped) {
++      return Status::kTopologyChanged;
++    }
++    if (state == blink::EmbeddedWorkerStatus::kRunning &&
++        !owner_->GetRunningServiceWorkerInfos().contains(id)) {
++      return Status::kTopologyChanged;
++    }
++  }
++  for (const auto& actor : actors_) {
++    const auto& running = owner_->GetRunningServiceWorkerInfos();
++    const auto found = running.find(actor->version->version_id());
++    auto* host = content::RenderProcessHost::FromID(actor->process);
++    if (found == running.end() || found->second.token != actor->token ||
++        found->second.render_process_id != actor->process ||
++        owner_->GetLiveVersion(actor->version->version_id()) != actor->version.get() ||
++        !actor->leased || !host || !host->IsInitializedAndNotDead() ||
++        !host->IsReady() || host->FastShutdownStarted() ||
++        !actor->version->IsCookieCheckpointEndpointCurrent(actor->token, deadline_) ||
++        actor->version->embedded_worker()->process_id() != actor->process) {
++      return Status::kTopologyChanged;
++    }
++  }
++  return Status::kAcknowledged;
++}
++
++void PartitionWorkerCookieFence::Captured(size_t index,
++                                          bool available,
++                                          uint64_t ticket) {
++  if (completion_queued_) {
++    return;
++  }
++  const auto status = Revalidate();
++  if (!available || !ticket || status != Status::kAcknowledged) {
++    Finish(status == Status::kAcknowledged ? Status::kProducerRejected : status);
++    return;
++  }
++  actors_[index]->ticket = ticket;
++  if (--remaining_ != 0) {
++    return;
++  }
++  draining_ = true;
++  remaining_ = actors_.size();
++  for (const auto& actor : actors_) {
++    if (completion_queued_) {
++      return;
++    }
++    actor->version->DrainCookieWritesForCheckpoint(
++        actor->token, actor->ticket, deadline_,
++        base::BindOnce(&PartitionWorkerCookieFence::Drained,
++                       weak_factory_.GetWeakPtr()));
++  }
++}
++
++void PartitionWorkerCookieFence::Drained(bool success) {
++  if (completion_queued_) {
++    return;
++  }
++  CHECK(draining_);
++  const auto status = Revalidate();
++  if (!success || status != Status::kAcknowledged) {
++    Finish(status == Status::kAcknowledged ? Status::kProducerRejected : status);
++  } else if (--remaining_ == 0) {
++    Finish(Status::kAcknowledged);
++  }
++}
++
++void PartitionWorkerCookieFence::ReleaseLeases() {
++  for (auto& actor : actors_) {
++    if (std::exchange(actor->leased, false)) {
++      actor->version->FinishExternalRequest(actor->request_id);
++    }
++  }
++}
++
++void PartitionWorkerCookieFence::Expired() {
++  if (callback_ && !completion_queued_) {
++    Finish(Status::kTimedOut);
++    return;
++  }
++  acknowledged_ = false;
++  observation_.Reset();
++  ReleaseLeases();
++}
++
++void PartitionWorkerCookieFence::Changed() {
++  topology_changed_ = true;
++  if (callback_ && !completion_queued_) {
++    Finish(Status::kTopologyChanged);
++  } else {
++    timer_.Stop();
++    observation_.Reset();
++    ReleaseLeases();
++  }
++}
++
++void PartitionWorkerCookieFence::Finish(Status status) {
++  if (completion_queued_ || !callback_) {
++    return;
++  }
++  completion_queued_ = true;
++  acknowledged_ = status == Status::kAcknowledged;
++  if (!acknowledged_) {
++    timer_.Stop();
++    observation_.Reset();
++    ReleaseLeases();
++  }
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&PartitionWorkerCookieFence::Deliver,
++                                weak_factory_.GetWeakPtr(), status));
++}
++
++void PartitionWorkerCookieFence::Deliver(Status status) {
++  if (status == Status::kAcknowledged) {
++    status = Revalidate();
++  }
++  if (status != Status::kAcknowledged) {
++    acknowledged_ = false;
++    timer_.Stop();
++    observation_.Reset();
++    ReleaseLeases();
++  }
++  std::move(callback_).Run(Result{status, actors_.size()});
++}
++
++PartitionWorkerCookieFence::Status
++PartitionWorkerCookieFence::CheckRetainedCohort() {
++  CHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (base::TimeTicks::Now() >= deadline_) {
++    return Status::kTimedOut;
++  }
++  if (!acknowledged_ || callback_) {
++    return Status::kNotReady;
++  }
++  return Revalidate();
++}
++
++void PartitionWorkerCookieFence::OnStartWorkerMessageSentSync(int64_t,
++                                                            const GURL&) {
++  Changed();
++}
++void PartitionWorkerCookieFence::OnStoppingSync(
++    int64_t, const GURL&, const blink::ServiceWorkerToken&) {
++  Changed();
++}
++void PartitionWorkerCookieFence::OnStoppedSync(
++    int64_t, const GURL&, const blink::ServiceWorkerToken&) {
++  Changed();
++}
++void PartitionWorkerCookieFence::OnDestructSync(content::ServiceWorkerContext*) {
++  observation_.Reset();
++  Changed();
++}
++void PartitionWorkerCookieFence::OnWillCreateURLLoaderFactorySync(const GURL&) {
++  Changed();
++}
++
++}  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/glint/partition_worker_cookie_fence.h b/content/browser/camouflow_native/glint/partition_worker_cookie_fence.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..f2cb98e16522eaf574dbcde73a7b3ccb8fd55f71
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/partition_worker_cookie_fence.h
+@@ -0,0 +1,110 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_GLINT_PARTITION_WORKER_COOKIE_FENCE_H_
++#define CONTENT_BROWSER_CAMOUFLOW_NATIVE_GLINT_PARTITION_WORKER_COOKIE_FENCE_H_
++
++#include <cstddef>
++#include <cstdint>
++#include <memory>
++#include <vector>
++
++#include "base/functional/callback.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "content/common/content_export.h"
++#include "content/public/browser/service_worker_context.h"
++
++namespace content {
++class ServiceWorkerContextCore;
++class ServiceWorkerContextWrapper;
++class StoragePartitionImpl;
++}  // namespace content
++
++namespace camouflow::native {
++
++// Prefix of existing CookieStore producers in one already loaded partition.
++// Not a backend commit, HTTP/IDB/cache fence or global atomic profile cut.
++class CONTENT_EXPORT PartitionWorkerCookieFence final
++    : public content::ServiceWorkerContextObserverSynchronous {
++ public:
++  enum class Status {
++    kAcknowledged,
++    kNotReady,
++    kTooManyActors,
++    kTopologyChanged,
++    kProducerRejected,
++    kTimedOut,
++    kOwnerGone,
++    kCancelled,
++  };
++  struct Result {
++    Status status;
++    size_t worker_count;
++  };
++  using Callback = base::OnceCallback<void(Result)>;
++
++  // UI only. Never creates a partition or starts/restarts a worker. Retain the
++  // operation through backend commit and final delivery; keepalives expire at
++  // the original deadline even if the caller keeps an acknowledged operation.
++  static std::unique_ptr<PartitionWorkerCookieFence> Start(
++      content::StoragePartitionImpl* partition,
++      base::TimeTicks deadline,
++      Callback callback);
++  ~PartitionWorkerCookieFence() override;
++  Status CheckRetainedCohort();
++
++  PartitionWorkerCookieFence(const PartitionWorkerCookieFence&) = delete;
++  PartitionWorkerCookieFence& operator=(const PartitionWorkerCookieFence&) = delete;
++
++ private:
++  static constexpr size_t kMaxWorkers = 512;
++  static constexpr size_t kMaxLiveVersions = 4096;
++  struct Actor;
++
++  PartitionWorkerCookieFence(content::StoragePartitionImpl* partition,
++                             base::TimeTicks deadline,
++                             Callback callback);
++  void Begin();
++  Status CaptureActors();
++  Status Revalidate();
++  void Captured(size_t index, bool available, uint64_t ticket);
++  void Drained(bool success);
++  void Expired();
++  void Changed();
++  void Finish(Status status);
++  void Deliver(Status status);
++  void ReleaseLeases();
++
++  void OnStartWorkerMessageSentSync(int64_t version_id, const GURL& scope) override;
++  void OnStoppingSync(int64_t version_id, const GURL& scope,
++                      const blink::ServiceWorkerToken& token) override;
++  void OnStoppedSync(int64_t version_id, const GURL& scope,
++                     const blink::ServiceWorkerToken& token) override;
++  void OnDestructSync(content::ServiceWorkerContext* context) override;
++  void OnWillCreateURLLoaderFactorySync(const GURL& scope) override;
++
++  base::WeakPtr<content::StoragePartitionImpl> partition_;
++  scoped_refptr<content::ServiceWorkerContextWrapper> owner_;
++  base::WeakPtr<content::ServiceWorkerContextCore> core_;
++  const base::TimeTicks deadline_;
++  Callback callback_;
++  std::vector<std::unique_ptr<Actor>> actors_;
++  size_t remaining_ = 0;
++  bool draining_ = false;
++  bool completion_queued_ = false;
++  bool acknowledged_ = false;
++  bool topology_changed_ = false;
++  base::ScopedObservation<content::ServiceWorkerContext,
++                          content::ServiceWorkerContextObserverSynchronous>
++      observation_{this};
++  base::OneShotTimer timer_;
++  base::WeakPtrFactory<PartitionWorkerCookieFence> weak_factory_{this};
++};
++
++}  // namespace camouflow::native
++
++#endif
+diff --git a/content/browser/camouflow_native/glint/partition_worker_cookie_fence_unittest.cc b/content/browser/camouflow_native/glint/partition_worker_cookie_fence_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..6ac2c3b1c517bbac7f0d00c39a481932b00df6cb
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/partition_worker_cookie_fence_unittest.cc
+@@ -0,0 +1,109 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#include "content/browser/camouflow_native/glint/partition_worker_cookie_fence.h"
++
++#include <memory>
++
++#include "base/memory/raw_ptr.h"
++#include "base/test/test_future.h"
++#include "content/browser/storage_partition_impl.h"
++#include "content/public/test/browser_task_environment.h"
++#include "content/public/test/test_browser_context.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace content {
++namespace {
++
++using WorkerFence = camouflow::native::PartitionWorkerCookieFence;
++using WorkerFenceStatus = WorkerFence::Status;
++
++class PartitionWorkerCookieFenceTest : public testing::Test {
++ protected:
++  void SetUp() override {
++    context_ = std::make_unique<TestBrowserContext>();
++    partition_ = static_cast<StoragePartitionImpl*>(
++        context_->GetDefaultStoragePartition());
++    environment_.RunUntilIdle();
++  }
++  void TearDown() override { DestroyContext(); }
++  void DestroyContext() {
++    partition_ = nullptr;
++    context_.reset();
++    environment_.RunUntilIdle();
++  }
++  base::TimeTicks Deadline() { return base::TimeTicks::Now() + base::Seconds(5); }
++
++  BrowserTaskEnvironment environment_{
++      BrowserTaskEnvironment::IO_MAINLOOP,
++      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
++  std::unique_ptr<TestBrowserContext> context_;
++  raw_ptr<StoragePartitionImpl> partition_ = nullptr;
++};
++
++TEST_F(PartitionWorkerCookieFenceTest, EmptyPartitionAcknowledgesPosted) {
++  base::test::TestFuture<WorkerFence::Result> done;
++  auto operation = WorkerFence::Start(partition_, Deadline(), done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_EQ(done.Get().status, WorkerFenceStatus::kAcknowledged);
++  EXPECT_EQ(done.Get().worker_count, 0u);
++  EXPECT_EQ(operation->CheckRetainedCohort(), WorkerFenceStatus::kAcknowledged);
++}
++
++TEST_F(PartitionWorkerCookieFenceTest, NullPartitionRejectsPosted) {
++  base::test::TestFuture<WorkerFence::Result> done;
++  auto operation = WorkerFence::Start(nullptr, Deadline(), done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_EQ(done.Get().status, WorkerFenceStatus::kOwnerGone);
++}
++
++TEST_F(PartitionWorkerCookieFenceTest, ExpiredDeadlineRejectsPosted) {
++  base::test::TestFuture<WorkerFence::Result> done;
++  auto operation = WorkerFence::Start(partition_, base::TimeTicks::Now(),
++                                      done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_EQ(done.Get().status, WorkerFenceStatus::kTimedOut);
++}
++
++TEST_F(PartitionWorkerCookieFenceTest, UnboundedDeadlineRejectsPosted) {
++  base::test::TestFuture<WorkerFence::Result> done;
++  auto operation = WorkerFence::Start(partition_, base::TimeTicks::Max(),
++                                      done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_EQ(done.Get().status, WorkerFenceStatus::kTimedOut);
++}
++
++TEST_F(PartitionWorkerCookieFenceTest, DestroyedPendingOperationPostsCancellation) {
++  base::test::TestFuture<WorkerFence::Result> done;
++  auto operation = WorkerFence::Start(nullptr, Deadline(), done.GetCallback());
++  operation.reset();
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_EQ(done.Get().status, WorkerFenceStatus::kCancelled);
++}
++
++TEST_F(PartitionWorkerCookieFenceTest, OwnerGoneRejectsQueuedEmptySuccess) {
++  base::test::TestFuture<WorkerFence::Result> done;
++  auto operation = WorkerFence::Start(partition_, Deadline(), done.GetCallback());
++  DestroyContext();
++  EXPECT_EQ(done.Get().status, WorkerFenceStatus::kOwnerGone);
++  EXPECT_NE(operation->CheckRetainedCohort(), WorkerFenceStatus::kAcknowledged);
++}
++
++TEST_F(PartitionWorkerCookieFenceTest, RetentionExpiresAtTheOriginalDeadline) {
++  base::test::TestFuture<WorkerFence::Result> done;
++  auto operation = WorkerFence::Start(partition_, Deadline(), done.GetCallback());
++  ASSERT_EQ(done.Get().status, WorkerFenceStatus::kAcknowledged);
++  environment_.FastForwardBy(base::Seconds(5));
++  EXPECT_EQ(operation->CheckRetainedCohort(), WorkerFenceStatus::kTimedOut);
++}
++
++TEST_F(PartitionWorkerCookieFenceTest, RetainedCheckCannotPrecedeDelivery) {
++  base::test::TestFuture<WorkerFence::Result> done;
++  auto operation = WorkerFence::Start(partition_, Deadline(), done.GetCallback());
++  EXPECT_EQ(operation->CheckRetainedCohort(), WorkerFenceStatus::kNotReady);
++  ASSERT_EQ(done.Get().status, WorkerFenceStatus::kAcknowledged);
++  EXPECT_EQ(operation->CheckRetainedCohort(), WorkerFenceStatus::kAcknowledged);
++}
++
++}  // namespace
++}  // namespace content
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index 76484c761c365b3ff44b659cc8c3d5bf3dc84e9a..30f088976ba70b24867ba1ffbd88a0b8e3fd7f6a 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2561,6 +2561,7 @@ test("content_unittests") {
+     "../browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc",
+     "../browser/camouflow_native/glint/window_privacy_readiness_unittest.cc",
+     "../browser/camouflow_native/glint/child_surface_transport_unittest.cc",
++    "../browser/camouflow_native/glint/partition_worker_cookie_fence_unittest.cc",
+     "../browser/camouflow_native/glint/profile_document_commit_unittest.cc",
+     "../browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+     "../browser/camouflow_native/privacy_context_unittest.cc",

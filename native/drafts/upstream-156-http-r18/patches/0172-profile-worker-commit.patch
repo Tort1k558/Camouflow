@@ -1,0 +1,299 @@
+diff --git a/content/browser/camouflow_native/glint/profile_document_commit.cc b/content/browser/camouflow_native/glint/profile_document_commit.cc
+index b99f4a9684bf7ea5e20dad700a2e093e3074ccf7..6422fbd680d4fc4243ad9264a5cdeb99ab644fa8 100644
+--- a/content/browser/camouflow_native/glint/profile_document_commit.cc
++++ b/content/browser/camouflow_native/glint/profile_document_commit.cc
+@@ -9,6 +9,7 @@
+ #include "base/check_op.h"
+ #include "base/task/bind_post_task.h"
+ #include "base/task/sequenced_task_runner.h"
++#include "content/browser/camouflow_native/glint/partition_worker_cookie_fence.h"
+ #include "content/browser/camouflow_native/glint/profile_producer_fence.h"
+ #include "content/browser/dom_storage/dom_storage_context_wrapper.h"
+ #include "content/browser/storage_partition_impl.h"
+@@ -23,26 +24,37 @@ std::unique_ptr<ProfileDocumentCommit> ProfileDocumentCommit::Start(
+     content::BrowserContext* context,
+     base::TimeTicks deadline,
+     Callback callback) {
++  return StartWithScope(context, deadline, std::move(callback), Scope::kDocuments);
++}
++
++std::unique_ptr<ProfileDocumentCommit> ProfileDocumentCommit::StartWithScope(
++    content::BrowserContext* context,
++    base::TimeTicks deadline,
++    Callback callback,
++    Scope scope) {
+   CHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   CHECK(callback);
+   auto operation = std::unique_ptr<ProfileDocumentCommit>(
+-      new ProfileDocumentCommit(context, deadline, std::move(callback)));
++      new ProfileDocumentCommit(context, deadline, std::move(callback), scope));
+   operation->Begin();
+   return operation;
+ }
+ 
+ ProfileDocumentCommit::ProfileDocumentCommit(content::BrowserContext* context,
+                                              base::TimeTicks deadline,
+-                                             Callback callback)
++                                             Callback callback,
++                                             Scope scope)
+     : context_(context ? context->GetWeakPtr()
+                        : base::WeakPtr<content::BrowserContext>()),
+       deadline_(deadline),
++      scope_(scope),
+       callback_(std::move(callback)) {}
+ 
+ ProfileDocumentCommit::~ProfileDocumentCommit() {
+   CHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   weak_factory_.InvalidateWeakPtrs();
+   timer_.Stop();
++  worker_fences_.clear();
+   producers_.reset();
+   if (callback_) {
+     base::BindPostTaskToCurrentDefault(std::move(callback_))
+@@ -51,6 +63,10 @@ ProfileDocumentCommit::~ProfileDocumentCommit() {
+ }
+ 
+ void ProfileDocumentCommit::Begin() {
++  if (scope_ != Scope::kDocuments && scope_ != Scope::kDocumentsAndWorkerCookies) {
++    Finish(Status::kInvalidScope);
++    return;
++  }
+   if (!context_ || context_->ShutdownStarted()) {
+     Finish(Status::kOwnerGone);
+     return;
+@@ -59,7 +75,9 @@ void ProfileDocumentCommit::Begin() {
+     Finish(Status::kInvalidScope);
+     return;
+   }
+-  if (deadline_.is_max() || deadline_ <= base::TimeTicks::Now()) {
++  if (deadline_.is_max() || deadline_ <= base::TimeTicks::Now() ||
++      (scope_ == Scope::kDocumentsAndWorkerCookies &&
++       deadline_ > base::TimeTicks::Now() + base::Seconds(30))) {
+     Finish(Status::kTimedOut);
+     return;
+   }
+@@ -101,6 +119,23 @@ void ProfileDocumentCommit::Begin() {
+   timer_.Start(FROM_HERE, deadline_ - base::TimeTicks::Now(),
+                base::BindOnce(&ProfileDocumentCommit::Finish,
+                               weak_factory_.GetWeakPtr(), Status::kTimedOut));
++  if (scope_ == Scope::kDocumentsAndWorkerCookies) {
++    pending_worker_partitions_ = partitions_.size();
++    worker_fences_.reserve(partitions_.size());
++    for (const auto& lease : partitions_) {
++      worker_fences_.push_back(PartitionWorkerCookieFence::Start(
++          lease.partition.get(), deadline_,
++          base::BindOnce(
++              [](base::WeakPtr<ProfileDocumentCommit> operation,
++                 PartitionWorkerCookieFence::Result result) {
++                if (operation) {
++                  operation->WorkersReplied(result.status ==
++                      PartitionWorkerCookieFence::Status::kAcknowledged);
++                }
++              },
++              weak_factory_.GetWeakPtr())));
++    }
++  }
+   producers_ = ProfileProducerFence::Start(
+       context_.get(), deadline_,
+       base::BindOnce(
+@@ -117,6 +152,9 @@ void ProfileDocumentCommit::Begin() {
+ }
+ 
+ ProfileDocumentCommit::Status ProfileDocumentCommit::Revalidate() {
++  if (scope_ != Scope::kDocuments && scope_ != Scope::kDocumentsAndWorkerCookies) {
++    return Status::kInvalidScope;
++  }
+   if (!context_ || context_->ShutdownStarted()) {
+     return Status::kOwnerGone;
+   }
+@@ -130,6 +168,17 @@ ProfileDocumentCommit::Status ProfileDocumentCommit::Revalidate() {
+                          ProfileProducerFence::Status::kAcknowledged) {
+     return Status::kTopologyChanged;
+   }
++  if (scope_ == Scope::kDocumentsAndWorkerCookies) {
++    if (worker_fences_.size() != partitions_.size()) {
++      return Status::kTopologyChanged;
++    }
++    for (const auto& workers : worker_fences_) {
++      if (!workers || workers->CheckRetainedCohort() !=
++                          PartitionWorkerCookieFence::Status::kAcknowledged) {
++        return Status::kTopologyChanged;
++      }
++    }
++  }
+   for (const auto& lease : partitions_) {
+     if (!lease.partition || !lease.cookie_owner || !lease.local_storage_owner) {
+       return Status::kOwnerGone;
+@@ -139,7 +188,7 @@ ProfileDocumentCommit::Status ProfileDocumentCommit::Revalidate() {
+       return Status::kNotReady;
+     }
+   }
+-  return Status::kCommittedDocumentPrefix;
++  return SuccessStatus();
+ }
+ 
+ void ProfileDocumentCommit::ProducersReplied(bool success) {
+@@ -150,11 +199,41 @@ void ProfileDocumentCommit::ProducersReplied(bool success) {
+     Finish(Status::kProducerRejected);
+     return;
+   }
++  documents_ready_ = true;
++  MaybeStartBackends();
++}
++
++void ProfileDocumentCommit::WorkersReplied(bool success) {
++  if (completion_queued_) {
++    return;
++  }
++  if (!success) {
++    Finish(Status::kProducerRejected);
++    return;
++  }
++  CHECK_GT(pending_worker_partitions_, 0u);
++  --pending_worker_partitions_;
++  MaybeStartBackends();
++}
++
++ProfileDocumentCommit::Status ProfileDocumentCommit::SuccessStatus() const {
++  CHECK(scope_ == Scope::kDocuments || scope_ == Scope::kDocumentsAndWorkerCookies);
++  return scope_ == Scope::kDocuments
++             ? Status::kCommittedDocumentPrefix
++             : Status::kCommittedDocumentAndWorkerCookiePrefix;
++}
++
++void ProfileDocumentCommit::MaybeStartBackends() {
++  if (completion_queued_ || backends_started_ || !documents_ready_ ||
++      pending_worker_partitions_ != 0) {
++    return;
++  }
+   const auto status = Revalidate();
+-  if (status != Status::kCommittedDocumentPrefix) {
++  if (status != SuccessStatus()) {
+     Finish(status);
+     return;
+   }
++  backends_started_ = true;
+   remaining_ = partitions_.size() * 2;
+   for (const auto& lease : partitions_) {
+     if (!lease.partition || !lease.cookie_owner || !lease.local_storage_owner) {
+@@ -173,6 +252,7 @@ void ProfileDocumentCommit::ProducersReplied(bool success) {
+   }
+ }
+ 
++
+ void ProfileDocumentCommit::BackendReplied(bool success) {
+   if (completion_queued_) {
+     return;
+@@ -183,7 +263,7 @@ void ProfileDocumentCommit::BackendReplied(bool success) {
+     return;
+   }
+   if (--remaining_ == 0) {
+-    Finish(Status::kCommittedDocumentPrefix);
++    Finish(SuccessStatus());
+   }
+ }
+ 
+@@ -193,6 +273,10 @@ void ProfileDocumentCommit::Finish(Status status) {
+   }
+   completion_queued_ = true;
+   timer_.Stop();
++  if (status != Status::kCommittedDocumentPrefix &&
++      status != Status::kCommittedDocumentAndWorkerCookiePrefix) {
++    worker_fences_.clear();
++  }
+   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+       FROM_HERE, base::BindOnce(&ProfileDocumentCommit::Deliver,
+                                 weak_factory_.GetWeakPtr(), status));
+@@ -201,13 +285,15 @@ void ProfileDocumentCommit::Finish(Status status) {
+ void ProfileDocumentCommit::Deliver(Status status) {
+   if (!context_ || context_->ShutdownStarted()) {
+     status = Status::kOwnerGone;
+-  } else if (status == Status::kCommittedDocumentPrefix) {
++  } else if (status == Status::kCommittedDocumentPrefix ||
++             status == Status::kCommittedDocumentAndWorkerCookiePrefix) {
+     status = Revalidate();
+   }
+   auto callback = std::move(callback_);
+   const auto partition_count = partitions_.size();
+   // Keep the acknowledged producer cohort observed until the final validation;
+   // do not let asynchronous backend work authorize success after topology loss.
++  worker_fences_.clear();
+   producers_.reset();
+   std::move(callback).Run(Result{status, partition_count});
+ }
+diff --git a/content/browser/camouflow_native/glint/profile_document_commit.h b/content/browser/camouflow_native/glint/profile_document_commit.h
+index e6407d45efda2718019e26a6296dee854038d670..dad63e8e10bf9ed61a3c0cd435a5765bd2b5a1c9 100644
+--- a/content/browser/camouflow_native/glint/profile_document_commit.h
++++ b/content/browser/camouflow_native/glint/profile_document_commit.h
+@@ -22,13 +22,16 @@ class StoragePartitionImpl;
+ 
+ namespace camouflow::native {
+ 
++class PartitionWorkerCookieFence;
+ class ProfileProducerFence;
+ 
+-// A document-producer prefix followed by cookie/localStorage store commits.
+-// NOT an atomic profile snapshot: no mutation freeze or worker/HTTP/IDB/cache
+-// fencing, session-restore guarantee or power-loss durability is implied.
++// Document prefixes and optionally existing worker CookieStore prefixes,
++// followed by cookie/localStorage commits. NOT an atomic profile snapshot:
++// no mutation freeze, HTTP/IDB/cache fence, session-restore guarantee or
++// power-loss durability is implied.
+ class CONTENT_EXPORT ProfileDocumentCommit final {
+  public:
++  enum class Scope { kDocuments, kDocumentsAndWorkerCookies };
+   enum class Status {
+     kCommittedDocumentPrefix,
+     kInvalidScope,
+@@ -41,6 +44,7 @@ class CONTENT_EXPORT ProfileDocumentCommit final {
+     kTimedOut,
+     kOwnerGone,
+     kCancelled,
++    kCommittedDocumentAndWorkerCookiePrefix,
+   };
+ 
+   struct Result {
+@@ -55,6 +59,13 @@ class CONTENT_EXPORT ProfileDocumentCommit final {
+       content::BrowserContext* context,
+       base::TimeTicks deadline,
+       Callback callback);
++  // Explicit opt-in. The original Start() remains document-only; worker failure
++  // never falls back to that narrower success status.
++  static std::unique_ptr<ProfileDocumentCommit> StartWithScope(
++      content::BrowserContext* context,
++      base::TimeTicks deadline,
++      Callback callback,
++      Scope scope);
+   ~ProfileDocumentCommit();
+ 
+   ProfileDocumentCommit(const ProfileDocumentCommit&) = delete;
+@@ -71,9 +82,13 @@ class CONTENT_EXPORT ProfileDocumentCommit final {
+ 
+   ProfileDocumentCommit(content::BrowserContext* context,
+                         base::TimeTicks deadline,
+-                        Callback callback);
++                        Callback callback,
++                        Scope scope);
+   void Begin();
+   void ProducersReplied(bool success);
++  void WorkersReplied(bool success);
++  void MaybeStartBackends();
++  Status SuccessStatus() const;
+   void BackendReplied(bool success);
+   Status Revalidate();
+   void Finish(Status status);
+@@ -81,9 +96,14 @@ class CONTENT_EXPORT ProfileDocumentCommit final {
+ 
+   base::WeakPtr<content::BrowserContext> context_;
+   const base::TimeTicks deadline_;
++  const Scope scope_;
+   Callback callback_;
+   std::vector<PartitionLease> partitions_;
+   std::unique_ptr<ProfileProducerFence> producers_;
++  std::vector<std::unique_ptr<PartitionWorkerCookieFence>> worker_fences_;
++  size_t pending_worker_partitions_ = 0;
++  bool documents_ready_ = false;
++  bool backends_started_ = false;
+   size_t remaining_ = 0;
+   bool completion_queued_ = false;
+   base::OneShotTimer timer_;

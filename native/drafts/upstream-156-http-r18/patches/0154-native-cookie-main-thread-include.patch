@@ -1,0 +1,11 @@
+diff --git a/third_party/blink/renderer/core/loader/cookie_jar.cc b/third_party/blink/renderer/core/loader/cookie_jar.cc
+--- a/third_party/blink/renderer/core/loader/cookie_jar.cc
++++ b/third_party/blink/renderer/core/loader/cookie_jar.cc
+@@ -29,6 +29,7 @@
+ #include "third_party/blink/renderer/core/probe/core_probes.h"
+ #include "third_party/blink/renderer/platform/heap/persistent.h"
+ #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
++#include "third_party/blink/renderer/platform/scheduler/public/main_thread.h"
+ #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl_hash.h"

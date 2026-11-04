@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "74bedfb5a69d009f7cddae66796ae6111dd9b70d389627fbcf3f7fca624b21ef",
+  "normalized_patch_sha256": "67814a9ec5ebae62d3d270dfa8c1da99c5325112f4fb30982de4fe2d61abe214",
+  "patch": "0179-http-cookie-sql-durability.patch",
+  "before_source_sha256": {
+    "net/BUILD.gn": "1f6db99c5fd2fddf620f966717def14fc460f177c42c09e2ba59ed45a4ce92f1"
+  },
+  "final_source_sha256": {
+    "net/BUILD.gn": "f6bfa8ce3e9b8cc7c7ff960cee810d59c96d763b647f36d9ec340f078708b60d",
+    "net/url_request/glint_http_cookie_sql_checkpoint_unittest.cc": "4198c5fae5c595564ab7e3fc33e70638845ee7fe3e2e41b0e022425c8d2908ca"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

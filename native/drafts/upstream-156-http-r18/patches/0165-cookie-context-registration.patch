@@ -1,0 +1,315 @@
+diff --git a/third_party/blink/renderer/core/loader/build.gni b/third_party/blink/renderer/core/loader/build.gni
+index bcff0e4176a7df105700b2d267bea144ddac808f..f1ceca5fccbc56661ab282cadca2a1882ccc24da 100644
+--- a/third_party/blink/renderer/core/loader/build.gni
++++ b/third_party/blink/renderer/core/loader/build.gni
+@@ -14,6 +14,8 @@ blink_core_sources_loader = [
+   "beacon_data.cc",
+   "beacon_data.h",
+   "cookie_jar.cc",
++  "cookie_checkpoint_participant.cc",
++  "cookie_checkpoint_participant.h",
+   "cookie_checkpoint_state.h",
+   "cookie_jar.h",
+   "cross_thread_resource_timing_info_copier.h",
+@@ -181,6 +183,7 @@ blink_core_tests_loader = [
+   "anchor_element_interaction_test.cc",
+   "base_fetch_context_test.cc",
+   "connection_allowlist_preload_test.cc",
++  "cookie_checkpoint_participant_test.cc",
+   "cookie_checkpoint_state_test.cc",
+   "document_load_timing_test.cc",
+   "document_loader_auto_speculation_rules_test.cc",
+diff --git a/third_party/blink/renderer/core/loader/cookie_checkpoint_participant.cc b/third_party/blink/renderer/core/loader/cookie_checkpoint_participant.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..41b415d0e931e28b3159272dc33bfa5741a0e32d
+--- /dev/null
++++ b/third_party/blink/renderer/core/loader/cookie_checkpoint_participant.cc
+@@ -0,0 +1,58 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h"
++
++#include "third_party/blink/renderer/core/execution_context/execution_context.h"
++#include "third_party/blink/renderer/core/loader/cookie_jar.h"
++
++namespace blink {
++
++const char CookieCheckpointParticipant::kSupplementName[] =
++    "CookieCheckpointParticipant";
++
++CookieCheckpointParticipant::CookieCheckpointParticipant(ExecutionContext& context)
++    : Supplement<ExecutionContext>(context) {}
++
++CookieCheckpointParticipant::~CookieCheckpointParticipant() = default;
++
++CookieCheckpointParticipant* CookieCheckpointParticipant::GetIfExists(
++    const ExecutionContext& context) {
++  return Supplement<ExecutionContext>::From<CookieCheckpointParticipant>(context);
++}
++
++bool CookieCheckpointParticipant::IsRegisteredForCheckpoint() const {
++  auto* context = GetSupplementable();
++  return registration_valid_ && !context->IsContextDestroyed() &&
++         GetIfExists(*context) == this;
++}
++
++bool CookieCheckpointParticipant::RegisterForCheckpoint() {
++  auto* context = GetSupplementable();
++  if (context->IsContextDestroyed()) {
++    return false;
++  }
++  auto* existing = GetIfExists(*context);
++  if (existing == this) {
++    return IsRegisteredForCheckpoint();
++  }
++  if (context->IsWindow()) {
++    CookieJar::NoteExternalCookieProducerMutationForCheckpoint();
++  }
++  if (existing) {
++    // Never overwrite an actor whose pending writes may still be in flight.
++    existing->registration_valid_ = false;
++    registration_valid_ = false;
++    return false;
++  }
++  Supplement<ExecutionContext>::ProvideTo(*context, this);
++  registration_valid_ = true;
++  return true;
++}
++
++void CookieCheckpointParticipant::Trace(Visitor* visitor) const {
++  Supplement<ExecutionContext>::Trace(visitor);
++}
++
++}  // namespace blink
+diff --git a/third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h b/third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..7f5d0a248f7a56b933a0c35bfc0b6e61de955d26
+--- /dev/null
++++ b/third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h
+@@ -0,0 +1,52 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_CHECKPOINT_PARTICIPANT_H_
++#define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_CHECKPOINT_PARTICIPANT_H_
++
++#include <optional>
++
++#include "base/functional/callback.h"
++#include "base/time/time.h"
++#include "third_party/blink/renderer/core/core_export.h"
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_state.h"
++#include "third_party/blink/renderer/platform/supplementable.h"
++
++namespace blink {
++
++class ExecutionContext;
++
++// Core can discover a module-owned producer without creating its Web API object
++// or taking a core-to-modules dependency. One live producer owns each context.
++class CORE_EXPORT CookieCheckpointParticipant
++    : public Supplement<ExecutionContext> {
++ public:
++  static const char kSupplementName[];
++  using Snapshot = camouflow::native::CookieCheckpointState::Snapshot;
++
++  static CookieCheckpointParticipant* GetIfExists(const ExecutionContext&);
++  virtual ~CookieCheckpointParticipant();
++
++  CookieCheckpointParticipant(const CookieCheckpointParticipant&) = delete;
++  CookieCheckpointParticipant& operator=(const CookieCheckpointParticipant&) =
++      delete;
++
++  bool IsRegisteredForCheckpoint() const;
++  virtual std::optional<Snapshot> CaptureWritesForCheckpoint() const = 0;
++  virtual void DrainWritesForCheckpoint(
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback) = 0;
++  void Trace(Visitor*) const override;
++
++ protected:
++  explicit CookieCheckpointParticipant(ExecutionContext&);
++  bool RegisterForCheckpoint();
++
++ private:
++  bool registration_valid_ = false;
++};
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_CHECKPOINT_PARTICIPANT_H_
+diff --git a/third_party/blink/renderer/core/loader/cookie_checkpoint_participant_test.cc b/third_party/blink/renderer/core/loader/cookie_checkpoint_participant_test.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..c801cf7ec840fd75354e2e2aed843aceb7904131
+--- /dev/null
++++ b/third_party/blink/renderer/core/loader/cookie_checkpoint_participant_test.cc
+@@ -0,0 +1,95 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h"
++
++#include <utility>
++
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/renderer/core/dom/document.h"
++#include "third_party/blink/renderer/core/execution_context/execution_context.h"
++#include "third_party/blink/renderer/core/loader/cookie_jar.h"
++#include "third_party/blink/renderer/core/testing/page_test_base.h"
++#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
++
++namespace blink {
++namespace {
++
++class RegistrationParticipant final
++    : public GarbageCollected<RegistrationParticipant>,
++      public CookieCheckpointParticipant {
++ public:
++  explicit RegistrationParticipant(ExecutionContext& context)
++      : CookieCheckpointParticipant(context) {}
++
++  bool Register() { return RegisterForCheckpoint(); }
++  std::optional<Snapshot> CaptureWritesForCheckpoint() const override {
++    if (!IsRegisteredForCheckpoint()) {
++      return std::nullopt;
++    }
++    return Snapshot{0, 0};
++  }
++  void DrainWritesForCheckpoint(base::TimeTicks,
++                                base::OnceCallback<void(bool)> callback) override {
++    ADD_FAILURE() << "Registration-only fake must not authorize a wire drain";
++    std::move(callback).Run(false);
++  }
++};
++
++class CookieCheckpointParticipantTest : public PageTestBase {
++ protected:
++  ExecutionContext& Context() { return *GetDocument().GetExecutionContext(); }
++};
++
++TEST_F(CookieCheckpointParticipantTest, LookupDoesNotCreateOrChangeTheEpoch) {
++  auto epoch = CookieJar::CheckpointProducerEpoch();
++  EXPECT_EQ(CookieCheckpointParticipant::GetIfExists(Context()), nullptr);
++  EXPECT_EQ(CookieCheckpointParticipant::GetIfExists(Context()), nullptr);
++  EXPECT_EQ(CookieJar::CheckpointProducerEpoch(), epoch);
++}
++
++TEST_F(CookieCheckpointParticipantTest, FirstRegistrationOwnsTheContext) {
++  auto epoch = CookieJar::CheckpointProducerEpoch();
++  auto* participant = MakeGarbageCollected<RegistrationParticipant>(Context());
++  EXPECT_FALSE(participant->IsRegisteredForCheckpoint());
++  ASSERT_TRUE(participant->Register());
++  EXPECT_EQ(CookieCheckpointParticipant::GetIfExists(Context()), participant);
++  EXPECT_TRUE(participant->CaptureWritesForCheckpoint());
++  EXPECT_NE(CookieJar::CheckpointProducerEpoch(), epoch);
++}
++
++TEST_F(CookieCheckpointParticipantTest, RepeatedRegistrationIsIdempotent) {
++  auto* participant = MakeGarbageCollected<RegistrationParticipant>(Context());
++  ASSERT_TRUE(participant->Register());
++  auto epoch = CookieJar::CheckpointProducerEpoch();
++  EXPECT_TRUE(participant->Register());
++  EXPECT_TRUE(participant->IsRegisteredForCheckpoint());
++  EXPECT_EQ(CookieJar::CheckpointProducerEpoch(), epoch);
++}
++
++TEST_F(CookieCheckpointParticipantTest, DuplicateDoesNotReplaceOrAuthorizeEither) {
++  auto* first = MakeGarbageCollected<RegistrationParticipant>(Context());
++  auto* second = MakeGarbageCollected<RegistrationParticipant>(Context());
++  ASSERT_TRUE(first->Register());
++  auto epoch = CookieJar::CheckpointProducerEpoch();
++  EXPECT_FALSE(second->Register());
++  EXPECT_EQ(CookieCheckpointParticipant::GetIfExists(Context()), first);
++  EXPECT_FALSE(first->CaptureWritesForCheckpoint());
++  EXPECT_FALSE(second->CaptureWritesForCheckpoint());
++  EXPECT_FALSE(first->Register());
++  EXPECT_NE(CookieJar::CheckpointProducerEpoch(), epoch);
++}
++
++TEST_F(CookieCheckpointParticipantTest, ReplacedRegistryInvalidatesTheOldActor) {
++  auto* first = MakeGarbageCollected<RegistrationParticipant>(Context());
++  auto* second = MakeGarbageCollected<RegistrationParticipant>(Context());
++  ASSERT_TRUE(first->Register());
++  Supplement<ExecutionContext>::ProvideTo(Context(), second);
++  EXPECT_EQ(CookieCheckpointParticipant::GetIfExists(Context()), second);
++  EXPECT_FALSE(first->CaptureWritesForCheckpoint());
++  EXPECT_FALSE(second->CaptureWritesForCheckpoint());
++}
++
++}  // namespace
++}  // namespace blink
+diff --git a/third_party/blink/renderer/modules/cookie_store/cookie_store.cc b/third_party/blink/renderer/modules/cookie_store/cookie_store.cc
+index bc70e23660a8625332297864c93e5f9bd16908af..6e02167ef8c9385588b4f5f188dfee77929154b0 100644
+--- a/third_party/blink/renderer/modules/cookie_store/cookie_store.cc
++++ b/third_party/blink/renderer/modules/cookie_store/cookie_store.cc
+@@ -326,6 +326,7 @@ CookieStore::CookieStore(
+     ExecutionContext* execution_context,
+     HeapMojoRemote<network::mojom::blink::RestrictedCookieManager> backend)
+     : ExecutionContextClient(execution_context),
++      CookieCheckpointParticipant(*execution_context),
+       backend_(std::move(backend)),
+       change_listener_receiver_(this, execution_context),
+       default_cookie_url_(DefaultCookieURL(execution_context)),
+@@ -335,7 +336,7 @@ CookieStore::CookieStore(
+   backend_.set_disconnect_handler(
+       BindOnce(&CookieStore::OnCheckpointBackendDisconnect,
+                WrapWeakPersistent(this)));
+-  NotifyCheckpointMutation();
++  RegisterForCheckpoint();
+ }
+ 
+ CookieStore::~CookieStore() = default;
+@@ -359,7 +360,7 @@ std::optional<CookieStore::CheckpointSnapshot>
+ CookieStore::CaptureWritesForCheckpoint() const {
+   auto* context = GetExecutionContext();
+   if (!context || context->IsContextDestroyed() ||
+-      !checkpoint_state_.IsAvailable() || !backend_.is_bound() ||
++      !IsRegisteredForCheckpoint() || !checkpoint_state_.IsAvailable() || !backend_.is_bound() ||
+       !backend_.is_connected()) {
+     return std::nullopt;
+   }
+@@ -584,6 +585,7 @@ void CookieStore::Trace(Visitor* visitor) const {
+   visitor->Trace(backend_);
+   EventTarget::Trace(visitor);
+   ExecutionContextClient::Trace(visitor);
++  CookieCheckpointParticipant::Trace(visitor);
+ }
+ 
+ const AtomicString& CookieStore::InterfaceName() const {
+diff --git a/third_party/blink/renderer/modules/cookie_store/cookie_store.h b/third_party/blink/renderer/modules/cookie_store/cookie_store.h
+index 2df4c5a7534fc1b0b9753720648efc3b77ebf38e..f8386c5c88e8bff6769653272b72a68b7ac0b520 100644
+--- a/third_party/blink/renderer/modules/cookie_store/cookie_store.h
++++ b/third_party/blink/renderer/modules/cookie_store/cookie_store.h
+@@ -21,7 +21,7 @@
+ #include "third_party/blink/renderer/core/dom/events/event_target.h"
+ #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+ #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
+-#include "third_party/blink/renderer/core/loader/cookie_checkpoint_state.h"
++#include "third_party/blink/renderer/core/loader/cookie_checkpoint_participant.h"
+ #include "third_party/blink/renderer/modules/modules_export.h"
+ #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
+ #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+@@ -42,6 +42,7 @@ class ScriptState;
+ class MODULES_EXPORT CookieStore final
+     : public EventTarget,
+       public ExecutionContextClient,
++      public CookieCheckpointParticipant,
+       public network::mojom::blink::CookieChangeListener {
+   DEFINE_WRAPPERTYPEINFO();
+ 
+@@ -54,9 +55,9 @@ class MODULES_EXPORT CookieStore final
+   ~CookieStore() override;
+ 
+   using CheckpointSnapshot = camouflow::native::CookieCheckpointState::Snapshot;
+-  std::optional<CheckpointSnapshot> CaptureWritesForCheckpoint() const;
++  std::optional<CheckpointSnapshot> CaptureWritesForCheckpoint() const override;
+   void DrainWritesForCheckpoint(base::TimeTicks deadline,
+-                                base::OnceCallback<void(bool)> callback);
++                                base::OnceCallback<void(bool)> callback) override;
+ 
+   ScriptPromise<IDLSequence<CookieListItem>> getAll(ScriptState*,
+                                                     const String& name,

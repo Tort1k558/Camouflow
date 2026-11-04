@@ -1,0 +1,266 @@
+diff --git a/net/BUILD.gn b/net/BUILD.gn
+index e45849f6eeece7b91cbc8f3fc958ace91ff67d5e..4c01907ef7e66000dd535c638718b17188823789 100644
+--- a/net/BUILD.gn
++++ b/net/BUILD.gn
+@@ -3413,6 +3413,7 @@ target(_test_target_type, "net_unittests") {
+   if (!is_cronet_build) {
+     sources += [
+       "extras/sqlite/sqlite_persistent_cookie_store_unittest.cc",
++      "url_request/glint_http_cookie_sql_checkpoint_unittest.cc",
+       "extras/sqlite/sqlite_persistent_shared_dictionary_store_unittest.cc",
+       "extras/sqlite/sqlite_persistent_store_backend_base_unittest.cc",
+       "log/trace_net_log_observer_unittest.cc",
+diff --git a/net/url_request/glint_http_cookie_sql_checkpoint_unittest.cc b/net/url_request/glint_http_cookie_sql_checkpoint_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..1544cbdfee473afc3500ab2fda7c326094126e79
+--- /dev/null
++++ b/net/url_request/glint_http_cookie_sql_checkpoint_unittest.cc
+@@ -0,0 +1,248 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#include <map>
++#include <memory>
++#include <string>
++#include <utility>
++
++#include "base/files/file_path.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "base/test/scoped_run_loop_timeout.h"
++#include "base/test/test_future.h"
++#include "base/time/time.h"
++#include "net/base/load_flags.h"
++#include "net/base/net_errors.h"
++#include "net/base/request_priority.h"
++#include "net/cookies/cookie_monster.h"
++#include "net/cookies/cookie_store.h"
++#include "net/cookies/site_for_cookies.h"
++#include "net/extras/sqlite/sqlite_persistent_cookie_store.h"
++#include "net/http/http_status_code.h"
++#include "net/test/embedded_test_server/embedded_test_server.h"
++#include "net/test/embedded_test_server/http_request.h"
++#include "net/test/embedded_test_server/http_response.h"
++#include "net/test/test_with_task_environment.h"
++#include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
++#include "net/url_request/url_request.h"
++#include "net/url_request/url_request_context.h"
++#include "net/url_request/url_request_context_builder.h"
++#include "net/url_request/url_request_test_util.h"
++#include "sql/database.h"
++#include "sql/statement.h"
++#include "sql/test/test_helpers.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++
++namespace net {
++namespace {
++
++using CookieRows = std::map<std::string, std::pair<std::string, bool>>;
++
++std::unique_ptr<test_server::HttpResponse> SqlCheckpointResponse(
++    const test_server::HttpRequest& request) {
++  auto response = std::make_unique<test_server::BasicHttpResponse>();
++  response->set_code(HTTP_OK);
++  response->set_content_type("text/plain");
++  response->set_content("owned");
++  if (request.relative_url == "/one") {
++    response->AddCustomHeader("Set-Cookie", "first=1; Path=/; Max-Age=3600");
++  } else if (request.relative_url == "/redirect") {
++    response->set_code(HTTP_FOUND);
++    response->AddCustomHeader("Location", "/one");
++    response->AddCustomHeader("Set-Cookie",
++                              "redirect=before; Path=/; Max-Age=3600");
++  } else if (request.relative_url == "/http-only") {
++    response->AddCustomHeader("Set-Cookie",
++                              "hidden=1; Path=/; Max-Age=3600; HttpOnly");
++  } else if (request.relative_url == "/delete") {
++    response->AddCustomHeader("Set-Cookie", "first=; Path=/; Max-Age=0");
++  } else if (request.relative_url == "/echo") {
++    const auto found = request.headers.find("Cookie");
++    response->set_content(found == request.headers.end() ? "" : found->second);
++  } else {
++    return nullptr;
++  }
++  return response;
++}
++
++class GlintHttpCookieSqlCheckpointTest : public TestWithTaskEnvironment {
++ protected:
++  void SetUp() override {
++    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
++    cookie_path_ = temp_dir_.GetPath().AppendASCII("Cookies");
++    server_.RegisterRequestHandler(base::BindRepeating(&SqlCheckpointResponse));
++    ASSERT_TRUE(server_.Start());
++    context_ = CreateContext(cookie_path_);
++  }
++
++  void TearDown() override {
++    context_.reset();
++    RunUntilIdle();
++  }
++
++  std::unique_ptr<URLRequestContext> CreateContext(const base::FilePath& path) {
++    auto persistent = base::MakeRefCounted<SQLitePersistentCookieStore>(
++        path, base::SequencedTaskRunner::GetCurrentDefault(), background_,
++        false, nullptr, false);
++    auto builder = CreateTestURLRequestContextBuilder();
++    builder->DisableHttpCache();
++    builder->SetCookieStore(
++        std::make_unique<CookieMonster>(persistent.get(), nullptr));
++    return builder->Build();
++  }
++
++  void Fetch(URLRequestContext& context, const char* path, std::string& body) {
++    TestDelegate delegate;
++    base::test::TestFuture<void> completed;
++    delegate.set_on_complete(completed.GetCallback());
++    const GURL url = server_.GetURL(path);
++    auto request = context.CreateRequest(url, DEFAULT_PRIORITY, &delegate,
++                                         TRAFFIC_ANNOTATION_FOR_TESTS,
++                                         handles::kInvalidNetworkHandle);
++    request->set_site_for_cookies(SiteForCookies::FromUrl(url));
++    request->SetLoadFlags(LOAD_DISABLE_CACHE);
++    request->Start();
++    ASSERT_TRUE(completed.Wait());
++    ASSERT_EQ(delegate.request_status(), OK);
++    body = delegate.data_received();
++  }
++
++  void Checkpoint(URLRequestContext& context, bool expected) {
++    base::test::TestFuture<bool> result;
++    context.cookie_store()->FlushHttpCookieWritesForCheckpoint(
++        result.GetCallback());
++    EXPECT_FALSE(result.IsReady());
++    ASSERT_EQ(result.Get(), expected);
++  }
++
++  void ExpectRows(const base::FilePath& path, const CookieRows& expected) {
++    sql::Database database(sql::test::kTestTag);
++    ASSERT_TRUE(database.Open(path));
++    sql::Statement query(database.GetUniqueStatement(
++        "SELECT name,value,is_httponly FROM cookies ORDER BY name"));
++    ASSERT_TRUE(query.is_valid());
++    CookieRows rows;
++    while (query.Step()) {
++      ASSERT_TRUE(rows.emplace(query.ColumnString(0),
++                               std::make_pair(query.ColumnString(1),
++                                              query.ColumnInt(2) != 0))
++                      .second);
++    }
++    ASSERT_TRUE(query.Succeeded());
++    EXPECT_EQ(rows, expected);
++  }
++
++  void Reopen() {
++    context_.reset();
++    RunUntilIdle();
++    context_ = CreateContext(cookie_path_);
++  }
++
++  base::test::ScopedRunLoopTimeout timeout_{FROM_HERE, base::Seconds(15)};
++  base::ScopedTempDir temp_dir_;
++  base::FilePath cookie_path_;
++  const scoped_refptr<base::SequencedTaskRunner> background_ =
++      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
++  EmbeddedTestServer server_{EmbeddedTestServer::TYPE_HTTP};
++  std::unique_ptr<URLRequestContext> context_;
++};
++
++TEST_F(GlintHttpCookieSqlCheckpointTest,
++       ActualDatabaseContainsHttpCookieBeforeAcknowledgement) {
++  std::string body;
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/one", body));
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*context_, true));
++  ASSERT_NO_FATAL_FAILURE(
++      ExpectRows(cookie_path_, CookieRows{{"first", {"1", false}}}));
++  Reopen();
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/echo", body));
++  EXPECT_EQ(body, "first=1");
++}
++
++TEST_F(GlintHttpCookieSqlCheckpointTest,
++       RedirectAndFinalResponsePersistInActualDatabase) {
++  std::string body;
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/redirect", body));
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*context_, true));
++  ASSERT_NO_FATAL_FAILURE(ExpectRows(
++      cookie_path_, CookieRows{{"first", {"1", false}},
++                               {"redirect", {"before", false}}}));
++  Reopen();
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/echo", body));
++  EXPECT_NE(body.find("first=1"), std::string::npos);
++  EXPECT_NE(body.find("redirect=before"), std::string::npos);
++}
++
++TEST_F(GlintHttpCookieSqlCheckpointTest,
++       HttpOnlyFlagSurvivesCommitAndContextReopen) {
++  std::string body;
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/http-only", body));
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*context_, true));
++  ASSERT_NO_FATAL_FAILURE(
++      ExpectRows(cookie_path_, CookieRows{{"hidden", {"1", true}}}));
++  Reopen();
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/echo", body));
++  EXPECT_EQ(body, "hidden=1");
++}
++
++TEST_F(GlintHttpCookieSqlCheckpointTest,
++       HttpExpirationDeletesActualDatabaseRowBeforeAcknowledgement) {
++  std::string body;
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/one", body));
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*context_, true));
++  ASSERT_NO_FATAL_FAILURE(
++      ExpectRows(cookie_path_, CookieRows{{"first", {"1", false}}}));
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/delete", body));
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*context_, true));
++  ASSERT_NO_FATAL_FAILURE(ExpectRows(cookie_path_, CookieRows{}));
++  Reopen();
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/echo", body));
++  EXPECT_TRUE(body.empty());
++}
++
++TEST_F(GlintHttpCookieSqlCheckpointTest,
++       SeparateDatabasesKeepHttpCookiesIsolated) {
++  const auto other_path = temp_dir_.GetPath().AppendASCII("OtherCookies");
++  auto other = CreateContext(other_path);
++  std::string body;
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/one", body));
++  ASSERT_NO_FATAL_FAILURE(Fetch(*other, "/http-only", body));
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*context_, true));
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*other, true));
++  ASSERT_NO_FATAL_FAILURE(
++      ExpectRows(cookie_path_, CookieRows{{"first", {"1", false}}}));
++  ASSERT_NO_FATAL_FAILURE(
++      ExpectRows(other_path, CookieRows{{"hidden", {"1", true}}}));
++  other.reset();
++  Reopen();
++  other = CreateContext(other_path);
++  ASSERT_NO_FATAL_FAILURE(Fetch(*context_, "/echo", body));
++  EXPECT_EQ(body, "first=1");
++  ASSERT_NO_FATAL_FAILURE(Fetch(*other, "/echo", body));
++  EXPECT_EQ(body, "hidden=1");
++}
++
++TEST_F(GlintHttpCookieSqlCheckpointTest,
++       DatabaseOpenFailureRejectsCheckpointButKeepsHttpResponse) {
++  const auto blocked_path = temp_dir_.GetPath().AppendASCII("BlockedCookies");
++  ASSERT_TRUE(base::CreateDirectory(blocked_path));
++  auto broken = CreateContext(blocked_path);
++  std::string body;
++  ASSERT_NO_FATAL_FAILURE(Fetch(*broken, "/one", body));
++  EXPECT_EQ(body, "owned");
++  ASSERT_NO_FATAL_FAILURE(Fetch(*broken, "/echo", body));
++  EXPECT_EQ(body, "first=1");
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*broken, false));
++  ASSERT_NO_FATAL_FAILURE(Checkpoint(*broken, false));
++  broken.reset();
++  RunUntilIdle();
++}
++
++}  // namespace
++}  // namespace net

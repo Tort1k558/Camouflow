@@ -1,0 +1,437 @@
+diff --git a/content/browser/storage_partition_impl.h b/content/browser/storage_partition_impl.h
+--- a/content/browser/storage_partition_impl.h
++++ b/content/browser/storage_partition_impl.h
+@@ -654,6 +654,7 @@
+   friend class ServiceWorkerUpdateJobTest;
+   friend class StoragePartitionImplMap;
+   friend class CookieCheckpointOwnerTest;
++  friend class ProfileDocumentCommitTest;
+ 
+   struct CookieCheckpointRequest;
+   void RejectCookieCheckpoints();
+diff --git a/content/browser/dom_storage/dom_storage_context_wrapper.h b/content/browser/dom_storage/dom_storage_context_wrapper.h
+--- a/content/browser/dom_storage/dom_storage_context_wrapper.h
++++ b/content/browser/dom_storage/dom_storage_context_wrapper.h
+@@ -145,6 +145,7 @@
+ 
+  private:
+   friend class DOMStorageContextWrapperTest;
++  friend class ProfileDocumentCommitTest;
+   friend class base::RefCountedThreadSafe<DOMStorageContextWrapper>;
+   // For MaybeGetExistingNamespace().
+   friend class SessionStorageNamespaceHandleImpl;
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2561,6 +2561,7 @@
+     "../browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc",
+     "../browser/camouflow_native/glint/window_privacy_readiness_unittest.cc",
+     "../browser/camouflow_native/glint/child_surface_transport_unittest.cc",
++    "../browser/camouflow_native/glint/profile_document_commit_unittest.cc",
+     "../browser/camouflow_native/glint/profile_producer_fence_unittest.cc",
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_commit_unittest.cc",
+diff --git a/content/browser/camouflow_native/glint/profile_document_commit_unittest.cc b/content/browser/camouflow_native/glint/profile_document_commit_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/profile_document_commit_unittest.cc
+@@ -0,0 +1,399 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++
++#include "content/browser/camouflow_native/glint/profile_document_commit.h"
++
++#include <memory>
++#include <utility>
++#include <vector>
++
++#include "base/check_op.h"
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/test/test_future.h"
++#include "components/services/storage/public/mojom/local_storage_control.mojom.h"
++#include "content/browser/dom_storage/dom_storage_context_wrapper.h"
++#include "content/browser/storage_partition_impl.h"
++#include "content/public/browser/storage_partition_config.h"
++#include "content/public/test/browser_task_environment.h"
++#include "content/public/test/mock_render_process_host.h"
++#include "content/public/test/test_browser_context.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++#include "services/network/test/test_cookie_manager.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace content {
++namespace {
++
++using Commit = camouflow::native::ProfileDocumentCommit;
++using Status = Commit::Status;
++
++class CommitCookieBackend final : public network::TestCookieManager {
++ public:
++  void FlushCookieStoreForCheckpoint(
++      FlushCookieStoreForCheckpointCallback callback) override {
++    replies.push_back(std::move(callback));
++  }
++  void FlushCookieStore(FlushCookieStoreCallback callback) override {
++    ++legacy_flushes;
++  }
++  std::vector<FlushCookieStoreForCheckpointCallback> replies;
++  size_t legacy_flushes = 0;
++};
++
++class CommitLocalBackend final : public storage::mojom::LocalStorageControl {
++ public:
++  void BindStorageArea(
++      const blink::StorageKey&,
++      mojo::PendingReceiver<blink::mojom::StorageArea>) override {}
++  void GetUsage(GetUsageCallback callback) override {
++    std::move(callback).Run({});
++  }
++  void DeleteStorage(const blink::StorageKey&,
++                     DeleteStorageCallback callback) override {
++    std::move(callback).Run();
++  }
++  void CleanUpStorage(CleanUpStorageCallback callback) override {
++    std::move(callback).Run();
++  }
++  void Flush() override { ++legacy_flushes; }
++  void PurgeMemory() override {}
++  void ApplyPolicyUpdates(
++      std::vector<storage::mojom::StoragePolicyUpdatePtr>) override {}
++  void ForceKeepSessionState() override {}
++  void FlushForCheckpoint(FlushForCheckpointCallback callback) override {
++    replies.push_back(std::move(callback));
++  }
++  std::vector<FlushForCheckpointCallback> replies;
++  size_t legacy_flushes = 0;
++};
++
++class CommitRenderer final : public MockRenderProcessHost {
++ public:
++  explicit CommitRenderer(BrowserContext* context)
++      : MockRenderProcessHost(context) {
++    Init();
++    SimulateReady();
++  }
++  void FenceLocalStorageForCheckpoint(
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback) override {
++    local_replies.push_back(std::move(callback));
++  }
++  void FenceDocumentCookiesForCheckpoint(
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback) override {
++    cookie_replies.push_back(std::move(callback));
++  }
++  std::vector<base::OnceCallback<void(bool)>> local_replies;
++  std::vector<base::OnceCallback<void(bool)>> cookie_replies;
++};
++
++}  // namespace
++
++class ProfileDocumentCommitTest : public testing::Test {
++ public:
++  void SetUp() override {
++    context_ = std::make_unique<TestBrowserContext>();
++    partition_ = static_cast<StoragePartitionImpl*>(
++        context_->GetDefaultStoragePartition());
++    BindCookies();
++    BindLocalStorage();
++  }
++  void TearDown() override {
++    cookie_receiver_.reset();
++    local_receiver_.reset();
++    DestroyContext();
++    environment_.RunUntilIdle();
++  }
++  void BindCookies() {
++    partition_->RejectCookieCheckpoints();
++    partition_->cookie_manager_for_browser_process_.reset();
++    cookie_receiver_.reset();
++    cookie_receiver_.Bind(partition_->cookie_manager_for_browser_process_
++                              .BindNewPipeAndPassReceiver());
++    partition_->cookie_manager_for_browser_process_.set_disconnect_handler(
++        base::BindOnce(
++            &StoragePartitionImpl::RejectCookieCheckpoints,
++            partition_->cookie_checkpoint_weak_factory_.GetWeakPtr()));
++  }
++  void BindLocalStorage() {
++    auto* storage = partition_->GetDOMStorageContext();
++    storage->RejectLocalStorageCheckpoints();
++    storage->local_storage_control_.reset();
++    local_receiver_.reset();
++    local_receiver_.Bind(
++        storage->local_storage_control_.BindNewPipeAndPassReceiver());
++    storage->local_storage_control_.set_disconnect_handler(
++        base::BindOnce(&DOMStorageContextWrapper::RejectLocalStorageCheckpoints,
++                       storage->checkpoint_weak_factory_.GetWeakPtr()));
++  }
++  void DestroyContext() {
++    partition_ = nullptr;
++    context_.reset();
++  }
++
++ protected:
++  std::unique_ptr<Commit> Start(
++      base::test::TestFuture<Commit::Result>& result) {
++    return Commit::Start(context_.get(),
++                         base::TimeTicks::Now() + base::Seconds(5),
++                         result.GetCallback());
++  }
++  void ReplyCookie(bool success) {
++    CHECK_EQ(cookies_.replies.size(), 1u);
++    auto callback = std::move(cookies_.replies.front());
++    cookies_.replies.clear();
++    std::move(callback).Run(success);
++  }
++  void ReplyLocal(bool success) {
++    CHECK_EQ(local_storage_.replies.size(), 1u);
++    auto callback = std::move(local_storage_.replies.front());
++    local_storage_.replies.clear();
++    std::move(callback).Run(success);
++  }
++  bool BothPending() const {
++    return cookies_.replies.size() == 1u && local_storage_.replies.size() == 1u;
++  }
++  BrowserTaskEnvironment environment_{
++      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
++  std::unique_ptr<TestBrowserContext> context_;
++  raw_ptr<StoragePartitionImpl> partition_ = nullptr;
++  CommitCookieBackend cookies_;
++  CommitLocalBackend local_storage_;
++  mojo::Receiver<network::mojom::CookieManager> cookie_receiver_{&cookies_};
++  mojo::Receiver<storage::mojom::LocalStorageControl> local_receiver_{
++      &local_storage_};
++};
++
++TEST_F(ProfileDocumentCommitTest, ProducersPrecedeBothStoreCommits) {
++  CommitRenderer renderer(context_.get());
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  ASSERT_EQ(renderer.local_replies.size(), 1u);
++  ASSERT_EQ(renderer.cookie_replies.size(), 1u);
++  std::move(renderer.local_replies.front()).Run(true);
++  environment_.RunUntilIdle();
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++  std::move(renderer.cookie_replies.front()).Run(true);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyCookie(true);
++  environment_.RunUntilIdle();
++  EXPECT_FALSE(result.IsReady());
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kCommittedDocumentPrefix);
++  EXPECT_EQ(result.Get().loaded_partition_count, 1u);
++  EXPECT_EQ(cookies_.legacy_flushes, 0u);
++  EXPECT_EQ(local_storage_.legacy_flushes, 0u);
++}
++
++TEST_F(ProfileDocumentCommitTest, ProducerFailureNeverContactsStores) {
++  CommitRenderer renderer(context_.get());
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  ASSERT_EQ(renderer.local_replies.size(), 1u);
++  std::move(renderer.local_replies.front()).Run(false);
++  EXPECT_EQ(result.Get().status, Status::kProducerRejected);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++}
++
++TEST_F(ProfileDocumentCommitTest, CookieFailureRejectsLocalSuccess) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyCookie(false);
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kBackendRejected);
++}
++
++TEST_F(ProfileDocumentCommitTest, LocalFailureRejectsCookieSuccess) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyCookie(true);
++  ReplyLocal(false);
++  EXPECT_EQ(result.Get().status, Status::kBackendRejected);
++}
++
++TEST_F(ProfileDocumentCommitTest, TransientRendererDuringCommitIsLatched) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  {
++    CommitRenderer transient(context_.get());
++  }
++  ReplyCookie(true);
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kTopologyChanged);
++}
++
++TEST_F(ProfileDocumentCommitTest, RendererLossAfterProducerAckRejectsCommits) {
++  auto renderer = std::make_unique<CommitRenderer>(context_.get());
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  ASSERT_EQ(renderer->local_replies.size(), 1u);
++  ASSERT_EQ(renderer->cookie_replies.size(), 1u);
++  std::move(renderer->local_replies.front()).Run(true);
++  std::move(renderer->cookie_replies.front()).Run(true);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  renderer.reset();
++  ReplyCookie(true);
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kTopologyChanged);
++}
++
++TEST_F(ProfileDocumentCommitTest, NewPartitionDuringCommitRejectsSuccess) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ASSERT_NE(context_->GetStoragePartition(StoragePartitionConfig::Create(
++                context_.get(), "glint-tests", "late-memory", true)),
++            nullptr);
++  ReplyCookie(true);
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kTopologyChanged);
++}
++
++TEST_F(ProfileDocumentCommitTest,
++       CookieReplacementAfterEarlyAckRejectsSuccess) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyCookie(true);
++  environment_.RunUntilIdle();
++  EXPECT_FALSE(result.IsReady());
++  BindCookies();
++  ReplyLocal(true);
++  EXPECT_EQ(result.Get().status, Status::kOwnerGone);
++}
++
++TEST_F(ProfileDocumentCommitTest, LocalReplacementAfterEarlyAckRejectsSuccess) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  ReplyLocal(true);
++  environment_.RunUntilIdle();
++  EXPECT_FALSE(result.IsReady());
++  BindLocalStorage();
++  ReplyCookie(true);
++  EXPECT_EQ(result.Get().status, Status::kOwnerGone);
++}
++
++TEST_F(ProfileDocumentCommitTest, CancellationDuringCommitPostsFailure) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  operation.reset();
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Status::kCancelled);
++  ReplyCookie(true);
++  ReplyLocal(true);
++  environment_.RunUntilIdle();
++}
++
++TEST_F(ProfileDocumentCommitTest, OriginalDeadlineIncludesBackendPhase) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  environment_.FastForwardBy(base::Seconds(5));
++  EXPECT_EQ(result.Get().status, Status::kTimedOut);
++  ReplyCookie(true);
++  ReplyLocal(true);
++  environment_.RunUntilIdle();
++}
++
++TEST_F(ProfileDocumentCommitTest, OwnerDestructionRejectsPendingCommits) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(BothPending());
++  DestroyContext();
++  environment_.RunUntilIdle();
++  ASSERT_TRUE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Status::kOwnerGone);
++}
++
++TEST_F(ProfileDocumentCommitTest, MissingLocalConnectionDoesNotStartService) {
++  local_receiver_.reset();
++  environment_.RunUntilIdle();
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  EXPECT_EQ(result.Get().status, Status::kNotReady);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++}
++
++TEST_F(ProfileDocumentCommitTest, MissingCookieConnectionDoesNotStartService) {
++  cookie_receiver_.reset();
++  environment_.RunUntilIdle();
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  EXPECT_EQ(result.Get().status, Status::kNotReady);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++}
++
++TEST_F(ProfileDocumentCommitTest, MemoryPartitionRejectsBeforeProducerCalls) {
++  ASSERT_NE(context_->GetStoragePartition(StoragePartitionConfig::Create(
++                context_.get(), "glint-tests", "memory", true)),
++            nullptr);
++  CommitRenderer renderer(context_.get());
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  EXPECT_EQ(result.Get().status, Status::kInvalidScope);
++  EXPECT_TRUE(renderer.local_replies.empty());
++  EXPECT_TRUE(renderer.cookie_replies.empty());
++  EXPECT_TRUE(cookies_.replies.empty());
++}
++
++TEST_F(ProfileDocumentCommitTest, OffTheRecordOwnerRejectsBeforeStoreCalls) {
++  context_->set_is_off_the_record(true);
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Start(result);
++  EXPECT_EQ(result.Get().status, Status::kInvalidScope);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++}
++
++TEST_F(ProfileDocumentCommitTest, EmptyScopeDoesNotCreatePartition) {
++  TestBrowserContext empty;
++  ASSERT_EQ(empty.GetLoadedStoragePartitionCount(), 0u);
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::Start(
++      &empty, base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Status::kNoPersistentPartitions);
++  EXPECT_EQ(empty.GetLoadedStoragePartitionCount(), 0u);
++}
++
++TEST_F(ProfileDocumentCommitTest, ExpiredDeadlineNeverContactsStores) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::Start(context_.get(), base::TimeTicks::Now(),
++                                 result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Status::kTimedOut);
++  EXPECT_TRUE(cookies_.replies.empty());
++  EXPECT_TRUE(local_storage_.replies.empty());
++}
++
++TEST_F(ProfileDocumentCommitTest, MissingContextPostsOwnerFailure) {
++  base::test::TestFuture<Commit::Result> result;
++  auto operation = Commit::Start(
++      nullptr, base::TimeTicks::Now() + base::Seconds(5), result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_EQ(result.Get().status, Status::kOwnerGone);
++}
++
++}  // namespace content

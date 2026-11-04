@@ -1,0 +1,13 @@
+diff --git a/services/network/restricted_cookie_manager_unittest.cc b/services/network/restricted_cookie_manager_unittest.cc
+index 968a96761a36aca83a118bd4bb8af08e99b2c631..10ef498d19fadb35c00c9f14030cd3746a17b891 100644
+--- a/services/network/restricted_cookie_manager_unittest.cc
++++ b/services/network/restricted_cookie_manager_unittest.cc
+@@ -2735,7 +2735,7 @@ TEST_P(RestrictedCookieManagerCheckpointDrainTest, CheckpointDrainWaiterLimit) {
+   const auto serial = BeginCheckpointWrite();
+   int successes = 0;
+   for (int i = 0; i < 64; ++i) {
+-    service_->DrainCookieWritesForCheckpoint(base::BindOnce([&](bool success) {
++    service_->DrainCookieWritesForCheckpoint(base::BindLambdaForTesting([&](bool success) {
+       EXPECT_TRUE(success);
+       ++successes;
+     }));

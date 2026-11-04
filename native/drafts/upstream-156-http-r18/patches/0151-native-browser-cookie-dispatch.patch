@@ -1,0 +1,267 @@
+diff --git a/content/public/browser/render_process_host.h b/content/public/browser/render_process_host.h
+--- a/content/public/browser/render_process_host.h
++++ b/content/public/browser/render_process_host.h
+@@ -646,6 +646,13 @@
+   // Unsupported hosts reject asynchronously. Does not start a renderer, commit
+   // a database or advertise whole-profile checkpoint support.
+   virtual void FenceLocalStorageForCheckpoint(
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback);
++
++  // Existing renderer document-cookie producers only, not HTTP/worker writes or
++  // disk persistence. Requires renderer endpoint version 2; never substitutes
++  // the older localStorage fence. Unsupported hosts reject asynchronously.
++  virtual void FenceDocumentCookiesForCheckpoint(
+       base::TimeTicks deadline,
+       base::OnceCallback<void(bool)> callback);
+ 
+diff --git a/content/browser/renderer_host/render_process_host_impl.h b/content/browser/renderer_host/render_process_host_impl.h
+--- a/content/browser/renderer_host/render_process_host_impl.h
++++ b/content/browser/renderer_host/render_process_host_impl.h
+@@ -339,6 +339,9 @@
+   void FenceLocalStorageForCheckpoint(
+       base::TimeTicks deadline,
+       base::OnceCallback<void(bool)> callback) override;
++  void FenceDocumentCookiesForCheckpoint(
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback) override;
+ 
+   blink::mojom::CallStackGenerator* GetJavaScriptCallStackGeneratorInterface();
+ 
+@@ -1713,6 +1716,11 @@
+   // Most cases should use this factory, so the resulting WeakPtrs are no longer
+   // valid after DeleteSoon is called, when the RenderProcessHost is in a partly
+   // torn-down state.
++  enum class CheckpointProducer { kLocalStorage, kDocumentCookies };
++  void FenceStorageProducersForCheckpoint(
++      CheckpointProducer producer,
++      base::TimeTicks deadline,
++      base::OnceCallback<void(bool)> callback);
+   mojo::Remote<mojom::StorageCheckpoint> storage_checkpoint_interface_;
+   uint64_t storage_checkpoint_interface_generation_ = 0;
+   size_t storage_checkpoint_wire_calls_ = 0;
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -3209,7 +3209,28 @@
+   base::BindPostTaskToCurrentDefault(std::move(callback)).Run(false);
+ }
+ 
++void RenderProcessHost::FenceDocumentCookiesForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  base::BindPostTaskToCurrentDefault(std::move(callback)).Run(false);
++}
++
+ void RenderProcessHostImpl::FenceLocalStorageForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  FenceStorageProducersForCheckpoint(CheckpointProducer::kLocalStorage,
++                                     deadline, std::move(callback));
++}
++
++void RenderProcessHostImpl::FenceDocumentCookiesForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  FenceStorageProducersForCheckpoint(CheckpointProducer::kDocumentCookies,
++                                     deadline, std::move(callback));
++}
++
++void RenderProcessHostImpl::FenceStorageProducersForCheckpoint(
++    CheckpointProducer producer,
+     base::TimeTicks deadline,
+     base::OnceCallback<void(bool)> callback) {
+   CHECK_CURRENTLY_ON(BrowserThread::UI);
+@@ -3217,6 +3238,8 @@
+   auto owner = instance_weak_factory_.GetWeakPtr();
+   const bool admitted =
+       !deadline.is_max() && deadline > base::TimeTicks::Now() &&
++      (producer != CheckpointProducer::kDocumentCookies ||
++       deadline - base::TimeTicks::Now() <= base::Seconds(30)) &&
+       IsInitializedAndNotDead() && IsReady() &&
+       renderer_interface_.is_bound() && storage_checkpoint_wire_calls_ < 64;
+   if (admitted && !storage_checkpoint_interface_.is_bound()) {
+@@ -3269,8 +3292,8 @@
+       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+           base::BindOnce(
+               [](base::WeakPtr<RenderProcessHostImpl> owner,
+-                 uint64_t generation, base::TimeTicks deadline,
+-                 scoped_refptr<ReplyState> reply,
++                 CheckpointProducer producer, uint64_t generation,
++                 base::TimeTicks deadline, scoped_refptr<ReplyState> reply,
+                  std::unique_ptr<base::OneShotTimer> timer,
+                  base::ScopedClosureRunner slot, uint32_t version) {
+                 if (!reply->data) {
+@@ -3281,33 +3304,39 @@
+                         generation ||
+                     !owner->storage_checkpoint_interface_.is_bound() ||
+                     !owner->storage_checkpoint_interface_.is_connected() ||
+-                    version < 1 || !owner->IsReady() ||
+-                    !owner->IsInitializedAndNotDead() ||
++                    version < (producer == CheckpointProducer::kDocumentCookies
++                                   ? 2u
++                                   : 1u) ||
++                    !owner->IsReady() || !owner->IsInitializedAndNotDead() ||
+                     base::TimeTicks::Now() >= deadline) {
+                   timer->Stop();
+                   std::move(reply->data).Run(false);
+                   return;
+                 }
+-                owner->storage_checkpoint_interface_
+-                    ->FenceLocalStorageForCheckpoint(
+-                        deadline,
+-                        mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+-                            base::BindOnce(
+-                                [](scoped_refptr<ReplyState> reply,
+-                                   std::unique_ptr<base::OneShotTimer> timer,
+-                                   base::ScopedClosureRunner slot,
+-                                   bool success) {
+-                                  timer->Stop();
+-                                  if (reply->data) {
+-                                    std::move(reply->data).Run(success);
+-                                  }
+-                                },
+-                                std::move(reply), std::move(timer),
+-                                std::move(slot)),
+-                            false));
++                auto callback = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++                    base::BindOnce(
++                        [](scoped_refptr<ReplyState> reply,
++                           std::unique_ptr<base::OneShotTimer> timer,
++                           base::ScopedClosureRunner slot, bool success) {
++                          timer->Stop();
++                          if (reply->data) {
++                            std::move(reply->data).Run(success);
++                          }
++                        },
++                        std::move(reply), std::move(timer), std::move(slot)),
++                    false);
++                if (producer == CheckpointProducer::kLocalStorage) {
++                  owner->storage_checkpoint_interface_
++                      ->FenceLocalStorageForCheckpoint(deadline,
++                                                       std::move(callback));
++                } else {
++                  owner->storage_checkpoint_interface_
++                      ->FenceDocumentCookiesForCheckpoint(deadline,
++                                                          std::move(callback));
++                }
+               },
+-              owner, storage_checkpoint_interface_generation_, deadline, reply,
+-              std::move(timer), std::move(slot)),
++              owner, producer, storage_checkpoint_interface_generation_,
++              deadline, reply, std::move(timer), std::move(slot)),
+           0u));
+ }
+ 
+diff --git a/content/browser/renderer_host/render_process_host_browsertest.cc b/content/browser/renderer_host/render_process_host_browsertest.cc
+--- a/content/browser/renderer_host/render_process_host_browsertest.cc
++++ b/content/browser/renderer_host/render_process_host_browsertest.cc
+@@ -3136,4 +3136,108 @@
+   exit.Wait();
+ }
+ 
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       DocumentCookieCheckpointLiveRendererProducerFence) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  ASSERT_TRUE(ExecJs(
++      shell(), "document.cookie = 'checkpoint-producer=value; SameSite=Lax'"));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  base::test::TestFuture<bool> result;
++  host->FenceDocumentCookiesForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(10), result.GetCallback());
++  EXPECT_TRUE(result.Get());
++  EXPECT_EQ("checkpoint-producer=value", EvalJs(shell(), "document.cookie"));
++}
++
++IN_PROC_BROWSER_TEST_F(
++    RenderProcessHostTestBase,
++    DocumentCookieCheckpointExpiredDeadlinePreservesRenderer) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  base::test::TestFuture<bool> result;
++  host->FenceDocumentCookiesForCheckpoint(base::TimeTicks::Now(),
++                                          result.GetCallback());
++  EXPECT_FALSE(result.IsReady());
++  EXPECT_FALSE(result.Get());
++  EXPECT_EQ(2, EvalJs(shell(), "1 + 1"));
++}
++
++IN_PROC_BROWSER_TEST_F(
++    RenderProcessHostTestBase,
++    DocumentCookieCheckpointRendererExitRejectsInflightFence) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  ScopedAllowRendererCrashes allow(host);
++  RenderProcessHostWatcher exit(
++      host, RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
++  base::test::TestFuture<bool> result;
++  host->FenceDocumentCookiesForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(10), result.GetCallback());
++  ASSERT_TRUE(host->Shutdown(0));
++  exit.Wait();
++  EXPECT_FALSE(result.Get());
++}
++
++IN_PROC_BROWSER_TEST_F(
++    RenderProcessHostTestBase,
++    DocumentCookieCheckpointHungRendererUsesBrowserDeadline) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  ScopedAllowRendererCrashes allow(host);
++  DOMMessageQueue messages(shell()->web_contents());
++  ExecuteScriptAsync(
++      shell(),
++      "domAutomationController.send('checkpoint-busy'); while (true) {}");
++  std::string message;
++  ASSERT_TRUE(messages.WaitForMessage(&message));
++  ASSERT_EQ(JsReplace("$1", "checkpoint-busy"), message);
++  base::test::TestFuture<bool> result;
++  host->FenceDocumentCookiesForCheckpoint(
++      base::TimeTicks::Now() + base::Milliseconds(100), result.GetCallback());
++  EXPECT_FALSE(result.Get());
++  RenderProcessHostWatcher exit(
++      host, RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
++  ASSERT_TRUE(host->Shutdown(0));
++  exit.Wait();
++}
++
++IN_PROC_BROWSER_TEST_F(RenderProcessHostTestBase,
++                       DocumentCookieCheckpointMultipleDocuments) {
++  ASSERT_TRUE(embedded_test_server()->Start());
++  ASSERT_TRUE(
++      NavigateToURL(shell(), embedded_test_server()->GetURL("/title1.html")));
++  ASSERT_EQ(true,
++            EvalJs(shell(),
++                   JsReplace(R"(
++    new Promise(resolve => {
++      const child = document.createElement('iframe');
++      child.onload = () => {
++        document.cookie = 'checkpoint-parent=1; SameSite=Lax';
++        child.contentDocument.cookie = 'checkpoint-child=1; SameSite=Lax';
++        resolve(true);
++      };
++      child.src = $1;
++      document.body.appendChild(child);
++    });
++  )",
++                             embedded_test_server()->GetURL("/title2.html"))));
++  auto* host = shell()->web_contents()->GetPrimaryMainFrame()->GetProcess();
++  base::test::TestFuture<bool> result;
++  host->FenceDocumentCookiesForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(10), result.GetCallback());
++  EXPECT_TRUE(result.Get());
++  EXPECT_EQ(true, EvalJs(shell(), R"(
++    document.cookie.includes('checkpoint-parent=1') &&
++    document.cookie.includes('checkpoint-child=1')
++  )"));
++}
++
+ }  // namespace content

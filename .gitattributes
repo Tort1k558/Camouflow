@@ -407,3 +407,4 @@ native/drafts/environment/environment-media-host-source-upgrade.json text eol=lf
 # Reconstruct historical desktop packaging host tests exactly.
 native/drafts/environment/desktop-build-paths-host-source-upgrade.json text eol=lf
 native/drafts/environment/checkpoint-owned-job-host-source-upgrade.json text eol=lf
+native/drafts/upstream-156-http-r18/** text eol=lf

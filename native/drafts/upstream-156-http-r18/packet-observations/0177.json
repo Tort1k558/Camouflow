@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Normalized source packet, not native execution",
+  "original_patch_sha256": "60c776df6b06d1f2b43ced7dca7be2236048a5e9766ba8d864d65e1c2dc1158e",
+  "normalized_patch_sha256": "d29b6d281bb0e3a29c0df029ee59242ec099098fdfe8e6f8ecbde92183fbf040",
+  "patch": "0177-http-cookie-checkpoint.patch",
+  "before_source_sha256": {
+    "net/BUILD.gn": "9d01e8384eb2f75600ebad37bdd0293d1d5eefec2e8c99de6e36eae8596ddf6f",
+    "net/cookies/cookie_store.h": "3e83f354549d839cf9be1aa90b37974609a81fc494c19e577799df125e5e6503",
+    "net/cookies/cookie_store.cc": "55c4920b36b7c4500d61178aa6168cd8d3f38073eb60d54fc7776eb21b12c323",
+    "net/url_request/url_request_http_job.cc": "91410a305ec1ebf8770a1f1d4f2c16d48b128c752b2dc590d9b17329322de1ce",
+    "services/network/cookie_manager.cc": "74ca19c82c27865475f1910e43783b327c5878efe6bbef9cf2f707b862ff3a93"
+  },
+  "final_source_sha256": {
+    "net/BUILD.gn": "1f6db99c5fd2fddf620f966717def14fc460f177c42c09e2ba59ed45a4ce92f1",
+    "net/cookies/cookie_store.h": "f2d1860fa8baba34c9bf31aab977a8e243873c78a1bfd4f2e4930fd7071661ef",
+    "net/cookies/cookie_store.cc": "e882131e3f21b8083859c0bf16c413d988cc55f5aff7d6f6db41fdde85e53ae3",
+    "net/url_request/url_request_http_job.cc": "a8e8dea9f0f03de675324c052bd48b7444c0c6bda4116f819cfbe3a258de4c3f",
+    "services/network/cookie_manager.cc": "357086a2943303703c17ed248d6e3c029cecff19c94a38fa7249020dd37ad822",
+    "net/cookies/http_cookie_checkpoint_unittest.cc": "13766f15cc38d678e6b919c1bf6c4b24046ee12f7a039fedc8a7b610bb8db1cd",
+    "net/url_request/glint_http_cookie_checkpoint_unittest.cc": "3bf5add092166d376bb850b1e132f3593adbe1bea6bd5f041eb895e95f015384"
+  },
+  "compiled": false,
+  "native_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

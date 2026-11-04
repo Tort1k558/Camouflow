@@ -1,0 +1,62 @@
+diff --git a/components/embedder_support/user_agent_utils.cc b/components/embedder_support/user_agent_utils.cc
+index e699a6a..2812d0b 100644
+--- a/components/embedder_support/user_agent_utils.cc
++++ b/components/embedder_support/user_agent_utils.cc
+@@ -215,7 +215,13 @@ const blink::UserAgentBrandList GetUserAgentBrandFullVersionListInternal(
+ // depending on the Reduce User-Agent reduction phase features.
+ std::string GetUserAgentInternal() {
+   std::string product = GetProductAndVersion();
+-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(kHeadless)) {
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  const bool native_identity =
++      command_line->HasSwitch("camouflow-native-user-agent");
++  CHECK(!native_identity ||
++        command_line->GetSwitchValueNative("camouflow-native-user-agent").empty())
++      << "Invalid CamouFlow Native browser identity flag";
++  if (command_line->HasSwitch(kHeadless) && !native_identity) {
+     product.insert(0, "Headless");
+   }
+ 
+diff --git a/components/embedder_support/user_agent_utils_unittest.cc b/components/embedder_support/user_agent_utils_unittest.cc
+index bd28b23..aece45a 100644
+--- a/components/embedder_support/user_agent_utils_unittest.cc
++++ b/components/embedder_support/user_agent_utils_unittest.cc
+@@ -1045,6 +1045,38 @@ TEST_F(UserAgentUtilsTest, GetUserAgent) {
+   EXPECT_EQ(minor_version, "0");
+ }
+ 
++TEST_F(UserAgentUtilsTest, NativeHeadlessUserAgentPreservesBrowserIdentity) {
++  base::test::ScopedCommandLine scoped_command_line;
++  base::CommandLine* command_line = scoped_command_line.GetProcessCommandLine();
++  command_line->RemoveSwitch(kHeadless);
++  const std::string expected_user_agent = GetUserAgent();
++  const blink::UserAgentMetadata expected_metadata = GetUserAgentMetadata();
++  command_line->AppendSwitch(kHeadless);
++  command_line->AppendSwitch("camouflow-native-user-agent");
++  EXPECT_EQ(expected_user_agent, GetUserAgent());
++  const blink::UserAgentMetadata metadata = GetUserAgentMetadata();
++  EXPECT_EQ(expected_metadata.brand_version_list, metadata.brand_version_list);
++  EXPECT_EQ(expected_metadata.brand_full_version_list,
++            metadata.brand_full_version_list);
++  EXPECT_EQ(expected_metadata.full_version, metadata.full_version);
++  EXPECT_EQ(expected_metadata.platform, metadata.platform);
++  EXPECT_EQ(expected_metadata.platform_version, metadata.platform_version);
++  EXPECT_EQ(expected_metadata.architecture, metadata.architecture);
++  EXPECT_EQ(expected_metadata.bitness, metadata.bitness);
++  EXPECT_EQ(expected_metadata.model, metadata.model);
++  EXPECT_EQ(expected_metadata.mobile, metadata.mobile);
++  EXPECT_EQ(expected_metadata.wow64, metadata.wow64);
++  EXPECT_EQ(expected_metadata.form_factors, metadata.form_factors);
++}
++
++TEST_F(UserAgentUtilsTest, NativeHeadlessUserAgentRejectsFlagValue) {
++  base::test::ScopedCommandLine scoped_command_line;
++  scoped_command_line.GetProcessCommandLine()->AppendSwitchASCII(
++      "camouflow-native-user-agent", "false");
++  EXPECT_DEATH_IF_SUPPORTED(GetUserAgent(),
++                            "Invalid CamouFlow Native browser identity flag");
++}
++
+ TEST_F(UserAgentUtilsTest, HeadlessUserAgent) {
+   base::test::ScopedCommandLine scoped_command_line;
+   base::CommandLine* command_line = scoped_command_line.GetProcessCommandLine();

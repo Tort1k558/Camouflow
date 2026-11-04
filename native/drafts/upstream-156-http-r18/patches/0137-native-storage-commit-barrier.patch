@@ -1,0 +1,296 @@
+diff --git a/components/services/storage/dom_storage/async_dom_storage_database.h b/components/services/storage/dom_storage/async_dom_storage_database.h
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -118,6 +118,13 @@
+   // completed callback for each `Committer` that provided a `Commit`.
+   void InitiateCommit();
+ 
++  // Completes after UpdateMaps has processed the currently collectable batches.
++  // Requires an opened on-disk database; reports prior commit failures and
++  // owner loss as errors. Callers must first fence producers and pending map
++  // loads. This is not a whole-profile checkpoint or a power-loss/fsync
++  // guarantee.
++  void CommitPendingMaps(StatusCallback callback);
++
+  private:
+   FRIEND_TEST_ALL_PREFIXES(AsyncDomStorageDatabaseMigrationTest,
+                            MigrationFails);
+@@ -152,6 +159,11 @@
+   // Callback from DomStorageDatabaseFactory::Open(). Stores the opened
+   // database and its resolved configuration. Then, runs `callback` with the
+   // `DbStatus` from opening the database and the destroy outcome, if any.
++  void InitiateCommitImpl(StatusCallback callback);
++
++  // A later successful/no-op batch cannot hide an earlier failed write.
++  std::optional<DbStatus> checkpoint_commit_error_;
++
+   void OnDatabaseOpened(OpenCallback callback,
+                         DomStorageDatabaseFactory::OpenResult result);
+ 
+diff --git a/components/services/storage/dom_storage/async_dom_storage_database.cc b/components/services/storage/dom_storage/async_dom_storage_database.cc
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -286,12 +286,44 @@
+ }
+ 
+ void AsyncDomStorageDatabase::InitiateCommit() {
+-  CHECK(is_database_opened_);
+-
+-  if (migration_state_ == MigrationState::kMigrating) {
+-    tasks_blocked_on_migration_.push_back(
+-        base::BindOnce(&AsyncDomStorageDatabase::InitiateCommit,
+-                       weak_ptr_factory_.GetWeakPtr()));
++  InitiateCommitImpl(StatusCallback());
++}
++
++void AsyncDomStorageDatabase::CommitPendingMaps(StatusCallback callback) {
++  CHECK(callback);
++  auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
++      [](base::WeakPtr<AsyncDomStorageDatabase> owner, StatusCallback callback,
++         DbStatus status) {
++        std::move(callback).Run(owner ? std::move(status)
++                                      : DbStatus::IOError("commit owner lost"));
++      },
++      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
++  if (!is_database_opened_ || dir_to_open_.empty()) {
++    std::move(reply).Run(
++        DbStatus::NotSupported("opened on-disk database required"));
++    return;
++  }
++
++  auto replies = base::SplitOnceCallback(std::move(reply));
++  base::ScopedClosureRunner abandoned(
++      base::BindOnce(std::move(replies.second),
++                     DbStatus::IOError("commit completion abandoned")));
++  InitiateCommitImpl(base::BindOnce(
++      [](base::ScopedClosureRunner abandoned, StatusCallback reply,
++         DbStatus status) {
++        abandoned.Release().Reset();
++        std::move(reply).Run(std::move(status));
++      },
++      std::move(abandoned), std::move(replies.first)));
++}
++
++void AsyncDomStorageDatabase::InitiateCommitImpl(StatusCallback callback) {
++  CHECK(is_database_opened_);
++
++  if (migration_state_ == MigrationState::kMigrating) {
++    tasks_blocked_on_migration_.push_back(
++        base::BindOnce(&AsyncDomStorageDatabase::InitiateCommitImpl,
++                       weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+     return;
+   }
+ 
+@@ -308,13 +340,24 @@
+   }
+ 
+   auto run_all = base::BindOnce(
+-      [](std::vector<base::OnceCallback<void(DbStatus)>> callbacks,
+-         DbStatus status) {
++      [](base::WeakPtr<AsyncDomStorageDatabase> owner,
++         std::vector<base::OnceCallback<void(DbStatus)>> callbacks,
++         StatusCallback completed, DbStatus status) {
++        if (owner && !status.ok() && !owner->checkpoint_commit_error_) {
++          owner->checkpoint_commit_error_ = status;
++        }
++        DbStatus checkpoint_status = owner && owner->checkpoint_commit_error_
++                                         ? *owner->checkpoint_commit_error_
++                                         : status;
+         for (auto& callback : callbacks) {
+           std::move(callback).Run(status);
+         }
++        if (completed) {
++          std::move(completed).Run(std::move(checkpoint_status));
++        }
+       },
+-      std::move(commit_dones));
++      weak_ptr_factory_.GetWeakPtr(), std::move(commit_dones),
++      std::move(callback));
+ 
+   RunTaskOnDbSequenceAndRecordHistograms(
+       "UpdateMaps",
+diff --git a/components/services/storage/dom_storage/async_dom_storage_database_unittest.cc b/components/services/storage/dom_storage/async_dom_storage_database_unittest.cc
+--- a/components/services/storage/dom_storage/async_dom_storage_database_unittest.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database_unittest.cc
+@@ -24,6 +24,8 @@
+ #include "components/services/storage/dom_storage/dom_storage_database.h"
+ #include "components/services/storage/dom_storage/features.h"
+ #include "components/services/storage/dom_storage/test_support/dom_storage_database_testing.h"
++#include "components/services/storage/dom_storage/test_support/fake_dom_storage_database.h"
++#include "components/services/storage/dom_storage/test_support/fake_dom_storage_database_factory.h"
+ #include "components/services/storage/dom_storage/test_support/scoped_dom_storage_database_factory_for_testing.h"
+ #include "testing/gmock/include/gmock/gmock.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+@@ -908,4 +910,172 @@
+   EXPECT_EQ(actual_entries, kMapEntries);
+ }
+ 
++TEST_P(AsyncDomStorageDatabaseTest,
++       CommitPendingMapsCompletesLoadedMapsBeforeAck) {
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  std::unique_ptr<AsyncDomStorageDatabase> database;
++  ASSERT_NO_FATAL_FAILURE(OpenOnDiskDatabaseSync(
++      StorageType::kLocalStorage, directory.GetPath(), &database));
++  FakeCommitter first(database.get(),
++                      DomStorageDatabase::MapLocator(kFirstStorageKey));
++  FakeCommitter second(database.get(),
++                       DomStorageDatabase::MapLocator(kSecondStorageKey));
++  base::test::TestFuture<DbStatus> first_done, second_done, checkpoint;
++  first.QueuePutMapKeyValue(ToBytes("key"), ToBytes("first"),
++                            first_done.GetCallback());
++  second.QueuePutMapKeyValue(ToBytes("key"), ToBytes("second"),
++                             second_done.GetCallback());
++  database->CommitPendingMaps(checkpoint.GetCallback());
++  EXPECT_FALSE(checkpoint.IsReady());
++  ASSERT_TRUE(checkpoint.Get().ok());
++  ASSERT_TRUE(first_done.IsReady());
++  ASSERT_TRUE(second_done.IsReady());
++  EXPECT_TRUE(first_done.Get().ok());
++  EXPECT_TRUE(second_done.Get().ok());
++  std::map<DomStorageDatabase::Key, DomStorageDatabase::Value> values;
++  ReadMapKeyValuesSync(
++      *database, DomStorageDatabase::MapLocator(kFirstStorageKey), &values);
++  EXPECT_EQ(values.at(ToBytes("key")), ToBytes("first"));
++  ReadMapKeyValuesSync(
++      *database, DomStorageDatabase::MapLocator(kSecondStorageKey), &values);
++  EXPECT_EQ(values.at(ToBytes("key")), ToBytes("second"));
++}
++
++TEST_P(AsyncDomStorageDatabaseTest, CommitPendingMapsEmptyBatchIsAsynchronous) {
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  std::unique_ptr<AsyncDomStorageDatabase> database;
++  ASSERT_NO_FATAL_FAILURE(OpenOnDiskDatabaseSync(
++      StorageType::kLocalStorage, directory.GetPath(), &database));
++  base::test::TestFuture<DbStatus> checkpoint;
++  database->CommitPendingMaps(checkpoint.GetCallback());
++  EXPECT_FALSE(checkpoint.IsReady());
++  EXPECT_TRUE(checkpoint.Get().ok());
++}
++
++TEST_P(AsyncDomStorageDatabaseTest,
++       CommitPendingMapsRejectsMemoryOnlyDatabase) {
++  std::unique_ptr<AsyncDomStorageDatabase> database;
++  ASSERT_NO_FATAL_FAILURE(OpenAsyncDomStorageDatabaseInMemorySync(
++      StorageType::kLocalStorage, &database));
++  base::test::TestFuture<DbStatus> checkpoint;
++  database->CommitPendingMaps(checkpoint.GetCallback());
++  EXPECT_FALSE(checkpoint.Get().ok());
++}
++
++TEST_P(AsyncDomStorageDatabaseTest, CommitPendingMapsRejectsUnopenedDatabase) {
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  base::test::TestFuture<AsyncDomStorageDatabase::OpenOutcome> opened;
++  auto database = AsyncDomStorageDatabase::Open(
++      StorageType::kLocalStorage, directory.GetPath(), std::nullopt,
++      base::FilePath(), opened.GetCallback());
++  base::test::TestFuture<DbStatus> checkpoint;
++  database->CommitPendingMaps(checkpoint.GetCallback());
++  EXPECT_FALSE(checkpoint.Get().ok());
++  EXPECT_TRUE(opened.Get().open_status.ok());
++}
++
++TEST_P(AsyncDomStorageDatabaseTest,
++       CommitPendingMapsOwnerLossNeverAcknowledgesSuccess) {
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  std::unique_ptr<AsyncDomStorageDatabase> database;
++  ASSERT_NO_FATAL_FAILURE(OpenOnDiskDatabaseSync(
++      StorageType::kLocalStorage, directory.GetPath(), &database));
++  base::test::TestFuture<DbStatus> checkpoint;
++  database->CommitPendingMaps(checkpoint.GetCallback());
++  database.reset();
++  EXPECT_FALSE(checkpoint.Get().ok());
++}
++
++TEST_P(AsyncDomStorageDatabaseTest, CommitPendingMapsCommitterCanDestroyOwner) {
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  std::unique_ptr<AsyncDomStorageDatabase> database;
++  ASSERT_NO_FATAL_FAILURE(OpenOnDiskDatabaseSync(
++      StorageType::kLocalStorage, directory.GetPath(), &database));
++  auto committer = std::make_unique<FakeCommitter>(
++      database.get(), DomStorageDatabase::MapLocator(kFirstStorageKey));
++  committer->QueuePutMapKeyValue(
++      ToBytes("key"), ToBytes("value"),
++      base::BindLambdaForTesting([&](DbStatus status) {
++        EXPECT_TRUE(status.ok());
++        committer.reset();
++        database.reset();
++      }));
++  base::test::TestFuture<DbStatus> checkpoint;
++  database->CommitPendingMaps(checkpoint.GetCallback());
++  EXPECT_FALSE(checkpoint.Get().ok());
++  EXPECT_FALSE(database);
++}
++
++TEST_P(AsyncDomStorageDatabaseTest,
++       CommitPendingMapsPriorLegacyErrorRemainsSticky) {
++  FakeDomStorageDatabaseFactory factory(0, 0);
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  std::unique_ptr<AsyncDomStorageDatabase> database;
++  ASSERT_NO_FATAL_FAILURE(OpenOnDiskDatabaseSync(
++      StorageType::kLocalStorage, directory.GetPath(), &database));
++  database->database().PostTaskWithThisObject(
++      base::BindOnce([](DomStorageDatabase* backend) {
++        static_cast<FakeDomStorageDatabase*>(backend)->SetUpdateMapsStatus(
++            DbStatus::IOError("injected commit failure"));
++      }));
++  database->InitiateCommit();
++  task_environment_.RunUntilIdle();
++  database->database().PostTaskWithThisObject(
++      base::BindOnce([](DomStorageDatabase* backend) {
++        static_cast<FakeDomStorageDatabase*>(backend)->SetUpdateMapsStatus(
++            DbStatus::OK());
++      }));
++  base::test::TestFuture<DbStatus> checkpoint;
++  database->CommitPendingMaps(checkpoint.GetCallback());
++  EXPECT_FALSE(checkpoint.Get().ok());
++}
++
++TEST_P(AsyncDomStorageDatabaseTest, CommitPendingMapsNewCommitErrorIsReported) {
++  FakeDomStorageDatabaseFactory factory(0, 0);
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  std::unique_ptr<AsyncDomStorageDatabase> database;
++  ASSERT_NO_FATAL_FAILURE(OpenOnDiskDatabaseSync(
++      StorageType::kLocalStorage, directory.GetPath(), &database));
++  database->database().PostTaskWithThisObject(
++      base::BindOnce([](DomStorageDatabase* backend) {
++        static_cast<FakeDomStorageDatabase*>(backend)->SetUpdateMapsStatus(
++            DbStatus::IOError("injected new commit failure"));
++      }));
++  base::test::TestFuture<DbStatus> checkpoint;
++  database->CommitPendingMaps(checkpoint.GetCallback());
++  EXPECT_FALSE(checkpoint.Get().ok());
++}
++
++TEST_P(AsyncDomStorageDatabaseTest,
++       CommitPendingMapsDoesNotCommitNeighbourDatabase) {
++  base::ScopedTempDir first_directory, second_directory;
++  ASSERT_TRUE(first_directory.CreateUniqueTempDir());
++  ASSERT_TRUE(second_directory.CreateUniqueTempDir());
++  std::unique_ptr<AsyncDomStorageDatabase> first, second;
++  ASSERT_NO_FATAL_FAILURE(OpenOnDiskDatabaseSync(
++      StorageType::kLocalStorage, first_directory.GetPath(), &first));
++  ASSERT_NO_FATAL_FAILURE(OpenOnDiskDatabaseSync(
++      StorageType::kLocalStorage, second_directory.GetPath(), &second));
++  FakeCommitter committer(first.get(),
++                          DomStorageDatabase::MapLocator(kFirstStorageKey));
++  base::test::TestFuture<DbStatus> committed, neighbour, checkpoint;
++  committer.QueuePutMapKeyValue(ToBytes("key"), ToBytes("value"),
++                                committed.GetCallback());
++  second->CommitPendingMaps(neighbour.GetCallback());
++  EXPECT_TRUE(neighbour.Get().ok());
++  EXPECT_FALSE(committed.IsReady());
++  EXPECT_TRUE(committer.HasPendingCommit());
++  first->CommitPendingMaps(checkpoint.GetCallback());
++  EXPECT_TRUE(checkpoint.Get().ok());
++  EXPECT_TRUE(committed.IsReady());
++  EXPECT_TRUE(committed.Get().ok());
++}
++
+ }  // namespace storage

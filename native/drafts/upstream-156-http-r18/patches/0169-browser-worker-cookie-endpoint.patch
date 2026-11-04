@@ -1,0 +1,157 @@
+diff --git a/content/browser/service_worker/service_worker_version.cc b/content/browser/service_worker/service_worker_version.cc
+index f1305b444c578b9d3f67470ddac1258c8a3cd903..9d8488e1b39e87b30054ed96b9b9d6701e0df75d 100644
+--- a/content/browser/service_worker/service_worker_version.cc
++++ b/content/browser/service_worker/service_worker_version.cc
+@@ -27,6 +27,7 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_view_util.h"
+ #include "base/strings/utf_string_conversions.h"
++#include "base/task/bind_post_task.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/default_clock.h"
+ #include "base/time/default_tick_clock.h"
+@@ -66,6 +67,7 @@
+ #include "content/public/common/result_codes.h"
+ #include "crypto/hash.h"
+ #include "mojo/public/c/system/types.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ #include "net/base/net_errors.h"
+ #include "net/cookies/site_for_cookies.h"
+ #include "net/http/http_response_headers.h"
+@@ -3775,4 +3777,106 @@ void ServiceWorkerVersion::MaybeRegisterNetworkRestrictions(
+           std::move(callback));
+ }
+ 
++bool ServiceWorkerVersion::IsCookieCheckpointEndpointCurrent(
++    const blink::ServiceWorkerToken& worker,
++    base::TimeTicks deadline) const {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  const auto now = base::TimeTicks::Now();
++  return context_ && deadline > now && deadline <= now + base::Seconds(30) &&
++         running_status() == blink::EmbeddedWorkerStatus::kRunning &&
++         is_endpoint_ready_ && start_worker_token_ == worker &&
++         service_worker_remote_.is_bound() && service_worker_remote_.is_connected();
++}
++
++void ServiceWorkerVersion::CaptureCookieProducerForCheckpoint(
++    const blink::ServiceWorkerToken& worker,
++    base::TimeTicks deadline,
++    CookieCheckpointCaptureCallback callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  CHECK(callback);
++  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      base::BindPostTaskToCurrentDefault(std::move(callback)), false, uint64_t{0});
++  if (!IsCookieCheckpointEndpointCurrent(worker, deadline)) {
++    std::move(guarded).Run(false, 0);
++    return;
++  }
++  service_worker_remote_.QueryVersion(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindOnce(
++              [](base::WeakPtr<ServiceWorkerVersion> owner,
++                 blink::ServiceWorkerToken expected_worker,
++                 base::TimeTicks expires,
++                 CookieCheckpointCaptureCallback reply,
++                 uint32_t version) {
++                if (!owner || version < 1 ||
++                    !owner->IsCookieCheckpointEndpointCurrent(expected_worker, expires)) {
++                  std::move(reply).Run(false, 0);
++                  return;
++                }
++                owner->service_worker_remote_->CaptureCookieProducerForCheckpoint(
++                    mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++                        base::BindOnce(
++                            [](base::WeakPtr<ServiceWorkerVersion> live,
++                               blink::ServiceWorkerToken expected,
++                               base::TimeTicks limit,
++                               CookieCheckpointCaptureCallback completion,
++                               bool available,
++                               uint64_t ticket) {
++                              const bool valid = available && ticket && live &&
++                                  live->IsCookieCheckpointEndpointCurrent(expected, limit);
++                              std::move(completion).Run(valid, valid ? ticket : 0);
++                            },
++                            owner, expected_worker, expires, std::move(reply)),
++                        false, uint64_t{0}));
++              },
++              weak_factory_.GetWeakPtr(), worker, deadline, std::move(guarded)),
++          uint32_t{0}));
++}
++
++void ServiceWorkerVersion::DrainCookieWritesForCheckpoint(
++    const blink::ServiceWorkerToken& worker,
++    uint64_t ticket,
++    base::TimeTicks deadline,
++    CookieCheckpointDrainCallback callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  CHECK(callback);
++  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      base::BindPostTaskToCurrentDefault(std::move(callback)), false);
++  if (!ticket || !IsCookieCheckpointEndpointCurrent(worker, deadline)) {
++    std::move(guarded).Run(false);
++    return;
++  }
++  service_worker_remote_.QueryVersion(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindOnce(
++              [](base::WeakPtr<ServiceWorkerVersion> owner,
++                 blink::ServiceWorkerToken expected_worker,
++                 uint64_t captured_ticket,
++                 base::TimeTicks expires,
++                 CookieCheckpointDrainCallback reply,
++                 uint32_t version) {
++                if (!owner || version < 1 ||
++                    !owner->IsCookieCheckpointEndpointCurrent(expected_worker, expires)) {
++                  std::move(reply).Run(false);
++                  return;
++                }
++                owner->service_worker_remote_->DrainCookieWritesForCheckpoint(
++                    captured_ticket, expires,
++                    mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++                        base::BindOnce(
++                            [](base::WeakPtr<ServiceWorkerVersion> live,
++                               blink::ServiceWorkerToken expected,
++                               base::TimeTicks limit,
++                               CookieCheckpointDrainCallback completion,
++                               bool success) {
++                              std::move(completion).Run(success && live &&
++                                  live->IsCookieCheckpointEndpointCurrent(expected, limit));
++                            },
++                            owner, expected_worker, expires, std::move(reply)),
++                        false));
++              },
++              weak_factory_.GetWeakPtr(), worker, ticket, deadline, std::move(guarded)),
++          uint32_t{0}));
++}
++
+ }  // namespace content
+diff --git a/content/browser/service_worker/service_worker_version.h b/content/browser/service_worker/service_worker_version.h
+index 76d935da18149f81d14aca698d77d3e5ab9a510c..805bdc78966285db238a7e72a1e20da476ecbb1f 100644
+--- a/content/browser/service_worker/service_worker_version.h
++++ b/content/browser/service_worker/service_worker_version.h
+@@ -459,6 +459,25 @@ class CONTENT_EXPORT ServiceWorkerVersion
+ 
+   bool is_endpoint_ready() const { return is_endpoint_ready_; }
+ 
++  using CookieCheckpointCaptureCallback = base::OnceCallback<void(bool, uint64_t)>;
++  using CookieCheckpointDrainCallback = base::OnceCallback<void(bool)>;
++  // Existing running endpoint only. Both calls negotiate protocol version 1 and
++  // retain the caller's run token; they never start/rebind a worker. Replies are
++  // posted. The caller owns the operation deadline and must revalidate its
++  // retained worker cohort before backend commit and final delivery.
++  bool IsCookieCheckpointEndpointCurrent(
++      const blink::ServiceWorkerToken& worker, base::TimeTicks deadline) const;
++  void CaptureCookieProducerForCheckpoint(
++      const blink::ServiceWorkerToken& worker,
++      base::TimeTicks deadline,
++      CookieCheckpointCaptureCallback callback);
++  void DrainCookieWritesForCheckpoint(
++      const blink::ServiceWorkerToken& worker,
++      uint64_t ticket,
++      base::TimeTicks deadline,
++      CookieCheckpointDrainCallback callback);
++
++
+   // Returns the 'controller' interface ptr of this worker. It is expected that
+   // the worker is already starting or running, or is going to be started soon.
+   // TODO(kinuko): Relying on the callsites to start the worker when it's

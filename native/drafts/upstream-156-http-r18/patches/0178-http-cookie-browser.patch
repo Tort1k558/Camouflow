@@ -1,0 +1,195 @@
+diff --git a/chrome/browser/net/glint_cookie_prefix_browsertest.cc b/chrome/browser/net/glint_cookie_prefix_browsertest.cc
+index cd35f98c569d229d1677ba07fdfdf42690ede739..3ebf8649baf74532c4c4b328df0db317f56d05ef 100644
+--- a/chrome/browser/net/glint_cookie_prefix_browsertest.cc
++++ b/chrome/browser/net/glint_cookie_prefix_browsertest.cc
+@@ -4,6 +4,7 @@
+ #include <algorithm>
+ #include <memory>
+ #include <string>
++#include <string_view>
+ 
+ #include "base/command_line.h"
+ #include "base/containers/span.h"
+@@ -32,6 +33,7 @@
+ #include "content/public/test/browser_test.h"
+ #include "content/public/test/browser_test_utils.h"
+ #include "content/public/test/glint_cookie_checkpoint_test_utils.h"
++#include "net/cookies/cookie_util.h"
+ #include "net/dns/mock_host_resolver.h"
+ #include "net/http/http_status_code.h"
+ #include "net/test/embedded_test_server/embedded_test_server.h"
+@@ -96,8 +98,92 @@ constexpr char kAllCookiesPresent[] = R"JS(
+ })()
+ )JS";
+ 
++bool IsCheckpointChallenge(std::string_view value) {
++  return value.size() == 64 &&
++         std::all_of(value.begin(), value.end(), [](char ch) {
++           return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f');
++         });
++}
++
++constexpr char kWriteHttpCookie[] = R"JS(
++(async () => {
++  const nonce = $1;
++  const response = await fetch('/glint-http-set-cookie' +
++    (nonce ? '?nonce=' + nonce : ''), {cache: 'no-store', credentials: 'same-origin'});
++  return response.ok && await response.text() === 'set';
++})()
++)JS";
++
++constexpr char kCheckHttpCookie[] = R"JS(
++(async () => {
++  const nonce = $1;
++  const name = nonce ? 'glint_http_nonce' : 'glint_http';
++  const response = await fetch('/glint-http-echo' +
++    (nonce ? '?nonce=' + nonce : ''), {cache: 'no-store', credentials: 'same-origin'});
++  return response.ok && await response.text() === (nonce || 'http_value') &&
++    !document.cookie.split(';').some(part => part.trim().startsWith(name + '=')) &&
++    await cookieStore.get(name) === null;
++})()
++)JS";
++
++std::unique_ptr<net::test_server::HttpResponse> ServeHttpCheckpointCookie(
++    const net::test_server::HttpRequest& request) {
++  auto response = std::make_unique<net::test_server::BasicHttpResponse>();
++  response->set_content_type("text/plain");
++  response->AddCustomHeader("Cache-Control", "no-store");
++  const std::string_view target(request.relative_url);
++  const bool set_cookie = target.starts_with("/glint-http-set-cookie");
++  const std::string_view endpoint =
++      set_cookie ? "/glint-http-set-cookie" : "/glint-http-echo";
++  std::string_view nonce;
++  if (target != endpoint) {
++    const std::string prefix = std::string(endpoint) + "?nonce=";
++    if (!target.starts_with(prefix) ||
++        !IsCheckpointChallenge(target.substr(prefix.size()))) {
++      response->set_code(net::HTTP_BAD_REQUEST);
++      response->set_content("invalid nonce");
++      return response;
++    }
++    nonce = target.substr(prefix.size());
++  }
++  const std::string name = nonce.empty() ? "glint_http" : "glint_http_nonce";
++  response->set_code(net::HTTP_OK);
++  if (set_cookie) {
++    const std::string value = nonce.empty() ? "http_value" : std::string(nonce);
++    response->AddCustomHeader("Set-Cookie", name + "=" + value +
++        "; Path=/; Max-Age=3600; Secure; HttpOnly; SameSite=Lax");
++    response->set_content("set");
++    return response;
++  }
++  std::string value = "missing";
++  size_t matches = 0;
++  auto header = request.headers.find("Cookie");
++  if (header != request.headers.end()) {
++    net::cookie_util::ParsedRequestCookies cookies;
++    net::cookie_util::ParseRequestCookieLine(header->second, &cookies);
++    for (const auto& cookie : cookies) {
++      if (cookie.first == name) {
++        value = cookie.second;
++        ++matches;
++      }
++    }
++  }
++  if (matches > 1) {
++    response->set_code(net::HTTP_BAD_REQUEST);
++    response->set_content("ambiguous cookie");
++  } else {
++    response->set_content(value);
++  }
++  return response;
++}
++
++
+ std::unique_ptr<net::test_server::HttpResponse> ServeCheckpointPage(
+     const net::test_server::HttpRequest& request) {
++  if (request.relative_url.starts_with("/glint-http-set-cookie") ||
++      request.relative_url.starts_with("/glint-http-echo")) {
++    return ServeHttpCheckpointCookie(request);
++  }
+   auto response = std::make_unique<net::test_server::BasicHttpResponse>();
+   response->set_code(net::HTTP_OK);
+   response->AddCustomHeader("Cache-Control", "no-store");
+@@ -141,6 +227,14 @@ class GlintCookiePrefixBrowserTest : public InProcessBrowserTest {
+     return done.Get();
+   }
+ 
++  content::EvalJsResult WriteHttpCookie(const std::string& nonce) {
++    return content::EvalJs(Contents(), content::JsReplace(kWriteHttpCookie, nonce));
++  }
++
++  content::EvalJsResult CheckHttpCookie(const std::string& nonce) {
++    return content::EvalJs(Contents(), content::JsReplace(kCheckHttpCookie, nonce));
++  }
++
+   bool WriteCrashAcknowledgment(
+       const content::GlintCookiePrefixCommitTestResult& result) {
+     const auto* command = base::CommandLine::ForCurrentProcess();
+@@ -148,10 +242,8 @@ class GlintCookiePrefixBrowserTest : public InProcessBrowserTest {
+     const auto destination = command->GetSwitchValuePath("glint-crash-ack");
+     base::FilePath user_data;
+     if (!result.committed_prefix || result.running_workers_observed == 0 ||
+-        result.running_workers_observed > 512 || challenge.size() != 64 ||
+-        !std::all_of(challenge.begin(), challenge.end(), [](char ch) {
+-          return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f');
+-        }) || !destination.IsAbsolute() || destination.ReferencesParent() ||
++        result.running_workers_observed > 512 || !IsCheckpointChallenge(challenge) ||
++        !destination.IsAbsolute() || destination.ReferencesParent() ||
+         destination.BaseName().MaybeAsASCII() != "ack.json" ||
+         !base::PathService::Get(chrome::DIR_USER_DATA, &user_data) ||
+         destination.DirName() != user_data.DirName()) {
+@@ -234,10 +326,15 @@ IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, PRE_CrashAfterAcknowledgedP
+       return true;
+     })()
+   )JS", challenge)));
++  ASSERT_EQ(true, WriteHttpCookie(challenge));
+   const auto result = CommitCookies();
+   ASSERT_GE(result.running_workers_observed, 1u);
+   ASSERT_TRUE(result.committed_prefix) << "coordinator status=" << result.coordinator_status;
+   ASSERT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
++  ASSERT_EQ(true, CheckHttpCookie(challenge));
++  std::string other_nonce = challenge;
++  other_nonce[0] = other_nonce[0] == '0' ? '1' : '0';
++  EXPECT_EQ(false, CheckHttpCookie(other_nonce));
+   ASSERT_TRUE(WriteCrashAcknowledgment(result));
+   base::RunLoop wait_for_owned_parent_termination;
+   wait_for_owned_parent_termination.Run();
+@@ -248,6 +345,10 @@ IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, CrashAfterAcknowledgedPrefi
+   const auto challenge = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+       "glint-crash-challenge");
+   ASSERT_EQ(challenge.size(), 64u);
++  ASSERT_EQ(true, CheckHttpCookie(challenge));
++  std::string other_nonce = challenge;
++  other_nonce[0] = other_nonce[0] == '0' ? '1' : '0';
++  EXPECT_EQ(false, CheckHttpCookie(other_nonce));
+   ASSERT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
+   EXPECT_EQ(true, content::EvalJs(Contents(), content::JsReplace(R"JS(
+     (async () => {
+@@ -326,4 +427,26 @@ IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest, OversizedDeadlineCannotCert
+   EXPECT_TRUE(CommitCookies().committed_prefix);
+ }
+ 
++
++// This pair checks real HTTP-only cookie persistence through the existing
++// prefix coordinator. Future response headers and whole-profile atomicity are
++// deliberately outside this already-completed HTTP-response prefix.
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest,
++                       PRE_HttpAndWorkerPrefixesSurviveRestart) {
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWindowCookies));
++  ASSERT_EQ(true, content::EvalJs(Contents(), kWriteWorkerCookie));
++  ASSERT_EQ(true, WriteHttpCookie(""));
++  const auto result = CommitCookies();
++  ASSERT_GE(result.running_workers_observed, 1u);
++  ASSERT_TRUE(result.committed_prefix) << "coordinator status=" << result.coordinator_status;
++  EXPECT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
++  EXPECT_EQ(true, CheckHttpCookie(""));
++}
++
++IN_PROC_BROWSER_TEST_F(GlintCookiePrefixBrowserTest,
++                       HttpAndWorkerPrefixesSurviveRestart) {
++  EXPECT_EQ(true, content::EvalJs(Contents(), kAllCookiesPresent));
++  EXPECT_EQ(true, CheckHttpCookie(""));
++}
++
+ }  // namespace

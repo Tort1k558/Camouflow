@@ -1,0 +1,511 @@
+diff --git a/services/network/public/mojom/restricted_cookie_manager.mojom b/services/network/public/mojom/restricted_cookie_manager.mojom
+--- a/services/network/public/mojom/restricted_cookie_manager.mojom
++++ b/services/network/public/mojom/restricted_cookie_manager.mojom
+@@ -207,4 +207,9 @@
+       StorageAccessApiStatus storage_access_api_status,
+       bool apply_devtools_overrides)
+       => (bool cookies_enabled);
+-};
++  // Waits for asynchronous write dispatches received on this bound manager.
++  // No cookie values or database commit are returned. Requires version query.
++  // New mutations before posted completion invalidate success. Not a global cut.
++  [MinVersion=1]
++  DrainCookieWritesForCheckpoint() => (bool success);
++};
+diff --git a/services/network/restricted_cookie_manager.h b/services/network/restricted_cookie_manager.h
+--- a/services/network/restricted_cookie_manager.h
++++ b/services/network/restricted_cookie_manager.h
+@@ -119,9 +119,10 @@
+ 
+   // Waits for accepted write dispatches on this instance to finish in
+   // CookieStore. No disk commit or cross-pipe producer ordering is implied. New
+-  // writes before posted delivery invalidate success. No web API or Mojo
+-  // capability is added.
+-  void DrainCookieWritesForCheckpoint(base::OnceCallback<void(bool)> callback);
++  // writes before posted delivery invalidate success. No cookie data is
++  // exposed.
++  void DrainCookieWritesForCheckpoint(
++      base::OnceCallback<void(bool)> callback) override;
+ 
+   void OverrideOriginForTesting(const url::Origin& new_origin) {
+     origin_ = new_origin;
+diff --git a/services/network/restricted_cookie_manager_unittest.cc b/services/network/restricted_cookie_manager_unittest.cc
+--- a/services/network/restricted_cookie_manager_unittest.cc
++++ b/services/network/restricted_cookie_manager_unittest.cc
+@@ -2794,4 +2794,28 @@
+                             {net::CookieSettingOverride::
+                                  kForceDisableThirdPartyCookies}))));
+ 
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainVersionedPipe) {
++  base::test::TestFuture<uint32_t> version;
++  service_remote_.QueryVersion(version.GetCallback());
++  ASSERT_GE(version.Get(), 1u);
++  base::test::TestFuture<bool> done;
++  service_remote_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_P(RestrictedCookieManagerCheckpointDrainTest,
++       CheckpointDrainPipeWaitsForWrite) {
++  const auto serial = BeginCheckpointWrite();
++  base::test::TestFuture<uint32_t> version;
++  service_remote_.QueryVersion(version.GetCallback());
++  ASSERT_GE(version.Get(), 1u);
++  base::test::TestFuture<bool> done;
++  service_remote_->DrainCookieWritesForCheckpoint(done.GetCallback());
++  task_environment_.RunUntilIdle();
++  EXPECT_FALSE(done.IsReady());
++  CompleteCheckpointWrite(serial);
++  EXPECT_TRUE(done.Get());
++}
++
+ }  // namespace network
+diff --git a/third_party/blink/renderer/platform/mojo/heap_mojo_remote.h b/third_party/blink/renderer/platform/mojo/heap_mojo_remote.h
+--- a/third_party/blink/renderer/platform/mojo/heap_mojo_remote.h
++++ b/third_party/blink/renderer/platform/mojo/heap_mojo_remote.h
+@@ -5,8 +5,10 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_MOJO_HEAP_MOJO_REMOTE_H_
+ #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_MOJO_HEAP_MOJO_REMOTE_H_
+ 
++#include <cstdint>
+ #include <utility>
+ 
++#include "base/functional/callback.h"
+ #include "base/gtest_prod_util.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+@@ -76,6 +78,9 @@
+   }
+   mojo::PendingFlush FlushAsync() { return wrapper_->remote().FlushAsync(); }
+   void FlushForTesting() { return wrapper_->remote().FlushForTesting(); }
++  void QueryVersion(base::OnceCallback<void(uint32_t)> callback) {
++    wrapper_->remote().QueryVersion(std::move(callback));
++  }
+ 
+   void Trace(Visitor* visitor) const { visitor->Trace(wrapper_); }
+ 
+diff --git a/third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc b/third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc
+--- a/third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc
++++ b/third_party/blink/renderer/platform/mojo/heap_mojo_remote_test.cc
+@@ -7,6 +7,8 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/test/null_task_runner.h"
+ #include "base/test/scoped_feature_list.h"
++#include "base/test/test_future.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ #include "mojo/public/cpp/bindings/receiver.h"
+ #include "mojo/public/interfaces/bindings/tests/sample_service.test-mojom-blink.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+@@ -282,4 +284,41 @@
+   EXPECT_TRUE(disconnected());
+ }
+ 
++class HeapMojoRemoteVersionQueryTest : public TestSupportingGC {};
++
++TEST_F(HeapMojoRemoteVersionQueryTest, QueryVersionUsesExistingRemote) {
++  Persistent<MockContextLifecycleNotifier> context =
++      MakeGarbageCollected<MockContextLifecycleNotifier>();
++  Persistent<RemoteOwner<HeapMojoWrapperMode::kWithContextObserver>> owner =
++      MakeGarbageCollected<
++          RemoteOwner<HeapMojoWrapperMode::kWithContextObserver>>(
++          context.Get());
++  ServiceImpl impl;
++  impl.receiver().Bind(owner->remote().BindNewPipeAndPassReceiver(
++      base::SequencedTaskRunner::GetCurrentDefault()));
++  base::test::TestFuture<uint32_t> version;
++  owner->remote().QueryVersion(version.GetCallback());
++  EXPECT_FALSE(version.IsReady());
++  EXPECT_EQ(version.Get(), 0u);
++  EXPECT_TRUE(owner->remote().is_connected());
++}
++
++TEST_F(HeapMojoRemoteVersionQueryTest, ContextResetDropsPendingVersionQuery) {
++  Persistent<MockContextLifecycleNotifier> context =
++      MakeGarbageCollected<MockContextLifecycleNotifier>();
++  Persistent<RemoteOwner<HeapMojoWrapperMode::kWithContextObserver>> owner =
++      MakeGarbageCollected<
++          RemoteOwner<HeapMojoWrapperMode::kWithContextObserver>>(
++          context.Get());
++  ServiceImpl impl;
++  impl.receiver().Bind(owner->remote().BindNewPipeAndPassReceiver(
++      base::SequencedTaskRunner::GetCurrentDefault()));
++  base::test::TestFuture<uint32_t> version;
++  owner->remote().QueryVersion(mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      version.GetCallback(), uint32_t{12345}));
++  context->NotifyContextDestroyed();
++  EXPECT_FALSE(owner->remote().is_bound());
++  EXPECT_EQ(version.Get(), 12345u);
++}
++
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/loader/cookie_jar.h b/third_party/blink/renderer/core/loader/cookie_jar.h
+--- a/third_party/blink/renderer/core/loader/cookie_jar.h
++++ b/third_party/blink/renderer/core/loader/cookie_jar.h
+@@ -5,8 +5,13 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_JAR_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_JAR_H_
+ 
++#include <cstddef>
++#include <cstdint>
++#include <memory>
+ #include <optional>
+ 
++#include "base/functional/callback.h"
++#include "base/time/time.h"
+ #include "mojo/public/cpp/base/shared_memory_version.h"
+ #include "services/network/public/mojom/restricted_cookie_manager.mojom-blink.h"
+ #include "third_party/blink/renderer/core/core_export.h"
+@@ -40,6 +45,10 @@
+   bool SetCookie(const String& value);
+   String Cookies();
+   bool CookiesEnabled();
++  // Drains this document's existing cookie pipe, without creating a connection.
++  // No worker/HTTP producers or disk commit are covered.
++  void DrainWritesForCheckpoint(base::TimeTicks deadline,
++                                base::OnceCallback<void(bool)> callback);
+   void SetCookieManager(
+       mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager>
+           cookie_manager);
+@@ -73,6 +82,21 @@
+ 
+   RequestCookieManagerPipeState RequestRestrictedCookieManagerIfNeeded();
+   void OnBackendDisconnect();
++  struct CheckpointReply;
++  void MarkCheckpointCookieWrite();
++  void InvalidateCheckpointConnection();
++  void OnCheckpointVersion(std::shared_ptr<CheckpointReply> reply,
++                           uint64_t generation,
++                           uint64_t epoch,
++                           uint32_t version);
++  void OnCheckpointWireReply(std::shared_ptr<CheckpointReply> reply,
++                             uint64_t generation,
++                             uint64_t epoch,
++                             bool success);
++  void DeliverCheckpointReply(std::shared_ptr<CheckpointReply> reply,
++                              uint64_t generation,
++                              uint64_t epoch,
++                              bool success);
+ 
+   // Returns true if last_cookies_ is not guaranteed to be up to date and an IPC
+   // is needed to get the current cookie string.
+@@ -138,6 +162,14 @@
+   // This number increments when calling SetCookieFromString asynchronously
+   // and it is compared with the committed_writes_count in shared memory.
+   mojo::CountType required_committed_writes_ = 0;
++
++  uint64_t checkpoint_generation_ = 0;
++  uint64_t checkpoint_epoch_ = 0;
++  uint64_t checkpoint_last_write_epoch_ = 0;
++  uint64_t checkpoint_acknowledged_write_epoch_ = 0;
++  size_t checkpoint_wire_requests_ = 0;
++  bool checkpoint_history_lost_ = false;
++  bool checkpoint_tracking_broken_ = false;
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/loader/cookie_jar.cc b/third_party/blink/renderer/core/loader/cookie_jar.cc
+--- a/third_party/blink/renderer/core/loader/cookie_jar.cc
++++ b/third_party/blink/renderer/core/loader/cookie_jar.cc
+@@ -5,15 +5,18 @@
+ #include "third_party/blink/renderer/core/loader/cookie_jar.h"
+ 
+ #include <cstdint>
++#include <limits>
+ 
+ #include "base/debug/dump_without_crashing.h"
+ #include "base/feature_list.h"
++#include "base/location.h"
+ #include "base/metrics/field_trial_params.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/rand_util.h"
+ #include "base/strings/strcat.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "base/time/time.h"
+ #include "base/trace_event/trace_event.h"
+ #include "mojo/public/cpp/base/shared_memory_version.h"
+@@ -28,6 +31,7 @@
+ #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+ #include "third_party/blink/renderer/platform/weborigin/kurl_hash.h"
++#include "third_party/blink/renderer/platform/wtf/functional.h"
+ #include "third_party/blink/renderer/platform/wtf/hash_functions.h"
+ #include "third_party/blink/renderer/platform/wtf/text/string_hash.h"
+ #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+@@ -66,6 +70,21 @@
+                    "offset",
+                    base::Milliseconds(0));
+ 
++struct CookieJar::CheckpointReply {
++  CheckpointReply(base::TimeTicks deadline, base::OnceCallback<void(bool)> done)
++      : deadline(deadline), callback(std::move(done)) {}
++
++  static void Complete(std::shared_ptr<CheckpointReply> reply, bool success) {
++    if (reply->callback) {
++      std::move(reply->callback)
++          .Run(success && base::TimeTicks::Now() < reply->deadline);
++    }
++  }
++
++  const base::TimeTicks deadline;
++  base::OnceCallback<void(bool)> callback;
++};
++
+ CookieJar::CookieJar(blink::Document* document)
+     : backend_(document->GetExecutionContext()), document_(document) {}
+ 
+@@ -90,6 +109,7 @@
+ 
+   const bool apply_devtools_overrides = ShouldApplyDevtoolsOverrides();
+   required_committed_writes_++;
++  MarkCheckpointCookieWrite();
+   backend_->SetCookieFromString(
+       cookie_url, document_->SiteForCookies(), document_->TopFrameOrigin(),
+       document_->GetExecutionContext()->GetStorageAccessApiStatus(),
+@@ -114,7 +134,118 @@
+   return true;
+ }
+ 
++void CookieJar::MarkCheckpointCookieWrite() {
++  if (checkpoint_epoch_ == std::numeric_limits<uint64_t>::max()) {
++    checkpoint_tracking_broken_ = true;
++    return;
++  }
++  checkpoint_last_write_epoch_ = ++checkpoint_epoch_;
++}
++
++void CookieJar::InvalidateCheckpointConnection() {
++  checkpoint_history_lost_ |=
++      checkpoint_last_write_epoch_ > checkpoint_acknowledged_write_epoch_;
++  if (checkpoint_generation_ == std::numeric_limits<uint64_t>::max() ||
++      checkpoint_epoch_ == std::numeric_limits<uint64_t>::max()) {
++    checkpoint_tracking_broken_ = true;
++  } else {
++    ++checkpoint_generation_;
++    ++checkpoint_epoch_;
++  }
++  checkpoint_wire_requests_ = 0;
++}
++
++void CookieJar::DrainWritesForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  CHECK(callback);
++  const auto now = base::TimeTicks::Now();
++  auto reply = std::make_shared<CheckpointReply>(deadline, std::move(callback));
++  auto runner = base::SequencedTaskRunner::GetCurrentDefault();
++  if (deadline <= now || deadline > now + base::Seconds(30) ||
++      checkpoint_tracking_broken_ || checkpoint_history_lost_ || !document_ ||
++      !document_->IsActive() || !document_->GetFrame() ||
++      checkpoint_wire_requests_ >= 64) {
++    runner->PostTask(FROM_HERE,
++                     base::BindOnce(&CheckpointReply::Complete, reply, false));
++    return;
++  }
++  // Independent of Oilpan owner lifetime and of whether Mojo drops its reply.
++  runner->PostDelayedTask(
++      FROM_HERE, base::BindOnce(&CheckpointReply::Complete, reply, false),
++      deadline - now);
++  const auto generation = checkpoint_generation_;
++  const auto epoch = checkpoint_epoch_;
++  if (!backend_.is_bound()) {
++    runner->PostTask(
++        FROM_HERE,
++        BindOnce(&CookieJar::DeliverCheckpointReply, WrapWeakPersistent(this),
++                 reply, generation, epoch, checkpoint_last_write_epoch_ == 0));
++    return;
++  }
++  if (!backend_.is_connected()) {
++    runner->PostTask(FROM_HERE,
++                     base::BindOnce(&CheckpointReply::Complete, reply, false));
++    return;
++  }
++  ++checkpoint_wire_requests_;
++  backend_.QueryVersion(BindOnce(&CookieJar::OnCheckpointVersion,
++                                 WrapWeakPersistent(this), reply, generation,
++                                 epoch));
++}
++
++void CookieJar::OnCheckpointVersion(std::shared_ptr<CheckpointReply> reply,
++                                    uint64_t generation,
++                                    uint64_t epoch,
++                                    uint32_t version) {
++  if (version < 1 || generation != checkpoint_generation_ ||
++      epoch != checkpoint_epoch_ || !reply->callback ||
++      base::TimeTicks::Now() >= reply->deadline || !backend_.is_bound() ||
++      !backend_.is_connected()) {
++    OnCheckpointWireReply(std::move(reply), generation, epoch, false);
++    return;
++  }
++  backend_->DrainCookieWritesForCheckpoint(
++      BindOnce(&CookieJar::OnCheckpointWireReply, WrapWeakPersistent(this),
++               std::move(reply), generation, epoch));
++}
++
++void CookieJar::OnCheckpointWireReply(std::shared_ptr<CheckpointReply> reply,
++                                      uint64_t generation,
++                                      uint64_t epoch,
++                                      bool success) {
++  if (generation == checkpoint_generation_) {
++    if (checkpoint_wire_requests_ > 0) {
++      --checkpoint_wire_requests_;
++    } else {
++      checkpoint_tracking_broken_ = true;
++    }
++  }
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE,
++      BindOnce(&CookieJar::DeliverCheckpointReply, WrapWeakPersistent(this),
++               std::move(reply), generation, epoch, success));
++}
++
++void CookieJar::DeliverCheckpointReply(std::shared_ptr<CheckpointReply> reply,
++                                       uint64_t generation,
++                                       uint64_t epoch,
++                                       bool success) {
++  success = success && generation == checkpoint_generation_ &&
++            epoch == checkpoint_epoch_ && !checkpoint_tracking_broken_ &&
++            !checkpoint_history_lost_ && document_ && document_->IsActive() &&
++            document_->GetFrame() &&
++            (!backend_.is_bound() ? checkpoint_last_write_epoch_ == 0
++                                  : backend_.is_connected()) &&
++            base::TimeTicks::Now() < reply->deadline;
++  if (success && reply->callback) {
++    checkpoint_acknowledged_write_epoch_ = checkpoint_last_write_epoch_;
++  }
++  CheckpointReply::Complete(std::move(reply), success);
++}
++
+ void CookieJar::OnBackendDisconnect() {
++  InvalidateCheckpointConnection();
+   shared_memory_version_client_.reset();
+   InvalidateCache();
+ }
+@@ -243,6 +374,7 @@
+ void CookieJar::SetCookieManager(
+     mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager>
+         cookie_manager) {
++  InvalidateCheckpointConnection();
+   backend_.reset();
+   backend_.Bind(std::move(cookie_manager),
+                 document_->GetTaskRunner(TaskType::kInternalDefault));
+diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/renderer/core/dom/document.h
+--- a/third_party/blink/renderer/core/dom/document.h
++++ b/third_party/blink/renderer/core/dom/document.h
+@@ -38,6 +38,7 @@
+ #include "base/containers/enum_set.h"
+ #include "base/containers/hashing_lru_cache.h"
+ #include "base/dcheck_is_on.h"
++#include "base/functional/callback_forward.h"
+ #include "base/gtest_prod_util.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/memory/stack_allocated.h"
+@@ -1369,6 +1370,9 @@
+   String cookie(ExceptionState&) const;
+   void setCookie(const String&, ExceptionState&);
+   bool CookiesEnabled() const;
++  // Existing document producer only; no connection is created for a checkpoint.
++  void DrainCookieWritesForCheckpoint(base::TimeTicks deadline,
++                                      base::OnceCallback<void(bool)> callback);
+ 
+   void SetCookieManager(
+       mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager>
+diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
+--- a/third_party/blink/renderer/core/dom/document.cc
++++ b/third_party/blink/renderer/core/dom/document.cc
+@@ -38,10 +38,12 @@
+ #include "base/containers/adapters.h"
+ #include "base/dcheck_is_on.h"
+ #include "base/debug/dump_without_crashing.h"
++#include "base/functional/bind.h"
+ #include "base/i18n/time_formatting.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/notreached.h"
+ #include "base/strings/stringprintf.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/time.h"
+ #include "base/trace_event/trace_event.h"
+@@ -6925,6 +6927,18 @@
+   }
+ }
+ 
++void Document::DrainCookieWritesForCheckpoint(
++    base::TimeTicks deadline,
++    base::OnceCallback<void(bool)> callback) {
++  CHECK(callback);
++  if (!IsActive() || !GetFrame() || !cookie_jar_) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(callback), false));
++    return;
++  }
++  cookie_jar_->DrainWritesForCheckpoint(deadline, std::move(callback));
++}
++
+ bool Document::CookiesEnabled() const {
+   if (!dom_window_)
+     return false;
+diff --git a/third_party/blink/renderer/core/dom/document_test.cc b/third_party/blink/renderer/core/dom/document_test.cc
+--- a/third_party/blink/renderer/core/dom/document_test.cc
++++ b/third_party/blink/renderer/core/dom/document_test.cc
+@@ -29,13 +29,13 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/dom/document.h"
+-#include "third_party/blink/renderer/core/dom/document_init.h"
+ 
+ #include <algorithm>
+ #include <memory>
+ 
+ #include "base/memory/raw_ptr.h"
+ #include "base/strings/stringprintf.h"
++#include "base/test/test_future.h"
+ #include "base/time/time.h"
+ #include "build/build_config.h"
+ #include "components/ukm/test_ukm_recorder.h"
+@@ -65,6 +65,7 @@
+ #include "third_party/blink/renderer/core/css/media_query_matcher.h"
+ #include "third_party/blink/renderer/core/css/style_engine.h"
+ #include "third_party/blink/renderer/core/dom/document_fragment.h"
++#include "third_party/blink/renderer/core/dom/document_init.h"
+ #include "third_party/blink/renderer/core/dom/dom_exception.h"
+ #include "third_party/blink/renderer/core/dom/dom_implementation.h"
+ #include "third_party/blink/renderer/core/dom/focus_params.h"
+@@ -2602,4 +2603,35 @@
+   }
+ }
+ 
++TEST_F(DocumentTest, GlintCookieDrainEmptyDocumentIsPosted) {
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_TRUE(done.Get());
++}
++
++TEST_F(DocumentTest, GlintCookieDrainExpiredDeadlineFailsPosted) {
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(base::TimeTicks::Now(),
++                                               done.GetCallback());
++  EXPECT_FALSE(done.IsReady());
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentTest, GlintCookieDrainUnboundedDeadlineFails) {
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(base::TimeTicks::Max(),
++                                               done.GetCallback());
++  EXPECT_FALSE(done.Get());
++}
++
++TEST_F(DocumentTest, GlintCookieDrainDetachedDocumentRejectsQueuedSuccess) {
++  base::test::TestFuture<bool> done;
++  GetDocument().DrainCookieWritesForCheckpoint(
++      base::TimeTicks::Now() + base::Seconds(5), done.GetCallback());
++  GetDocument().GetFrame()->DetachDocument();
++  EXPECT_FALSE(done.Get());
++}
++
+ }  // namespace blink

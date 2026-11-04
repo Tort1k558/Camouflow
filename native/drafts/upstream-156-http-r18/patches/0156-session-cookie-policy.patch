@@ -1,0 +1,156 @@
+diff --git a/chrome/browser/net/profile_network_context_service.h b/chrome/browser/net/profile_network_context_service.h
+--- a/chrome/browser/net/profile_network_context_service.h
++++ b/chrome/browser/net/profile_network_context_service.h
+@@ -69,6 +69,11 @@
+       public content_settings::Observer,
+       public content_settings::CookieSettings::Observer {
+  public:
++  // Local, unsynced, opt-in startup policy for persistent partitions only.
++  // Does not imply a completed checkpoint or override explicit cookie deletion.
++  static constexpr char kGlintRestoreSessionCookiesPref[] =
++      "glint.storage.restore_session_cookies";
++
+   explicit ProfileNetworkContextService(Profile* profile);
+ 
+   ProfileNetworkContextService(const ProfileNetworkContextService&) = delete;
+diff --git a/chrome/browser/net/profile_network_context_service.cc b/chrome/browser/net/profile_network_context_service.cc
+--- a/chrome/browser/net/profile_network_context_service.cc
++++ b/chrome/browser/net/profile_network_context_service.cc
+@@ -645,6 +645,7 @@
+ // static
+ void ProfileNetworkContextService::RegisterProfilePrefs(
+     user_prefs::PrefRegistrySyncable* registry) {
++  registry->RegisterBooleanPref(kGlintRestoreSessionCookiesPref, false);
+   registry->RegisterBooleanPref(embedder_support::kAlternateErrorPagesEnabled,
+                                 true);
+   registry->RegisterBooleanPref(prefs::kQuicAllowed, true);
+@@ -1440,7 +1441,15 @@
+         base::FilePath(chrome::kReportingAndNelStoreFilename);
+ #endif  // BUILDFLAG(ENABLE_REPORTING)
+ 
+-    if (relative_partition_path.empty()) {  // This is the main partition.
++    // Explicitly opted-in persistent profiles may restore session cookies
++    // without restoring tabs. The enclosing disk-only branch excludes OTR and
++    // in-memory partitions. Existing deletion/content-setting policies still
++    // run.
++    if (profile_->GetPrefs()->GetBoolean(kGlintRestoreSessionCookiesPref)) {
++      network_context_params->restore_old_session_cookies = true;
++      network_context_params->persist_session_cookies = true;
++    } else if (relative_partition_path
++                   .empty()) {  // This is the main partition.
+       network_context_params->restore_old_session_cookies =
+           profile_->ShouldRestoreOldSessionCookies();
+       network_context_params->persist_session_cookies =
+diff --git a/chrome/browser/net/profile_network_context_service_browsertest.cc b/chrome/browser/net/profile_network_context_service_browsertest.cc
+--- a/chrome/browser/net/profile_network_context_service_browsertest.cc
++++ b/chrome/browser/net/profile_network_context_service_browsertest.cc
+@@ -165,6 +165,109 @@
+   raw_ptr<network::mojom::URLLoaderFactory> loader_factory_ = nullptr;
+ };
+ 
++class GlintSessionCookiePolicyBrowserTest
++    : public ProfileNetworkContextServiceBrowsertest {
++ protected:
++  void SetPreserve(bool enabled) {
++    browser()->GetProfile()->GetPrefs()->SetBoolean(
++        ProfileNetworkContextService::kGlintRestoreSessionCookiesPref, enabled);
++  }
++
++  network::mojom::NetworkContextParamsPtr Configure(
++      Profile* profile,
++      bool in_memory = false,
++      const base::FilePath& partition = base::FilePath()) {
++    auto params = network::mojom::NetworkContextParams::New();
++    cert_verifier::mojom::CertVerifierCreationParams cert_params;
++    ProfileNetworkContextServiceFactory::GetForContext(profile)
++        ->ConfigureNetworkContextParams(in_memory, partition, params.get(),
++                                        &cert_params);
++    return params;
++  }
++};
++
++IN_PROC_BROWSER_TEST_F(GlintSessionCookiePolicyBrowserTest, DefaultIsOptOut) {
++  EXPECT_FALSE(browser()->GetProfile()->GetPrefs()->GetBoolean(
++      ProfileNetworkContextService::kGlintRestoreSessionCookiesPref));
++}
++
++IN_PROC_BROWSER_TEST_F(GlintSessionCookiePolicyBrowserTest,
++                       DefaultPartitionKeepsChromiumPolicy) {
++  SetPreserve(false);
++  Profile* profile = browser()->GetProfile();
++  auto params = Configure(profile);
++  EXPECT_EQ(params->restore_old_session_cookies,
++            profile->ShouldRestoreOldSessionCookies());
++  EXPECT_EQ(params->persist_session_cookies,
++            profile->ShouldPersistSessionCookies());
++}
++
++IN_PROC_BROWSER_TEST_F(GlintSessionCookiePolicyBrowserTest,
++                       OptInDefaultPartitionPreservesAndRestores) {
++  SetPreserve(true);
++  auto params = Configure(browser()->GetProfile());
++  EXPECT_TRUE(params->restore_old_session_cookies);
++  EXPECT_TRUE(params->persist_session_cookies);
++}
++
++IN_PROC_BROWSER_TEST_F(GlintSessionCookiePolicyBrowserTest,
++                       OptInAdditionalDiskPartitionPreservesAndRestores) {
++  SetPreserve(true);
++  auto params =
++      Configure(browser()->GetProfile(), false,
++                base::FilePath(FILE_PATH_LITERAL("glint-test-partition")));
++  EXPECT_TRUE(params->restore_old_session_cookies);
++  EXPECT_TRUE(params->persist_session_cookies);
++}
++
++IN_PROC_BROWSER_TEST_F(GlintSessionCookiePolicyBrowserTest,
++                       OptOutAdditionalPartitionKeepsChromiumPolicy) {
++  SetPreserve(false);
++  auto params =
++      Configure(browser()->GetProfile(), false,
++                base::FilePath(FILE_PATH_LITERAL("glint-test-partition")));
++  EXPECT_FALSE(params->restore_old_session_cookies);
++  EXPECT_FALSE(params->persist_session_cookies);
++}
++
++IN_PROC_BROWSER_TEST_F(GlintSessionCookiePolicyBrowserTest,
++                       OptInMemoryPartitionNeverPersists) {
++  SetPreserve(true);
++  auto params =
++      Configure(browser()->GetProfile(), true,
++                base::FilePath(FILE_PATH_LITERAL("glint-memory-partition")));
++  EXPECT_FALSE(params->restore_old_session_cookies);
++  EXPECT_FALSE(params->persist_session_cookies);
++  EXPECT_FALSE(params->file_paths);
++}
++
++IN_PROC_BROWSER_TEST_F(GlintSessionCookiePolicyBrowserTest,
++                       OptInOffTheRecordNeverPersists) {
++  SetPreserve(true);
++  Profile* otr = browser()->GetProfile()->GetPrimaryOTRProfile(true);
++  otr->GetPrefs()->SetBoolean(
++      ProfileNetworkContextService::kGlintRestoreSessionCookiesPref, true);
++  // Even a caller incorrectly requesting disk storage cannot persist OTR data.
++  auto params = Configure(otr, false);
++  EXPECT_FALSE(params->restore_old_session_cookies);
++  EXPECT_FALSE(params->persist_session_cookies);
++  EXPECT_FALSE(params->file_paths);
++}
++
++IN_PROC_BROWSER_TEST_F(GlintSessionCookiePolicyBrowserTest,
++                       DisablingReturnsFutureContextsToChromiumPolicy) {
++  Profile* profile = browser()->GetProfile();
++  SetPreserve(true);
++  auto enabled = Configure(profile);
++  ASSERT_TRUE(enabled->restore_old_session_cookies);
++  SetPreserve(false);
++  auto disabled = Configure(profile);
++  EXPECT_EQ(disabled->restore_old_session_cookies,
++            profile->ShouldRestoreOldSessionCookies());
++  EXPECT_EQ(disabled->persist_session_cookies,
++            profile->ShouldPersistSessionCookies());
++}
++
+ IN_PROC_BROWSER_TEST_F(ProfileNetworkContextServiceBrowsertest,
+                        DiskCacheLocation) {
+   // Run a request that caches the response, to give the network service time to

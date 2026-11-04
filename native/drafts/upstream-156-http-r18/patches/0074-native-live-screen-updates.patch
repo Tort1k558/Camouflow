@@ -1,0 +1,175 @@
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+@@ -2519,6 +2519,7 @@
+ }
+ 
+ void WebFrameWidgetImpl::DisableDeviceEmulation() {
++  glint_logical_screen_infos_.reset();
+   if (device_emulator_ && widget_base_ && !widget_base_->WillBeDestroyed()) {
+     device_emulator_->DisableAndApply();
+   }
+@@ -3767,6 +3768,8 @@
+ }
+ 
+ const display::ScreenInfos& WebFrameWidgetImpl::GlintWebExposedScreenInfos() {
++  if (device_emulator_)
++    return GetScreenInfos();
+   if (glint_logical_screen_infos_)
+     return *glint_logical_screen_infos_;
+   return GetScreenInfos();
+@@ -3774,6 +3777,9 @@
+ 
+ std::optional<double> WebFrameWidgetImpl::GlintLogicalRootDevicePixelRatio()
+     const {
++  if (device_emulator_)
++    return widget_base_->screen_infos().current().device_scale_factor *
++           View()->ZoomLevelToZoomFactor(zoom_level_);
+   if (!glint_logical_screen_infos_)
+     return std::nullopt;
+   return glint_logical_screen_infos_->current().device_scale_factor *
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_test.cc b/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
+@@ -617,6 +617,69 @@
+   visual_properties.is_pinch_gesture_active = false;
+   LocalFrameRootWidget()->ApplyVisualProperties(visual_properties);
+   EXPECT_FALSE(layer_tree_host->is_external_pinch_gesture_active_for_testing());
++}
++
++
++TEST_F(WebFrameWidgetSimTest, GlintLiveMainEmulationReplacesStaleTransport) {
++  LoadURL("about:blank");
++  auto* widget = WebView().MainFrameViewWidget();
++  widget->ApplyVisualProperties(GlintLogicalMainScreenPropertiesForTesting());
++  DeviceEmulationParams params;
++  params.screen_type = mojom::EmulatedScreenType::kMobile;
++  params.screen_size = gfx::Size(412, 915);
++  params.view_size = params.screen_size;
++  params.device_scale_factor = 2;
++  WebView().EnableDeviceEmulation(params);
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,
++            gfx::Rect(412, 915));
++  ASSERT_TRUE(widget->GlintLogicalRootDevicePixelRatio());
++  EXPECT_DOUBLE_EQ(*widget->GlintLogicalRootDevicePixelRatio(), 2);
++  for (float foreign : {0.5f, 1.f, 3.f, 4.f}) {
++    WebView().GetPage()->SetInspectorDeviceScaleFactorOverride(foreign);
++    EXPECT_DOUBLE_EQ(GetDocument().GetFrame()->DevicePixelRatio(), 2);
++  }
++}
++
++TEST_F(WebFrameWidgetSimTest, GlintLiveMainEmulationUpdateIgnoresStaleSnapshot) {
++  LoadURL("about:blank");
++  auto* widget = WebView().MainFrameViewWidget();
++  auto stale = GlintLogicalMainScreenPropertiesForTesting();
++  widget->ApplyVisualProperties(stale);
++  DeviceEmulationParams params;
++  params.screen_type = mojom::EmulatedScreenType::kDesktop;
++  params.screen_size = gfx::Size(1280, 720);
++  params.view_size = params.screen_size;
++  params.device_scale_factor = 1.25f;
++  WebView().EnableDeviceEmulation(params);
++  widget->ApplyVisualProperties(stale);
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,
++            gfx::Rect(1280, 720));
++  ASSERT_TRUE(widget->GlintLogicalRootDevicePixelRatio());
++  EXPECT_DOUBLE_EQ(*widget->GlintLogicalRootDevicePixelRatio(), 1.25);
++  params.screen_size = gfx::Size(1024, 768);
++  params.view_size = params.screen_size;
++  params.device_scale_factor = 2;
++  WebView().EnableDeviceEmulation(params);
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,
++            gfx::Rect(1024, 768));
++  EXPECT_DOUBLE_EQ(GetDocument().GetFrame()->DevicePixelRatio(), 2);
++}
++
++TEST_F(WebFrameWidgetSimTest, GlintLiveMainEmulationClearDropsStaleTransport) {
++  LoadURL("about:blank");
++  auto* widget = WebView().MainFrameViewWidget();
++  widget->ApplyVisualProperties(GlintLogicalMainScreenPropertiesForTesting());
++  DeviceEmulationParams params;
++  params.screen_type = mojom::EmulatedScreenType::kMobile;
++  params.screen_size = gfx::Size(390, 844);
++  params.view_size = params.screen_size;
++  params.device_scale_factor = 3;
++  WebView().EnableDeviceEmulation(params);
++  WebView().DisableDeviceEmulation();
++  EXPECT_FALSE(widget->GlintLogicalRootDevicePixelRatio());
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,
++            gfx::Rect(800, 600));
++  EXPECT_FLOAT_EQ(widget->GetScreenInfo().device_scale_factor, 1);
+ }
+ 
+ TEST_F(WebFrameWidgetSimTest, GlintMainLogicalDprFollowsLatestSnapshot) {
+diff --git a/content/browser/renderer_host/render_widget_host_impl.cc b/content/browser/renderer_host/render_widget_host_impl.cc
+--- a/content/browser/renderer_host/render_widget_host_impl.cc
++++ b/content/browser/renderer_host/render_widget_host_impl.cc
+@@ -3395,6 +3395,8 @@
+   return zoom_changed || size_changed || parent_local_surface_id_changed ||
+          old_visual_properties->screen_infos !=
+              new_visual_properties.screen_infos ||
++         old_visual_properties->glint_logical_screen_infos !=
++             new_visual_properties.glint_logical_screen_infos ||
+          old_visual_properties->compositor_viewport_pixel_rect !=
+              new_visual_properties.compositor_viewport_pixel_rect ||
+          old_visual_properties->is_fullscreen_granted !=
+diff --git a/content/browser/renderer_host/mock_render_widget_host.h b/content/browser/renderer_host/mock_render_widget_host.h
+--- a/content/browser/renderer_host/mock_render_widget_host.h
++++ b/content/browser/renderer_host/mock_render_widget_host.h
+@@ -22,6 +22,7 @@
+   // Allow poking at a few private members.
+   using RenderWidgetHostImpl::GetInitialVisualProperties;
+   using RenderWidgetHostImpl::GetVisualProperties;
++  using RenderWidgetHostImpl::StoredVisualPropertiesNeedsUpdate;
+   using RenderWidgetHostImpl::is_hidden_;
+   using RenderWidgetHostImpl::old_visual_properties_;
+   using RenderWidgetHostImpl::render_frame_metadata_provider_;
+diff --git a/content/browser/renderer_host/render_widget_host_unittest.cc b/content/browser/renderer_host/render_widget_host_unittest.cc
+--- a/content/browser/renderer_host/render_widget_host_unittest.cc
++++ b/content/browser/renderer_host/render_widget_host_unittest.cc
+@@ -1255,6 +1255,45 @@
+ 
+ // Test that a resize event is sent if SynchronizeVisualProperties() is called
+ // after a ScreenInfo change.
++
++TEST_F(RenderWidgetHostTest, GlintLogicalScreenAdditionRequiresVisualUpdate) {
++  auto old = std::make_unique<blink::VisualProperties>();
++  auto next = *old;
++  EXPECT_FALSE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
++  next.glint_logical_screen_infos = next.screen_infos;
++  next.glint_logical_screen_infos->mutable_current().rect = gfx::Rect(390, 844);
++  EXPECT_EQ(old->screen_infos, next.screen_infos);
++  EXPECT_TRUE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
++}
++
++TEST_F(RenderWidgetHostTest, GlintLogicalScreenOnlyChangesRequireVisualUpdate) {
++  auto old = std::make_unique<blink::VisualProperties>();
++  old->glint_logical_screen_infos = old->screen_infos;
++  auto next = *old;
++  EXPECT_FALSE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
++  next.glint_logical_screen_infos->mutable_current().device_scale_factor = 3;
++  EXPECT_EQ(old->screen_infos, next.screen_infos);
++  EXPECT_TRUE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
++  next = *old;
++  next.glint_logical_screen_infos->mutable_current().rect = gfx::Rect(390, 844);
++  EXPECT_TRUE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
++  next = *old;
++  next.glint_logical_screen_infos->mutable_current().orientation_angle = 90;
++  EXPECT_TRUE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
++  next = *old;
++  next.glint_logical_screen_infos->mutable_current().available_rect = gfx::Rect(390, 800);
++  EXPECT_TRUE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
++}
++
++TEST_F(RenderWidgetHostTest, GlintLogicalScreenClearRequiresVisualUpdate) {
++  auto old = std::make_unique<blink::VisualProperties>();
++  old->glint_logical_screen_infos = old->screen_infos;
++  auto next = *old;
++  next.glint_logical_screen_infos.reset();
++  EXPECT_EQ(old->screen_infos, next.screen_infos);
++  EXPECT_TRUE(MockRenderWidgetHost::StoredVisualPropertiesNeedsUpdate(old, next));
++}
++
+ TEST_F(RenderWidgetHostTest, ResizeScreenInfo) {
+   display::ScreenInfo screen_info;
+   screen_info.rect = gfx::Rect(0, 0, 800, 600);

@@ -1,8 +1,8 @@
 # Glint
 
-## Current source candidate: R16; R17 prepared
+## Selected source: R16; R17/R18 prepared
 
-[R16](drafts/upstream-156-recovery-r16/README.md) contains 161 patches. Its Windows browser compiled; the 225-declaration native plan across seven binaries and independent runtime checks are not yet admitted. [R17](drafts/upstream-156-worker-r17/README.md) prepares 176 patches and 300 declarations; its complete C++ and runtime checks remain pending. Historical results below do not admit either candidate.
+[R16](drafts/upstream-156-recovery-r16/README.md) contains 161 patches. Its Windows browser compiled, but the 225-declaration native test build failed on a capturing callback; independent runtime admission remains open. [R17](drafts/upstream-156-worker-r17/README.md) prepares 176 patches and 300 declarations. [R18](drafts/upstream-156-http-r18/README.md) adds HTTP-cookie coordination and real-SQL test sources: 180 patches, 337 declarations. R18 is not registered or selected; complete C++ and runtime checks remain pending. Historical results below do not admit these candidates.
 
 CamouFlow's independent Chromium-based development engine. It is not a
 Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
