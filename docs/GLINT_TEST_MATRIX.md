@@ -1,5 +1,42 @@
 # Glint browser test matrix
 
+## 2026-11-04: measured CSS preferences; mobile geometry remains a failed control
+
+Results below cover the published collector at
+[`5541bba`](https://github.com/Tort1k558/Camouflow/commit/5541bba9f328cf1ee677192d8dbdd33037604f7c).
+They do not admit the latest Glint binary or replace older failed results.
+
+| Gate | Actual result | Boundary |
+| --- | --- | --- |
+| Full Windows host regression | **6392 passed, 1 skipped**; exact input and original-checkout guards passed | Host tests, not Chromium execution |
+| Hosted Windows Python/QML | **6369 passed, 24 skipped** in [the exact-commit job](https://github.com/Tort1k558/Camouflow/actions/runs/41757093062/job/126335648647) | C++ policy and static jobs also passed; packaging was still running at this observation |
+| Public reference CLI | Official stock **156.0.8078.36**, initial + persistent restart, **8 contexts per phase** | `native-control`, no configured viewport; not our R16 |
+| Requested CSS media preferences | Real initial, restart and changed-settings observations: **3/3 accepted** after the collector correction | Five document contexts; three workers explicitly have no document media API |
+| Collector negative control | The archived old collector falsely rejects those same three datasets | Reproduces a tool bug, not a browser-engine defect |
+| Mobile Web full coherence | **Failed**: cross-origin frame screen width/height, available width/height and DPR differ from the top document on stock156 | CSS preferences, language/timezone and restart checks do not clear the geometry failure |
+| Own R16 native/runtime gate | Browser compile/link already passed; test executables remain under construction | No new native execution, whole-profile recovery, detector or CAPTCHA verdict |
+
+The collector now measures color scheme, reduced motion, forced colors and all
+four observed contrast values. Missing or contradictory values are rejected;
+unsupported manager choices are not silently enabled. Observation schema is **2**.
+
+All live reference probes used fresh owned profiles, unchanged executable/core
+hashes and completed process cleanup. Raw local GPU/device observations are not
+published. The old/new media-source archive is
+[hash-bound and reversible](../native/drafts/environment/environment-media-host-source-upgrade.json).
+
+Reproduce the explicit reference modes using a **separate immutable installation**,
+never a binary directory currently being linked:
+
+```powershell
+python scripts/capture_native_environment.py --executable D:\BrowserControl\chrome.exe --work-dir D:\GlintQA\reference-control --mode native-control
+python scripts/capture_native_environment.py --executable D:\BrowserControl\chrome.exe --work-dir D:\GlintQA\reference-mobile --mode manager-mobile-web
+```
+
+Use a fresh work directory for each command. A nonzero mobile result must retain
+its measured failure; do not retry in `native-control` and call that a mobile pass.
+
+
 ## 2026-11-04: diagnostic coverage verified; R16 native execution pending
 
 | Gate | Latest verified scope | Result / remaining work |
