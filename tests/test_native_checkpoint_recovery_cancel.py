@@ -8,11 +8,13 @@ import pytest
 pytestmark = pytest.mark.skipif(sys.platform != 'win32', reason='Windows process/ACL integration')
 
 from scripts import native_checkpoint_recovery as recovery
+from scripts.verify_native_checkpoint_units import run_tests
 from test_native_checkpoint_recovery_job import PARENT, PYTHON, require_exited
 
 
 @pytest.mark.parametrize('interruption', [KeyboardInterrupt, SystemExit])
-def test_cancellation_propagates_only_after_owned_tree_cleanup(tmp_path, monkeypatch, interruption):
+@pytest.mark.parametrize('runner', [recovery._run_recovery_process, run_tests])
+def test_cancellation_propagates_only_after_owned_tree_cleanup(tmp_path, monkeypatch, interruption, runner):
     marker = tmp_path / 'child-pid.txt'
     children = []
     actual_constructor = recovery.OwnedJobProcess
@@ -43,7 +45,7 @@ def test_cancellation_propagates_only_after_owned_tree_cleanup(tmp_path, monkeyp
     monkeypatch.setattr(recovery, 'OwnedJobProcess', interrupted_process)
     try:
         with pytest.raises(interruption, match='intentional host-test interruption'):
-            recovery._run_recovery_process(
+            runner(
                 [PYTHON, '-c', PARENT, str(marker), 'timeout'], source=tmp_path,
                 env=dict(os.environ), log=tmp_path / 'cancel.log', timeout=60)
         assert len(children) == 1 and children[0]._handle is None

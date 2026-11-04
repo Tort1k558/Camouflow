@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "patch": "checkpoint-owned-job-host-source-upgrade.patch",
+  "patch_sha256": "f46b021555434d18e708f21a3dd90bc14532e6bcc282f9bd223db364424e0724",
+  "sources": [
+    {
+      "source": "scripts/verify_native_checkpoint_units.py",
+      "before_sha256": "d317c356c9d415e697c6dfbed6d81d0ebc62fa1d63d2c3cb4e864448eea430d7",
+      "after_sha256": "91f9a9ac06fb1fbcf98443926636070fbe2e05f97de9238dab8c7c4428bd8438"
+    }
+  ],
+  "scope": "Recover exact pre-owned-job checkpoint host runner; old receipts unchanged",
+  "native_runtime_verified": false,
+  "production_admitted": false
+}

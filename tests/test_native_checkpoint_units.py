@@ -137,31 +137,35 @@ def test_results_reject_malformed_suite_names(name):
         units.validate_results(observed, required)
 
 
-def test_timeout_terminates_only_the_owned_test_tree(monkeypatch, tmp_path):
-    process = Mock(pid=12345)
-    process.wait.side_effect = [subprocess.TimeoutExpired('test', 1), 0]
-    process.poll.side_effect = [None, 0]
-    monkeypatch.setattr(units.subprocess, 'Popen', lambda *a, **k: process)
-    terminate = Mock()
-    monkeypatch.setattr(units.subprocess, 'run', terminate)
-    with pytest.raises(subprocess.TimeoutExpired):
-        units.run_tests(['test'], source=tmp_path, env={}, log=tmp_path / 'run.log', timeout=1)
-    assert terminate.call_args.args[0] == ['taskkill', '/PID', '12345', '/T', '/F']
-    process.kill.assert_not_called()
-    assert process.wait.call_count == 2
+@pytest.mark.parametrize('error', [None, subprocess.TimeoutExpired('test', 1),
+                                 subprocess.CalledProcessError(7, 'test'), KeyboardInterrupt()])
+def test_native_tests_use_owned_job_runner(monkeypatch, tmp_path, error):
+    from scripts import native_checkpoint_recovery as recovery
+
+    runner = Mock(side_effect=error)
+    monkeypatch.setattr(recovery, '_run_recovery_process', runner)
+    args = (['test'],)
+    kwargs = dict(source=tmp_path, env={}, log=tmp_path / 'run.log', timeout=1)
+    if error is None:
+        units.run_tests(*args, **kwargs)
+    else:
+        with pytest.raises(type(error)) as observed:
+            units.run_tests(*args, **kwargs)
+        assert observed.value is error
+    runner.assert_called_once_with(*args, **kwargs)
 
 
-def test_failed_tree_cleanup_still_reaps_the_owned_root(monkeypatch, tmp_path):
-    process = Mock(pid=12345)
-    process.wait.side_effect = [subprocess.TimeoutExpired('test', 1), 0]
-    process.poll.return_value = None
-    monkeypatch.setattr(units.subprocess, 'Popen', lambda *a, **k: process)
-    monkeypatch.setattr(units.subprocess, 'run',
-                        Mock(side_effect=subprocess.CalledProcessError(1, 'taskkill')))
-    with pytest.raises(subprocess.CalledProcessError):
-        units.run_tests(['test'], source=tmp_path, env={}, log=tmp_path / 'run.log', timeout=1)
-    process.kill.assert_called_once_with()
-    assert process.wait.call_count == 2
+def test_owned_job_change_preserves_historical_runner(host_sources_before_checkpoint_owned_job):
+    directory = units.ROOT / 'native/drafts/environment'
+    historical = json.loads((directory / 'worker-r17-host-source-upgrade.json').read_bytes())
+    upgrade = json.loads((directory / 'checkpoint-owned-job-host-source-upgrade.json').read_bytes())
+    assert len(upgrade['sources']) == 1
+    row = upgrade['sources'][0]
+    assert row['source'] == 'scripts/verify_native_checkpoint_units.py'
+    prior = next(item for item in historical['sources'] if item['source'] == row['source'])
+    assert row['before_sha256'] == prior['after_sha256']
+    assert units.hashlib.sha256(host_sources_before_checkpoint_owned_job[row['source']]).hexdigest() == row['before_sha256']
+    assert not upgrade['native_runtime_verified'] and not upgrade['production_admitted']
 
 
 @pytest.mark.parametrize('jobs,deadline', [(0, 900), (5, 900), (True, 900), (4, 0), (4, 901), (4, True)])

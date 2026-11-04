@@ -10,6 +10,7 @@ import pytest
 pytestmark = pytest.mark.skipif(sys.platform != 'win32', reason='Windows process/ACL integration')
 
 from scripts.native_checkpoint_recovery import _run_recovery_process
+from scripts.verify_native_checkpoint_units import run_tests
 
 PYTHON = str(Path(sys._base_executable).resolve())
 PARENT = (
@@ -17,7 +18,8 @@ PARENT = (
     'child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(60)"]); '
     'marker=Path(sys.argv[1]); pending=marker.with_suffix(".tmp"); '
     'pending.write_text(str(child.pid),encoding="ascii"); pending.replace(marker); '
-    'time.sleep(60 if sys.argv[2]=="timeout" else 0)'
+    'time.sleep(60 if sys.argv[2]=="timeout" else 0); '
+    'sys.exit(7 if sys.argv[2]=="fail" else 0)'
 )
 
 
@@ -38,8 +40,9 @@ def require_exited(pid):
         kernel.CloseHandle(handle)
 
 
-@pytest.mark.parametrize('mode', ['exit', 'timeout'])
-def test_recovery_cleans_descendants_even_after_parent_exit(tmp_path, mode):
+@pytest.mark.parametrize('runner', [_run_recovery_process, run_tests])
+@pytest.mark.parametrize('mode', ['exit', 'timeout', 'fail'])
+def test_recovery_cleans_descendants_even_after_parent_exit(tmp_path, mode, runner):
     marker = tmp_path / 'child-pid.txt'
     sentinel = subprocess.Popen([PYTHON, '-c', 'import time; time.sleep(60)'],
         creationflags=subprocess.CREATE_NO_WINDOW)
@@ -49,9 +52,13 @@ def test_recovery_cleans_descendants_even_after_parent_exit(tmp_path, mode):
             log=tmp_path / 'recovery.log', timeout=2)
         if mode == 'timeout':
             with pytest.raises(subprocess.TimeoutExpired):
-                _run_recovery_process(*args, **kwargs)
+                runner(*args, **kwargs)
+        elif mode == 'fail':
+            with pytest.raises(subprocess.CalledProcessError) as observed:
+                runner(*args, **kwargs)
+            assert observed.value.returncode == 7
         else:
-            _run_recovery_process(*args, **kwargs)
+            runner(*args, **kwargs)
         require_exited(int(marker.read_text(encoding='ascii')))
         assert sentinel.poll() is None
     finally:

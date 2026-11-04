@@ -1,0 +1,41 @@
+diff --git a/scripts/verify_native_checkpoint_units.py b/scripts/verify_native_checkpoint_units.py
+index 7f98d36..e3bba79 100644
+--- a/scripts/verify_native_checkpoint_units.py
++++ b/scripts/verify_native_checkpoint_units.py
+@@ -138,23 +138,9 @@ def validate_results(record: dict, required: dict[str, set[str]]) -> None:
+ 
+ 
+ def run_tests(command: list[str], *, source: Path, env: dict, log: Path, timeout: int) -> None:
+-    with log.open('xb') as stream:
+-        process = subprocess.Popen(command, cwd=source, env=env, stdout=stream, stderr=subprocess.STDOUT)
+-        try:
+-            code = process.wait(timeout=timeout)
+-        except subprocess.TimeoutExpired:
+-            try:
+-                if process.poll() is None:
+-                    # Only the tree rooted at the process this invocation owns.
+-                    subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+-                                   stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=30)
+-            finally:
+-                if process.poll() is None:
+-                    process.kill()
+-                process.wait(timeout=30)
+-            raise
+-        if code:
+-            raise subprocess.CalledProcessError(code, command)
++    from scripts.native_checkpoint_recovery import _run_recovery_process
++
++    _run_recovery_process(command, source=source, env=env, log=log, timeout=timeout)
+ 
+ 
+ def run_browser_cases(executable: Path, required: dict, *, source: Path, env: dict,
+@@ -238,6 +224,9 @@ def _verify_locked(workspace: Path, report_dir: Path, candidate: dict, plan: dic
+         paths = source_inputs(candidate) | {Path(__file__).resolve(),
+                 ROOT / 'scripts/verify_native_gpu_codec.py',
+                 candidate['directory'] / 'native-case-plan.json'}
++        paths.update(ROOT / 'scripts' / name for name in (
++            'native_checkpoint_recovery.py', 'native_checkpoint_crash.py',
++            'native_checkpoint_process.py', 'native_checkpoint_contract.py'))
+         if any(not p.is_file() or p != p.resolve() for p in paths):
+             raise ValueError('Missing or linked checkpoint verification input')
+         if candidate['name'] == 'upstream-156-worker-r17':
