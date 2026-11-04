@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-11-04: host CI прошёл; сборка нативных тестов R16 завершилась ошибкой
+
+| Gate | Результат | Граница |
+| --- | --- | --- |
+| Полный Windows host-прогон | **6398 passed, 1 skipped**, commit `938531f` | Python/host-контракты, не выполнение Chromium gtest |
+| Hosted Windows | **6375 passed, 24 skipped**, C++ policy, static и упаковка прошли в [проверенной попытке CI](https://github.com/Tort1k558/Camouflow/actions/runs/41855144974/job/126682973041) | Camoufox/CloakBrowser и bootstrap upstream **148**, не собственный Glint R16 |
+| Артефакты CI | Runtime-отчёты проверены по ID producing job, ZIP digest и содержимому | Unsigned-пакет не опубликован как релиз и не установлен в production |
+| Сборка native gate R16 | **Не прошла**: captured lambda передана в `base::BindOnce` теста restricted-cookie waiter limit | 225 объявлений не выполнялись; source postguards прошли; объекты сохранены |
+| Предлагаемая правка | Test-only `BindLambdaForTesting`, без изменения 64 ожиданий и production-кода | Не выбрана в manifest, не применена и ещё не проверена C++ |
+| Связанный следующий пакет | 180 source apply/reverse; 337 объявлений, все прежние 225 сохранены | Source-only; 47-unit C++-проверка и linked execution ещё не завершены |
+
+См. [неуспешный native build](../native/drafts/upstream-156-recovery-r16/native-test-build-failure-20261104.json).
+Сборка Chrome, host CI и подготовка патчей не заменяют нативный gate. Новых
+результатов сторонних fingerprint/CAPTCHA-сервисов для актуального бинарника нет.
+
 ## 2026-11-04: measured CSS preferences; mobile geometry remains a failed control
 
 Results below cover the published collector at
