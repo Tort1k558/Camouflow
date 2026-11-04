@@ -400,3 +400,6 @@ native/drafts/environment/worker-r17-host-source-upgrade.json text eol=lf
 # Byte-bound live provider verification source snapshots.
 scripts/verify_ai_provider.py text eol=lf
 scripts/verify_ai_workflows.py text eol=lf
+
+# Bind environment collector observations independently of Windows checkout EOL.
+native/drafts/environment/environment-media-host-source-upgrade.json text eol=lf

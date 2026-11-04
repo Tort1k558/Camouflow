@@ -78,6 +78,8 @@ def observed_environment():
                          "chromeType": "object" if document else "undefined"},
             "hardware": hardware, "gpu": gpu[name], "languages": ["en-US"],
             "intl": {"locale": "en-US", "timezone": "UTC"},
+            "mediaPreferences": {name: {choice: choice == choices[0] for choice in choices}
+                                for name, choices in environment.MEDIA_VALUES.items()} if document else None,
             "viewport": ({"width": 800, "height": 600} if name == "document" else {"width": 300, "height": 150}) if document else None,
             "screen": {"width": 800, "height": 600, "availWidth": 800, "availHeight": 600,
                        "colorDepth": 24, "pixelDepth": 24, "dpr": 1, "touch": 0} if document else None,
@@ -1340,3 +1342,71 @@ def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(record
         else:
             actual = historical_surface_source_sha256(path)
         assert actual == value
+
+
+@pytest.mark.parametrize("scope", sorted(environment.NETWORK_DOCUMENTS | environment.INHERITED_DOCUMENTS))
+def test_reference_media_preferences_require_real_booleans_and_one_choice(scope):
+    observed = observed_environment()
+    observed[scope]["mediaPreferences"]["color_scheme"]["light"] = 1
+    with pytest.raises(ValueError, match="media preferences"):
+        environment.validate_environment(observed, VERSION)
+
+
+@pytest.mark.parametrize("value", [None, {}, {"color_scheme": {}}, "dark"])
+def test_reference_rejects_missing_media_instead_of_inferring_native_defaults(value):
+    observed = observed_environment()
+    observed["document"]["mediaPreferences"] = value
+    with pytest.raises(ValueError, match="media preferences"):
+        environment.validate_environment(observed, VERSION)
+
+
+@pytest.mark.parametrize("scope", ["dedicated", "shared", "service"])
+def test_reference_worker_cannot_claim_match_media(scope):
+    observed = observed_environment()
+    observed[scope]["mediaPreferences"] = copy.deepcopy(observed["document"]["mediaPreferences"])
+    with pytest.raises(ValueError, match="Worker claimed document-only APIs"):
+        environment.validate_environment(observed, VERSION)
+
+
+@pytest.mark.parametrize("contrast", ["no-preference", "more", "less", "custom"])
+def test_reference_preserves_all_observed_contrast_values(contrast):
+    observed = observed_environment()
+    for values in observed.values():
+        if values["mediaPreferences"] is not None:
+            values["mediaPreferences"]["contrast"] = {choice: choice == contrast for choice in environment.MEDIA_VALUES["contrast"]}
+    environment.validate_environment(observed, VERSION)
+
+
+def test_reference_detects_cross_frame_media_drift_and_restart_changes():
+    observed = observed_environment()
+    previous = copy.deepcopy(observed)
+    observed["cross_origin_frame"]["mediaPreferences"]["color_scheme"] = {"light": False, "dark": True}
+    with pytest.raises(ValueError, match="disagrees with document media preferences"):
+        environment.validate_environment(observed, VERSION)
+    for name, values in observed.items():
+        if values["mediaPreferences"] is not None:
+            values["mediaPreferences"]["color_scheme"] = {"light": False, "dark": True}
+    with pytest.raises(ValueError, match="changed across persistent-profile restart"):
+        environment.validate_environment(observed, VERSION, previous=previous)
+
+
+def test_requested_configuration_receives_measured_media_not_missing_defaults():
+    from dataclasses import replace
+    observed = observed_environment()
+    observed["document"]["viewport"] = {"width": 1366, "height": 768}
+    observed["document"]["screen"].update(width=1366, height=768, availWidth=1366, availHeight=768)
+    observed["document"]["mediaPreferences"]["color_scheme"] = {"light": False, "dark": True}
+    observed["document"]["mediaPreferences"]["reduced_motion"] = {"no-preference": False, "reduce": True}
+    configuration = replace(environment.configuration_for_mode("manager-desktop"), color_scheme="dark", reduced_motion="reduce")
+    environment.validate_requested_configuration(observed, configuration)
+    observed["document"]["mediaPreferences"]["color_scheme"] = {"light": True, "dark": False}
+    with pytest.raises(ValueError, match="color_scheme"):
+        environment.validate_requested_configuration(observed, configuration)
+
+
+@pytest.mark.parametrize("selected", [(), ("light", "dark")])
+def test_reference_rejects_missing_or_multiple_matching_media_choices(selected):
+    observed = observed_environment()
+    observed["document"]["mediaPreferences"]["color_scheme"] = {choice: choice in selected for choice in ("light", "dark")}
+    with pytest.raises(ValueError, match="media preferences"):
+        environment.validate_environment(observed, VERSION)

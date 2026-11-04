@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 from playwright.async_api import async_playwright
 
-from app.core.native.configuration import NativeConfiguration
+from app.core.native.configuration import MEDIA_PREFERENCES, NativeConfiguration
 from app.core.native.diagnostics import audit_observed_identity, audit_observed_request_identity, compare_observed
 from scripts import verify_native_canvas as canvas
 from scripts import verify_native_gpu as gpu
@@ -33,11 +33,20 @@ LOW_HINTS = {"sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform"}
 HEADER_NAMES = {"user-agent", "accept-language", *(name.lower() for name in identity.HINTS)}
 
 
+MEDIA_VALUES = {**MEDIA_PREFERENCES, "contrast": ("no-preference", "more", "less", "custom")}
+MEDIA_QUERIES = {"color_scheme": "prefers-color-scheme", "reduced_motion": "prefers-reduced-motion",
+                 "forced_colors": "forced-colors", "contrast": "prefers-contrast"}
+MEDIA_READ = "typeof matchMedia === 'undefined' ? null : Object.fromEntries(" + json.dumps([
+    (name, MEDIA_QUERIES[name], choices) for name, choices in MEDIA_VALUES.items()
+]) + """.map(([name, query, choices]) => [name, Object.fromEntries(
+    choices.map(choice => [choice, matchMedia(`(${query}: ${choice})`).matches]))]))"""
+
+
 READ = """async () => {
   const identity = await (__IDENTITY__)();
   const hardware = (__HARDWARE__)();
   const format = new Intl.DateTimeFormat().resolvedOptions();
-  return {identity, hardware, gpu: await (__GPU__)(),
+  return {identity, hardware, gpu: await (__GPU__)(), mediaPreferences: (__MEDIA__),
     languages: Array.from(navigator.languages),
     intl: {locale: format.locale, timezone: format.timeZone},
     viewport: typeof window === 'undefined' ? null : {width: innerWidth, height: innerHeight},
@@ -47,7 +56,7 @@ READ = """async () => {
       colorDepth: screen.colorDepth, pixelDepth: screen.pixelDepth,
       dpr: devicePixelRatio, touch: navigator.maxTouchPoints
     }};
-}""".replace("__IDENTITY__", identity.READ).replace("__HARDWARE__", HARDWARE_READ).replace("__GPU__", gpu.GPU_READ)
+}""".replace("__IDENTITY__", identity.READ).replace("__HARDWARE__", HARDWARE_READ).replace("__GPU__", gpu.GPU_READ).replace("__MEDIA__", MEDIA_READ)
 
 
 class EnvironmentHandler(canvas.CanvasFixtureHandler):
@@ -93,6 +102,14 @@ def gpu_identity(value: dict) -> dict:
     }
 
 
+def validate_media_preferences(value: dict) -> None:
+    if (not isinstance(value, dict) or set(value) != set(MEDIA_VALUES)
+            or any(not isinstance(value[name], dict) or set(value[name]) != set(choices)
+                   or any(type(match) is not bool for match in value[name].values())
+                   or sum(value[name].values()) != 1 for name, choices in MEDIA_VALUES.items())):
+        raise ValueError("Measured document media preferences are missing or invalid")
+
+
 def validate_environment(observed: dict, version: str, *, previous: dict | None = None) -> dict:
     if not isinstance(observed, dict) or set(observed) != canvas.CONTEXTS:
         raise ValueError("Environment requires all eight measured document/worker contexts")
@@ -112,7 +129,7 @@ def validate_environment(observed: dict, version: str, *, previous: dict | None 
     document_names = canvas.CONTEXTS - {"dedicated", "shared", "service"}
     for name in ("document", *sorted(canvas.CONTEXTS - {"document"})):
         value = observed[name]
-        if (not isinstance(value, dict) or set(value) != {"identity", "hardware", "gpu", "languages", "intl", "screen", "viewport"}
+        if (not isinstance(value, dict) or set(value) != {"identity", "hardware", "gpu", "languages", "intl", "screen", "viewport", "mediaPreferences"}
                 or not isinstance(value["identity"], dict) or set(value["identity"]) != identity_keys
                 or not isinstance(value["hardware"], dict) or set(value["hardware"]) != hardware_keys
                 or not isinstance(value["intl"], dict) or set(value["intl"]) != {"locale", "timezone"}):
@@ -154,10 +171,14 @@ def validate_environment(observed: dict, version: str, *, previous: dict | None 
                 raise ValueError(name + " disagrees with document identity " + key)
         screen = value["screen"]
         if name not in document_names:
-            if (screen is not None or value["viewport"] is not None or details["plugins"] is not None
+            if (screen is not None or value["viewport"] is not None or value["mediaPreferences"] is not None
+                    or details["plugins"] is not None
                     or details["chromeType"] != "undefined"):
                 raise ValueError("Worker claimed document-only APIs: " + name)
         else:
+            validate_media_preferences(value["mediaPreferences"])
+            if value["mediaPreferences"] != baseline["mediaPreferences"]:
+                raise ValueError(name + " disagrees with document media preferences")
             viewport = value["viewport"]
             if (not isinstance(viewport, dict) or set(viewport) != {"width", "height"}
                     or any(type(size) is not int or size <= 0 for size in viewport.values())
@@ -201,8 +222,12 @@ def validate_requested_configuration(observed: dict, configuration: NativeConfig
                 "userAgentHighEntropy": value["identity"]["metadata"]}
 
     document = observed["document"]
+    validate_media_preferences(document.get("mediaPreferences"))
+    media = {name: {choice: document["mediaPreferences"][name][choice] for choice in choices}
+             for name, choices in MEDIA_PREFERENCES.items()}
     actual = {"document": {**navigator(document), **document["viewport"], "screen": document["screen"],
-                           "dpr": document["screen"]["dpr"], "touch": document["screen"]["touch"]},
+                           "dpr": document["screen"]["dpr"], "touch": document["screen"]["touch"],
+                           "mediaPreferences": media},
               "worker": navigator(observed["dedicated"])}
     issues = compare_observed(configuration, actual)
     if issues:
@@ -294,7 +319,7 @@ def main() -> int:
     inputs = source_inputs()
     configuration = configuration_for_mode(args.mode)
     owned.mkdir(parents=True, exist_ok=False)
-    report = {"schema": 1, "passed": False, "checks": [], "capture_mode": "headless-automation-control",
+    report = {"schema": 1, "observation_schema": 2, "passed": False, "checks": [], "capture_mode": "headless-automation-control",
               "environment_mode": args.mode, "viewport_emulation": configuration is not None,
               "configuration": None if configuration is None else configuration.environment_settings(),
               "scope": "One measured stock156 host environment, not a general hardware cohort or generated identity",

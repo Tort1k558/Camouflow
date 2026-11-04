@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "scope": "Reversible source history only; not browser or privacy admission",
+  "patch": "environment-media-host-source-upgrade.patch",
+  "patch_sha256": "7b604333a614eeede7cf39ec0b1f163114bd542bd57e36dc9379e015ccfa83bf",
+  "sources": [
+    {
+      "source": "scripts/capture_native_environment.py",
+      "before_sha256": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+      "before_normalized_sha256": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+      "before_newline": "LF",
+      "after_sha256": "1f2dd71004008bb9dd3aeada932830b53e0b7e7f93bc72132d477de924af46a5"
+    }
+  ]
+}

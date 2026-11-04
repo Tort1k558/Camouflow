@@ -1,8 +1,8 @@
 # Glint
 
-## Current source candidate: R15
+## Current source candidate: R16; R17 prepared
 
-[R15](drafts/upstream-156-document-r15/README.md) contains 154 source patches and a 175-body native test plan. It is registered but not compiled or runtime-verified. R14 failed compilation; its original failure is preserved. A separate CookieJar CXX check is not full browser admission.
+[R16](drafts/upstream-156-recovery-r16/README.md) contains 161 patches. Its Windows browser compiled; the 225-declaration native plan across seven binaries and independent runtime checks are not yet admitted. [R17](drafts/upstream-156-worker-r17/README.md) prepares 176 patches and 300 declarations; its complete C++ and runtime checks remain pending. Historical results below do not admit either candidate.
 
 CamouFlow's independent Chromium-based development engine. It is not a
 Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
@@ -217,6 +217,24 @@ and binds a passing result to unchanged executable/DLL hashes. The report must b
 new and inside the fresh workspace. Success proves only the named AI workflow,
 not fingerprint, CAPTCHA or release readiness. Native execution still requires
 an idle, independently verified runtime.
+
+## Reference environment capture
+
+`scripts/capture_native_environment.py` accepts only the exact pinned official
+stock156 control, not an arbitrary Glint binary. Modes are `native-control`,
+`manager-desktop` and `manager-mobile-web`; use a fresh external D: work directory.
+
+Observation schema 2 measures color scheme, reduced motion, forced colors and
+contrast in all five document contexts; workers explicitly lack `matchMedia`.
+It checks real boolean observations, frame consistency and restart stability.
+Contrast also records `less`/`custom` from [CSS Media Queries](https://drafts.csswg.org/mediaqueries-5/#prefers-contrast);
+this does not add those values to manager configuration. Missing measurements are
+rejected, never replaced with inferred defaults. Earlier source-bound records
+retain their original hashes and observation format.
+
+Mobile Web remains desktop Chromium emulation. The known stock cross-origin
+screen mismatch is **not fixed** by these collector changes. A completed capture
+is not an admitted device cohort, generated fingerprint or Glint release.
 
 ## GPU compatibility diagnostics
 
